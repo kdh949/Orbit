@@ -1,4 +1,5 @@
 export {
+  configureReadOnlyRenderLayer,
   ReadOnlySlideCanvas,
   type ElementPresentationState,
   type SlideRuntimeHighlight

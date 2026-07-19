@@ -5,7 +5,7 @@ import {
   Layer as KonvaLayer,
   Stage as KonvaStage
 } from "react-konva";
-import type { ComponentType } from "react";
+import { useCallback, type ComponentType } from "react";
 import { ElementNodeContent } from "./elementRendering";
 import { getRenderableSlideElements } from "./elementNormalization";
 import { getHighlightOverlayElements } from "./highlightOverlayElements";
@@ -40,11 +40,28 @@ export function ReadOnlySlideCanvas(props: {
   deck: Deck;
   elementStates?: Record<string, ElementPresentationState>;
   highlights?: SlideRuntimeHighlight[];
+  interactive?: boolean;
+  renderPixelRatio?: number;
   scale?: number;
   slide: Slide;
   stageRef?: (stage: Konva.Stage | null) => void;
 }) {
-  const { deck, elementStates = {}, highlights = [], scale = 1, slide, stageRef } = props;
+  const {
+    deck,
+    elementStates = {},
+    highlights = [],
+    interactive = true,
+    renderPixelRatio,
+    scale = 1,
+    slide,
+    stageRef,
+  } = props;
+  const renderLayerRef = useCallback(
+    (layer: Konva.Layer | null) => {
+      configureReadOnlyRenderLayer(layer, renderPixelRatio);
+    },
+    [renderPixelRatio],
+  );
   const elements = getRenderableSlideElements(slide, deck.canvas);
   const activeHighlightElementIds = getActiveHighlightElementIds(highlights);
   const highlightElements = getHighlightOverlayElements({
@@ -78,7 +95,11 @@ export function ReadOnlySlideCanvas(props: {
           ref={stageRef}
           width={deck.canvas.width}
         >
-          <Layer>
+          <Layer
+            hitGraphEnabled={interactive}
+            listening={interactive}
+            ref={renderLayerRef}
+          >
             {elements.map((element) => (
               <ReadOnlyElementNode
                 key={element.elementId}
@@ -103,6 +124,25 @@ export function ReadOnlySlideCanvas(props: {
       </SlideBackground>
     </div>
   );
+}
+
+export function configureReadOnlyRenderLayer(
+  layer: Konva.Layer | null,
+  renderPixelRatio?: number,
+) {
+  if (!layer || renderPixelRatio === undefined) return;
+
+  const pixelRatio = Math.max(1, renderPixelRatio);
+  const sceneCanvas = layer.getCanvas();
+  const hitCanvas = layer.getHitCanvas();
+
+  if (sceneCanvas.getPixelRatio() !== pixelRatio) {
+    sceneCanvas.setPixelRatio(pixelRatio);
+  }
+  if (hitCanvas.getPixelRatio() !== pixelRatio) {
+    hitCanvas.setPixelRatio(pixelRatio);
+  }
+  layer.batchDraw();
 }
 
 function ReadOnlyElementNode(props: {

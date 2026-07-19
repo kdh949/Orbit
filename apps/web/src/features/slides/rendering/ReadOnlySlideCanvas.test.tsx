@@ -8,6 +8,7 @@ import {
   getActiveHighlightElementIds,
   getRenderableSlideElements,
   ReadOnlySlideCanvas,
+  configureReadOnlyRenderLayer,
   verticalAxisTitleText
 } from "./index";
 
@@ -42,7 +43,13 @@ vi.mock("react-konva", () => {
       </div>
     )
   );
-  const Layer = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
+  const Layer = ({
+    children,
+    listening,
+  }: {
+    children?: ReactNode;
+    listening?: boolean;
+  }) => <div data-listening={String(listening)}>{children}</div>;
   const Stage = forwardRef<HTMLDivElement, MockKonvaProps>(
     ({ children, ...props }, ref) => (
       <div ref={ref} {...attrs(props)}>
@@ -121,6 +128,41 @@ function tableCell(text: string, fill: string) {
 
 describe("ReadOnlySlideCanvas", () => {
   const slide = p0AnimationDeck.slides[0]!;
+
+  it("disables interaction for print-only rendering", () => {
+    const html = renderToStaticMarkup(
+      <ReadOnlySlideCanvas
+        deck={p0AnimationDeck}
+        interactive={false}
+        renderPixelRatio={1}
+        slide={slide}
+      />
+    );
+
+    expect(html).toContain('data-listening="false"');
+  });
+
+  it("limits both Konva backing canvases to the requested pixel ratio", () => {
+    const sceneCanvas = {
+      getPixelRatio: vi.fn(() => 2),
+      setPixelRatio: vi.fn(),
+    };
+    const hitCanvas = {
+      getPixelRatio: vi.fn(() => 2),
+      setPixelRatio: vi.fn(),
+    };
+    const layer = {
+      batchDraw: vi.fn(),
+      getCanvas: vi.fn(() => sceneCanvas),
+      getHitCanvas: vi.fn(() => hitCanvas),
+    };
+
+    configureReadOnlyRenderLayer(layer as never, 1);
+
+    expect(sceneCanvas.setPixelRatio).toHaveBeenCalledWith(1);
+    expect(hitCanvas.setPixelRatio).toHaveBeenCalledWith(1);
+    expect(layer.batchDraw).toHaveBeenCalledOnce();
+  });
 
   it("uses the same renderable element normalization as editor previews", () => {
     const elements = getRenderableSlideElements(slide, p0AnimationDeck.canvas);
