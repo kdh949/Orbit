@@ -14324,13 +14324,21 @@ body.is-resizing-speaker-notes {
 .orbit-shell.editor-professional
   .editor-command-scroll-shell.can-scroll-left
   .editor-command-scroll-viewport {
-  mask-image: linear-gradient(to right, transparent, #000 var(--redesign-space-6));
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    var(--redesign-color-on-surface) var(--redesign-space-6)
+  );
 }
 
 .orbit-shell.editor-professional
   .editor-command-scroll-shell.can-scroll-right
   .editor-command-scroll-viewport {
-  mask-image: linear-gradient(to left, transparent, #000 var(--redesign-space-6));
+  mask-image: linear-gradient(
+    to left,
+    transparent,
+    var(--redesign-color-on-surface) var(--redesign-space-6)
+  );
 }
 
 .orbit-shell.editor-professional
@@ -14339,8 +14347,8 @@ body.is-resizing-speaker-notes {
   mask-image: linear-gradient(
     to right,
     transparent,
-    #000 var(--redesign-space-6),
-    #000 calc(100% - var(--redesign-space-6)),
+    var(--redesign-color-on-surface) var(--redesign-space-6),
+    var(--redesign-color-on-surface) calc(100% - var(--redesign-space-6)),
     transparent
   );
 }
