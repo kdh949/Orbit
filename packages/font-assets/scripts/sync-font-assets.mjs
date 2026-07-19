@@ -13,6 +13,47 @@ const licenseRoot = join(assetsRoot, "licenses");
 const downloadWaiters = [];
 let activeDownloads = 0;
 const maxConcurrentDownloads = 16;
+const googleFontsRaw = "https://raw.githubusercontent.com/google/fonts/main/ofl";
+const desktopSources = {
+  "noto-sans-kr": [
+    desktopSource("noto-sans-kr-full-variable.ttf", `${googleFontsRaw}/notosanskr/NotoSansKR%5Bwght%5D.ttf`, "100 900"),
+  ],
+  "gowun-dodum": [
+    desktopSource("gowun-dodum-full-400-normal.ttf", `${googleFontsRaw}/gowundodum/GowunDodum-Regular.ttf`, "400"),
+  ],
+  "noto-serif-kr": [
+    desktopSource("noto-serif-kr-full-variable.ttf", `${googleFontsRaw}/notoserifkr/NotoSerifKR%5Bwght%5D.ttf`, "200 900"),
+  ],
+  "nanum-myeongjo": [
+    desktopSource("nanum-myeongjo-full-400-normal.ttf", `${googleFontsRaw}/nanummyeongjo/NanumMyeongjo-Regular.ttf`, "400"),
+    desktopSource("nanum-myeongjo-full-700-normal.ttf", `${googleFontsRaw}/nanummyeongjo/NanumMyeongjo-Bold.ttf`, "700"),
+  ],
+  "black-han-sans": [
+    desktopSource("black-han-sans-full-400-normal.ttf", `${googleFontsRaw}/blackhansans/BlackHanSans-Regular.ttf`, "400"),
+  ],
+  "do-hyeon": [
+    desktopSource("do-hyeon-full-400-normal.ttf", `${googleFontsRaw}/dohyeon/DoHyeon-Regular.ttf`, "400"),
+  ],
+  jua: [
+    desktopSource("jua-full-400-normal.ttf", `${googleFontsRaw}/jua/Jua-Regular.ttf`, "400"),
+  ],
+  montserrat: [
+    desktopSource("montserrat-full-variable.ttf", `${googleFontsRaw}/montserrat/Montserrat%5Bwght%5D.ttf`, "100 900"),
+  ],
+  poppins: [
+    desktopSource("poppins-full-400-normal.ttf", `${googleFontsRaw}/poppins/Poppins-Regular.ttf`, "400"),
+    desktopSource("poppins-full-700-normal.ttf", `${googleFontsRaw}/poppins/Poppins-Bold.ttf`, "700"),
+  ],
+  "playfair-display": [
+    desktopSource("playfair-display-full-variable.ttf", `${googleFontsRaw}/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf`, "400 900"),
+  ],
+  merriweather: [
+    desktopSource("merriweather-full-variable.ttf", `${googleFontsRaw}/merriweather/Merriweather%5Bopsz,wdth,wght%5D.ttf`, "300 900"),
+  ],
+  "bebas-neue": [
+    desktopSource("bebas-neue-full-400-normal.ttf", `${googleFontsRaw}/bebasneue/BebasNeue-Regular.ttf`, "400"),
+  ],
+};
 
 const fonts = [
   font("pretendard", "Pretendard", "basic", "sans-serif", true, [400, 700]),
@@ -32,6 +73,10 @@ const fonts = [
 
 function font(id, family, group, category, supportsKorean, weights, variableWeb = false) {
   return { id, family, group, category, supportsKorean, weights, variableWeb };
+}
+
+function desktopSource(filename, url, weight) {
+  return { filename, url, weight };
 }
 
 async function main() {
@@ -108,11 +153,25 @@ async function syncFontsourceFont(definition) {
     }
   }
 
-  for (const weight of definition.weights) {
-    for (const subset of subsets) {
-      const variant = metadata.variants[String(weight)]?.normal?.[subset];
+  const fullDesktopSources = desktopSources[definition.id];
+  if (fullDesktopSources) {
+    for (const source of fullDesktopSources) {
+      faceJobs.push(downloadFace({
+        destination: join(desktopRoot, source.filename),
+        filename: source.filename,
+        format: "truetype",
+        kind: "desktop",
+        style: "normal",
+        subset: "full",
+        url: source.url,
+        weight: source.weight,
+      }));
+    }
+  } else {
+    for (const weight of definition.weights) {
+      const variant = metadata.variants[String(weight)]?.normal?.latin;
       if (!variant?.url.ttf) continue;
-      const filename = `${definition.id}-${subset}-${weight}-normal.ttf`;
+      const filename = `${definition.id}-full-${weight}-normal.ttf`;
       faceJobs.push(downloadFace({
         destination: join(desktopRoot, filename),
         fallbackUrl: variant.url.ttf,
@@ -120,8 +179,7 @@ async function syncFontsourceFont(definition) {
         format: "truetype",
         kind: "desktop",
         style: "normal",
-        subset,
-        unicodeRange: metadata.unicodeRange[subset] ?? metadata.unicodeRange[`[${subset}]`],
+        subset: "full",
         url: pinFontsourceUrl(variant.url.ttf, metadata.npmVersion),
         weight: String(weight),
       }));
