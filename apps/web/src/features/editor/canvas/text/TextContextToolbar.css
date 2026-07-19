@@ -7,7 +7,7 @@
   box-shadow: var(--redesign-shadow-overlay);
   color: var(--redesign-color-inverse-on-surface);
   display: flex;
-  gap: var(--redesign-space-2);
+  gap: var(--redesign-space-1);
   max-width: calc(100vw - var(--redesign-space-6));
   min-height: var(--redesign-size-control-md);
   overflow-x: auto;
@@ -18,9 +18,8 @@
 .text-context-toolbar button,
 .text-context-toolbar input,
 .text-context-toolbar select {
-  background: var(--redesign-color-surface);
-  border: var(--redesign-border-width) solid
-    var(--redesign-color-outline-variant);
+  background: transparent;
+  border: var(--redesign-border-width) solid transparent;
   border-radius: var(--redesign-radius-md);
   color: var(--redesign-color-on-surface);
   font: inherit;
@@ -29,14 +28,26 @@
 
 .text-context-toolbar button {
   min-width: var(--redesign-size-control-sm);
-  padding: var(--redesign-space-1) var(--redesign-space-2);
+  padding: 0 var(--redesign-space-1);
+}
+
+.text-context-toolbar button:hover:not(:disabled) {
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-on-surface);
+}
+
+.text-context-toolbar button:focus-visible,
+.text-context-toolbar input:focus-visible,
+.text-context-toolbar select:focus-visible {
+  box-shadow: var(--redesign-focus-ring);
+  outline: none;
 }
 
 .text-context-toolbar button[aria-pressed="true"],
 .text-context-toolbar button[aria-pressed="mixed"] {
-  background: var(--redesign-color-primary-container);
-  border-color: var(--redesign-color-primary-outline);
-  color: var(--redesign-color-on-primary-container);
+  background: var(--redesign-color-primary-subtle);
+  border-color: transparent;
+  color: var(--redesign-color-primary);
 }
 
 .text-context-toolbar button:disabled,

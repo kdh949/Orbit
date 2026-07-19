@@ -16,6 +16,19 @@ import type {
 } from "@orbit/shared";
 import type { FontAssetGroup } from "@orbit/font-assets";
 import {
+  IconBold,
+  IconClearFormatting,
+  IconIndentDecrease,
+  IconIndentIncrease,
+  IconItalic,
+  IconLink,
+  IconList,
+  IconListNumbers,
+  IconMinus,
+  IconPlus,
+  IconUnderline,
+} from "@tabler/icons-react";
+import {
   type MouseEvent as ReactMouseEvent,
   useCallback,
   useEffect,
@@ -496,6 +509,7 @@ export function TextContextToolbar(props: {
         <button
           aria-label="글자 크기 줄이기"
           disabled={disabled}
+          title="글자 크기 줄이기"
           type="button"
           onClick={() =>
             commit({
@@ -507,7 +521,7 @@ export function TextContextToolbar(props: {
           }
           onMouseDown={preserveTextRange}
         >
-          −
+          <IconMinus aria-hidden="true" size={16} />
         </button>
         <input
           aria-label="글자 크기"
@@ -526,6 +540,7 @@ export function TextContextToolbar(props: {
         <button
           aria-label="글자 크기 늘리기"
           disabled={disabled}
+          title="글자 크기 늘리기"
           type="button"
           onClick={() =>
             commit({
@@ -535,7 +550,7 @@ export function TextContextToolbar(props: {
           }
           onMouseDown={preserveTextRange}
         >
-          +
+          <IconPlus aria-hidden="true" size={16} />
         </button>
       </div>
 
@@ -548,6 +563,7 @@ export function TextContextToolbar(props: {
           aria-label="굵게"
           aria-pressed={boldPressed}
           disabled={disabled}
+          title="굵게"
           type="button"
           onClick={() =>
             commit({
@@ -557,12 +573,13 @@ export function TextContextToolbar(props: {
           }
           onMouseDown={preserveTextRange}
         >
-          B
+          <IconBold aria-hidden="true" size={17} />
         </button>
         <button
           aria-label="기울임"
           aria-pressed={italicPressed}
           disabled={disabled}
+          title="기울임"
           type="button"
           onClick={() =>
             commit({
@@ -572,12 +589,13 @@ export function TextContextToolbar(props: {
           }
           onMouseDown={preserveTextRange}
         >
-          I
+          <IconItalic aria-hidden="true" size={17} />
         </button>
         <button
           aria-label="밑줄"
           aria-pressed={underlinePressed}
           disabled={disabled}
+          title="밑줄"
           type="button"
           onClick={() =>
             commit({
@@ -587,7 +605,7 @@ export function TextContextToolbar(props: {
           }
           onMouseDown={preserveTextRange}
         >
-          U
+          <IconUnderline aria-hidden="true" size={17} />
         </button>
       </div>
 
@@ -623,6 +641,7 @@ export function TextContextToolbar(props: {
       <button
         aria-label="링크"
         disabled={disabled}
+        title="링크"
         type="button"
         onClick={() => {
           const next = window.prompt(
@@ -638,7 +657,7 @@ export function TextContextToolbar(props: {
         }}
         onMouseDown={preserveTextRange}
       >
-        링크
+        <IconLink aria-hidden="true" size={17} />
       </button>
 
       <label className="text-context-toolbar-field text-context-toolbar-align">
@@ -672,6 +691,7 @@ export function TextContextToolbar(props: {
         aria-label="글머리 기호"
         aria-pressed={bulletPressed}
         disabled={disabled}
+        title="글머리 기호"
         type="button"
         onClick={() => {
           const current = paragraphStyle.bullet.mixed
@@ -687,7 +707,7 @@ export function TextContextToolbar(props: {
         }}
         onMouseDown={preserveTextRange}
       >
-        • 목록
+        <IconList aria-hidden="true" size={17} />
       </button>
 
       <button
@@ -701,6 +721,7 @@ export function TextContextToolbar(props: {
               : false
         }
         disabled={disabled}
+        title="번호 매기기"
         type="button"
         onClick={() => {
           const current = paragraphStyle.bullet.mixed
@@ -722,12 +743,13 @@ export function TextContextToolbar(props: {
         }}
         onMouseDown={preserveTextRange}
       >
-        1. 목록
+        <IconListNumbers aria-hidden="true" size={17} />
       </button>
 
       <button
         aria-label="들여쓰기 줄이기"
         disabled={disabled}
+        title="들여쓰기 줄이기"
         type="button"
         onClick={() =>
           commit({
@@ -739,11 +761,12 @@ export function TextContextToolbar(props: {
         }
         onMouseDown={preserveTextRange}
       >
-        ⇤
+        <IconIndentDecrease aria-hidden="true" size={17} />
       </button>
       <button
         aria-label="들여쓰기 늘리기"
         disabled={disabled}
+        title="들여쓰기 늘리기"
         type="button"
         onClick={() =>
           commit({
@@ -753,7 +776,7 @@ export function TextContextToolbar(props: {
         }
         onMouseDown={preserveTextRange}
       >
-        ⇥
+        <IconIndentIncrease aria-hidden="true" size={17} />
       </button>
 
       <label className="text-context-toolbar-field">
@@ -780,6 +803,7 @@ export function TextContextToolbar(props: {
       <button
         aria-label="서식 지우기"
         disabled={disabled}
+        title="서식 지우기"
         type="button"
         onClick={() => {
           commit({
@@ -801,7 +825,7 @@ export function TextContextToolbar(props: {
         }}
         onMouseDown={preserveTextRange}
       >
-        서식 지우기
+        <IconClearFormatting aria-hidden="true" size={17} />
       </button>
 
       {disabledReason ? (

@@ -386,6 +386,12 @@ describe("TextContextToolbar", () => {
     expect(html).toContain("줄 간격");
     expect(html).toContain("서식 지우기");
     expect(html).toContain('aria-pressed="mixed"');
+    expect(html).toContain("tabler-icon-bold");
+    expect(html).toContain("tabler-icon-list-numbers");
+    expect(html).toContain("tabler-icon-clear-formatting");
+    expect(html).not.toContain(">B</button>");
+    expect(html).not.toContain("• 목록");
+    expect(html).not.toContain("⇤");
   });
 
   it("groups the fifteen supported fonts and explains presentation uses", () => {

@@ -136,6 +136,8 @@ describe("EditorToolbar", () => {
     expect(html).toContain('data-context-kind="multi"');
     expect(html).toContain("2개 선택");
     expect(html).toContain("가로 분배");
+    expect(html).toContain("tabler-icon-layout-distribute-horizontal");
+    expect(html).toContain("tabler-icon-box-multiple");
     expect(html).not.toContain('aria-label="삽입 명령"');
   });
 

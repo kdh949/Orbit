@@ -14391,6 +14391,16 @@ body.is-resizing-speaker-notes {
   min-width: max-content;
 }
 
+.orbit-shell.editor-professional .editor-command-scroll-track > .toolbar-divider {
+  align-self: center;
+  background: var(--redesign-color-outline-variant);
+  border: 0;
+  flex: 0 0 1px;
+  height: var(--redesign-space-5);
+  margin: 0 var(--redesign-space-1);
+  width: 1px;
+}
+
 .orbit-shell.editor-professional .editor-command-common,
 .orbit-shell.editor-professional .editor-command-insert,
 .orbit-shell.editor-professional .editor-command-context-slot,
@@ -14460,6 +14470,14 @@ body.is-resizing-speaker-notes {
 
 .orbit-shell.editor-professional .selection-context-toolbar input[type="number"] {
   width: 58px;
+}
+
+.orbit-shell.editor-professional .selection-context-count {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  font-variant-numeric: tabular-nums;
+  padding: 0 var(--redesign-space-1);
+  white-space: nowrap;
 }
 
 .editor-command-search-backdrop {
@@ -14587,9 +14605,21 @@ body.is-resizing-speaker-notes {
 
 .orbit-shell.editor-professional .editor-command-bar .tool-button,
 .orbit-shell.editor-professional .editor-command-bar .icon-button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--redesign-radius-md);
   color: var(--redesign-color-on-surface-variant);
+  display: inline-flex;
   height: 32px;
+  justify-content: center;
   min-height: 32px;
+  min-width: 32px;
+  padding: 0 var(--redesign-space-1);
+}
+
+.orbit-shell.editor-professional .editor-command-bar .icon-button {
+  width: 32px;
 }
 
 .orbit-shell.editor-professional .editor-command-bar .tool-button:hover,
@@ -14602,6 +14632,12 @@ body.is-resizing-speaker-notes {
 .orbit-shell.editor-professional .editor-command-bar .icon-button.selected-tool {
   background: var(--redesign-color-primary-subtle);
   color: var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional .editor-command-bar .tool-button:focus-visible,
+.orbit-shell.editor-professional .editor-command-bar .icon-button:focus-visible {
+  box-shadow: var(--redesign-focus-ring);
+  outline: none;
 }
 
 .orbit-shell.editor-professional .editor-panel {

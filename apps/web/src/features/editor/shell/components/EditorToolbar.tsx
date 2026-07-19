@@ -1,16 +1,21 @@
 import type { DeckElement } from "@orbit/shared";
 import {
+  IconAdjustmentsHorizontal,
   IconArrowLeft,
   IconArrowRight,
+  IconBoxMultiple,
   IconBrush as Paintbrush,
   IconChartBar as BarChart3,
   IconChevronDown as ChevronDown,
   IconFilePlus as FilePlus,
   IconChevronLeft as ChevronLeft,
+  IconCrop,
   IconPhotoPlus as ImagePlus,
   IconIcons,
   IconPointer as MousePointer2,
   IconPrinter as Printer,
+  IconLayoutDistributeHorizontal,
+  IconLayoutDistributeVertical,
   IconSearch as Search,
   IconShape as Shapes,
   IconSparkles as Sparkles,
@@ -171,7 +176,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
             {props.canMutate && contextKind !== "insert" ? (
               <div aria-label="선택 항목 명령" className="editor-command-selection-actions" role="group">
                 <CommandButton label="서식 옵션" onClick={props.onOpenProperties}>
-                  <span aria-hidden="true">서식 옵션</span>
+                  <IconAdjustmentsHorizontal aria-hidden="true" size={17} />
                 </CommandButton>
                 <CommandButton active={props.isAnimationPanelOpen || props.selectedElementAnimationCount > 0} disabled={!props.canUseCurrentSlide} label="애니메이션" onClick={props.onOpenAnimation}><Sparkles size={17} /></CommandButton>
               </div>
@@ -221,10 +226,16 @@ function ToolbarSelectionContext(props: EditorToolbarProps & { contextKind: Edit
   if (props.contextKind === "multi") {
     return (
       <div aria-label="다중 선택 서식" className="selection-context-toolbar" role="group">
-        <span>{props.selectedElementCount}개 선택</span>
-        <button type="button" onClick={props.onDistributeSelectionX}>가로 분배</button>
-        <button type="button" onClick={props.onDistributeSelectionY}>세로 분배</button>
-        <button type="button" onClick={props.onGroupSelection}>그룹</button>
+        <span className="selection-context-count">{props.selectedElementCount}개 선택</span>
+        <CommandButton label="가로 분배" onClick={props.onDistributeSelectionX}>
+          <IconLayoutDistributeHorizontal aria-hidden="true" size={17} />
+        </CommandButton>
+        <CommandButton label="세로 분배" onClick={props.onDistributeSelectionY}>
+          <IconLayoutDistributeVertical aria-hidden="true" size={17} />
+        </CommandButton>
+        <CommandButton label="그룹" onClick={props.onGroupSelection}>
+          <IconBoxMultiple aria-hidden="true" size={17} />
+        </CommandButton>
       </div>
     );
   }
@@ -241,7 +252,11 @@ function ToolbarSelectionContext(props: EditorToolbarProps & { contextKind: Edit
         <label>두께 <input aria-label="선 두께" min={0} type="number" value={Number(elementProps.strokeWidth ?? 0)} onChange={(event) => props.onChangeSelectedProps({ strokeWidth: Number(event.target.value) })} /></label>
         <label>선 종류 <select aria-label="선 종류" value={Array.isArray(elementProps.dash) && elementProps.dash.length ? "dash" : "solid"} onChange={(event) => props.onChangeSelectedProps({ dash: event.target.value === "dash" ? [8, 6] : [] })}><option value="solid">실선</option><option value="dash">점선</option></select></label>
       </> : null}
-      {isImage ? <button type="button" onClick={props.onOpenProperties}>자르기·교체</button> : null}
+      {isImage ? (
+        <CommandButton label="자르기·교체" onClick={props.onOpenProperties}>
+          <IconCrop aria-hidden="true" size={17} />
+        </CommandButton>
+      ) : null}
       <label>불투명도 <input aria-label="불투명도" max={100} min={0} type="number" value={Math.round(element.opacity * 100)} onChange={(event) => props.onChangeSelectedFrame({ opacity: Math.max(0, Math.min(100, Number(event.target.value))) / 100 })} /></label>
     </div>
   );
