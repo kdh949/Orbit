@@ -112,6 +112,28 @@ describe("InlineTextEditorOverlay", () => {
     expect(html).not.toMatch(/\svalue=/i);
   });
 
+  it("uses the live transform frame while the text element is being resized", () => {
+    const { deck, element, slide } = getRichTextFixture();
+
+    const html = renderToStaticMarkup(
+      <InlineTextEditorOverlay
+        deck={deck}
+        element={element}
+        frame={{ x: 120, y: 180, width: 900, height: 420, rotation: 15 }}
+        slide={slide}
+        stageScale={0.5}
+        onCommitProps={vi.fn()}
+        onFinishEditing={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain("left:60px");
+    expect(html).toContain("top:90px");
+    expect(html).toContain("width:450px");
+    expect(html).toContain("height:210px");
+    expect(html).toContain("transform:rotate(15deg)");
+  });
+
   it("renders explicit blank lines and intentional line-leading indentation", () => {
     const { deck, element, slide } = getRichTextFixture();
     if (element.type !== "text") throw new Error("text fixture is required");

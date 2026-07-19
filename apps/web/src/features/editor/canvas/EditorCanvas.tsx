@@ -39,7 +39,10 @@ import {
   getElementsIntersectingSelectionRect,
   normalizeDraftRect,
 } from "./utils/canvasInteractionUtils";
-import { getSelectionTransformerConfig } from "./utils/selectionTransformer";
+import {
+  getSelectionTransformerConfig,
+  type ElementTransformFrame,
+} from "./utils/selectionTransformer";
 import {
   getHighlightOverlayElements,
   HighlightOverlay,
@@ -406,6 +409,10 @@ export function EditableCanvas(props: {
     elementId: string;
     props: TextElementProps;
   } | null>(null);
+  const [transformPreview, setTransformPreview] = useState<{
+    elementId: string;
+    frame: ElementTransformFrame;
+  } | null>(null);
   const selectedTextElement =
     selectedElementIds.length === 1
       ? (visibleElements.find(
@@ -498,6 +505,7 @@ export function EditableCanvas(props: {
     pendingTextBlurActionRef.current = null;
     setActiveTextRange(null);
     setEditingTextDraft(null);
+    setTransformPreview(null);
   }, [editingElementId]);
 
   useSyncCustomShapeEditDraft({
@@ -713,6 +721,11 @@ export function EditableCanvas(props: {
                   slideId: slide.slideId,
                 })
               }
+              onTransformPreviewFrame={(frame) =>
+                setTransformPreview(
+                  frame ? { elementId: element.elementId, frame } : null,
+                )
+              }
               onSnapGuidesChange={setSnapGuides}
               snapThreshold={8 / Math.max(stageScale, 0.01)}
               onSelect={(append) =>
@@ -888,6 +901,11 @@ export function EditableCanvas(props: {
             ref={inlineTextEditorRef}
             slide={slide}
             stageScale={stageScale}
+            frame={
+              transformPreview?.elementId === editingElementId
+                ? transformPreview.frame
+                : undefined
+            }
             onCommitProps={onCommitElementProps}
             onDraftPropsChange={(props) =>
               setEditingTextDraft({ elementId: editingElementId, props })

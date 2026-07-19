@@ -28,6 +28,7 @@ import {
 } from "./contentEditableRange";
 import { resolveTextBodyInset } from "../../../slides/rendering/richTextLayout";
 import { getCssFontWeight, getTextElementLayout } from "./textLayout";
+import type { ElementTransformFrame } from "../utils/selectionTransformer";
 
 type TextElement = Extract<DeckElement, { type: "text" }>;
 
@@ -43,6 +44,7 @@ type InlineTextEditorOverlayProps = {
   deck: Deck;
   editCompositeId?: string;
   element: DeckElement | null;
+  frame?: ElementTransformFrame;
   slide: Slide;
   stageScale: number;
   onCommitProps: (elementId: string, props: Record<string, unknown>) => void;
@@ -67,6 +69,7 @@ const InlineTextEditorSurface = forwardRef<
     deck,
     editCompositeId,
     element,
+    frame: previewFrame,
     slide,
     stageScale,
     onCommitProps,
@@ -210,13 +213,14 @@ const InlineTextEditorSurface = forwardRef<
     deck.theme.typography.bodyFontFamily;
   const paragraphs = renderedProps.paragraphs ?? [];
   const bodyInset = resolveTextBodyInset(renderedProps);
+  const frame = previewFrame ?? element;
   const textLayout = getTextElementLayout({
     frame: {
-      height: element.height,
-      rotation: element.rotation,
-      width: element.width,
-      x: element.x,
-      y: element.y,
+      height: frame.height,
+      rotation: frame.rotation,
+      width: frame.width,
+      x: frame.x,
+      y: frame.y,
     },
     props: renderedProps,
     slide,
@@ -235,10 +239,10 @@ const InlineTextEditorSurface = forwardRef<
       spellCheck
       suppressContentEditableWarning
       style={{
-        left: `${element.x * stageScale}px`,
-        top: `${element.y * stageScale}px`,
-        width: `${element.width * stageScale}px`,
-        height: `${element.height * stageScale}px`,
+        left: `${frame.x * stageScale}px`,
+        top: `${frame.y * stageScale}px`,
+        width: `${frame.width * stageScale}px`,
+        height: `${frame.height * stageScale}px`,
         color: baseColor,
         fontFamily: baseFontFamily,
         fontSize: `${renderedProps.fontSize * stageScale}px`,
@@ -249,7 +253,7 @@ const InlineTextEditorSurface = forwardRef<
         paddingRight: `${Math.max(0, bodyInset.right) * stageScale}px`,
         paddingTop: `${Math.max(0, textLayout.y) * stageScale}px`,
         textAlign: renderedProps.align,
-        transform: `rotate(${element.rotation}deg)`,
+        transform: `rotate(${frame.rotation}deg)`,
         transformOrigin: "top left",
       }}
       onBlur={(event) => handleCompositeBlur(event.relatedTarget)}

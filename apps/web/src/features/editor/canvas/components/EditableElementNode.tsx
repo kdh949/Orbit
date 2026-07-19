@@ -39,7 +39,10 @@ import {
   getSnappedElementPosition,
   type CanvasSnapGuide
 } from "../utils/canvasInteractionUtils";
-import { resolveTransformedElementFrame } from "../utils/selectionTransformer";
+import {
+  resolveTransformedElementFrame,
+  type ElementTransformFrame,
+} from "../utils/selectionTransformer";
 
 type KonvaComponent = ComponentType<any>;
 
@@ -82,6 +85,7 @@ export function EditableElementNode(props: {
   }) => void;
   onMountNode: (node: Konva.Group | null) => void;
   onOpenContextMenu: (clientX: number, clientY: number) => void;
+  onTransformPreviewFrame: (frame: ElementTransformFrame | null) => void;
   onSelect: (append: boolean) => void;
   onSnapGuidesChange: (guides: CanvasSnapGuide[]) => void;
   snapThreshold: number;
@@ -108,6 +112,7 @@ export function EditableElementNode(props: {
     onCommitFrame,
     onMountNode,
     onOpenContextMenu,
+    onTransformPreviewFrame,
     onSelect,
     onSnapGuidesChange,
     snapThreshold,
@@ -144,6 +149,7 @@ export function EditableElementNode(props: {
 
   useEffect(() => {
     setPreviewFrame(null);
+    onTransformPreviewFrame(null);
   }, [element.height, element.rotation, element.width, element.x, element.y]);
 
   function handlePointerSelect(append: boolean) {
@@ -268,6 +274,7 @@ export function EditableElementNode(props: {
         node.scaleX(1);
         node.scaleY(1);
         setPreviewFrame(nextFrame);
+        onTransformPreviewFrame(nextFrame);
       }}
       onTransformEnd={(event: Konva.KonvaEventObject<Event>) => {
         const node = event.target;
@@ -285,8 +292,9 @@ export function EditableElementNode(props: {
         node.scaleX(1);
         node.scaleY(1);
 
-        setPreviewFrame(null);
         onCommitFrame(nextFrame);
+        setPreviewFrame(null);
+        onTransformPreviewFrame(null);
       }}
     >
       <Rect
