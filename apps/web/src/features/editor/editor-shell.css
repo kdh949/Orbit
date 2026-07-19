@@ -13682,7 +13682,7 @@ body.is-resizing-speaker-notes {
   background: transparent;
   border: 0;
   border-radius: 0;
-  box-shadow: none;
+  box-shadow: var(--redesign-shadow-none);
   color: var(--redesign-color-on-surface-variant);
   max-width: 100%;
   min-height: 32px;
