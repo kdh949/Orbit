@@ -1873,6 +1873,77 @@ export function EditorShell(props: { projectId?: string }) {
         </div>
       ) : null}
 
+      {!isSlideRehearsalActive ? (
+        <EditorToolbar
+          canZoomIn={stageScale < maximumManualEditorZoom}
+          canZoomOut={stageScale > minimumManualEditorZoom}
+          canMutate={canMutateDeck}
+          canUseCurrentSlide={canEditCurrentSlideCanvas}
+          compactSelectionTrigger={
+            isCompactEditorLayout &&
+            canMutateDeck &&
+            selectionInspectorModel.selectedCount > 0 ? (
+              <button
+                aria-controls="editor-selection-inspector-pane"
+                aria-describedby="compact-selection-count"
+                aria-expanded={
+                  isRightPanelOpen && rightPanelMode === "properties"
+                }
+                aria-label="선택 항목 속성 열기"
+                className="compact-selection-trigger"
+                ref={compactSelectionTriggerRef}
+                type="button"
+                onClick={handleOpenCompactSelectionInspector}
+              >
+                <span>속성</span>
+                <span id="compact-selection-count">
+                  {selectionInspectorModel.selectedCount}개 선택됨
+                </span>
+              </button>
+            ) : null
+          }
+          chartMenuButtonRef={chartMenuButtonRef}
+          insertTool={insertTool}
+          isAnimationPanelOpen={isAnimationPanelOpen}
+          isChartMenuOpen={isChartMenuOpen}
+          isIconPanelOpen={isIconPanelOpen}
+          isImageUploadPending={isImageUploadPending}
+          isShapeMenuOpen={isShapeMenuOpen}
+          isStageFitToViewport={isStageFitToViewport}
+          onAddText={handleAddTextElement}
+          onOpenAnimation={openAnimationInspector}
+          onOpenIconLibrary={toggleIconLibrary}
+          onOpenImagePicker={() => {
+            if (currentSlide) {
+              openImageFilePicker({
+                slideId: currentSlide.slideId,
+                type: "insert",
+              });
+            }
+          }}
+          onRedo={handleRedo}
+          onSelectTool={() => setInsertTool("select")}
+          onToggleChartMenu={() => {
+            setIsShapeMenuOpen(false);
+            setIsChartMenuOpen((current) => !current);
+          }}
+          onToggleShapeMenu={() => {
+            setIsChartMenuOpen(false);
+            setIsShapeMenuOpen((current) => !current);
+          }}
+          onUndo={handleUndo}
+          onFitStageToViewport={fitStageToViewport}
+          onZoomIn={zoomCanvasIn}
+          onZoomOut={zoomCanvasOut}
+          onZoomToActualSize={zoomToActualSize}
+          redoDisabled={redoStack.length === 0}
+          selectedElementAnimationCount={selectedElementAnimations.length}
+          shapeMenuButtonRef={shapeMenuButtonRef}
+          stageScale={stageScale}
+          undoDisabled={undoStack.length === 0}
+        />
+      ) : null}
+
       <section
         className={`editor-panel ${isRightPanelOpen ? "" : "right-panel-closed"} ${
           isSlidesPaneCollapsed ? "slides-panel-collapsed" : ""
@@ -1928,77 +1999,6 @@ export function EditorShell(props: { projectId?: string }) {
           />
         )}
         <section className="stage-pane">
-          {!isSlideRehearsalActive ? (
-            <EditorToolbar
-              canZoomIn={stageScale < maximumManualEditorZoom}
-              canZoomOut={stageScale > minimumManualEditorZoom}
-              canMutate={canMutateDeck}
-              canUseCurrentSlide={canEditCurrentSlideCanvas}
-              compactSelectionTrigger={
-                isCompactEditorLayout &&
-                canMutateDeck &&
-                selectionInspectorModel.selectedCount > 0 ? (
-                  <button
-                    aria-controls="editor-selection-inspector-pane"
-                    aria-describedby="compact-selection-count"
-                    aria-expanded={
-                      isRightPanelOpen && rightPanelMode === "properties"
-                    }
-                    aria-label="선택 항목 속성 열기"
-                    className="compact-selection-trigger"
-                    ref={compactSelectionTriggerRef}
-                    type="button"
-                    onClick={handleOpenCompactSelectionInspector}
-                  >
-                    <span>속성</span>
-                    <span id="compact-selection-count">
-                      {selectionInspectorModel.selectedCount}개 선택됨
-                    </span>
-                  </button>
-                ) : null
-              }
-              chartMenuButtonRef={chartMenuButtonRef}
-              insertTool={insertTool}
-              isAnimationPanelOpen={isAnimationPanelOpen}
-              isChartMenuOpen={isChartMenuOpen}
-              isIconPanelOpen={isIconPanelOpen}
-              isImageUploadPending={isImageUploadPending}
-              isShapeMenuOpen={isShapeMenuOpen}
-              isStageFitToViewport={isStageFitToViewport}
-              onAddText={handleAddTextElement}
-              onOpenAnimation={openAnimationInspector}
-              onOpenIconLibrary={toggleIconLibrary}
-              onOpenImagePicker={() => {
-                if (currentSlide) {
-                  openImageFilePicker({
-                    slideId: currentSlide.slideId,
-                    type: "insert",
-                  });
-                }
-              }}
-              onRedo={handleRedo}
-              onSelectTool={() => setInsertTool("select")}
-              onToggleChartMenu={() => {
-                setIsShapeMenuOpen(false);
-                setIsChartMenuOpen((current) => !current);
-              }}
-              onToggleShapeMenu={() => {
-                setIsChartMenuOpen(false);
-                setIsShapeMenuOpen((current) => !current);
-              }}
-              onUndo={handleUndo}
-              onFitStageToViewport={fitStageToViewport}
-              onZoomIn={zoomCanvasIn}
-              onZoomOut={zoomCanvasOut}
-              onZoomToActualSize={zoomToActualSize}
-              redoDisabled={redoStack.length === 0}
-              selectedElementAnimationCount={selectedElementAnimations.length}
-              shapeMenuButtonRef={shapeMenuButtonRef}
-              stageScale={stageScale}
-              undoDisabled={undoStack.length === 0}
-            />
-          ) : null}
-
           <EditorCanvasStage
             assistantDialog={
               <SpeakerNotesAssistantDialog

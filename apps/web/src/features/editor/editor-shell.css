@@ -13625,6 +13625,94 @@ body.is-resizing-speaker-notes {
   opacity: 1;
 }
 
+/* Full-width editor command bar. Keep this selector independent from the
+ * legacy stage-top-controls cascade because the command bar is a shell row. */
+.orbit-shell.editor-professional.editor-app-shell {
+  grid-template-rows: var(--editor-topbar-height) var(--editor-chrome-height) minmax(0, 1fr);
+}
+
+.orbit-shell.editor-professional .app-topbar {
+  grid-row: 1;
+}
+
+.orbit-shell.editor-professional .editor-command-bar {
+  align-items: center;
+  background: var(--redesign-color-surface-container-low);
+  border-bottom: 1px solid var(--redesign-color-outline-variant);
+  display: flex;
+  gap: var(--redesign-space-2);
+  grid-row: 2;
+  min-width: 0;
+  overflow: hidden;
+  padding: var(--redesign-space-1) var(--redesign-space-3);
+  z-index: 18;
+}
+
+.orbit-shell.editor-professional .editor-command-bar > .editor-toolbar {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 0;
+}
+
+.orbit-shell.editor-professional .editor-command-bar .tool-group {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.orbit-shell.editor-professional .editor-command-bar > .canvas-zoom-controls {
+  flex: 0 0 auto;
+  margin: 0;
+  position: static;
+}
+
+.orbit-shell.editor-professional .editor-command-bar .tool-button,
+.orbit-shell.editor-professional .editor-command-bar .icon-button {
+  color: var(--redesign-color-on-surface-variant);
+  height: 32px;
+  min-height: 32px;
+}
+
+.orbit-shell.editor-professional .editor-command-bar .tool-button:hover,
+.orbit-shell.editor-professional .editor-command-bar .icon-button:hover {
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional .editor-command-bar .tool-button.active,
+.orbit-shell.editor-professional .editor-command-bar .icon-button.selected-tool {
+  background: var(--redesign-color-primary-subtle);
+  color: var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional .editor-panel {
+  grid-row: 3;
+  min-height: 0;
+}
+
+.orbit-shell.editor-professional .stage-pane > .canvas-scroll {
+  padding-top: var(--redesign-space-6);
+}
+
+@media (max-width: 860px) {
+  .orbit-shell.editor-professional.editor-app-shell {
+    grid-template-rows: var(--editor-topbar-height) var(--editor-chrome-height) minmax(0, 1fr);
+  }
+
+  .orbit-shell.editor-professional .editor-command-bar {
+    overflow-x: auto;
+  }
+
+  .orbit-shell.editor-professional .editor-command-bar > .canvas-zoom-controls {
+    position: sticky;
+    right: 0;
+  }
+}
+
 /* The activity rail remains fixed while only the panel content collapses. */
 .orbit-shell.editor-professional .editor-panel {
   transition: grid-template-columns var(--redesign-duration-normal) var(--redesign-ease-emphasized);

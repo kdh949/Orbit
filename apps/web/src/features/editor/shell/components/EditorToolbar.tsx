@@ -57,7 +57,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
     : "특수 장표는 장표 설정에서 관리합니다.";
 
   return (
-    <div className="stage-top-controls">
+    <div aria-label="편집 명령" className="editor-command-bar" role="toolbar">
       {props.canMutate ? <div className="editor-toolbar">
         {props.compactSelectionTrigger}
         <div className="tool-group">
