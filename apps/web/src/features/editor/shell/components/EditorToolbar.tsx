@@ -25,6 +25,7 @@ import {
 } from "react";
 
 import type { InsertTool } from "../editorShellUiStore";
+import { EditorCommandScroller } from "./EditorCommandScroller";
 import { EditorZoomControls } from "./EditorZoomControls";
 
 type EditorToolbarProps = {
@@ -122,8 +123,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
 
   return (
     <div aria-label="편집 명령" className="editor-command-bar" role="toolbar">
-      <div className="editor-command-scroll-viewport">
-        <div className="editor-command-scroll-track">
+      <EditorCommandScroller contextKey={contextKind}>
           {props.canMutate ? (
             <div aria-label="공통 편집 명령" className="editor-command-common" role="group">
             <CommandButton disabled={!props.canUseCurrentSlide} label="새 슬라이드" onClick={props.onAddSlide}><FilePlus size={18} /></CommandButton>
@@ -177,8 +177,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
               </div>
             ) : null}
           </div>
-        </div>
-      </div>
+      </EditorCommandScroller>
       <div className="editor-command-trailing">
         <EditorZoomControls canZoomIn={props.canZoomIn} canZoomOut={props.canZoomOut} isFitToViewport={props.isStageFitToViewport} onFitToViewport={props.onFitStageToViewport} onZoomIn={props.onZoomIn} onZoomOut={props.onZoomOut} scale={props.stageScale} />
         {props.onOpenRightPanel ? (

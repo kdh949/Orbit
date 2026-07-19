@@ -14301,10 +14301,78 @@ body.is-resizing-speaker-notes {
   z-index: 18;
 }
 
+.orbit-shell.editor-professional .editor-command-scroll-shell {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .orbit-shell.editor-professional .editor-command-scroll-viewport {
   flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.orbit-shell.editor-professional .editor-command-scroll-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.orbit-shell.editor-professional
+  .editor-command-scroll-shell.can-scroll-left
+  .editor-command-scroll-viewport {
+  mask-image: linear-gradient(to right, transparent, #000 var(--redesign-space-6));
+}
+
+.orbit-shell.editor-professional
+  .editor-command-scroll-shell.can-scroll-right
+  .editor-command-scroll-viewport {
+  mask-image: linear-gradient(to left, transparent, #000 var(--redesign-space-6));
+}
+
+.orbit-shell.editor-professional
+  .editor-command-scroll-shell.can-scroll-left.can-scroll-right
+  .editor-command-scroll-viewport {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--redesign-space-6),
+    #000 calc(100% - var(--redesign-space-6)),
+    transparent
+  );
+}
+
+.orbit-shell.editor-professional .editor-command-scroll-button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--redesign-radius-sm);
+  color: var(--redesign-color-on-surface-variant);
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 var(--redesign-size-control-sm);
+  height: var(--redesign-size-control-sm);
+  justify-content: center;
+  padding: 0;
+  width: var(--redesign-size-control-sm);
+}
+
+.orbit-shell.editor-professional .editor-command-scroll-button:hover:not(:disabled) {
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional .editor-command-scroll-button:focus-visible {
+  box-shadow: var(--redesign-focus-ring);
+  outline: none;
+}
+
+.orbit-shell.editor-professional .editor-command-scroll-button:disabled {
+  color: var(--redesign-color-on-disabled);
+  cursor: default;
 }
 
 .orbit-shell.editor-professional .editor-command-scroll-track,

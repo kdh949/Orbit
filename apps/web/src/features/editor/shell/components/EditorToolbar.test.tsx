@@ -99,6 +99,7 @@ describe("EditorToolbar", () => {
     expect(html).toContain('aria-label="인쇄"');
     expect(html).toContain('aria-label="공통 편집 명령"');
     expect(html).toContain('aria-label="삽입 명령"');
+    expect(html).toContain('class="editor-command-scroll-shell"');
     expect(html).toContain('class="editor-command-scroll-viewport"');
     expect(html).not.toContain('aria-label="에디터 패널 도구"');
     expect(html).not.toContain('aria-label="AI 챗봇"');
