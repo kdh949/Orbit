@@ -20,6 +20,7 @@ function createToolbarProps(overrides: Partial<ToolbarProps> = {}): ToolbarProps
     isIconPanelOpen: false,
     isImageUploadPending: false,
     isShapeMenuOpen: false,
+    isPrintPreparing: false,
     isStageFitToViewport: true,
     onAddSlide: vi.fn(),
     onAddText: vi.fn(),
@@ -98,5 +99,16 @@ describe("EditorToolbar", () => {
 
     expect(html).toContain('aria-label="오른쪽 패널 열기"');
     expect(html).toContain('class="open-right-pane-floating-button"');
+  });
+
+  it("disables duplicate print requests while the deck is preparing", () => {
+    const html = renderToStaticMarkup(
+      <EditorToolbar {...createToolbarProps({ isPrintPreparing: true })} />,
+    );
+
+    const printButton = html.match(
+      /<button[^>]*aria-label="인쇄 준비 중"[^>]*>/,
+    )?.[0];
+    expect(printButton).toContain("disabled");
   });
 });

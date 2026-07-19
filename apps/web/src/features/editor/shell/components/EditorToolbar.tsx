@@ -40,6 +40,7 @@ type EditorToolbarProps = {
   isFormatPainterActive: boolean;
   isImageUploadPending: boolean;
   isIconPanelOpen: boolean;
+  isPrintPreparing: boolean;
   isShapeMenuOpen: boolean;
   isStageFitToViewport: boolean;
   onAddSlide: () => void;
@@ -98,7 +99,11 @@ export function EditorToolbar(props: EditorToolbarProps) {
               label="서식 복사"
               onClick={props.onToggleFormatPainter}
             ><Paintbrush size={17} /></CommandButton>
-            <CommandButton label="인쇄" onClick={props.onPrint}><Printer size={17} /></CommandButton>
+            <CommandButton
+              disabled={props.isPrintPreparing}
+              label={props.isPrintPreparing ? "인쇄 준비 중" : "인쇄"}
+              onClick={props.onPrint}
+            ><Printer size={17} /></CommandButton>
             <CommandButton active={props.insertTool === "select"} disabled={!props.canUseCurrentSlide} label="선택 도구" onClick={props.onSelectTool}><MousePointer2 size={14} /></CommandButton>
             <div className="toolbar-divider" />
             <CommandButton disabled={!props.canUseCurrentSlide} label="텍스트" onClick={props.onAddText}><Type size={17} /></CommandButton>

@@ -14428,6 +14428,20 @@ body.is-resizing-speaker-notes {
   display: none;
 }
 
+.editor-print-preparing {
+  position: fixed;
+  z-index: var(--redesign-z-overlay);
+  right: var(--redesign-space-4);
+  bottom: var(--redesign-space-4);
+  padding: var(--redesign-space-2) var(--redesign-space-4);
+  border: var(--redesign-border-strong);
+  border-radius: var(--redesign-radius-lg);
+  background: var(--redesign-color-surface-container-lowest);
+  box-shadow: var(--redesign-shadow-overlay);
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-label-md-size);
+}
+
 @media print {
   @page {
     margin: 0;

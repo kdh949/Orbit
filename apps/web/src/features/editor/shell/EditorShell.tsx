@@ -167,6 +167,7 @@ import { fetchHealth } from "./api/editorSessionApi";
 import { useProjectPresence } from "./hooks/useProjectPresence";
 import { useEditorViewport } from "./hooks/useEditorViewport";
 import { useSlideRenderPipeline } from "./hooks/useSlideRenderPipeline";
+import { useEditorPrint } from "./hooks/useEditorPrint";
 import { useEditorKeyboardShortcuts } from "./hooks/useEditorKeyboardShortcuts";
 import type { EditorEscapeLayer } from "./editorKeyboardCommands";
 import { useOoxmlSyncJob } from "./hooks/useOoxmlSyncJob";
@@ -519,6 +520,12 @@ export function EditorShell(props: { projectId?: string }) {
     saveQueueRef,
     workingDeckRef
   } = editorDocumentRefs;
+  const {
+    handlePrintDeckReady,
+    isPrintPreparing,
+    printDeck,
+    requestPrint
+  } = useEditorPrint({ workingDeckRef });
   const {
     applyPersistedDeck,
     commitPatch,
@@ -2143,6 +2150,7 @@ export function EditorShell(props: { projectId?: string }) {
           isFormatPainterActive={formatPainterPayload !== null}
           isIconPanelOpen={isIconPanelOpen}
           isImageUploadPending={isImageUploadPending}
+          isPrintPreparing={isPrintPreparing}
           isShapeMenuOpen={isShapeMenuOpen}
           isStageFitToViewport={isStageFitToViewport}
           onAddSlide={handleAddSlide}
@@ -2172,7 +2180,7 @@ export function EditorShell(props: { projectId?: string }) {
           onOpenRightPanel={
             isRightPanelOpen ? undefined : () => setIsRightPanelOpen(true)
           }
-          onPrint={() => window.print()}
+          onPrint={() => void requestPrint()}
           onRedo={handleRedo}
           onSelectTool={() => setInsertTool("select")}
           onToggleChartMenu={() => {
@@ -2610,7 +2618,18 @@ export function EditorShell(props: { projectId?: string }) {
           onChange={handlePptxFileInputChange}
         />
       </main>
-      <PrintDeckView deck={deck} />
+      {isPrintPreparing ? (
+        <div
+          aria-live="polite"
+          className="editor-print-preparing"
+          role="status"
+        >
+          인쇄 준비 중…
+        </div>
+      ) : null}
+      {printDeck ? (
+        <PrintDeckView deck={printDeck} onReady={handlePrintDeckReady} />
+      ) : null}
       {canMutateDeck && isDeleteUndoToastOpen ? (
         <EditorUndoToast
           message="슬라이드가 삭제되었습니다"
