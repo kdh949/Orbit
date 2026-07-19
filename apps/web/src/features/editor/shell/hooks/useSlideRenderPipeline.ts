@@ -3,6 +3,10 @@ import type Konva from "konva";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
+import {
+  waitForSlideFonts,
+  type FontLoadResult
+} from "../../../fonts/fontRegistry";
 import { uploadProjectAsset } from "../../../projects/ProjectAssetWorkspace";
 import { getDeckThumbnailRefreshSlideIds } from "../utils/deckState";
 import {
@@ -12,6 +16,30 @@ import {
   waitForAnimationFrame,
   waitForSlideAssets
 } from "../utils/slideRenderUtils";
+
+export async function waitForSlideCaptureAssets(args: {
+  deck: Deck;
+  loadFonts?: typeof waitForSlideFonts;
+  loadSlideAssets?: typeof waitForSlideAssets;
+  slide: Deck["slides"][number];
+  waitForFrame?: typeof waitForAnimationFrame;
+}) {
+  const loadFonts = args.loadFonts ?? waitForSlideFonts;
+  const loadAssets = args.loadSlideAssets ?? waitForSlideAssets;
+  const waitForFrame = args.waitForFrame ?? waitForAnimationFrame;
+  const [fontResults, missingAssetCount] = await Promise.all([
+    loadFonts(args.deck, args.slide),
+    loadAssets(args.slide)
+  ]);
+  await waitForFrame();
+  await waitForFrame();
+  return {
+    missingAssetCount,
+    missingFontCount: (fontResults as FontLoadResult[]).filter(
+      (result) => result.status === "failed"
+    ).length
+  };
+}
 
 export function useSlideRenderPipeline(args: {
   persistedDeck: Deck | undefined;
@@ -45,17 +73,26 @@ export function useSlideRenderPipeline(args: {
     slideIds?: readonly string[]
   ) {
     if (sourceDeck.slides.length === 0) {
-      return { files: new Map<string, File>(), missingAssetCount: 0 };
+      return {
+        files: new Map<string, File>(),
+        missingAssetCount: 0,
+        missingFontCount: 0
+      };
     }
 
     const nextDeck = structuredClone(normalizeDeckAssetUrls(sourceDeck));
     const targetSlideIds = slideIds ? new Set(slideIds) : null;
     if (targetSlideIds?.size === 0) {
-      return { files: new Map<string, File>(), missingAssetCount: 0 };
+      return {
+        files: new Map<string, File>(),
+        missingAssetCount: 0,
+        missingFontCount: 0
+      };
     }
 
     const files = new Map<string, File>();
     let missingAssetCount = 0;
+    let missingFontCount = 0;
     stageRefs.current.clear();
     flushSync(() => setRenderingDeck(nextDeck));
     await waitForAnimationFrame();
@@ -66,8 +103,12 @@ export function useSlideRenderPipeline(args: {
         const slide = nextDeck.slides[index];
         if (targetSlideIds && !targetSlideIds.has(slide.slideId)) continue;
 
-        missingAssetCount += await waitForSlideAssets(slide);
-        await waitForAnimationFrame();
+        const prepared = await waitForSlideCaptureAssets({
+          deck: nextDeck,
+          slide
+        });
+        missingAssetCount += prepared.missingAssetCount;
+        missingFontCount += prepared.missingFontCount;
 
         const stage = stageRefs.current.get(slide.slideId);
         if (!stage) {
@@ -90,7 +131,7 @@ export function useSlideRenderPipeline(args: {
       stageRefs.current.clear();
     }
 
-    return { files, missingAssetCount };
+    return { files, missingAssetCount, missingFontCount };
   }
 
   function enqueueSlideRender<T>(render: () => Promise<T>) {

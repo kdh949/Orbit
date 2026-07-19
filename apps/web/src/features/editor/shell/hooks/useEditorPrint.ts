@@ -8,6 +8,7 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 
+import { waitForDeckFonts } from "../../../fonts/fontRegistry";
 import {
   waitForAnimationFrame,
   waitForSlideAssets,
@@ -16,6 +17,7 @@ import {
 export const printPreparationTimeoutMs = 2_000;
 
 type PrintAssetWaitOptions = {
+  loadDeckFonts?: (deck: Deck) => Promise<unknown>;
   loadSlideAssets?: (slide: Slide) => Promise<number>;
   timeoutMs?: number;
 };
@@ -36,11 +38,15 @@ export async function waitForDeckPrintAssets(
   options: PrintAssetWaitOptions = {},
 ) {
   const {
+    loadDeckFonts = waitForDeckFonts,
     loadSlideAssets = waitForSlideAssets,
     timeoutMs = printPreparationTimeoutMs,
   } = options;
   await waitForPromiseOrTimeout(
-    Promise.all(deck.slides.map((slide) => loadSlideAssets(slide))),
+    Promise.all([
+      loadDeckFonts(deck),
+      ...deck.slides.map((slide) => loadSlideAssets(slide)),
+    ]),
     timeoutMs,
   );
 }

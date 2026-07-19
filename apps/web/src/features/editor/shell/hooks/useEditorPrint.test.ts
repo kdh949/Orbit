@@ -5,6 +5,9 @@ vi.mock("../utils/slideRenderUtils", () => ({
   waitForAnimationFrame: vi.fn(async () => undefined),
   waitForSlideAssets: vi.fn(async () => 0),
 }));
+vi.mock("../../../fonts/fontRegistry", () => ({
+  waitForDeckFonts: vi.fn(async () => []),
+}));
 
 import {
   isPrintKeyboardShortcut,
@@ -44,10 +47,17 @@ describe("editor print preparation", () => {
 
   it("preloads every slide asset before printing", async () => {
     const deck = createDemoDeck();
+    const loadDeckFonts = vi.fn(async () => []);
     const loadSlideAssets = vi.fn(async () => 0);
 
-    await waitForDeckPrintAssets(deck, { loadSlideAssets, timeoutMs: 50 });
+    await waitForDeckPrintAssets(deck, {
+      loadDeckFonts,
+      loadSlideAssets,
+      timeoutMs: 50,
+    });
 
+    expect(loadDeckFonts).toHaveBeenCalledOnce();
+    expect(loadDeckFonts).toHaveBeenCalledWith(deck);
     expect(loadSlideAssets).toHaveBeenCalledTimes(deck.slides.length);
   });
 
@@ -55,7 +65,8 @@ describe("editor print preparation", () => {
     vi.useFakeTimers();
     const deck = createDemoDeck();
     const pending = waitForDeckPrintAssets(deck, {
-      loadSlideAssets: () => new Promise<number>(() => undefined),
+      loadDeckFonts: () => new Promise(() => undefined),
+      loadSlideAssets: async () => 0,
       timeoutMs: 20,
     });
 
