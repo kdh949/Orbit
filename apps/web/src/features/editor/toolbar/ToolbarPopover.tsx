@@ -57,17 +57,24 @@ export function ToolbarPopover(props: {
   const contentId = useId();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const restoreFocusRef = useRef(false);
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState({ left: 0, top: 0 });
 
   const close = useCallback(
     (restoreFocus = true) => {
+      restoreFocusRef.current = restoreFocus;
       setIsOpen(false);
       props.onOpenChange?.(false);
-      if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus());
     },
     [props.onOpenChange],
   );
+
+  useLayoutEffect(() => {
+    if (isOpen || !restoreFocusRef.current) return;
+    restoreFocusRef.current = false;
+    triggerRef.current?.focus();
+  }, [isOpen]);
 
   const updatePosition = useCallback(() => {
     const trigger = triggerRef.current;
@@ -102,6 +109,7 @@ export function ToolbarPopover(props: {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
+        event.stopPropagation();
         close(true);
         return;
       }
@@ -113,6 +121,7 @@ export function ToolbarPopover(props: {
       );
       if (controls.length === 0) return;
       event.preventDefault();
+      event.stopPropagation();
       const currentIndex = controls.indexOf(document.activeElement as HTMLElement);
       const nextIndex =
         event.key === "Home"
@@ -129,12 +138,12 @@ export function ToolbarPopover(props: {
       close(false);
     }
     document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown, true);
     document.addEventListener("scroll", handleScroll, true);
     window.addEventListener("resize", updatePosition);
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown, true);
       document.removeEventListener("scroll", handleScroll, true);
       window.removeEventListener("resize", updatePosition);
     };
@@ -158,6 +167,7 @@ export function ToolbarPopover(props: {
           <div
             aria-label={props.contentLabel}
             className="editor-toolbar-popover"
+            data-editor-keyboard-scope
             id={contentId}
             onPointerDownCapture={() => props.onPreserveInteraction?.()}
             ref={contentRef}
