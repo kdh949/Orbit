@@ -14,7 +14,11 @@ export type GenerateDeckFontOption = GenerateDeckFontOverride & {
   score: number;
 };
 
-export const generateDeckFontCatalog: GenerateDeckFontOverride[] = [
+export type GenerateDeckFontCatalogEntry = GenerateDeckFontOverride & {
+  recommendForAi: boolean;
+};
+
+export const generateDeckFontCatalog: GenerateDeckFontCatalogEntry[] = [
   {
     fontId: "pretendard",
     name: "Pretendard",
@@ -31,7 +35,8 @@ export const generateDeckFontCatalog: GenerateDeckFontOverride[] = [
     recommendedBodySize: 22,
     lineHeight: 1.15,
     widthFactor: 1,
-    overflowRisk: "low"
+    overflowRisk: "low",
+    recommendForAi: true
   },
   {
     fontId: "noto-sans-kr",
@@ -49,7 +54,8 @@ export const generateDeckFontCatalog: GenerateDeckFontOverride[] = [
     recommendedBodySize: 21,
     lineHeight: 1.18,
     widthFactor: 1.04,
-    overflowRisk: "medium"
+    overflowRisk: "medium",
+    recommendForAi: true
   },
   {
     fontId: "gowun-dodum",
@@ -67,7 +73,8 @@ export const generateDeckFontCatalog: GenerateDeckFontOverride[] = [
     recommendedBodySize: 21,
     lineHeight: 1.22,
     widthFactor: 1.08,
-    overflowRisk: "medium"
+    overflowRisk: "medium",
+    recommendForAi: true
   },
   {
     fontId: "nanum-square-round",
@@ -85,7 +92,8 @@ export const generateDeckFontCatalog: GenerateDeckFontOverride[] = [
     recommendedBodySize: 21,
     lineHeight: 1.2,
     widthFactor: 1.1,
-    overflowRisk: "medium"
+    overflowRisk: "medium",
+    recommendForAi: true
   },
   {
     fontId: "gmarket-sans",
@@ -103,7 +111,198 @@ export const generateDeckFontCatalog: GenerateDeckFontOverride[] = [
     recommendedBodySize: 20,
     lineHeight: 1.18,
     widthFactor: 1.18,
-    overflowRisk: "high"
+    overflowRisk: "high",
+    recommendForAi: true
+  },
+  {
+    fontId: "noto-serif-kr",
+    name: "Noto Serif KR",
+    headingFontFamily: "Noto Serif KR",
+    bodyFontFamily: "Noto Serif KR",
+    fallbackFamily: "serif",
+    weights: [400, 500, 600, 700, 800, 900],
+    supportsKorean: true,
+    pptxEmbeddable: true,
+    moodTags: ["editorial", "formal", "premium"],
+    license: "SIL Open Font License 1.1",
+    sourceUrl: "https://fonts.google.com/noto/specimen/Noto+Serif+KR",
+    recommendedTitleSize: 46,
+    recommendedBodySize: 21,
+    lineHeight: 1.22,
+    widthFactor: 1.04,
+    overflowRisk: "medium",
+    recommendForAi: false
+  },
+  {
+    fontId: "nanum-myeongjo",
+    name: "Nanum Myeongjo",
+    headingFontFamily: "Nanum Myeongjo",
+    bodyFontFamily: "Nanum Myeongjo",
+    fallbackFamily: "serif",
+    weights: [400, 700, 800],
+    supportsKorean: true,
+    pptxEmbeddable: true,
+    moodTags: ["editorial", "formal", "classic"],
+    license: "SIL Open Font License 1.1",
+    sourceUrl: "https://fonts.google.com/specimen/Nanum+Myeongjo",
+    recommendedTitleSize: 46,
+    recommendedBodySize: 21,
+    lineHeight: 1.24,
+    widthFactor: 1.04,
+    overflowRisk: "medium",
+    recommendForAi: false
+  },
+  {
+    fontId: "black-han-sans",
+    name: "Black Han Sans",
+    headingFontFamily: "Black Han Sans",
+    bodyFontFamily: "Black Han Sans",
+    fallbackFamily: "sans-serif",
+    weights: [400],
+    supportsKorean: true,
+    pptxEmbeddable: true,
+    moodTags: ["bold", "playful", "display"],
+    license: "SIL Open Font License 1.1",
+    sourceUrl: "https://fonts.google.com/specimen/Black+Han+Sans",
+    recommendedTitleSize: 42,
+    recommendedBodySize: 20,
+    lineHeight: 1.16,
+    widthFactor: 1.12,
+    overflowRisk: "high",
+    recommendForAi: false
+  },
+  {
+    fontId: "do-hyeon",
+    name: "Do Hyeon",
+    headingFontFamily: "Do Hyeon",
+    bodyFontFamily: "Do Hyeon",
+    fallbackFamily: "sans-serif",
+    weights: [400],
+    supportsKorean: true,
+    pptxEmbeddable: true,
+    moodTags: ["bold", "friendly", "display"],
+    license: "SIL Open Font License 1.1",
+    sourceUrl: "https://fonts.google.com/specimen/Do+Hyeon",
+    recommendedTitleSize: 44,
+    recommendedBodySize: 20,
+    lineHeight: 1.18,
+    widthFactor: 1.08,
+    overflowRisk: "medium",
+    recommendForAi: false
+  },
+  {
+    fontId: "jua",
+    name: "Jua",
+    headingFontFamily: "Jua",
+    bodyFontFamily: "Jua",
+    fallbackFamily: "sans-serif",
+    weights: [400],
+    supportsKorean: true,
+    pptxEmbeddable: true,
+    moodTags: ["playful", "friendly", "display"],
+    license: "SIL Open Font License 1.1",
+    sourceUrl: "https://fonts.google.com/specimen/Jua",
+    recommendedTitleSize: 44,
+    recommendedBodySize: 20,
+    lineHeight: 1.2,
+    widthFactor: 1.08,
+    overflowRisk: "medium",
+    recommendForAi: false
+  },
+  {
+    fontId: "montserrat",
+    name: "Montserrat",
+    headingFontFamily: "Montserrat",
+    bodyFontFamily: "Montserrat",
+    fallbackFamily: "sans-serif",
+    weights: [400, 500, 600, 700, 800, 900],
+    supportsKorean: false,
+    pptxEmbeddable: true,
+    moodTags: ["modern", "professional", "display"],
+    license: "SIL Open Font License 1.1",
+    sourceUrl: "https://fonts.google.com/specimen/Montserrat",
+    recommendedTitleSize: 46,
+    recommendedBodySize: 21,
+    lineHeight: 1.16,
+    widthFactor: 1.02,
+    overflowRisk: "medium",
+    recommendForAi: false
+  },
+  {
+    fontId: "poppins",
+    name: "Poppins",
+    headingFontFamily: "Poppins",
+    bodyFontFamily: "Poppins",
+    fallbackFamily: "sans-serif",
+    weights: [400, 500, 600, 700, 800, 900],
+    supportsKorean: false,
+    pptxEmbeddable: true,
+    moodTags: ["modern", "rounded", "display"],
+    license: "SIL Open Font License 1.1",
+    sourceUrl: "https://fonts.google.com/specimen/Poppins",
+    recommendedTitleSize: 46,
+    recommendedBodySize: 21,
+    lineHeight: 1.16,
+    widthFactor: 1.04,
+    overflowRisk: "medium",
+    recommendForAi: false
+  },
+  {
+    fontId: "playfair-display",
+    name: "Playfair Display",
+    headingFontFamily: "Playfair Display",
+    bodyFontFamily: "Playfair Display",
+    fallbackFamily: "serif",
+    weights: [400, 500, 600, 700, 800, 900],
+    supportsKorean: false,
+    pptxEmbeddable: true,
+    moodTags: ["editorial", "formal", "premium"],
+    license: "SIL Open Font License 1.1",
+    sourceUrl: "https://fonts.google.com/specimen/Playfair+Display",
+    recommendedTitleSize: 48,
+    recommendedBodySize: 21,
+    lineHeight: 1.18,
+    widthFactor: 1.02,
+    overflowRisk: "medium",
+    recommendForAi: false
+  },
+  {
+    fontId: "merriweather",
+    name: "Merriweather",
+    headingFontFamily: "Merriweather",
+    bodyFontFamily: "Merriweather",
+    fallbackFamily: "serif",
+    weights: [300, 400, 500, 600, 700, 800, 900],
+    supportsKorean: false,
+    pptxEmbeddable: true,
+    moodTags: ["editorial", "formal", "professional"],
+    license: "SIL Open Font License 1.1",
+    sourceUrl: "https://fonts.google.com/specimen/Merriweather",
+    recommendedTitleSize: 45,
+    recommendedBodySize: 20,
+    lineHeight: 1.22,
+    widthFactor: 1.06,
+    overflowRisk: "medium",
+    recommendForAi: false
+  },
+  {
+    fontId: "bebas-neue",
+    name: "Bebas Neue",
+    headingFontFamily: "Bebas Neue",
+    bodyFontFamily: "Bebas Neue",
+    fallbackFamily: "sans-serif",
+    weights: [400],
+    supportsKorean: false,
+    pptxEmbeddable: true,
+    moodTags: ["bold", "modern", "display"],
+    license: "SIL Open Font License 1.1",
+    sourceUrl: "https://fonts.google.com/specimen/Bebas+Neue",
+    recommendedTitleSize: 50,
+    recommendedBodySize: 22,
+    lineHeight: 1.08,
+    widthFactor: 0.82,
+    overflowRisk: "low",
+    recommendForAi: false
   }
 ];
 
@@ -123,6 +322,7 @@ export function recommendGenerateDeckFonts(
 ): GenerateDeckFontOption[] {
   const source = input.toLocaleLowerCase("ko-KR");
   return generateDeckFontCatalog
+    .filter((font) => font.recommendForAi)
     .map((font) => {
       const matchedMoods = font.moodTags.filter((tag) =>
         matchesMood(source, tag as GenerateDeckFontMood)

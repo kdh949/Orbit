@@ -25,4 +25,34 @@ describe("recommendGenerateDeckFonts", () => {
       overflowRisk: "high"
     });
   });
+
+  it("keeps the five existing AI recommendation fonts", () => {
+    expect(
+      generateDeckFontCatalog
+        .filter((font) => font.recommendForAi)
+        .map((font) => font.fontId)
+    ).toEqual([
+      "pretendard",
+      "noto-sans-kr",
+      "gowun-dodum",
+      "nanum-square-round",
+      "gmarket-sans"
+    ]);
+  });
+
+  it("registers ten manual editor fonts without recommending them", () => {
+    const manualFonts = generateDeckFontCatalog.filter(
+      (font) => !font.recommendForAi
+    );
+
+    expect(generateDeckFontCatalog).toHaveLength(15);
+    expect(manualFonts).toHaveLength(10);
+    expect(manualFonts.filter((font) => font.supportsKorean)).toHaveLength(5);
+    expect(recommendGenerateDeckFonts("premium editorial display", 20)).toHaveLength(5);
+    expect(
+      recommendGenerateDeckFonts("premium editorial display", 20).map(
+        (font) => font.fontId
+      )
+    ).not.toContain("playfair-display");
+  });
 });

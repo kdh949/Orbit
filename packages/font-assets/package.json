@@ -1,0 +1,14 @@
+{
+  "name": "@orbit/font-assets",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./manifest": "./assets/manifest.json"
+  },
+  "scripts": {
+    "sync": "node scripts/sync-font-assets.mjs",
+    "test": "node --test tests/*.test.mjs"
+  }
+}
