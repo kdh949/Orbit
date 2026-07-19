@@ -175,11 +175,15 @@ export function TextContextToolbar(props: {
     onPreserveRange,
   } = props;
   const toolbarRef = useRef<HTMLDivElement | null>(null);
+  const dockTarget =
+    typeof document === "undefined"
+      ? null
+      : document.getElementById("editor-command-context");
   const [placement, setPlacement] =
     useState<TextContextToolbarPlacement | null>(null);
   const updatePlacement = useCallback(() => {
     const toolbar = toolbarRef.current;
-    if (!toolbar || !stageElement || typeof window === "undefined") return;
+    if (dockTarget || !toolbar || !stageElement || typeof window === "undefined") return;
     const stageRect = stageElement.getBoundingClientRect();
     const toolbarRect = toolbar.getBoundingClientRect();
     setPlacement(
@@ -198,6 +202,7 @@ export function TextContextToolbar(props: {
       }),
     );
   }, [
+    dockTarget,
     element.height,
     element.rotation,
     element.width,
@@ -209,7 +214,7 @@ export function TextContextToolbar(props: {
 
   useEffect(() => {
     if (readOnly) return;
-    updatePlacement();
+    if (!dockTarget) updatePlacement();
     if (typeof window === "undefined") return;
     window.addEventListener("resize", updatePlacement);
     window.addEventListener("scroll", updatePlacement, true);
@@ -226,7 +231,7 @@ export function TextContextToolbar(props: {
       window.removeEventListener("scroll", updatePlacement, true);
       resizeObserver?.disconnect();
     };
-  }, [readOnly, stageElement, updatePlacement]);
+  }, [dockTarget, readOnly, stageElement, updatePlacement]);
 
   if (readOnly) return null;
 
@@ -314,10 +319,10 @@ export function TextContextToolbar(props: {
       ref={toolbarRef}
       role="toolbar"
       style={{
-        left: placement?.left ?? 0,
-        position: "fixed",
-        top: placement?.top ?? 0,
-        visibility: placement || !stageElement ? "visible" : "hidden",
+        left: dockTarget ? undefined : (placement?.left ?? 0),
+        position: dockTarget ? "static" : "fixed",
+        top: dockTarget ? undefined : (placement?.top ?? 0),
+        visibility: dockTarget || placement || !stageElement ? "visible" : "hidden",
       }}
       title={disabledReason}
     >
@@ -474,6 +479,43 @@ export function TextContextToolbar(props: {
         />
       </label>
 
+      <label className="text-context-toolbar-field text-context-toolbar-color">
+        <span>강조</span>
+        <input
+          aria-label="강조색"
+          disabled={disabled}
+          type="color"
+          value={toInputColor(characterStyle.highlightColor.value, "#FEF08A")}
+          onChange={(event) =>
+            commit({
+              kind: "character",
+              patch: { highlightColor: event.target.value },
+            })
+          }
+        />
+      </label>
+
+      <button
+        aria-label="링크"
+        disabled={disabled}
+        type="button"
+        onClick={() => {
+          const next = window.prompt(
+            "링크 URL을 입력하세요.",
+            characterStyle.hyperlink.value ?? "https://",
+          );
+          if (next === null) return;
+          const normalized = next.trim();
+          commit({
+            kind: "character",
+            patch: { hyperlink: normalized ? normalized : null },
+          });
+        }}
+        onMouseDown={preserveTextRange}
+      >
+        링크
+      </button>
+
       <label className="text-context-toolbar-field text-context-toolbar-align">
         <span>문단 정렬</span>
         <select
@@ -523,6 +565,120 @@ export function TextContextToolbar(props: {
         • 목록
       </button>
 
+      <button
+        aria-label="번호 매기기"
+        aria-pressed={
+          paragraphStyle.bullet.mixed
+            ? "mixed"
+            : paragraphStyle.bullet.value?.enabled &&
+                paragraphStyle.bullet.value.kind === "number"
+              ? true
+              : false
+        }
+        disabled={disabled}
+        type="button"
+        onClick={() => {
+          const current = paragraphStyle.bullet.mixed
+            ? undefined
+            : paragraphStyle.bullet.value;
+          commit({
+            kind: "paragraph",
+            patch: {
+              bullet: {
+                character: current?.character ?? "•",
+                enabled: !(current?.enabled && current.kind === "number"),
+                indent: current?.indent ?? 24,
+                kind: "number",
+                numberStyle: current?.numberStyle ?? "decimal",
+                startAt: current?.startAt ?? 1,
+              },
+            },
+          });
+        }}
+        onMouseDown={preserveTextRange}
+      >
+        1. 목록
+      </button>
+
+      <button
+        aria-label="들여쓰기 줄이기"
+        disabled={disabled}
+        type="button"
+        onClick={() =>
+          commit({
+            kind: "paragraph",
+            patch: {
+              indent: Math.max(0, (paragraphStyle.indent.value ?? 0) - 12),
+            },
+          })
+        }
+        onMouseDown={preserveTextRange}
+      >
+        ⇤
+      </button>
+      <button
+        aria-label="들여쓰기 늘리기"
+        disabled={disabled}
+        type="button"
+        onClick={() =>
+          commit({
+            kind: "paragraph",
+            patch: { indent: (paragraphStyle.indent.value ?? 0) + 12 },
+          })
+        }
+        onMouseDown={preserveTextRange}
+      >
+        ⇥
+      </button>
+
+      <label className="text-context-toolbar-field">
+        <span>줄 간격</span>
+        <select
+          aria-label="줄 간격"
+          disabled={disabled}
+          value={paragraphStyle.lineHeight.value ?? 1.2}
+          onChange={(event) =>
+            commit({
+              kind: "paragraph",
+              patch: { lineHeight: Number(event.target.value) },
+            })
+          }
+        >
+          <option value={1}>1.0</option>
+          <option value={1.15}>1.15</option>
+          <option value={1.2}>1.2</option>
+          <option value={1.5}>1.5</option>
+          <option value={2}>2.0</option>
+        </select>
+      </label>
+
+      <button
+        aria-label="서식 지우기"
+        disabled={disabled}
+        type="button"
+        onClick={() => {
+          commit({
+            kind: "character",
+            patch: {
+              color: element.props.color ?? slide.style.textColor ?? deck.theme.textColor,
+              fontFamily:
+                element.props.fontFamily ??
+                slide.style.fontFamily ??
+                deck.theme.typography.bodyFontFamily,
+              fontSize: element.props.fontSize,
+              fontWeight: element.props.fontWeight,
+              highlightColor: null,
+              hyperlink: null,
+              italic: element.props.italic ?? false,
+              underline: element.props.underline ?? false,
+            },
+          });
+        }}
+        onMouseDown={preserveTextRange}
+      >
+        서식 지우기
+      </button>
+
       {disabledReason ? (
         <span className="text-context-toolbar-disabled-reason" role="status">
           {disabledReason}
@@ -531,6 +687,7 @@ export function TextContextToolbar(props: {
     </div>
   );
 
+  if (dockTarget) return createPortal(content, dockTarget);
   if (typeof document === "undefined" || !document.body) return content;
   return createPortal(content, document.body);
 }

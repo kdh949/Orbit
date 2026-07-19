@@ -327,6 +327,7 @@ const InlineTextEditorSurface = forwardRef<
         >
           {(paragraph.runs ?? []).map((run, runIndex) => (
             <span
+              data-hyperlink={run.hyperlink}
               data-text-run-index={runIndex}
               key={runIndex}
               style={getRunStyle({
@@ -361,13 +362,17 @@ function getRunStyle(args: {
     run.fontWeight ?? paragraph.fontWeight ?? props.fontWeight;
   const baseline = run.baseline ?? "normal";
   return {
+    backgroundColor: run.highlightColor ?? "transparent",
     color: run.color ?? paragraph.color ?? baseColor,
     fontFamily: run.fontFamily ?? paragraph.fontFamily ?? baseFontFamily,
     fontSize: `${(run.fontSize ?? paragraph.fontSize ?? props.fontSize) * stageScale}px`,
     fontStyle: run.italic ?? paragraph.italic ?? props.italic ? "italic" : "normal",
     fontWeight: String(getCssFontWeight(fontWeight)),
     textDecoration:
-      run.underline ?? paragraph.underline ?? props.underline
+      Boolean(
+        (run.underline ?? paragraph.underline ?? props.underline) ||
+          run.hyperlink,
+      )
         ? "underline"
         : "none",
     verticalAlign:

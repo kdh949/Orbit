@@ -13,6 +13,8 @@ export type RichTextCharacterStylePatch = {
   fontFamily?: TextElementRun["fontFamily"];
   fontSize?: TextElementRun["fontSize"];
   fontWeight?: TextElementRun["fontWeight"];
+  highlightColor?: TextElementRun["highlightColor"] | null;
+  hyperlink?: TextElementRun["hyperlink"] | null;
   italic?: TextElementRun["italic"];
   underline?: TextElementRun["underline"];
 };
@@ -20,7 +22,10 @@ export type RichTextCharacterStylePatch = {
 export type RichTextParagraphStylePatch = {
   align?: TextElementParagraph["align"];
   bullet?: TextElementBullet;
+  indent?: TextElementParagraph["indent"];
   lineHeight?: TextElementParagraph["lineHeight"];
+  spaceAfter?: TextElementParagraph["spaceAfter"];
+  spaceBefore?: TextElementParagraph["spaceBefore"];
 };
 
 export type RichTextSelectionValue<T> =
@@ -33,6 +38,8 @@ export type RichTextSelectionCharacterStyle = {
   fontFamily: RichTextSelectionValue<TextElementRun["fontFamily"]>;
   fontSize: RichTextSelectionValue<number>;
   fontWeight: RichTextSelectionValue<TextElementProps["fontWeight"]>;
+  highlightColor: RichTextSelectionValue<TextElementRun["highlightColor"]>;
+  hyperlink: RichTextSelectionValue<TextElementRun["hyperlink"]>;
   italic: RichTextSelectionValue<boolean>;
   underline: RichTextSelectionValue<boolean>;
 };
@@ -40,7 +47,10 @@ export type RichTextSelectionCharacterStyle = {
 export type RichTextSelectionParagraphStyle = {
   align: RichTextSelectionValue<TextElementParagraph["align"]>;
   bullet: RichTextSelectionValue<TextElementBullet | undefined>;
+  indent: RichTextSelectionValue<number>;
   lineHeight: RichTextSelectionValue<number>;
+  spaceAfter: RichTextSelectionValue<number>;
+  spaceBefore: RichTextSelectionValue<number>;
 };
 
 type EffectiveCharacterStyle = {
@@ -49,6 +59,8 @@ type EffectiveCharacterStyle = {
   fontFamily: TextElementRun["fontFamily"];
   fontSize: number;
   fontWeight: TextElementProps["fontWeight"];
+  highlightColor: TextElementRun["highlightColor"];
+  hyperlink: TextElementRun["hyperlink"];
   italic: boolean;
   underline: boolean;
 };
@@ -56,7 +68,10 @@ type EffectiveCharacterStyle = {
 type EffectiveParagraphStyle = {
   align: TextElementParagraph["align"];
   bullet: TextElementBullet | undefined;
+  indent: number;
   lineHeight: number;
+  spaceAfter: number;
+  spaceBefore: number;
 };
 
 const characterStyleKeys = [
@@ -65,6 +80,8 @@ const characterStyleKeys = [
   "fontFamily",
   "fontSize",
   "fontWeight",
+  "highlightColor",
+  "hyperlink",
   "italic",
   "underline"
 ] as const;
@@ -143,6 +160,9 @@ export function applyRichTextParagraphStyle(
     if (patch.lineHeight !== undefined) {
       next.lineHeight = patch.lineHeight;
     }
+    if (patch.indent !== undefined) next.indent = patch.indent;
+    if (patch.spaceAfter !== undefined) next.spaceAfter = patch.spaceAfter;
+    if (patch.spaceBefore !== undefined) next.spaceBefore = patch.spaceBefore;
     if (hasOwn(patch, "bullet")) {
       if (patch.bullet === undefined) {
         delete next.bullet;
@@ -169,6 +189,8 @@ export function getRichTextSelectionCharacterStyle(
     fontFamily: summarizeValues(styles.map((style) => style.fontFamily)),
     fontSize: summarizeValues(styles.map((style) => style.fontSize)),
     fontWeight: summarizeValues(styles.map((style) => style.fontWeight)),
+    highlightColor: summarizeValues(styles.map((style) => style.highlightColor)),
+    hyperlink: summarizeValues(styles.map((style) => style.hyperlink)),
     italic: summarizeValues(styles.map((style) => style.italic)),
     underline: summarizeValues(styles.map((style) => style.underline))
   };
@@ -190,7 +212,10 @@ export function getRichTextSelectionParagraphStyle(
       styles.map((style) => style.bullet),
       equalBullets
     ),
-    lineHeight: summarizeValues(styles.map((style) => style.lineHeight))
+    indent: summarizeValues(styles.map((style) => style.indent)),
+    lineHeight: summarizeValues(styles.map((style) => style.lineHeight)),
+    spaceAfter: summarizeValues(styles.map((style) => style.spaceAfter)),
+    spaceBefore: summarizeValues(styles.map((style) => style.spaceBefore))
   };
 }
 
@@ -293,6 +318,14 @@ function applyRunStylePatch(
   if (patch.fontFamily !== undefined) next.fontFamily = patch.fontFamily;
   if (patch.fontSize !== undefined) next.fontSize = patch.fontSize;
   if (patch.fontWeight !== undefined) next.fontWeight = patch.fontWeight;
+  if (hasOwn(patch, "highlightColor")) {
+    if (patch.highlightColor === null) delete next.highlightColor;
+    else next.highlightColor = patch.highlightColor;
+  }
+  if (hasOwn(patch, "hyperlink")) {
+    if (patch.hyperlink === null) delete next.hyperlink;
+    else next.hyperlink = patch.hyperlink;
+  }
   if (patch.italic !== undefined) next.italic = patch.italic;
   if (patch.underline !== undefined) next.underline = patch.underline;
   return next;
@@ -438,6 +471,8 @@ function getEffectiveCharacterStyle(
     fontFamily: run.fontFamily ?? paragraph?.fontFamily ?? props.fontFamily,
     fontSize: run.fontSize ?? paragraph?.fontSize ?? props.fontSize,
     fontWeight: run.fontWeight ?? paragraph?.fontWeight ?? props.fontWeight,
+    highlightColor: run.highlightColor,
+    hyperlink: run.hyperlink,
     italic: run.italic ?? paragraph?.italic ?? props.italic ?? false,
     underline: run.underline ?? paragraph?.underline ?? props.underline ?? false
   };
@@ -491,7 +526,10 @@ function getEffectiveParagraphStyle(
   return {
     align: paragraph?.align ?? props.align,
     bullet: paragraph?.bullet ?? props.bullet,
-    lineHeight: paragraph?.lineHeight ?? props.lineHeight
+    indent: paragraph?.indent ?? 0,
+    lineHeight: paragraph?.lineHeight ?? props.lineHeight,
+    spaceAfter: paragraph?.spaceAfter ?? 0,
+    spaceBefore: paragraph?.spaceBefore ?? 0
   };
 }
 
@@ -513,7 +551,10 @@ function equalBullets(
   return (
     left?.enabled === right?.enabled &&
     left?.character === right?.character &&
-    left?.indent === right?.indent
+    left?.indent === right?.indent &&
+    left?.kind === right?.kind &&
+    left?.numberStyle === right?.numberStyle &&
+    left?.startAt === right?.startAt
   );
 }
 

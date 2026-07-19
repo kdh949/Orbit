@@ -277,8 +277,14 @@ describe("TextContextToolbar", () => {
     expect(html).toContain("기울임");
     expect(html).toContain("밑줄");
     expect(html).toContain("글자색");
+    expect(html).toContain("강조색");
+    expect(html).toContain("링크");
     expect(html).toContain("문단 정렬");
     expect(html).toContain("글머리 기호");
+    expect(html).toContain("번호 매기기");
+    expect(html).toContain("들여쓰기 늘리기");
+    expect(html).toContain("줄 간격");
+    expect(html).toContain("서식 지우기");
     expect(html).toContain('aria-pressed="mixed"');
   });
 

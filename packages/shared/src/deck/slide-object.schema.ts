@@ -148,13 +148,18 @@ export const textElementRunSchema = z.object({
   italic: z.boolean().optional(),
   underline: z.boolean().optional(),
   color: themeColorSchema.optional(),
+  highlightColor: themeColorSchema.optional(),
+  hyperlink: z.string().url().optional(),
   baseline: z.enum(["normal", "superscript", "subscript"]).default("normal")
 });
 
 export const textElementBulletSchema = z.object({
   enabled: z.boolean().default(false),
   character: z.string().min(1).default("\u2022"),
-  indent: z.number().finite().nonnegative().default(0)
+  indent: z.number().finite().nonnegative().default(0),
+  kind: z.enum(["bullet", "number"]).optional(),
+  numberStyle: z.enum(["decimal", "lower-alpha", "upper-alpha"]).optional(),
+  startAt: z.number().int().positive().optional()
 });
 
 export const textElementParagraphSchema = z.object({

@@ -1219,6 +1219,52 @@ describe("deckSchema validation", () => {
     expect(multiParsed.version).toBe(multiParagraphDeck.version);
   });
 
+  it("round-trips text highlights, hyperlinks, and numbered lists", () => {
+    const deck = createValidDeck();
+    deck.slides[0].elements[0] = {
+      ...deck.slides[0].elements[0],
+      props: {
+        text: "Linked item",
+        paragraphs: [
+          {
+            bullet: {
+              character: "•",
+              enabled: true,
+              indent: 24,
+              kind: "number",
+              numberStyle: "decimal",
+              startAt: 3
+            },
+            runs: [
+              {
+                highlightColor: "#FEF08A",
+                hyperlink: "https://example.com",
+                text: "Linked item"
+              }
+            ],
+            text: "Linked item"
+          }
+        ]
+      }
+    };
+
+    const parsed = deckSchema.parse(deck);
+    const element = parsed.slides[0].elements[0];
+    expect(element?.type).toBe("text");
+    if (!element || element.type !== "text") {
+      throw new Error("expected a text element");
+    }
+    expect(element.props.paragraphs?.[0]).toMatchObject({
+      bullet: { kind: "number", numberStyle: "decimal", startAt: 3 },
+      runs: [
+        {
+          highlightColor: "#FEF08A",
+          hyperlink: "https://example.com"
+        }
+      ]
+    });
+  });
+
   it("keeps legacy runs-only text valid until an edit commit normalizes it", () => {
     const deck = createValidDeck();
     deck.slides[0].elements[0] = {

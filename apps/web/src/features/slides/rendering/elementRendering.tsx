@@ -124,20 +124,31 @@ export function ElementNodeContent(props: {
       return (
         <Group listening={false}>
           {textLayout.richText.fragments.map((fragment, index) => (
-            <Text
-              fill={fragment.style.color}
-              fontFamily={fragment.style.fontFamily}
-              fontSize={fragment.style.fontSize}
-              fontStyle={fragment.style.fontStyle}
-              key={`${fragment.paragraphIndex}-${fragment.lineIndex}-${index}`}
-              lineHeight={1}
-              listening={false}
-              padding={0}
-              text={fragment.text}
-              textDecoration={fragment.style.underline ? "underline" : undefined}
-              x={fragment.x}
-              y={fragment.y}
-            />
+            <KonvaGroup key={`${fragment.paragraphIndex}-${fragment.lineIndex}-${index}`}>
+              {fragment.style.highlightColor ? (
+                <KonvaRect
+                  fill={fragment.style.highlightColor}
+                  height={fragment.height}
+                  listening={false}
+                  width={fragment.width}
+                  x={fragment.x}
+                  y={fragment.y}
+                />
+              ) : null}
+              <KonvaText
+                fill={fragment.style.color}
+                fontFamily={fragment.style.fontFamily}
+                fontSize={fragment.style.fontSize}
+                fontStyle={fragment.style.fontStyle}
+                lineHeight={1}
+                listening={false}
+                padding={0}
+                text={fragment.text}
+                textDecoration={fragment.style.underline || fragment.style.hyperlink ? "underline" : undefined}
+                x={fragment.x}
+                y={fragment.y}
+              />
+            </KonvaGroup>
           ))}
         </Group>
       );

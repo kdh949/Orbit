@@ -13658,6 +13658,45 @@ body.is-resizing-speaker-notes {
   padding: 0;
 }
 
+.orbit-shell.editor-professional .editor-command-context {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.orbit-shell.editor-professional .editor-command-context:empty {
+  display: none;
+}
+
+.orbit-shell.editor-professional .editor-command-context:not(:empty) + .canvas-zoom-controls {
+  margin-left: auto;
+}
+
+.orbit-shell.editor-professional .editor-command-context:not(:empty) ~ .canvas-zoom-controls,
+.orbit-shell.editor-professional .editor-command-context:not(:empty) {
+  flex-shrink: 0;
+}
+
+.orbit-shell.editor-professional .editor-command-context .text-context-toolbar {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--redesign-color-on-surface-variant);
+  max-width: 100%;
+  min-height: 32px;
+  overflow-x: auto;
+  padding: 0;
+  z-index: auto;
+}
+
+.orbit-shell.editor-professional .editor-command-context .text-context-toolbar button,
+.orbit-shell.editor-professional .editor-command-context .text-context-toolbar input,
+.orbit-shell.editor-professional .editor-command-context .text-context-toolbar select {
+  min-height: 30px;
+}
+
 .orbit-shell.editor-professional .editor-command-bar .tool-group {
   align-items: center;
   display: flex;

@@ -144,6 +144,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
           </button>
         </div>
       </div> : null}
+      <div className="editor-command-context" id="editor-command-context" />
       <EditorZoomControls
         canZoomIn={props.canZoomIn}
         canZoomOut={props.canZoomOut}

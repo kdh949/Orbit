@@ -386,4 +386,65 @@ describe("paragraph range operations", () => {
     expect(style.lineHeight).toEqual({ mixed: true, value: undefined });
     expect(style.bullet).toEqual({ mixed: true, value: undefined });
   });
+
+  it("applies numbering, indentation, and paragraph spacing to the selection", () => {
+    const source = props({
+      paragraphs: [paragraph("One"), paragraph("Two")],
+      text: "One\nTwo"
+    });
+    const bullet = {
+      character: "•",
+      enabled: true,
+      indent: 28,
+      kind: "number" as const,
+      numberStyle: "upper-alpha" as const,
+      startAt: 2
+    };
+
+    const updated = applyRichTextParagraphStyle(
+      source,
+      { end: 3, start: 0 },
+      { bullet, indent: 12, spaceAfter: 8, spaceBefore: 4 }
+    );
+
+    expect(updated.paragraphs?.[0]).toMatchObject({
+      bullet,
+      indent: 12,
+      spaceAfter: 8,
+      spaceBefore: 4
+    });
+    expect(updated.paragraphs?.[1]).toMatchObject({
+      indent: 0,
+      spaceAfter: 0,
+      spaceBefore: 0
+    });
+    expectSchemaValid(updated);
+  });
+});
+
+describe("extended character styles", () => {
+  it("applies and removes highlight and hyperlink without changing text", () => {
+    const source = props({ text: "Orbit editor" });
+    const styled = applyRichTextCharacterStyle(
+      source,
+      { end: 5, start: 0 },
+      { highlightColor: "#FEF08A", hyperlink: "https://example.com" }
+    );
+
+    expect(styled.paragraphs?.[0]?.runs?.[0]).toMatchObject({
+      highlightColor: "#FEF08A",
+      hyperlink: "https://example.com",
+      text: "Orbit"
+    });
+    expect(getRichTextSemanticText(styled)).toBe("Orbit editor");
+
+    const cleared = applyRichTextCharacterStyle(
+      styled,
+      { end: 5, start: 0 },
+      { highlightColor: null, hyperlink: null }
+    );
+    expect(cleared.paragraphs?.[0]?.runs?.[0]?.highlightColor).toBeUndefined();
+    expect(cleared.paragraphs?.[0]?.runs?.[0]?.hyperlink).toBeUndefined();
+    expectSchemaValid(cleared);
+  });
 });

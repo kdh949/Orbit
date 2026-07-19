@@ -19,6 +19,8 @@ export type RichTextFragmentStyle = {
   fontSize: number;
   fontStyle: RichTextFontStyle;
   fontWeight: TextElementProps["fontWeight"];
+  highlightColor?: string;
+  hyperlink?: string;
   italic: boolean;
   underline: boolean;
 };
@@ -342,7 +344,7 @@ function wrapParagraph(args: {
       : paragraphStyle;
     addDraftFragment(
       current,
-      `${paragraph.bullet.character} `,
+      `${getListMarker(paragraph.bullet, paragraphIndex)} `,
       bulletStyle,
       measureText,
       true,
@@ -578,6 +580,8 @@ function resolveRunStyle(
     fontSize: run.fontSize ?? paragraphStyle.fontSize,
     fontStyle: getRichTextFontStyle(fontWeight, italic),
     fontWeight,
+    highlightColor: run.highlightColor,
+    hyperlink: run.hyperlink,
     italic,
     underline: run.underline ?? paragraphStyle.underline
   };
@@ -613,9 +617,26 @@ function sameStyle(left: RichTextFragmentStyle, right: RichTextFragmentStyle) {
     left.fontSize === right.fontSize &&
     left.fontStyle === right.fontStyle &&
     left.fontWeight === right.fontWeight &&
+    left.highlightColor === right.highlightColor &&
+    left.hyperlink === right.hyperlink &&
     left.italic === right.italic &&
     left.underline === right.underline
   );
+}
+
+function getListMarker(
+  bullet: NonNullable<TextElementParagraph["bullet"]>,
+  paragraphIndex: number
+) {
+  if (bullet.kind !== "number") return bullet.character;
+  const value = (bullet.startAt ?? 1) + paragraphIndex;
+  if (bullet.numberStyle === "lower-alpha") {
+    return `${String.fromCharCode(96 + ((value - 1) % 26) + 1)}.`;
+  }
+  if (bullet.numberStyle === "upper-alpha") {
+    return `${String.fromCharCode(64 + ((value - 1) % 26) + 1)}.`;
+  }
+  return `${value}.`;
 }
 
 function emptyLineStyle(line: DraftLine): RichTextFragmentStyle {
