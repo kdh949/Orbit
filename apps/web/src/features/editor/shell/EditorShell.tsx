@@ -2725,7 +2725,7 @@ export function getEditorStatusLabel(props: {
   return "저장됨";
 }
 
-function getOoxmlSyncStatus(job: Job | null, state: OoxmlSyncState | null) {
+export function getOoxmlSyncStatus(job: Job | null, state: OoxmlSyncState | null) {
   if (state?.status === "not-applicable") {
     return null;
   }
@@ -2752,10 +2752,12 @@ function getOoxmlSyncStatus(job: Job | null, state: OoxmlSyncState | null) {
   }
 
   if (job.status === "succeeded") {
+    if (warnings.length > 0) return null;
+
     return {
-      detail: warnings.join("\n") || "PPTX OOXML sync completed.",
-      kind: warnings.length > 0 ? "warning" : "succeeded",
-      label: warnings.length > 0 ? "OOXML 동기화 경고" : "OOXML 동기화 완료",
+      detail: "PPTX OOXML sync completed.",
+      kind: "succeeded",
+      label: "OOXML 동기화 완료",
       retryable: false
     };
   }

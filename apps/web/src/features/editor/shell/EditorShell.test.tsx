@@ -20,7 +20,8 @@ import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   EditorShell,
-  getEditorStatusLabel
+  getEditorStatusLabel,
+  getOoxmlSyncStatus
 } from "./EditorShell";
 import { useEditorShellUiStore } from "./editorShellUiStore";
 import { EditorStateNotice } from "./components/EditorStateNotice";
@@ -165,6 +166,29 @@ describe("editor shell", () => {
         saveState: "error"
       })
     ).toBe("저장 실패");
+  });
+
+  it("hides the OOXML badge when synchronization succeeds with compatibility warnings", () => {
+    const syncJob = jobPayload(
+      "succeeded",
+      {
+        warnings: [
+          "PPTX 호환을 위해 authored 요소를 투명 PNG로 동기화했습니다."
+        ]
+      },
+      "pptx-ooxml-sync"
+    );
+
+    expect(
+      getOoxmlSyncStatus(syncJob, {
+        status: "synced",
+        deckId: "deck_ai_1",
+        deckVersion: 2,
+        syncedDeckVersion: 2,
+        retryable: false,
+        job: syncJob
+      })
+    ).toBeNull();
   });
 
   beforeEach(() => {
