@@ -23,6 +23,7 @@ import {
 } from "react-konva";
 import type { ComponentType } from "react";
 import type { ElementPresentationState } from "./ReadOnlySlideCanvas";
+import { resolveWebFontFamily } from "../../fonts/fontRegistry";
 
 import { ImageElementContent } from "./ImageElementContent";
 import { getTableLayout } from "./tableLayout";
@@ -52,7 +53,16 @@ const Line = KonvaLine as unknown as KonvaComponent;
 const Rect = KonvaRect as unknown as KonvaComponent;
 const RegularPolygon = KonvaRegularPolygon as unknown as KonvaComponent;
 const Shape = KonvaShape as unknown as KonvaComponent;
-const Text = KonvaText as unknown as KonvaComponent;
+const RawText = KonvaText as unknown as KonvaComponent;
+
+function Text(props: Record<string, unknown>) {
+  return (
+    <RawText
+      {...props}
+      fontFamily={resolveWebFontFamily(props.fontFamily as string | undefined)}
+    />
+  );
+}
 
 const officeChartColors = ["#4F81BD", "#C0504D", "#9BBB59", "#8064A2"];
 

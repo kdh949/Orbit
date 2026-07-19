@@ -6,6 +6,7 @@ import {
   Stage as KonvaStage
 } from "react-konva";
 import { useCallback, type ComponentType } from "react";
+import { useSlideFontRevision } from "../../fonts/useSlideFonts";
 import { ElementNodeContent } from "./elementRendering";
 import { getRenderableSlideElements } from "./elementNormalization";
 import { getHighlightOverlayElements } from "./highlightOverlayElements";
@@ -56,11 +57,13 @@ export function ReadOnlySlideCanvas(props: {
     slide,
     stageRef,
   } = props;
+  const fontRevision = useSlideFontRevision(deck, slide);
   const renderLayerRef = useCallback(
     (layer: Konva.Layer | null) => {
       configureReadOnlyRenderLayer(layer, renderPixelRatio);
+      if (layer && fontRevision > 0) layer.batchDraw();
     },
-    [renderPixelRatio],
+    [fontRevision, renderPixelRatio],
   );
   const elements = getRenderableSlideElements(slide, deck.canvas);
   const activeHighlightElementIds = getActiveHighlightElementIds(highlights);
@@ -96,6 +99,7 @@ export function ReadOnlySlideCanvas(props: {
           width={deck.canvas.width}
         >
           <Layer
+            key={`font-${fontRevision}`}
             hitGraphEnabled={interactive}
             listening={interactive}
             ref={renderLayerRef}

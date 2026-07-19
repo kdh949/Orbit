@@ -6,6 +6,7 @@ import type {
 } from "@orbit/shared";
 import { Text as KonvaTextShape } from "konva/lib/shapes/Text";
 import type { RichTextFontStyle } from "../../../slides/rendering/richTextLayout";
+import { resolveWebFontFamily } from "../../../fonts/fontRegistry";
 import {
   getRichTextFontStyle,
   hasRichTextLayout,
@@ -93,11 +94,12 @@ export function getTextElementLayout(args: {
   const useRichText =
     props.writingMode !== "vertical-270" && hasRichTextLayout(props);
   const primaryRun = useRichText ? undefined : getPrimaryTextRun(props);
-  const fontFamily =
+  const canonicalFontFamily =
     primaryRun?.fontFamily ??
     props.fontFamily ??
     slide.style.fontFamily ??
     theme.typography.bodyFontFamily;
+  const fontFamily = resolveWebFontFamily(canonicalFontFamily);
   const color = primaryRun?.color ?? props.color ?? slide.style.textColor ?? theme.textColor;
   const fontSize = primaryRun?.fontSize ?? props.fontSize;
   const fontWeight = primaryRun?.fontWeight ?? props.fontWeight;
@@ -116,7 +118,7 @@ export function getTextElementLayout(args: {
     const richText = richTextLayout({
       baseStyle: {
         color,
-        fontFamily,
+        fontFamily: canonicalFontFamily,
         fontSize,
         fontWeight,
         italic,

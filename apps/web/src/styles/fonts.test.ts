@@ -9,9 +9,21 @@ describe("ORBIT web fonts", () => {
   it("bundles Pretendard without a local-font dependency", () => {
     const fontCss = fs.readFileSync(path.join(webRoot, "src/fonts.css"), "utf8");
     expect(fontCss).toContain('font-family: "Pretendard"');
-    expect(fontCss).toContain("PretendardVariable.woff2");
+    expect(fontCss).toContain(
+      "packages/font-assets/assets/web/pretendard-latin-400-normal.woff2",
+    );
+    expect(fontCss).toContain(
+      "packages/font-assets/assets/web/pretendard-latin-700-normal.woff2",
+    );
     expect(fontCss).not.toContain("local(");
-    expect(fs.existsSync(path.join(webRoot, "node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2"))).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(
+          webRoot,
+          "../../packages/font-assets/assets/web/pretendard-latin-400-normal.woff2",
+        ),
+      ),
+    ).toBe(true);
   });
 
   it("does not fall back to platform-specific UI fonts", () => {

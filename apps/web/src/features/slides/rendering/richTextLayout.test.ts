@@ -76,7 +76,7 @@ describe("richTextLayout", () => {
     expect(result.fragments).toHaveLength(2);
     expect(result.fragments[0]?.style).toMatchObject({
       color: "#DC2626",
-      fontFamily: "Aptos",
+      fontFamily: '"Aptos", "Pretendard", Arial, sans-serif',
       fontSize: 24,
       fontStyle: "bold italic",
       italic: true,
@@ -85,14 +85,17 @@ describe("richTextLayout", () => {
     expect(result.fragments[1]?.style).toMatchObject({
       baseline: "superscript",
       color: "#2563EB",
-      fontFamily: "Arial",
+      fontFamily: '"Arial", "Pretendard", Arial, sans-serif',
       fontSize: 18,
       fontStyle: "normal",
       underline: true
     });
     expect(measureText).toHaveBeenCalledWith(
       "Bold",
-      expect.objectContaining({ fontFamily: "Aptos", italic: true })
+      expect.objectContaining({
+        fontFamily: '"Aptos", "Pretendard", Arial, sans-serif',
+        italic: true,
+      })
     );
   });
 

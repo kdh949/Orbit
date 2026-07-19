@@ -6,6 +6,7 @@ RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
 COPY apps/web/package.json apps/web/package.json
+COPY packages/font-assets/package.json packages/font-assets/package.json
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/config/package.json packages/config/package.json
 COPY packages/editor-core/package.json packages/editor-core/package.json

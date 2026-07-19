@@ -29,6 +29,7 @@ import {
 import { resolveTextBodyInset } from "../../../slides/rendering/richTextLayout";
 import { getCssFontWeight, getTextElementLayout } from "./textLayout";
 import type { ElementTransformFrame } from "../utils/selectionTransformer";
+import { resolveWebFontFamily } from "../../../fonts/fontRegistry";
 
 type TextElement = Extract<DeckElement, { type: "text" }>;
 
@@ -218,10 +219,11 @@ const InlineTextEditorSurface = forwardRef<
 
   const baseColor =
     renderedProps.color ?? slide.style.textColor ?? deck.theme.textColor;
-  const baseFontFamily =
+  const canonicalBaseFontFamily =
     renderedProps.fontFamily ??
     slide.style.fontFamily ??
     deck.theme.typography.bodyFontFamily;
+  const baseFontFamily = resolveWebFontFamily(canonicalBaseFontFamily);
   const paragraphs = renderedProps.paragraphs ?? [];
   const bodyInset = resolveTextBodyInset(renderedProps);
   const frame = previewFrame ?? element;
@@ -347,7 +349,7 @@ const InlineTextEditorSurface = forwardRef<
               key={runIndex}
               style={getRunStyle({
                 baseColor,
-                baseFontFamily,
+                baseFontFamily: canonicalBaseFontFamily,
                 paragraph,
                 props: renderedProps,
                 run,
@@ -379,7 +381,9 @@ function getRunStyle(args: {
   return {
     backgroundColor: run.highlightColor ?? "transparent",
     color: run.color ?? paragraph.color ?? baseColor,
-    fontFamily: run.fontFamily ?? paragraph.fontFamily ?? baseFontFamily,
+    fontFamily: resolveWebFontFamily(
+      run.fontFamily ?? paragraph.fontFamily ?? baseFontFamily,
+    ),
     fontSize: `${(run.fontSize ?? paragraph.fontSize ?? props.fontSize) * stageScale}px`,
     fontStyle: run.italic ?? paragraph.italic ?? props.italic ? "italic" : "normal",
     fontWeight: String(getCssFontWeight(fontWeight)),

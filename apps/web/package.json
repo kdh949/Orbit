@@ -15,12 +15,12 @@
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
     "@orbit/editor-core": "workspace:*",
+    "@orbit/font-assets": "workspace:*",
     "@orbit/shared": "workspace:*",
     "@tabler/icons-react": "^3.44.0",
     "@tanstack/react-query": "^5.81.5",
     "konva": "^9.3.20",
     "lucide-react": "^0.468.0",
-    "pretendard": "1.3.9",
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

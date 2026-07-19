@@ -3,6 +3,7 @@ import type {
   TextElementProps,
   TextElementRun
 } from "@orbit/shared";
+import { resolveWebFontFamily } from "../../fonts/fontRegistry";
 
 const legacyTextPadding = 4;
 
@@ -552,7 +553,9 @@ function resolveParagraphStyle(
   return {
     baseline: "normal",
     color: paragraph?.color ?? baseStyle.color,
-    fontFamily: paragraph?.fontFamily ?? baseStyle.fontFamily,
+    fontFamily: resolveWebFontFamily(
+      paragraph?.fontFamily ?? baseStyle.fontFamily,
+    ),
     fontSize: paragraph?.fontSize ?? baseStyle.fontSize,
     fontStyle: getRichTextFontStyle(fontWeight, italic),
     fontWeight,
@@ -572,7 +575,9 @@ function resolveRunStyle(
   return {
     baseline: run.baseline ?? "normal",
     color: run.color ?? paragraphStyle.color,
-    fontFamily: run.fontFamily ?? paragraphStyle.fontFamily,
+    fontFamily: resolveWebFontFamily(
+      run.fontFamily ?? paragraphStyle.fontFamily,
+    ),
     fontSize: run.fontSize ?? paragraphStyle.fontSize,
     fontStyle: getRichTextFontStyle(fontWeight, italic),
     fontWeight,
