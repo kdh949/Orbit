@@ -58,7 +58,12 @@
 }
 
 .text-context-toolbar-font select {
-  max-width: 150px;
+  max-width: 210px;
+}
+
+.text-context-toolbar-font-status {
+  color: var(--redesign-color-inverse-on-surface);
+  font-size: var(--redesign-type-label-sm-size);
 }
 
 .text-context-toolbar-size {

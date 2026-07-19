@@ -3,10 +3,12 @@ import type { Deck, TextElementProps } from "@orbit/shared";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+import { supportedEditorFonts } from "../../../fonts/fontRegistry";
 import {
   commitTextContextToolbarAction,
   getTextContextToolbarFontOptions,
   getTextContextToolbarPlacement,
+  loadAndCommitTextFont,
   TextContextToolbar,
 } from "./TextContextToolbar";
 
@@ -74,8 +76,21 @@ describe("getTextContextToolbarFontOptions", () => {
         loadedFontFamilies: ["Pretendard", "Pretendard"],
       }),
     ).toEqual([
-      { available: true, family: "Pretendard" },
-      { available: false, family: "Aptos Display" },
+      {
+        available: true,
+        family: "Pretendard",
+        group: "basic",
+        label: "Pretendard",
+        supportsKorean: true,
+      },
+      {
+        available: false,
+        disabledReason: "이 문서에서 가져온 글꼴은 현재 지원하지 않습니다.",
+        family: "Aptos Display",
+        group: "basic",
+        label: "Aptos Display",
+        supportsKorean: true,
+      },
     ]);
   });
 
@@ -86,7 +101,92 @@ describe("getTextContextToolbarFontOptions", () => {
         isImported: false,
         loadedFontFamilies: ["Pretendard"],
       }),
-    ).toEqual([{ available: true, family: "Pretendard" }]);
+    ).toEqual([
+      {
+        available: true,
+        family: "Pretendard",
+        group: "basic",
+        label: "Pretendard",
+        supportsKorean: true,
+      },
+    ]);
+  });
+
+  it("disables English-only fonts for a Korean selection", () => {
+    const options = getTextContextToolbarFontOptions({
+      currentFontFamily: "Pretendard",
+      isImported: false,
+      loadedFontFamilies: ["Pretendard", "Merriweather"],
+      selectionContainsKorean: true,
+    });
+
+    expect(options[1]).toMatchObject({
+      available: false,
+      disabledReason: expect.stringContaining("영문 전용"),
+      family: "Merriweather",
+      group: "english-design",
+      label: "Merriweather · 영문 본문",
+      supportsKorean: false,
+    });
+  });
+});
+
+describe("loadAndCommitTextFont", () => {
+  it("preserves the captured range and commits only after loading succeeds", async () => {
+    const { element } = getTextFixture();
+    const rangedElement = {
+      ...element,
+      props: { ...element.props, text: "가나다" },
+    };
+    const onCommitProps = vi.fn();
+
+    await loadAndCommitTextFont({
+      action: { kind: "character", patch: { fontFamily: "Noto Serif KR" } },
+      element: rangedElement,
+      loadFont: vi.fn().mockResolvedValue({
+        family: "Noto Serif KR",
+        status: "loaded",
+      }),
+      onCommitProps,
+      range: { end: 2, start: 1 },
+      request: {
+        family: "Noto Serif KR",
+        style: "normal",
+        text: "나",
+        weight: 400,
+      },
+    });
+
+    const updated = onCommitProps.mock.calls[0]?.[1] as TextElementProps;
+    expect(updated.paragraphs?.[0]?.runs).toEqual([
+      { baseline: "normal", text: "가" },
+      { baseline: "normal", fontFamily: "Noto Serif KR", text: "나" },
+      { baseline: "normal", text: "다" },
+    ]);
+  });
+
+  it("keeps the existing formatting when loading fails", async () => {
+    const { element } = getTextFixture();
+    const onCommitProps = vi.fn();
+
+    await loadAndCommitTextFont({
+      action: { kind: "character", patch: { fontFamily: "Merriweather" } },
+      element,
+      loadFont: vi.fn().mockResolvedValue({
+        family: "Merriweather",
+        status: "failed",
+      }),
+      onCommitProps,
+      range: null,
+      request: {
+        family: "Merriweather",
+        style: "normal",
+        text: "Orbit",
+        weight: 400,
+      },
+    });
+
+    expect(onCommitProps).not.toHaveBeenCalled();
   });
 });
 
@@ -286,6 +386,31 @@ describe("TextContextToolbar", () => {
     expect(html).toContain("줄 간격");
     expect(html).toContain("서식 지우기");
     expect(html).toContain('aria-pressed="mixed"');
+  });
+
+  it("groups the fifteen supported fonts and explains presentation uses", () => {
+    const { deck, element, slide } = getTextFixture();
+    const html = renderToString(
+      <TextContextToolbar
+        deck={deck}
+        element={element}
+        range={{ end: 1, start: 0 }}
+        readOnly={false}
+        slide={slide}
+        stageElement={null}
+        stageScale={1}
+        onCommitProps={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain('label="기본"');
+    expect(html).toContain('label="한글 디자인"');
+    expect(html).toContain('label="영문 디자인"');
+    expect(html).toContain("Black Han Sans · 한글 제목");
+    expect(html).toContain("Merriweather · 영문 본문");
+    for (const font of supportedEditorFonts) {
+      expect(html).toContain(`value="${font.family}"`);
+    }
   });
 
   it("hides in read-only mode", () => {

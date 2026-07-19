@@ -14,6 +14,7 @@ import type {
   Slide,
   TextElementBullet,
 } from "@orbit/shared";
+import type { FontAssetGroup } from "@orbit/font-assets";
 import {
   type MouseEvent as ReactMouseEvent,
   useCallback,
@@ -24,6 +25,11 @@ import {
 import { createPortal } from "react-dom";
 
 import { getRotatedElementAabb } from "../utils/canvasInteractionUtils";
+import {
+  ensureFontLoaded,
+  supportedEditorFonts,
+  type FontLoadResult,
+} from "../../../fonts/fontRegistry";
 import { getRichTextStyleActionState } from "./richTextEditCapability";
 import "./TextContextToolbar.css";
 
@@ -41,10 +47,31 @@ export type TextContextToolbarPlacement = {
 
 export type TextContextToolbarFontOption = {
   available: boolean;
+  disabledReason?: string;
   family: string;
+  group: FontAssetGroup;
+  label: string;
+  supportsKorean: boolean;
 };
 
-const bundledTextFontFamilies = ["Pretendard"] as const;
+const bundledTextFontFamilies = supportedEditorFonts.map((font) => font.family);
+const fontGroupLabels: Record<FontAssetGroup, string> = {
+  basic: "기본",
+  "korean-design": "한글 디자인",
+  "english-design": "영문 디자인",
+};
+const fontPurposeLabels: Record<string, string> = {
+  "Noto Serif KR": "한글 명조",
+  "Nanum Myeongjo": "한글 본문",
+  "Black Han Sans": "한글 제목",
+  "Do Hyeon": "한글 제목",
+  Jua: "한글 제목",
+  Montserrat: "영문 제목·본문",
+  Poppins: "영문 제목·본문",
+  "Playfair Display": "영문 제목",
+  Merriweather: "영문 본문",
+  "Bebas Neue": "영문 제목",
+};
 const toolbarGap = 8;
 const viewportPadding = 12;
 
@@ -91,6 +118,7 @@ export function getTextContextToolbarFontOptions(args: {
   currentFontFamily?: string;
   isImported: boolean;
   loadedFontFamilies: readonly string[];
+  selectionContainsKorean?: boolean;
 }): TextContextToolbarFontOption[] {
   const seen = new Set<string>();
   const options: TextContextToolbarFontOption[] = [];
@@ -98,14 +126,68 @@ export function getTextContextToolbarFontOptions(args: {
     const normalized = family.trim();
     if (!normalized || seen.has(normalized)) continue;
     seen.add(normalized);
-    options.push({ available: true, family: normalized });
+    const definition = supportedEditorFonts.find(
+      (font) => font.family === normalized,
+    );
+    const englishOnly = definition?.supportsKorean === false;
+    const disabledReason =
+      englishOnly && args.selectionContainsKorean
+        ? "한글이 포함된 선택 영역에는 사용할 수 없는 영문 전용 글꼴입니다."
+        : undefined;
+    options.push({
+      available: !disabledReason,
+      disabledReason,
+      family: normalized,
+      group: definition?.group ?? "basic",
+      label: fontPurposeLabels[normalized]
+        ? `${normalized} · ${fontPurposeLabels[normalized]}`
+        : normalized,
+      supportsKorean: definition?.supportsKorean ?? true,
+    });
   }
 
   const current = args.currentFontFamily?.trim();
   if (args.isImported && current && !seen.has(current)) {
-    options.push({ available: false, family: current });
+    options.push({
+      available: false,
+      disabledReason: "이 문서에서 가져온 글꼴은 현재 지원하지 않습니다.",
+      family: current,
+      group: "basic",
+      label: current,
+      supportsKorean: true,
+    });
   }
   return options;
+}
+
+export async function loadAndCommitTextFont(args: {
+  action: TextContextToolbarAction;
+  element: TextElement;
+  loadFont?: (request: {
+    family: string;
+    style?: "italic" | "normal";
+    text?: string;
+    weight?: number;
+  }) => Promise<FontLoadResult>;
+  onCommitProps: (elementId: string, props: Record<string, unknown>) => void;
+  range: RichTextRange | null;
+  request: {
+    family: string;
+    style: "italic" | "normal";
+    text: string;
+    weight: number;
+  };
+  shouldCommit?: () => boolean;
+}) {
+  const result = await (args.loadFont ?? ensureFontLoaded)(args.request);
+  if (result.status !== "loaded" || args.shouldCommit?.() === false) return result;
+  commitTextContextToolbarAction({
+    action: args.action,
+    element: args.element,
+    onCommitProps: args.onCommitProps,
+    range: args.range,
+  });
+  return result;
 }
 
 export function commitTextContextToolbarAction(args: {
@@ -175,6 +257,10 @@ export function TextContextToolbar(props: {
     onPreserveRange,
   } = props;
   const toolbarRef = useRef<HTMLDivElement | null>(null);
+  const fontLoadRequestRef = useRef(0);
+  const [fontLoadState, setFontLoadState] = useState<
+    "error" | "idle" | "loading"
+  >("idle");
   const dockTarget =
     typeof document === "undefined"
       ? null
@@ -236,10 +322,15 @@ export function TextContextToolbar(props: {
   if (readOnly) return null;
 
   const activeRange = getActiveRange(range);
+  const semanticText = getRichTextSemanticText(element.props);
   const selectionRange = activeRange ?? {
-    end: getRichTextSemanticText(element.props).length,
+    end: semanticText.length,
     start: 0,
   };
+  const selectedText = semanticText.slice(
+    selectionRange.start,
+    selectionRange.end,
+  );
   const characterStyle = getRichTextSelectionCharacterStyle(
     element.props,
     selectionRange,
@@ -264,6 +355,7 @@ export function TextContextToolbar(props: {
     currentFontFamily,
     isImported: deck.metadata.sourceType === "import",
     loadedFontFamilies,
+    selectionContainsKorean: /[\u3131-\u318e\uac00-\ud7a3]/u.test(selectedText),
   });
   const fontValue = characterStyle.fontFamily.mixed
     ? "__mixed__"
@@ -304,6 +396,29 @@ export function TextContextToolbar(props: {
     });
   }
 
+  async function selectFont(family: string) {
+    const option = fontOptions.find((candidate) => candidate.family === family);
+    if (!option?.available) return;
+    const requestId = fontLoadRequestRef.current + 1;
+    fontLoadRequestRef.current = requestId;
+    setFontLoadState("loading");
+    const result = await loadAndCommitTextFont({
+      action: { kind: "character", patch: { fontFamily: family } },
+      element,
+      onCommitProps,
+      range: activeRange,
+      request: {
+        family,
+        style: italicPressed === true ? "italic" : "normal",
+        text: selectedText,
+        weight: boldPressed === true ? 700 : 400,
+      },
+      shouldCommit: () => fontLoadRequestRef.current === requestId,
+    });
+    if (fontLoadRequestRef.current !== requestId) return;
+    setFontLoadState(result.status === "loaded" ? "idle" : "error");
+  }
+
   function preserveTextRange(event: ReactMouseEvent<HTMLButtonElement>) {
     event.preventDefault();
   }
@@ -330,15 +445,10 @@ export function TextContextToolbar(props: {
         <span>글꼴</span>
         <select
           aria-label="글꼴"
-          disabled={disabled}
+          disabled={disabled || fontLoadState === "loading"}
           value={fontValue}
           onChange={(event) => {
-            if (event.target.value) {
-              commit({
-                kind: "character",
-                patch: { fontFamily: event.target.value },
-              });
-            }
+            if (event.target.value) void selectFont(event.target.value);
           }}
         >
           {characterStyle.fontFamily.mixed ? (
@@ -350,17 +460,32 @@ export function TextContextToolbar(props: {
               사용 가능한 글꼴 선택
             </option>
           ) : null}
-          {fontOptions.map((option) => (
-            <option
-              disabled={!option.available}
-              key={option.family}
-              value={option.family}
-            >
-              {option.family}
-              {option.available ? "" : " (사용 불가)"}
-            </option>
-          ))}
+          {(Object.keys(fontGroupLabels) as FontAssetGroup[]).map((group) => {
+            const options = fontOptions.filter((option) => option.group === group);
+            return options.length ? (
+              <optgroup key={group} label={fontGroupLabels[group]}>
+                {options.map((option) => (
+                  <option
+                    disabled={!option.available}
+                    key={option.family}
+                    title={option.disabledReason}
+                    value={option.family}
+                  >
+                    {option.label}
+                    {option.available ? "" : " (사용 불가)"}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null;
+          })}
         </select>
+        <span aria-live="polite" className="text-context-toolbar-font-status">
+          {fontLoadState === "loading"
+            ? "글꼴 불러오는 중"
+            : fontLoadState === "error"
+              ? "글꼴을 불러오지 못했습니다"
+              : ""}
+        </span>
       </label>
 
       <div
