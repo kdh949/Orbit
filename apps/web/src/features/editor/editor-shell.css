@@ -14301,34 +14301,48 @@ body.is-resizing-speaker-notes {
   z-index: 18;
 }
 
-.orbit-shell.editor-professional .editor-command-bar > .editor-toolbar {
-  align-items: center;
-  display: flex;
-  flex: 1 1 auto;
-  justify-content: flex-start;
-  min-width: 0;
-  overflow-x: auto;
-  padding: 0;
-}
-
-.orbit-shell.editor-professional .editor-command-context {
-  display: flex;
+.orbit-shell.editor-professional .editor-command-scroll-viewport {
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
 }
 
+.orbit-shell.editor-professional .editor-command-scroll-track,
+.orbit-shell.editor-professional .editor-command-common,
+.orbit-shell.editor-professional .editor-command-insert,
+.orbit-shell.editor-professional .editor-command-context-slot,
+.orbit-shell.editor-professional .editor-command-selection-actions,
+.orbit-shell.editor-professional .editor-command-trailing {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.orbit-shell.editor-professional .editor-command-scroll-track {
+  gap: var(--redesign-space-2);
+  min-width: max-content;
+}
+
+.orbit-shell.editor-professional .editor-command-common,
+.orbit-shell.editor-professional .editor-command-insert,
+.orbit-shell.editor-professional .editor-command-context-slot,
+.orbit-shell.editor-professional .editor-command-selection-actions {
+  gap: var(--redesign-space-1);
+}
+
+.orbit-shell.editor-professional .editor-command-trailing {
+  flex-shrink: 0;
+  gap: var(--redesign-space-1);
+}
+
+.orbit-shell.editor-professional .editor-command-context {
+  display: flex;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
 .orbit-shell.editor-professional .editor-command-context:empty {
   display: none;
-}
-
-.orbit-shell.editor-professional .editor-command-context:not(:empty) + .canvas-zoom-controls {
-  margin-left: auto;
-}
-
-.orbit-shell.editor-professional .editor-command-context:not(:empty) ~ .canvas-zoom-controls,
-.orbit-shell.editor-professional .editor-command-context:not(:empty) {
-  flex-shrink: 0;
 }
 
 .orbit-shell.editor-professional .editor-command-context .text-context-toolbar {
@@ -14337,9 +14351,9 @@ body.is-resizing-speaker-notes {
   border-radius: 0;
   box-shadow: var(--redesign-shadow-none);
   color: var(--redesign-color-on-surface-variant);
-  max-width: 100%;
+  max-width: none;
   min-height: 32px;
-  overflow-x: auto;
+  overflow: visible;
   padding: 0;
   z-index: auto;
 }
@@ -14353,11 +14367,9 @@ body.is-resizing-speaker-notes {
 .orbit-shell.editor-professional .selection-context-toolbar {
   align-items: center;
   display: flex;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   gap: var(--redesign-space-2);
-  min-width: 0;
-  overflow-x: auto;
-  padding: 0 var(--redesign-space-2);
+  padding: 0;
 }
 
 .orbit-shell.editor-professional .selection-context-toolbar label {
@@ -14491,14 +14503,14 @@ body.is-resizing-speaker-notes {
   flex: 0 0 auto;
 }
 
-.orbit-shell.editor-professional .editor-command-bar > .canvas-zoom-controls {
+.orbit-shell.editor-professional .editor-command-trailing > .canvas-zoom-controls {
   flex: 0 0 auto;
   margin: 0;
   position: static;
 }
 
 .orbit-shell.editor-professional
-  .editor-command-bar
+  .editor-command-trailing
   > .open-right-pane-floating-button {
   flex: 0 0 auto;
   margin: 0;
@@ -14539,12 +14551,8 @@ body.is-resizing-speaker-notes {
   }
 
   .orbit-shell.editor-professional .editor-command-bar {
-    overflow-x: auto;
-  }
-
-  .orbit-shell.editor-professional .editor-command-bar > .canvas-zoom-controls {
-    position: sticky;
-    right: 0;
+    gap: var(--redesign-space-1);
+    padding-inline: var(--redesign-space-2);
   }
 }
 
