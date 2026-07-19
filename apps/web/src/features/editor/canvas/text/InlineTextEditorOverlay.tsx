@@ -34,6 +34,7 @@ type TextElement = Extract<DeckElement, { type: "text" }>;
 
 export type InlineTextEditorController = {
   applyDraftProps: (props: TextElementProps) => void;
+  focus: () => void;
   getDraftProps: () => TextElementProps;
   handleCompositeBlur: (nextTarget: Node | null) => void;
   preserveRange: () => void;
@@ -51,6 +52,7 @@ type InlineTextEditorOverlayProps = {
   onDraftPropsChange?: (props: TextElementProps) => void;
   onFinishEditing: (options?: { clearSelection?: boolean }) => void;
   onRangeChange?: (range: ContentEditableLogicalRange | null) => void;
+  shouldRetainEditingOnBlur?: () => boolean;
 };
 
 export const InlineTextEditorOverlay = forwardRef<
@@ -76,6 +78,7 @@ const InlineTextEditorSurface = forwardRef<
     onDraftPropsChange,
     onFinishEditing,
     onRangeChange,
+    shouldRetainEditingOnBlur,
   } = props;
   const rootRef = useRef<HTMLDivElement | null>(null);
   const pendingRangeRestoreRef = useRef(false);
@@ -85,12 +88,14 @@ const InlineTextEditorSurface = forwardRef<
     onDraftPropsChange,
     onFinishEditing,
     onRangeChange,
+    shouldRetainEditingOnBlur,
   });
   callbacksRef.current = {
     onCommitProps,
     onDraftPropsChange,
     onFinishEditing,
     onRangeChange,
+    shouldRetainEditingOnBlur,
   };
   const initialProps = useMemo(
     () => normalizeRichTextProps(element.props),
@@ -162,6 +167,8 @@ const InlineTextEditorSurface = forwardRef<
   }
 
   function handleCompositeBlur(nextTarget: Node | null) {
+    if (callbacksRef.current.shouldRetainEditingOnBlur?.()) return;
+
     const resolveBlur = (target: Node | null) =>
       session.handleBlur({
         nextTargetInsideComposite: isContentEditableCompositeTarget(
@@ -182,6 +189,10 @@ const InlineTextEditorSurface = forwardRef<
     ref,
     () => ({
       applyDraftProps,
+      focus: () => {
+        rootRef.current?.focus();
+        restoreRange();
+      },
       getDraftProps: session.getDraft,
       handleCompositeBlur,
       preserveRange,

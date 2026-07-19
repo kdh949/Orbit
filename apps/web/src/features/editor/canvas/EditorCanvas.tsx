@@ -366,6 +366,7 @@ export function EditableCanvas(props: {
   } = props;
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const inlineTextEditorRef = useRef<InlineTextEditorController | null>(null);
+  const isTextTransformInteractionRef = useRef(false);
   const nodeRefs = useRef<Record<string, Konva.Group | null>>({});
   const [containerElement, setContainerElement] =
     useState<HTMLDivElement | null>(null);
@@ -503,6 +504,7 @@ export function EditableCanvas(props: {
 
   useEffect(() => {
     pendingTextBlurActionRef.current = null;
+    isTextTransformInteractionRef.current = false;
     setActiveTextRange(null);
     setEditingTextDraft(null);
     setTransformPreview(null);
@@ -545,6 +547,12 @@ export function EditableCanvas(props: {
     }
 
     onFinishEditing();
+  }
+
+  function finishTextTransformInteraction() {
+    if (!isTextTransformInteractionRef.current) return;
+    isTextTransformInteractionRef.current = false;
+    queueMicrotask(() => inlineTextEditorRef.current?.focus());
   }
 
   function handleTextToolbarCommit(
@@ -829,6 +837,13 @@ export function EditableCanvas(props: {
             flipEnabled={false}
             ignoreStroke
             keepRatio={transformerConfig.keepRatio}
+            onMouseDown={() => {
+              if (!editingElementId) return;
+              isTextTransformInteractionRef.current = true;
+              inlineTextEditorRef.current?.preserveRange();
+            }}
+            onMouseUp={finishTextTransformInteraction}
+            onTransformEnd={finishTextTransformInteraction}
             padding={transformerConfig.padding}
             rotateAnchorOffset={transformerConfig.rotateAnchorOffset}
             rotateEnabled={!canvasInteractionDisabled}
@@ -915,6 +930,9 @@ export function EditableCanvas(props: {
               setActiveTextRange(
                 range ? { elementId: editingElementId, ...range } : null,
               )
+            }
+            shouldRetainEditingOnBlur={() =>
+              isTextTransformInteractionRef.current
             }
           />
           <InlineDataEditorOverlay
