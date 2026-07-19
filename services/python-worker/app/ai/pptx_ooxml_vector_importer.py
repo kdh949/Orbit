@@ -2151,6 +2151,9 @@ def run_properties_value(
     color = solid_color(first_local_child(r_pr, "solidFill"), theme_colors)
     if color:
         props["color"] = color
+    highlight = solid_color(first_local_child(r_pr, "highlight"), theme_colors)
+    if highlight:
+        props["highlightColor"] = highlight
     baseline = int_attr(r_pr, "baseline", 0)
     if baseline > 0:
         props["baseline"] = "superscript"
@@ -2276,12 +2279,27 @@ def paragraph_bullet_value(
     if p_pr is None:
         return None
     bullet = first_local_child(p_pr, "buChar")
-    if bullet is None:
+    if bullet is not None:
+        return {
+            "enabled": True,
+            "character": str(bullet.get("char", "\u2022")),
+            "indent": max(0, round(int_attr(p_pr, "marL", 0) * scale.scale_x)),
+        }
+    auto_number = first_local_child(p_pr, "buAutoNum")
+    if auto_number is None:
         return None
+    number_styles = {
+        "arabicPeriod": "decimal",
+        "alphaLcPeriod": "lower-alpha",
+        "alphaUcPeriod": "upper-alpha",
+    }
     return {
         "enabled": True,
-        "character": str(bullet.get("char", "\u2022")),
+        "character": "\u2022",
         "indent": max(0, round(int_attr(p_pr, "marL", 0) * scale.scale_x)),
+        "kind": "number",
+        "numberStyle": number_styles.get(str(auto_number.get("type")), "decimal"),
+        "startAt": max(1, int_attr(auto_number, "startAt", 1)),
     }
 
 

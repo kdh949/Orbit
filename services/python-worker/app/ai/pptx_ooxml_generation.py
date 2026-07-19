@@ -97,11 +97,11 @@ SUPPORTED_TEXT_PARAGRAPH_PROPS = {
 }
 SUPPORTED_TEXT_RUN_PROPS = {
     "text", "fontFamily", "fontSize", "fontWeight", "italic", "underline",
-    "color", "baseline",
+    "color", "highlightColor", "baseline",
 }
 SUPPORTED_TEXT_STYLE_PROPS = {
     "fontFamily", "fontSize", "fontWeight", "italic", "underline", "color",
-    "baseline",
+    "highlightColor", "baseline",
 }
 MAX_TEXT_DIFF_MATRIX_CELLS = 250_000
 
@@ -2869,6 +2869,16 @@ def patch_run_properties(
             {"val": str(differences["color"])[1:].upper()},
         )
         r_pr.insert(0, color_fill)
+    if "highlightColor" in differences:
+        existing = first_local_child(r_pr, "highlight")
+        if existing is not None:
+            r_pr.remove(existing)
+        highlight = ET.SubElement(r_pr, f"{{{DML_NS}}}highlight")
+        ET.SubElement(
+            highlight,
+            f"{{{DML_NS}}}srgbClr",
+            {"val": str(differences["highlightColor"])[1:].upper()},
+        )
 
 
 def current_run_style(
@@ -2896,6 +2906,10 @@ def current_run_style(
     srgb = first_local_child(solid_fill, "srgbClr") if solid_fill is not None else None
     if srgb is not None and srgb.get("val"):
         current["color"] = f"#{str(srgb.get('val')).upper()}"
+    highlight = first_local_child(r_pr, "highlight")
+    highlight_srgb = first_local_child(highlight, "srgbClr") if highlight is not None else None
+    if highlight_srgb is not None and highlight_srgb.get("val"):
+        current["highlightColor"] = f"#{str(highlight_srgb.get('val')).upper()}"
     baseline = int_value(r_pr.get("baseline"), 0)
     if baseline > 0:
         current["baseline"] = "superscript"
@@ -2952,11 +2966,26 @@ def patch_paragraph_properties(
                 p_pr.remove(child)
         bullet = differences["bullet"]
         if isinstance(bullet, dict) and bullet.get("enabled"):
-            ET.SubElement(
-                p_pr,
-                f"{{{DML_NS}}}buChar",
-                {"char": str(bullet.get("character", "\u2022"))},
-            )
+            if bullet.get("kind") == "number":
+                number_types = {
+                    "decimal": "arabicPeriod",
+                    "lower-alpha": "alphaLcPeriod",
+                    "upper-alpha": "alphaUcPeriod",
+                }
+                ET.SubElement(
+                    p_pr,
+                    f"{{{DML_NS}}}buAutoNum",
+                    {
+                        "type": number_types.get(str(bullet.get("numberStyle")), "arabicPeriod"),
+                        "startAt": str(max(1, int(bullet.get("startAt", 1)))),
+                    },
+                )
+            else:
+                ET.SubElement(
+                    p_pr,
+                    f"{{{DML_NS}}}buChar",
+                    {"char": str(bullet.get("character", "\u2022"))},
+                )
             p_pr.set(
                 "marL",
                 str(canvas_x_to_signed_emu(bullet.get("indent", 0), scale)),
@@ -2995,7 +3024,23 @@ def current_paragraph_style(
             "character": str(bullet.get("char", "\u2022")),
             "indent": max(0, current["indent"]),
         }
-    elif first_local_child(p_pr, "buNone") is not None:
+    else:
+        auto_number = first_local_child(p_pr, "buAutoNum")
+        if auto_number is not None:
+            number_styles = {
+                "arabicPeriod": "decimal",
+                "alphaLcPeriod": "lower-alpha",
+                "alphaUcPeriod": "upper-alpha",
+            }
+            current["bullet"] = {
+                "enabled": True,
+                "character": "\u2022",
+                "indent": max(0, current["indent"]),
+                "kind": "number",
+                "numberStyle": number_styles.get(str(auto_number.get("type")), "decimal"),
+                "startAt": max(1, int_value(auto_number.get("startAt"), 1)),
+            }
+    if "bullet" not in current and first_local_child(p_pr, "buNone") is not None:
         current["bullet"] = {"enabled": False, "character": "\u2022", "indent": 0}
     return current
 
