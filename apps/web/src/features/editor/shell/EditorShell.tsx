@@ -231,6 +231,7 @@ import "../editor-shell.css";
 declare global {
   interface Window {
     __ORBIT_EDITOR_TEST_API__?: {
+      startInlineTextEditing: (elementId: string) => boolean;
       updateSelectedElementFrame: (
         frame: Partial<{
           x: number;
@@ -1768,8 +1769,19 @@ export function EditorShell(props: { projectId?: string }) {
       return;
     }
 
-    // Test hook for reliable Playwright frame updates when Konva anchors are too brittle.
+    // Test hook for reliable Playwright interactions when Konva targets are too brittle.
     window.__ORBIT_EDITOR_TEST_API__ = {
+      startInlineTextEditing: (elementId) => {
+        const element = visibleElements.find(
+          (candidate) =>
+            candidate.elementId === elementId && candidate.type === "text"
+        );
+        if (!element) return false;
+
+        setSelectedElementIds([elementId]);
+        setEditingElementId(elementId);
+        return true;
+      },
       updateSelectedElementFrame: (frame) => {
         if (!selectedElement || !currentSlide) {
           return false;
@@ -1791,7 +1803,13 @@ export function EditorShell(props: { projectId?: string }) {
     return () => {
       delete window.__ORBIT_EDITOR_TEST_API__;
     };
-  }, [currentSlide, selectedElement]);
+  }, [
+    currentSlide,
+    selectedElement,
+    setEditingElementId,
+    setSelectedElementIds,
+    visibleElements
+  ]);
 
   function handleDistributeSelection(axis: DistributeAxis) {
     if (!currentSlide || !canMutateDeck) return;

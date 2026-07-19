@@ -13,6 +13,15 @@ import { createAuthenticatedProject } from "./authenticatedProject";
 const canvasWidth = 1920;
 const primaryModifier = process.platform === "darwin" ? "Meta" : "Control";
 
+type EditorElementFrame = {
+  elementId: string;
+  height: number;
+  rotation: number;
+  width: number;
+  x: number;
+  y: number;
+};
+
 function createRichTextDeck() {
   const deck = createDemoDeck();
   const element = deck.slides[0]?.elements.find(
@@ -80,24 +89,32 @@ async function openEditor(page: Page, projectId: string) {
 }
 
 async function beginInlineEditing(page: Page, elementId: string) {
-  const stage = page.getByTestId("editor-stage-shell");
-  const stageBox = await stage.boundingBox();
-  const debugText = await page.getByTestId("editor-elements-debug").textContent();
-  const frame = (JSON.parse(debugText ?? "[]") as Array<{
-    elementId: string;
-    x: number;
-    y: number;
-  }>).find((candidate) => candidate.elementId === elementId);
-  if (!stageBox || !frame) throw new Error(`Unable to locate ${elementId}.`);
-  const scale = stageBox.width / canvasWidth;
-  await page.mouse.dblclick(
-    stageBox.x + (frame.x + 20) * scale,
-    stageBox.y + (frame.y + 20) * scale,
-  );
   const editor = page.getByRole("textbox", { name: "텍스트 편집" });
-  await expect(editor).toBeVisible();
+  await expect
+    .poll(async () => {
+      if (await editor.isVisible()) return true;
+      await page.evaluate(
+        (targetElementId) =>
+          window.__ORBIT_EDITOR_TEST_API__?.startInlineTextEditing(
+            targetElementId,
+          ) ?? false,
+        elementId,
+      );
+      return false;
+    })
+    .toBe(true);
+  await editor.focus();
   await expect(editor).toBeFocused();
   return editor;
+}
+
+async function getEditorElementFrame(page: Page, elementId: string) {
+  const debugText = await page.getByTestId("editor-elements-debug").textContent();
+  const frame = (JSON.parse(debugText ?? "[]") as EditorElementFrame[]).find(
+    (candidate) => candidate.elementId === elementId,
+  );
+  if (!frame) throw new Error(`Unable to locate ${elementId}.`);
+  return frame;
 }
 
 async function moveCaretToEnd(editor: Locator) {
@@ -347,7 +364,7 @@ test.describe("B4 IME-safe contentEditable session", () => {
     const undoResponsePromise = page.waitForResponse((response) =>
       isDeckPutRequest(response.request(), project.projectId),
     );
-    await page.getByRole("button", { name: "실행 취소", exact: true }).click();
+    await page.keyboard.press(`${primaryModifier}+Z`);
     const undoResponse = await undoResponsePromise;
     expect(undoResponse.ok(), await undoResponse.text()).toBe(true);
     await expect(
@@ -371,5 +388,97 @@ test.describe("B4 IME-safe contentEditable session", () => {
     await expect(restoredEditor).not.toContainText("한글");
     await restoredEditor.press("Escape");
     expect(consoleErrors).toEqual([]);
+  });
+
+  test("keeps the inline editor visible and aligned while resizing its bottom handle", async ({
+    page,
+  }) => {
+    const deck = createRichTextDeck();
+    const element = deck.slides[0]?.elements.find(
+      (candidate) => candidate.elementId === "el_1",
+    );
+    if (!element || element.type !== "text") {
+      throw new Error("Resize fixture requires el_1 text.");
+    }
+    const longText = "한글 English 123 — 긴 텍스트 overflow 검증 ".repeat(12);
+    element.x = 180;
+    element.y = 180;
+    element.width = 900;
+    element.height = 180;
+    element.rotation = 0;
+    element.props = normalizeRichTextProps({
+      ...element.props,
+      paragraphs: [
+        {
+          align: "left",
+          indent: 0,
+          lineHeight: 1.2,
+          runs: [{ baseline: "normal", text: longText }],
+          spaceAfter: 0,
+          spaceBefore: 0,
+          text: longText,
+        },
+      ],
+      text: longText,
+    });
+
+    const { project } = await createAuthenticatedProject(page, {
+      deck,
+      label: "rich-text-resize-preview",
+    });
+    const patchRequests: Request[] = [];
+    page.on("request", (request) => {
+      if (isDeckPatchRequest(request, project.projectId)) {
+        patchRequests.push(request);
+      }
+    });
+    await openEditor(page, project.projectId);
+
+    const editor = await beginInlineEditing(page, "el_1");
+    const stageBox = await page.getByTestId("editor-stage-shell").boundingBox();
+    const initialFrame = await getEditorElementFrame(page, "el_1");
+    const initialEditorBox = await editor.boundingBox();
+    if (!stageBox || !initialEditorBox) {
+      throw new Error("Resize fixture geometry is unavailable.");
+    }
+    const scale = stageBox.width / canvasWidth;
+    const resizeHandle = {
+      x: stageBox.x + (initialFrame.x + initialFrame.width / 2) * scale,
+      y: stageBox.y + (initialFrame.y + initialFrame.height + 8) * scale,
+    };
+
+    await page.mouse.move(resizeHandle.x, resizeHandle.y);
+    await page.mouse.down();
+    await page.mouse.move(resizeHandle.x, resizeHandle.y + 160 * scale, {
+      steps: 12,
+    });
+
+    await expect(editor).toBeVisible();
+    await expect(editor).toContainText("한글 English 123");
+    await expect
+      .poll(async () => (await editor.boundingBox())?.height ?? 0)
+      .toBeGreaterThan(initialEditorBox.height + 100 * scale);
+
+    const patchResponsePromise = page.waitForResponse((response) =>
+      isDeckPatchRequest(response.request(), project.projectId),
+    );
+    await page.mouse.up();
+    const patchResponse = await patchResponsePromise;
+    expect(patchResponse.ok(), await patchResponse.text()).toBe(true);
+
+    await expect
+      .poll(async () => (await getEditorElementFrame(page, "el_1")).height)
+      .toBeGreaterThan(initialFrame.height + 100);
+    const frameOperations = patchRequests.flatMap((request) => {
+      const body = request.postDataJSON() as { patch?: DeckPatch };
+      return (
+        body.patch?.operations.filter(
+          (operation) =>
+            operation.type === "update_element_frame" &&
+            operation.elementId === "el_1",
+        ) ?? []
+      );
+    });
+    expect(frameOperations).toHaveLength(1);
   });
 });
