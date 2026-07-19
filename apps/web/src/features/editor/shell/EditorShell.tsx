@@ -129,6 +129,7 @@ import { EditorContextMenus } from "./components/EditorContextMenus";
 import { EditorModals } from "./components/EditorModals";
 import { EditorCanvasStage } from "./components/EditorCanvasStage";
 import { EditorToolbar } from "./components/EditorToolbar";
+import { PrintDeckView } from "./components/PrintDeckView";
 import { IconLibrarySidePanel } from "./components/IconLibrarySidePanel";
 import {
   EditorRightPanel,
@@ -167,6 +168,11 @@ import { useEditorSlideRehearsal } from "./hooks/useEditorSlideRehearsal";
 import { useSlidePracticeSession } from "../practice/useSlidePracticeSession";
 import { useShapeMenuPlacement } from "./hooks/useShapeMenuPlacement";
 import { createSelectionNudgePatch } from "./utils/selectionNudge";
+import {
+  canApplyFormatPainter,
+  createFormatPainterPayload,
+  type FormatPainterPayload,
+} from "./utils/formatPainter";
 import {
   maximumManualEditorZoom,
   minimumManualEditorZoom
@@ -244,6 +250,8 @@ export function EditorShell(props: { projectId?: string }) {
   const canMutateDeck = canMutateProjectDeck(projectAccessMembership);
   const [currentSlideId, setCurrentSlideId] = useState<string | null>(null);
   const [isDeleteUndoToastOpen, setIsDeleteUndoToastOpen] = useState(false);
+  const [formatPainterPayload, setFormatPainterPayload] =
+    useState<FormatPainterPayload | null>(null);
   const resetProjectUiState = useEditorShellUiStore(
     (state) => state.resetProjectUiState
   );
@@ -1205,6 +1213,21 @@ export function EditorShell(props: { projectId?: string }) {
       return;
     }
 
+    if (formatPainterPayload && currentSlide) {
+      const target = visibleElements.find((element) => element.elementId === elementId);
+      if (target && canApplyFormatPainter(formatPainterPayload, target)) {
+        handleElementPropsChange(
+          currentSlide.slideId,
+          target.elementId,
+          formatPainterPayload.props,
+        );
+        handleElementFrameChange(currentSlide.slideId, target.elementId, {
+          opacity: formatPainterPayload.opacity,
+        });
+      }
+      setFormatPainterPayload(null);
+    }
+
     setSelectedElementIds([elementId]);
     openPropertiesForCanvasSelection([elementId]);
   }
@@ -1906,11 +1929,24 @@ export function EditorShell(props: { projectId?: string }) {
           insertTool={insertTool}
           isAnimationPanelOpen={isAnimationPanelOpen}
           isChartMenuOpen={isChartMenuOpen}
+          isFormatPainterActive={formatPainterPayload !== null}
           isIconPanelOpen={isIconPanelOpen}
           isImageUploadPending={isImageUploadPending}
           isShapeMenuOpen={isShapeMenuOpen}
           isStageFitToViewport={isStageFitToViewport}
+          onAddSlide={handleAddSlide}
           onAddText={handleAddTextElement}
+          onChangeSelectedFrame={(patch) => {
+            if (!currentSlide || !selectedElement) return;
+            handleElementFrameChange(currentSlide.slideId, selectedElement.elementId, patch);
+          }}
+          onChangeSelectedProps={(patch) => {
+            if (!currentSlide || !selectedElement) return;
+            handleElementPropsChange(currentSlide.slideId, selectedElement.elementId, patch);
+          }}
+          onDistributeSelectionX={() => handleDistributeSelection("x")}
+          onDistributeSelectionY={() => handleDistributeSelection("y")}
+          onGroupSelection={handleCreateGroupFromSelection}
           onOpenAnimation={openAnimationInspector}
           onOpenIconLibrary={toggleIconLibrary}
           onOpenImagePicker={() => {
@@ -1921,6 +1957,8 @@ export function EditorShell(props: { projectId?: string }) {
               });
             }
           }}
+          onOpenProperties={requestPropertiesPanel}
+          onPrint={() => window.print()}
           onRedo={handleRedo}
           onSelectTool={() => setInsertTool("select")}
           onToggleChartMenu={() => {
@@ -1931,13 +1969,24 @@ export function EditorShell(props: { projectId?: string }) {
             setIsChartMenuOpen(false);
             setIsShapeMenuOpen((current) => !current);
           }}
+          onToggleFormatPainter={() => {
+            if (formatPainterPayload) {
+              setFormatPainterPayload(null);
+              return;
+            }
+            if (selectedElement) {
+              setFormatPainterPayload(createFormatPainterPayload(selectedElement));
+            }
+          }}
           onUndo={handleUndo}
           onFitStageToViewport={fitStageToViewport}
           onZoomIn={zoomCanvasIn}
           onZoomOut={zoomCanvasOut}
           onZoomToActualSize={zoomToActualSize}
           redoDisabled={redoStack.length === 0}
+          selectedElement={selectedElement}
           selectedElementAnimationCount={selectedElementAnimations.length}
+          selectedElementCount={selectedElementIds.length}
           shapeMenuButtonRef={shapeMenuButtonRef}
           stageScale={stageScale}
           undoDisabled={undoStack.length === 0}
@@ -2324,6 +2373,7 @@ export function EditorShell(props: { projectId?: string }) {
           onChange={handlePptxFileInputChange}
         />
       </main>
+      <PrintDeckView deck={deck} />
       {canMutateDeck && isDeleteUndoToastOpen ? (
         <EditorUndoToast
           message="슬라이드가 삭제되었습니다"
