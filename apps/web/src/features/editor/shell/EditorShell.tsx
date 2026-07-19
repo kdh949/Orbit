@@ -105,6 +105,7 @@ import type {
   SemanticCue,
 } from "@orbit/shared";
 import { useQuery } from "@tanstack/react-query";
+import { IconAdjustmentsHorizontal } from "@tabler/icons-react";
 import type Konva from "konva";
 import type {
   CSSProperties,
@@ -2154,8 +2155,8 @@ export function EditorShell(props: { projectId?: string }) {
                 type="button"
                 onClick={handleOpenCompactSelectionInspector}
               >
-                <span>속성</span>
-                <span id="compact-selection-count">
+                <IconAdjustmentsHorizontal aria-hidden="true" size={17} />
+                <span className="compact-selection-count" id="compact-selection-count">
                   {selectionInspectorModel.selectedCount}개 선택됨
                 </span>
               </button>

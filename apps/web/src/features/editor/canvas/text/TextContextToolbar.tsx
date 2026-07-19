@@ -16,20 +16,30 @@ import type {
 } from "@orbit/shared";
 import type { FontAssetGroup } from "@orbit/font-assets";
 import {
+  IconAlignCenter,
+  IconAlignJustified,
+  IconAlignLeft,
+  IconAlignRight,
   IconBold,
+  IconChevronDown,
   IconClearFormatting,
+  IconHighlight,
   IconIndentDecrease,
   IconIndentIncrease,
   IconItalic,
+  IconLetterCase,
+  IconLineHeight,
   IconLink,
   IconList,
   IconListNumbers,
   IconMinus,
   IconPlus,
+  IconTypography,
   IconUnderline,
 } from "@tabler/icons-react";
 import {
   type MouseEvent as ReactMouseEvent,
+  type CSSProperties,
   useCallback,
   useEffect,
   useRef,
@@ -43,6 +53,7 @@ import {
   supportedEditorFonts,
   type FontLoadResult,
 } from "../../../fonts/fontRegistry";
+import { ToolbarPopover } from "../../toolbar/ToolbarPopover";
 import { getRichTextStyleActionState } from "./richTextEditCapability";
 import "./TextContextToolbar.css";
 
@@ -85,6 +96,19 @@ const fontPurposeLabels: Record<string, string> = {
   Merriweather: "영문 본문",
   "Bebas Neue": "영문 제목",
 };
+const textAlignmentOptions = [
+  { Icon: IconAlignLeft, label: "왼쪽", value: "left" },
+  { Icon: IconAlignCenter, label: "가운데", value: "center" },
+  { Icon: IconAlignRight, label: "오른쪽", value: "right" },
+  { Icon: IconAlignJustified, label: "양쪽", value: "justify" },
+] as const;
+const lineHeightOptions = [
+  { label: "1.0", value: 1 },
+  { label: "1.15", value: 1.15 },
+  { label: "1.2", value: 1.2 },
+  { label: "1.5", value: 1.5 },
+  { label: "2.0", value: 2 },
+] as const;
 const toolbarGap = 8;
 const viewportPadding = 12;
 
@@ -390,6 +414,14 @@ export function TextContextToolbar(props: {
   const alignValue = paragraphStyle.align.mixed
     ? "__mixed__"
     : paragraphStyle.align.value;
+  const AlignmentIcon =
+    alignValue === "center"
+      ? IconAlignCenter
+      : alignValue === "right"
+        ? IconAlignRight
+        : alignValue === "justify"
+          ? IconAlignJustified
+          : IconAlignLeft;
   const bulletPressed = paragraphStyle.bullet.mixed
     ? "mixed"
     : Boolean(paragraphStyle.bullet.value?.enabled);
@@ -445,7 +477,7 @@ export function TextContextToolbar(props: {
       onBlurCapture={(event) => onEditCompositeBlur?.(event.relatedTarget)}
       onPointerDownCapture={() => onPreserveRange?.()}
       ref={toolbarRef}
-      role="toolbar"
+      role="group"
       style={{
         left: dockTarget ? undefined : (placement?.left ?? 0),
         position: dockTarget ? "static" : "fixed",
@@ -454,52 +486,64 @@ export function TextContextToolbar(props: {
       }}
       title={disabledReason}
     >
-      <label className="text-context-toolbar-field text-context-toolbar-font">
-        <span>글꼴</span>
-        <select
-          aria-label="글꼴"
-          disabled={disabled || fontLoadState === "loading"}
-          value={fontValue}
-          onChange={(event) => {
-            if (event.target.value) void selectFont(event.target.value);
-          }}
-        >
-          {characterStyle.fontFamily.mixed ? (
-            <option disabled value="__mixed__">
-              혼합
-            </option>
-          ) : fontValue === "" ? (
-            <option disabled value="">
-              사용 가능한 글꼴 선택
-            </option>
-          ) : null}
-          {(Object.keys(fontGroupLabels) as FontAssetGroup[]).map((group) => {
+      <ToolbarPopover
+        buttonClassName="text-context-toolbar-font-trigger"
+        buttonContent={
+          <>
+            <IconTypography aria-hidden="true" size={17} />
+            <span>
+              {characterStyle.fontFamily.mixed
+                ? "혼합"
+                : currentFontFamily || "글꼴 선택"}
+            </span>
+            <IconChevronDown aria-hidden="true" size={13} />
+          </>
+        }
+        contentLabel="글꼴 선택"
+        contentRole="listbox"
+        disabled={disabled || fontLoadState === "loading"}
+        label="글꼴"
+        onPreserveInteraction={onPreserveRange}
+      >
+        {({ close }) =>
+          (Object.keys(fontGroupLabels) as FontAssetGroup[]).map((group) => {
             const options = fontOptions.filter((option) => option.group === group);
             return options.length ? (
-              <optgroup key={group} label={fontGroupLabels[group]}>
+              <div className="text-context-toolbar-font-group" key={group} role="group">
+                <span className="editor-toolbar-popover-section-label">
+                  {fontGroupLabels[group]}
+                </span>
                 {options.map((option) => (
-                  <option
+                  <button
+                    aria-disabled={!option.available}
+                    aria-selected={option.family === fontValue}
                     disabled={!option.available}
                     key={option.family}
+                    role="option"
+                    style={{ fontFamily: option.family }}
                     title={option.disabledReason}
-                    value={option.family}
+                    type="button"
+                    onClick={() => {
+                      void selectFont(option.family);
+                      close();
+                    }}
                   >
                     {option.label}
                     {option.available ? "" : " (사용 불가)"}
-                  </option>
+                  </button>
                 ))}
-              </optgroup>
+              </div>
             ) : null;
-          })}
-        </select>
-        <span aria-live="polite" className="text-context-toolbar-font-status">
-          {fontLoadState === "loading"
-            ? "글꼴 불러오는 중"
-            : fontLoadState === "error"
-              ? "글꼴을 불러오지 못했습니다"
-              : ""}
-        </span>
-      </label>
+          })
+        }
+      </ToolbarPopover>
+      <span aria-live="polite" className="text-context-toolbar-font-status">
+        {fontLoadState === "loading"
+          ? "글꼴 불러오는 중"
+          : fontLoadState === "error"
+            ? "글꼴을 불러오지 못했습니다"
+            : ""}
+      </span>
 
       <div
         aria-label="글자 크기"
@@ -523,20 +567,28 @@ export function TextContextToolbar(props: {
         >
           <IconMinus aria-hidden="true" size={16} />
         </button>
-        <input
-          aria-label="글자 크기"
+        <ToolbarPopover
+          buttonClassName="text-context-toolbar-size-value"
+          buttonContent={<span>{fontSize ?? "혼합"}</span>}
+          contentLabel="글자 크기 입력"
           disabled={disabled}
-          min={1}
-          placeholder={fontSize === undefined ? "혼합" : undefined}
-          type="number"
-          value={fontSize ?? ""}
-          onChange={(event) => {
-            const nextSize = Number(event.target.value);
-            if (Number.isFinite(nextSize) && nextSize > 0) {
-              commit({ kind: "character", patch: { fontSize: nextSize } });
-            }
-          }}
-        />
+          label="글자 크기"
+          onPreserveInteraction={onPreserveRange}
+        >
+          <input
+            aria-label="글자 크기 입력"
+            min={1}
+            placeholder={fontSize === undefined ? "혼합" : undefined}
+            type="number"
+            value={fontSize ?? ""}
+            onChange={(event) => {
+              const nextSize = Number(event.target.value);
+              if (Number.isFinite(nextSize) && nextSize > 0) {
+                commit({ kind: "character", patch: { fontSize: nextSize } });
+              }
+            }}
+          />
+        </ToolbarPopover>
         <button
           aria-label="글자 크기 늘리기"
           disabled={disabled}
@@ -609,83 +661,118 @@ export function TextContextToolbar(props: {
         </button>
       </div>
 
-      <label className="text-context-toolbar-field text-context-toolbar-color">
-        <span>{characterStyle.color.mixed ? "글자색 (혼합)" : "글자색"}</span>
-        <input
-          aria-label="글자색"
-          disabled={disabled}
-          type="color"
-          value={colorValue}
-          onChange={(event) =>
-            commit({ kind: "character", patch: { color: event.target.value } })
-          }
-        />
-      </label>
-
-      <label className="text-context-toolbar-field text-context-toolbar-color">
-        <span>강조</span>
-        <input
-          aria-label="강조색"
-          disabled={disabled}
-          type="color"
-          value={toInputColor(characterStyle.highlightColor.value, "#FEF08A")}
-          onChange={(event) =>
-            commit({
-              kind: "character",
-              patch: { highlightColor: event.target.value },
-            })
-          }
-        />
-      </label>
-
-      <button
-        aria-label="링크"
+      <ToolbarPopover
+        buttonClassName="editor-toolbar-color-trigger"
+        buttonContent={
+          <>
+            <IconLetterCase aria-hidden="true" size={18} />
+            <span
+              aria-hidden="true"
+              className="editor-toolbar-color-swatch"
+              style={{ "--toolbar-swatch-color": colorValue } as CSSProperties}
+            />
+          </>
+        }
+        contentLabel="글자색 선택"
         disabled={disabled}
-        title="링크"
-        type="button"
-        onClick={() => {
-          const next = window.prompt(
-            "링크 URL을 입력하세요.",
-            characterStyle.hyperlink.value ?? "https://",
-          );
-          if (next === null) return;
-          const normalized = next.trim();
-          commit({
-            kind: "character",
-            patch: { hyperlink: normalized ? normalized : null },
-          });
-        }}
-        onMouseDown={preserveTextRange}
+        label={characterStyle.color.mixed ? "글자색 (혼합)" : "글자색"}
+        onPreserveInteraction={onPreserveRange}
       >
-        <IconLink aria-hidden="true" size={17} />
-      </button>
+        <label className="text-context-toolbar-popover-field">
+          <span>글자색</span>
+          <input
+            aria-label="글자색 선택"
+            type="color"
+            value={colorValue}
+            onChange={(event) =>
+              commit({ kind: "character", patch: { color: event.target.value } })
+            }
+          />
+        </label>
+      </ToolbarPopover>
 
-      <label className="text-context-toolbar-field text-context-toolbar-align">
-        <span>문단 정렬</span>
-        <select
-          aria-label="문단 정렬"
-          disabled={disabled}
-          value={alignValue}
-          onChange={(event) => {
-            const align = event.target.value as
-              | "center"
-              | "justify"
-              | "left"
-              | "right";
-            commit({ kind: "paragraph", patch: { align } });
-          }}
-        >
-          {paragraphStyle.align.mixed ? (
-            <option disabled value="__mixed__">
-              혼합
-            </option>
-          ) : null}
-          <option value="left">왼쪽</option>
-          <option value="center">가운데</option>
-          <option value="right">오른쪽</option>
-          <option value="justify">양쪽</option>
-        </select>
-      </label>
+      <ToolbarPopover
+        buttonClassName="editor-toolbar-color-trigger"
+        buttonContent={
+          <>
+            <IconHighlight aria-hidden="true" size={18} />
+            <span
+              aria-hidden="true"
+              className="editor-toolbar-color-swatch"
+              style={{
+                "--toolbar-swatch-color": toInputColor(
+                  characterStyle.highlightColor.value,
+                  "#FEF08A",
+                ),
+              } as CSSProperties}
+            />
+          </>
+        }
+        contentLabel="강조색 선택"
+        disabled={disabled}
+        label="강조색"
+        onPreserveInteraction={onPreserveRange}
+      >
+        <label className="text-context-toolbar-popover-field">
+          <span>강조색</span>
+          <input
+            aria-label="강조색 선택"
+            type="color"
+            value={toInputColor(characterStyle.highlightColor.value, "#FEF08A")}
+            onChange={(event) =>
+              commit({
+                kind: "character",
+                patch: { highlightColor: event.target.value },
+              })
+            }
+          />
+        </label>
+      </ToolbarPopover>
+
+      <TextLinkPopover
+        disabled={disabled}
+        value={characterStyle.hyperlink.value ?? ""}
+        onCommit={(hyperlink) =>
+          commit({ kind: "character", patch: { hyperlink } })
+        }
+        onPreserveRange={onPreserveRange}
+      />
+
+      <ToolbarPopover
+        active={paragraphStyle.align.mixed ? "mixed" : undefined}
+        buttonContent={
+          <>
+            <AlignmentIcon aria-hidden="true" size={17} />
+            <IconChevronDown aria-hidden="true" size={12} />
+          </>
+        }
+        contentLabel="문단 정렬 선택"
+        contentRole="menu"
+        disabled={disabled}
+        label="문단 정렬"
+        onPreserveInteraction={onPreserveRange}
+      >
+        {({ close }) =>
+          textAlignmentOptions.map(({ Icon: AlignIcon, label, value }) => (
+            <button
+              aria-checked={alignValue === value}
+              key={value}
+              role="menuitemradio"
+              type="button"
+              onClick={() => {
+                commit({
+                  kind: "paragraph",
+                  patch: { align: value },
+                });
+                close();
+              }}
+            >
+              <AlignIcon aria-hidden="true" size={17} />
+              {label}
+            </button>
+          ))
+        }
+      </ToolbarPopover>
 
       <button
         aria-label="글머리 기호"
@@ -779,26 +866,36 @@ export function TextContextToolbar(props: {
         <IconIndentIncrease aria-hidden="true" size={17} />
       </button>
 
-      <label className="text-context-toolbar-field">
-        <span>줄 간격</span>
-        <select
-          aria-label="줄 간격"
-          disabled={disabled}
-          value={paragraphStyle.lineHeight.value ?? 1.2}
-          onChange={(event) =>
-            commit({
-              kind: "paragraph",
-              patch: { lineHeight: Number(event.target.value) },
-            })
-          }
-        >
-          <option value={1}>1.0</option>
-          <option value={1.15}>1.15</option>
-          <option value={1.2}>1.2</option>
-          <option value={1.5}>1.5</option>
-          <option value={2}>2.0</option>
-        </select>
-      </label>
+      <ToolbarPopover
+        buttonContent={
+          <>
+            <IconLineHeight aria-hidden="true" size={17} />
+            <IconChevronDown aria-hidden="true" size={12} />
+          </>
+        }
+        contentLabel="줄 간격 선택"
+        contentRole="menu"
+        disabled={disabled}
+        label="줄 간격"
+        onPreserveInteraction={onPreserveRange}
+      >
+        {({ close }) =>
+          lineHeightOptions.map(({ label, value }) => (
+            <button
+              aria-checked={paragraphStyle.lineHeight.value === value}
+              key={value}
+              role="menuitemradio"
+              type="button"
+              onClick={() => {
+                commit({ kind: "paragraph", patch: { lineHeight: value } });
+                close();
+              }}
+            >
+              {label}
+            </button>
+          ))
+        }
+      </ToolbarPopover>
 
       <button
         aria-label="서식 지우기"
@@ -839,6 +936,68 @@ export function TextContextToolbar(props: {
   if (dockTarget) return createPortal(content, dockTarget);
   if (typeof document === "undefined" || !document.body) return content;
   return createPortal(content, document.body);
+}
+
+function TextLinkPopover(props: {
+  disabled: boolean;
+  onCommit: (hyperlink: string | null) => void;
+  onPreserveRange?: () => void;
+  value: string;
+}) {
+  const [draft, setDraft] = useState(props.value || "https://");
+
+  useEffect(() => {
+    setDraft(props.value || "https://");
+  }, [props.value]);
+
+  return (
+    <ToolbarPopover
+      active={Boolean(props.value)}
+      buttonContent={<IconLink aria-hidden="true" size={17} />}
+      contentLabel="링크 편집"
+      disabled={props.disabled}
+      label="링크"
+      onOpenChange={(isOpen) => {
+        if (isOpen) setDraft(props.value || "https://");
+      }}
+      onPreserveInteraction={props.onPreserveRange}
+    >
+      {({ close }) => (
+        <form
+          className="text-context-toolbar-link-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const normalized = draft.trim();
+            props.onCommit(normalized ? normalized : null);
+            close();
+          }}
+        >
+          <input
+            autoFocus
+            aria-label="링크 URL"
+            inputMode="url"
+            type="url"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+          />
+          <div className="text-context-toolbar-link-actions">
+            {props.value ? (
+              <button
+                type="button"
+                onClick={() => {
+                  props.onCommit(null);
+                  close();
+                }}
+              >
+                제거
+              </button>
+            ) : null}
+            <button type="submit">적용</button>
+          </div>
+        </form>
+      )}
+    </ToolbarPopover>
+  );
 }
 
 function getActiveRange(range: RichTextRange | null | undefined) {

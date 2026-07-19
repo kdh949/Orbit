@@ -1,0 +1,149 @@
+.editor-toolbar-popover-anchor {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.editor-toolbar-popover-trigger {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--redesign-radius-md);
+  color: var(--redesign-color-on-surface-variant);
+  cursor: pointer;
+  display: inline-flex;
+  gap: var(--redesign-space-1);
+  height: var(--redesign-size-control-sm);
+  justify-content: center;
+  min-width: var(--redesign-size-control-sm);
+  padding: 0 var(--redesign-space-1);
+}
+
+.editor-toolbar-popover-trigger:hover:not(:disabled) {
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-on-surface);
+}
+
+.editor-toolbar-popover-trigger[aria-expanded="true"],
+.editor-toolbar-popover-trigger[aria-pressed="true"],
+.editor-toolbar-popover-trigger[aria-pressed="mixed"] {
+  background: var(--redesign-color-primary-subtle);
+  color: var(--redesign-color-primary);
+}
+
+.editor-toolbar-popover-trigger:focus-visible {
+  box-shadow: var(--redesign-focus-ring);
+  outline: none;
+}
+
+.editor-toolbar-popover-trigger:disabled {
+  color: var(--redesign-color-on-disabled);
+  cursor: not-allowed;
+}
+
+.editor-toolbar-popover {
+  background: var(--redesign-color-surface-container-lowest);
+  border: var(--redesign-border-subtle);
+  border-radius: var(--redesign-radius-lg);
+  box-shadow: var(--redesign-shadow-overlay);
+  color: var(--redesign-color-on-surface);
+  display: grid;
+  gap: var(--redesign-space-1);
+  max-height: min(360px, calc(100vh - var(--redesign-space-4)));
+  min-width: 180px;
+  overflow: auto;
+  padding: var(--redesign-space-2);
+  position: fixed;
+  z-index: var(--redesign-z-modal);
+}
+
+.editor-toolbar-popover button,
+.editor-toolbar-popover input {
+  border: 1px solid transparent;
+  border-radius: var(--redesign-radius-md);
+  font: inherit;
+  min-height: var(--redesign-size-control-sm);
+}
+
+.editor-toolbar-popover button {
+  align-items: center;
+  background: transparent;
+  color: var(--redesign-color-on-surface);
+  cursor: pointer;
+  display: flex;
+  gap: var(--redesign-space-2);
+  justify-content: flex-start;
+  padding: 0 var(--redesign-space-2);
+  text-align: left;
+  width: 100%;
+}
+
+.editor-toolbar-popover button:hover:not(:disabled),
+.editor-toolbar-popover button[aria-selected="true"] {
+  background: var(--redesign-color-primary-subtle);
+  color: var(--redesign-color-primary);
+}
+
+.editor-toolbar-popover button:focus-visible,
+.editor-toolbar-popover input:focus-visible {
+  box-shadow: var(--redesign-focus-ring);
+  outline: none;
+}
+
+.editor-toolbar-popover button:disabled {
+  color: var(--redesign-color-on-disabled);
+  cursor: not-allowed;
+}
+
+.editor-toolbar-popover input:not([type="color"]) {
+  background: var(--redesign-color-surface-container-low);
+  border-color: var(--redesign-color-outline-variant);
+  color: var(--redesign-color-on-surface);
+  padding: 0 var(--redesign-space-2);
+}
+
+.editor-toolbar-popover-section-label {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 700;
+  padding: var(--redesign-space-1) var(--redesign-space-2) 0;
+}
+
+.selection-context-popover-field {
+  align-items: center;
+  display: flex;
+  gap: var(--redesign-space-3);
+  justify-content: space-between;
+  min-width: 180px;
+  white-space: nowrap;
+}
+
+.selection-context-popover-field input[type="color"] {
+  cursor: pointer;
+  padding: 0;
+  width: var(--redesign-size-control-md);
+}
+
+.selection-context-popover-field input[type="number"] {
+  width: 84px;
+}
+
+.editor-toolbar-color-swatch {
+  background: var(--toolbar-swatch-color, transparent);
+  border: 1px solid color-mix(in srgb, var(--redesign-color-on-surface) 24%, transparent);
+  bottom: 2px;
+  height: 2px;
+  inset-inline: var(--redesign-space-1);
+  pointer-events: none;
+  position: absolute;
+}
+
+.editor-toolbar-color-trigger {
+  position: relative;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-toolbar-popover,
+  .editor-toolbar-popover-trigger {
+    transition: none;
+  }
+}

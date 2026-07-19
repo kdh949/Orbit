@@ -68,8 +68,28 @@
   font-size: var(--redesign-type-label-sm-size);
 }
 
-.text-context-toolbar-font select {
-  max-width: 210px;
+.text-context-toolbar-font-trigger {
+  justify-content: flex-start;
+  max-width: 180px;
+  min-width: 128px;
+}
+
+.text-context-toolbar-font-trigger > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-context-toolbar-font-group {
+  display: grid;
+  gap: 2px;
+}
+
+.text-context-toolbar-font-group + .text-context-toolbar-font-group {
+  border-top: 1px solid var(--redesign-color-outline-variant);
+  margin-top: var(--redesign-space-1);
+  padding-top: var(--redesign-space-1);
 }
 
 .text-context-toolbar-font-status {
@@ -77,26 +97,58 @@
   font-size: var(--redesign-type-label-sm-size);
 }
 
+.text-context-toolbar-font-status:empty {
+  display: none;
+}
+
 .text-context-toolbar-size {
   display: flex;
 }
 
-.text-context-toolbar-size input {
-  border-radius: 0;
-  max-width: 58px;
-  text-align: center;
+.text-context-toolbar-size-value {
+  min-width: 48px;
+  padding-inline: var(--redesign-space-2);
+  font-variant-numeric: tabular-nums;
 }
 
-.text-context-toolbar-size button:first-child {
+.text-context-toolbar-size > button:first-child {
   border-radius: var(--redesign-radius-md) 0 0 var(--redesign-radius-md);
 }
 
-.text-context-toolbar-size button:last-child {
+.text-context-toolbar-size > button:last-child {
   border-radius: 0 var(--redesign-radius-md) var(--redesign-radius-md) 0;
 }
 
-.text-context-toolbar-color input {
+.text-context-toolbar-popover-field {
+  align-items: center;
+  display: flex;
+  gap: var(--redesign-space-3);
+  justify-content: space-between;
+  min-width: 180px;
+}
+
+.text-context-toolbar-popover-field input[type="color"] {
   cursor: pointer;
   padding: 0;
-  width: 34px;
+  width: var(--redesign-size-control-md);
+}
+
+.text-context-toolbar-link-form {
+  display: grid;
+  gap: var(--redesign-space-2);
+  min-width: 280px;
+}
+
+.text-context-toolbar-link-form > input {
+  width: 100%;
+}
+
+.text-context-toolbar-link-actions {
+  display: flex;
+  gap: var(--redesign-space-1);
+  justify-content: flex-end;
+}
+
+.text-context-toolbar-link-actions button {
+  width: auto;
 }

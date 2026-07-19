@@ -14787,19 +14787,30 @@ body.is-resizing-speaker-notes {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: var(--redesign-space-2);
-  min-height: 36px;
-  padding: 0 var(--redesign-space-3);
-  border: 1px solid var(--redesign-color-outline-variant);
-  border-radius: var(--redesign-radius-sm);
-  background: var(--redesign-color-primary-container);
-  color: var(--redesign-color-on-primary-container);
+  justify-content: center;
+  min-height: var(--redesign-size-control-sm);
+  min-width: var(--redesign-size-control-sm);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--redesign-radius-md);
+  background: transparent;
+  color: var(--redesign-color-on-surface-variant);
   white-space: nowrap;
 }
 
-.orbit-shell.editor-professional .compact-selection-trigger span:last-child {
-  color: var(--redesign-color-on-surface-variant);
-  font-size: var(--redesign-type-label-sm-size);
+.orbit-shell.editor-professional .compact-selection-trigger:hover {
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional .compact-selection-count {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
 
 .orbit-shell.editor-professional .compact-selection-trigger:focus-visible,

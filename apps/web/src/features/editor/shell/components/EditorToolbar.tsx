@@ -6,16 +6,22 @@ import {
   IconBoxMultiple,
   IconBrush as Paintbrush,
   IconChartBar as BarChart3,
+  IconBorderStyle2,
   IconChevronDown as ChevronDown,
+  IconColorPicker,
   IconFilePlus as FilePlus,
   IconChevronLeft as ChevronLeft,
   IconCrop,
+  IconDroplet,
   IconPhotoPlus as ImagePlus,
   IconIcons,
   IconPointer as MousePointer2,
   IconPrinter as Printer,
   IconLayoutDistributeHorizontal,
   IconLayoutDistributeVertical,
+  IconLine,
+  IconLineDashed,
+  IconPercentage,
   IconSearch as Search,
   IconShape as Shapes,
   IconSparkles as Sparkles,
@@ -25,11 +31,13 @@ import {
   useEffect,
   useMemo,
   useState,
+  type CSSProperties,
   type ReactNode,
   type RefObject,
 } from "react";
 
 import type { InsertTool } from "../editorShellUiStore";
+import { ToolbarPopover } from "../../toolbar/ToolbarPopover";
 import { EditorCommandScroller } from "./EditorCommandScroller";
 import { EditorZoomControls } from "./EditorZoomControls";
 
@@ -244,20 +252,59 @@ function ToolbarSelectionContext(props: EditorToolbarProps & { contextKind: Edit
   const isImage = props.contextKind === "image";
   const isShape = props.contextKind === "shape";
   const elementProps = element.props as Record<string, unknown>;
+  const fillColor = toToolbarColor(elementProps.fill, "#ffffff");
+  const strokeColor = toToolbarColor(elementProps.stroke, "#111827");
+  const isDashed = Array.isArray(elementProps.dash) && elementProps.dash.length > 0;
   return (
     <div aria-label={`${isImage ? "이미지" : "도형"} 서식`} className="selection-context-toolbar" role="group">
       {isShape ? <>
-        <label>채우기 <input aria-label="채우기 색" type="color" value={toToolbarColor(elementProps.fill, "#ffffff")} onChange={(event) => props.onChangeSelectedProps({ fill: event.target.value })} /></label>
-        <label>선 <input aria-label="선 색" type="color" value={toToolbarColor(elementProps.stroke, "#111827")} onChange={(event) => props.onChangeSelectedProps({ stroke: event.target.value })} /></label>
-        <label>두께 <input aria-label="선 두께" min={0} type="number" value={Number(elementProps.strokeWidth ?? 0)} onChange={(event) => props.onChangeSelectedProps({ strokeWidth: Number(event.target.value) })} /></label>
-        <label>선 종류 <select aria-label="선 종류" value={Array.isArray(elementProps.dash) && elementProps.dash.length ? "dash" : "solid"} onChange={(event) => props.onChangeSelectedProps({ dash: event.target.value === "dash" ? [8, 6] : [] })}><option value="solid">실선</option><option value="dash">점선</option></select></label>
+        <ToolbarPopover
+          buttonClassName="editor-toolbar-color-trigger"
+          buttonContent={<><IconDroplet aria-hidden="true" size={17} /><span aria-hidden="true" className="editor-toolbar-color-swatch" style={{ "--toolbar-swatch-color": fillColor } as CSSProperties} /></>}
+          contentLabel="채우기 색 선택"
+          label="채우기 색"
+        >
+          <label className="selection-context-popover-field">채우기 색 <input aria-label="채우기 색 선택" type="color" value={fillColor} onChange={(event) => props.onChangeSelectedProps({ fill: event.target.value })} /></label>
+        </ToolbarPopover>
+        <ToolbarPopover
+          buttonClassName="editor-toolbar-color-trigger"
+          buttonContent={<><IconColorPicker aria-hidden="true" size={17} /><span aria-hidden="true" className="editor-toolbar-color-swatch" style={{ "--toolbar-swatch-color": strokeColor } as CSSProperties} /></>}
+          contentLabel="선 색 선택"
+          label="선 색"
+        >
+          <label className="selection-context-popover-field">선 색 <input aria-label="선 색 선택" type="color" value={strokeColor} onChange={(event) => props.onChangeSelectedProps({ stroke: event.target.value })} /></label>
+        </ToolbarPopover>
+        <ToolbarPopover
+          buttonContent={<IconBorderStyle2 aria-hidden="true" size={17} />}
+          contentLabel="선 두께 입력"
+          label="선 두께"
+        >
+          <label className="selection-context-popover-field">선 두께 <input aria-label="선 두께 입력" min={0} type="number" value={Number(elementProps.strokeWidth ?? 0)} onChange={(event) => props.onChangeSelectedProps({ strokeWidth: Number(event.target.value) })} /></label>
+        </ToolbarPopover>
+        <ToolbarPopover
+          buttonContent={isDashed ? <IconLineDashed aria-hidden="true" size={17} /> : <IconLine aria-hidden="true" size={17} />}
+          contentLabel="선 종류 선택"
+          contentRole="menu"
+          label="선 종류"
+        >
+          {({ close }) => <>
+            <button aria-checked={!isDashed} role="menuitemradio" type="button" onClick={() => { props.onChangeSelectedProps({ dash: [] }); close(); }}><IconLine aria-hidden="true" size={17} />실선</button>
+            <button aria-checked={isDashed} role="menuitemradio" type="button" onClick={() => { props.onChangeSelectedProps({ dash: [8, 6] }); close(); }}><IconLineDashed aria-hidden="true" size={17} />점선</button>
+          </>}
+        </ToolbarPopover>
       </> : null}
       {isImage ? (
         <CommandButton label="자르기·교체" onClick={props.onOpenProperties}>
           <IconCrop aria-hidden="true" size={17} />
         </CommandButton>
       ) : null}
-      <label>불투명도 <input aria-label="불투명도" max={100} min={0} type="number" value={Math.round(element.opacity * 100)} onChange={(event) => props.onChangeSelectedFrame({ opacity: Math.max(0, Math.min(100, Number(event.target.value))) / 100 })} /></label>
+      <ToolbarPopover
+        buttonContent={<IconPercentage aria-hidden="true" size={17} />}
+        contentLabel="불투명도 입력"
+        label="불투명도"
+      >
+        <label className="selection-context-popover-field">불투명도 <input aria-label="불투명도 입력" max={100} min={0} type="number" value={Math.round(element.opacity * 100)} onChange={(event) => props.onChangeSelectedFrame({ opacity: Math.max(0, Math.min(100, Number(event.target.value))) / 100 })} /></label>
+      </ToolbarPopover>
     </div>
   );
 }

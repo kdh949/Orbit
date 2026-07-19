@@ -141,6 +141,26 @@ describe("EditorToolbar", () => {
     expect(html).not.toContain('aria-label="삽입 명령"');
   });
 
+  it("moves shape values into icon popovers instead of exposed fields", () => {
+    const shape = createDemoDeck().slides[0]!.elements.find(
+      (element) => element.type === "rect",
+    ) as DeckElement;
+    const html = renderToStaticMarkup(
+      <EditorToolbar
+        {...createToolbarProps({ selectedElement: shape, selectedElementCount: 1 })}
+      />,
+    );
+
+    expect(html).toContain('aria-label="채우기 색"');
+    expect(html).toContain('aria-label="선 색"');
+    expect(html).toContain('aria-label="선 두께"');
+    expect(html).toContain('aria-label="선 종류"');
+    expect(html).toContain('aria-label="불투명도"');
+    expect(html).not.toContain("<select");
+    expect(html).not.toContain('type="color"');
+    expect(html).not.toContain('type="number"');
+  });
+
   it("renders the collapsed right panel opener next to zoom controls", () => {
     const html = renderToStaticMarkup(
       <EditorToolbar

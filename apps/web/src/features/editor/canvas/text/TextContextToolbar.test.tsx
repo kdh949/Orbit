@@ -370,7 +370,7 @@ describe("TextContextToolbar", () => {
       />,
     );
 
-    expect(html).toContain('role="toolbar"');
+    expect(html).toContain('role="group"');
     expect(html).toContain("글꼴");
     expect(html).toContain("글자 크기 줄이기");
     expect(html).toContain("굵게");
@@ -392,30 +392,28 @@ describe("TextContextToolbar", () => {
     expect(html).not.toContain(">B</button>");
     expect(html).not.toContain("• 목록");
     expect(html).not.toContain("⇤");
+    expect(html).not.toContain("<select");
+    expect(html).not.toContain('type="color"');
+    expect(html).not.toContain('type="number"');
   });
 
   it("groups the fifteen supported fonts and explains presentation uses", () => {
-    const { deck, element, slide } = getTextFixture();
-    const html = renderToString(
-      <TextContextToolbar
-        deck={deck}
-        element={element}
-        range={{ end: 1, start: 0 }}
-        readOnly={false}
-        slide={slide}
-        stageElement={null}
-        stageScale={1}
-        onCommitProps={vi.fn()}
-      />,
-    );
+    const options = getTextContextToolbarFontOptions({
+      isImported: false,
+      loadedFontFamilies: supportedEditorFonts.map((font) => font.family),
+    });
 
-    expect(html).toContain('label="기본"');
-    expect(html).toContain('label="한글 디자인"');
-    expect(html).toContain('label="영문 디자인"');
-    expect(html).toContain("Black Han Sans · 한글 제목");
-    expect(html).toContain("Merriweather · 영문 본문");
+    expect(new Set(options.map((option) => option.group))).toEqual(
+      new Set(["basic", "korean-design", "english-design"]),
+    );
+    expect(options.map((option) => option.label)).toContain(
+      "Black Han Sans · 한글 제목",
+    );
+    expect(options.map((option) => option.label)).toContain(
+      "Merriweather · 영문 본문",
+    );
     for (const font of supportedEditorFonts) {
-      expect(html).toContain(`value="${font.family}"`);
+      expect(options.map((option) => option.family)).toContain(font.family);
     }
   });
 
@@ -470,7 +468,6 @@ describe("TextContextToolbar", () => {
       "원본 OOXML 구조에서 이 편집을 안전하게 보존할 수 없습니다.",
     );
     expect(html).toContain("Aptos Display");
-    expect(html).toContain("(사용 불가)");
     expect(html).toContain("disabled");
   });
 });
