@@ -11,12 +11,12 @@ import type { ReactNode } from "react";
 import type { Deck, RehearsalReport, RehearsalRun } from "@orbit/shared";
 import { OrbitButton } from "../../components/ui";
 import { navigateTo } from "./rehearsalUtils";
-import { RehearsalAiSummaryOverview } from "./RehearsalAiSummaryOverview";
 import { RehearsalHabitOverview } from "./RehearsalHabitOverview";
 import { RehearsalSilenceOverview } from "./RehearsalSilenceOverview";
 import { RehearsalVolumeOverview } from "./RehearsalVolumeOverview";
 import { RehearsalSlideCoachingViewer } from "./RehearsalSlideCoachingViewer";
 import { RehearsalSlideTimingOverview } from "./RehearsalSlideTimingOverview";
+import { RehearsalReportTestView } from "./RehearsalReportTestView";
 import { downloadTranscriptDocx } from "./rehearsalTranscriptExport";
 import type { SemanticRetryState } from "./RehearsalSemanticCoverage";
 import "./rehearsal-report-components.css";
@@ -34,7 +34,9 @@ function fmtDelta(diff: number) {
   const sign = diff >= 0 ? "+" : "−";
   const m = Math.floor(abs / 60);
   const s = abs % 60;
-  return m > 0 ? `${sign}${m}분 ${s.toString().padStart(2, "0")}초` : `${sign}${s}초`;
+  return m > 0
+    ? `${sign}${m}분 ${s.toString().padStart(2, "0")}초`
+    : `${sign}${s}초`;
 }
 
 function formatDate(iso: string) {
@@ -43,6 +45,7 @@ function formatDate(iso: string) {
 }
 
 type Props = {
+  audioPlaybackAvailable?: boolean;
   deck: Deck | null;
   onSemanticRetry?: () => void;
   practiceGoalSummary?: ReactNode;
@@ -54,10 +57,9 @@ type Props = {
   semanticRetryState?: SemanticRetryState;
   totalRunCount: number;
 };
-type ReportTab = "overview" | "slides";
-
 
 export function RehearsalReportDocument({
+  audioPlaybackAvailable = true,
   deck,
   practiceGoalSummary,
   prevReports,
@@ -68,7 +70,6 @@ export function RehearsalReportDocument({
   totalRunCount: _totalRunCount,
 }: Props) {
   const [transcriptOpen, setTranscriptOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<ReportTab>("overview");
 
   const metrics = report.metrics;
   const slideTimings = report.slideTimings;
@@ -76,14 +77,16 @@ export function RehearsalReportDocument({
     if (!deck) return deck;
 
     const snapshots = new Map(
-      run?.evaluationSnapshot?.slides.map((slide) => [slide.slideId, slide]) ?? [],
+      run?.evaluationSnapshot?.slides.map((slide) => [slide.slideId, slide]) ??
+        [],
     );
     return {
       ...deck,
       slides: deck.slides.map((slide) => ({
         ...slide,
         estimatedSeconds:
-          snapshots.get(slide.slideId)?.estimatedSeconds ?? slide.estimatedSeconds,
+          snapshots.get(slide.slideId)?.estimatedSeconds ??
+          slide.estimatedSeconds,
         order: snapshots.get(slide.slideId)?.order ?? slide.order,
         title: snapshots.get(slide.slideId)?.title ?? slide.title,
         thumbnailUrl: snapshots.get(slide.slideId)?.thumbnailUrl ?? "",
@@ -107,8 +110,7 @@ export function RehearsalReportDocument({
     Date.now() - Date.parse(report.generatedAt) < TRANSCRIPT_WINDOW_MS;
   const minutesLeft = transcriptAvailable
     ? Math.ceil(
-        (TRANSCRIPT_WINDOW_MS -
-          (Date.now() - Date.parse(report.generatedAt))) /
+        (TRANSCRIPT_WINDOW_MS - (Date.now() - Date.parse(report.generatedAt))) /
           60000,
       )
     : 0;
@@ -128,112 +130,83 @@ export function RehearsalReportDocument({
         <OrbitButton
           className="rrd-hero-action"
           icon={<Mic aria-hidden="true" size={17} />}
-          onClick={() => navigateTo(`/rehearsal/${encodeURIComponent(projectId)}`)}
+          onClick={() =>
+            navigateTo(`/rehearsal/${encodeURIComponent(projectId)}`)
+          }
           size="prominent"
         >
           다시 리허설
         </OrbitButton>
       </section>
 
-      <div className="rrd-analysis-tabs" role="tablist" aria-label="리허설 분석 유형">
-        <button
-          type="button"
-          id="rrd-tab-overview"
-          className={activeTab === "overview" ? "is-active" : undefined}
-          role="tab"
-          aria-controls="rrd-panel-overview"
-          aria-selected={activeTab === "overview"}
-          onClick={() => setActiveTab("overview")}
-        >
-          전체 분석
-        </button>
-        <button
-          type="button"
-          id="rrd-tab-slides"
-          className={activeTab === "slides" ? "is-active" : undefined}
-          role="tab"
-          aria-controls="rrd-panel-slides"
-          aria-selected={activeTab === "slides"}
-          onClick={() => setActiveTab("slides")}
-        >
-          슬라이드 분석
-        </button>
-      </div>
-
-      <div
-        id="rrd-panel-overview"
-        className="rrd-report-panel"
-        role="tabpanel"
-        aria-labelledby="rrd-tab-overview"
-        hidden={activeTab !== "overview"}
-      >
-        {/* ── 1. AI summary ── */}
+      <div id="rrd-panel-overview" className="rrd-report-panel" hidden>
         <div className="rrd-top-overview">
-          <RehearsalAiSummaryOverview report={report} />
           {practiceGoalSummary}
+          <RehearsalHabitOverview prevReport={prevReport} report={report} />
         </div>
 
-      <div className="rrd-top-overview rrd-speech-overview">
-        {/* ── 2. 말버릇 ── */}
-        <RehearsalHabitOverview prevReport={prevReport} report={report} />
+        <div className="rrd-top-overview rrd-speech-overview">
+          {/* ── 3. 음성 타임라인 / 긴 침묵 ── */}
+          <RehearsalSilenceOverview
+            audioPlaybackAvailable={audioPlaybackAvailable}
+            deck={deck}
+            formatDuration={fmt}
+            report={report}
+          />
+          <RehearsalVolumeOverview
+            audioPlaybackAvailable={audioPlaybackAvailable}
+            formatDuration={fmt}
+            report={report}
+          />
+        </div>
 
-        {/* ── 3. 음성 타임라인 / 긴 침묵 ── */}
-        <RehearsalSilenceOverview
-          deck={deck}
-          formatDuration={fmt}
-          report={report}
-        />
+        {/* ── 4. 전사본 ── */}
+        {transcriptAvailable && (
+          <section className="rrd-card rrd-transcript-card">
+            <header className="rrd-card-head">
+              <FileText size={20} className="rrd-card-icon" />
+              <h2>발표 전사본</h2>
+              <span className="rrd-transcript-ttl">
+                {minutesLeft}분 후 만료
+              </span>
+              <div className="rrd-transcript-actions">
+                <button
+                  type="button"
+                  className="rrd-transcript-download"
+                  onClick={() =>
+                    downloadTranscriptDocx(
+                      deck?.title ?? "리허설",
+                      report.transcript ?? "",
+                    )
+                  }
+                >
+                  <Download size={14} />
+                  DOCX 내려받기
+                </button>
+                <button
+                  type="button"
+                  className="rrd-transcript-toggle"
+                  onClick={() => setTranscriptOpen((value) => !value)}
+                  aria-expanded={transcriptOpen}
+                >
+                  {transcriptOpen ? (
+                    <ChevronUp size={16} />
+                  ) : (
+                    <ChevronDown size={16} />
+                  )}
+                  {transcriptOpen ? "접기" : "펼치기"}
+                </button>
+              </div>
+            </header>
+
+            {transcriptOpen && (
+              <pre className="rrd-transcript-body">{report.transcript}</pre>
+            )}
+          </section>
+        )}
       </div>
 
-      <RehearsalVolumeOverview formatDuration={fmt} report={report} />
-
-      {/* ── 4. 전사본 ── */}
-      {transcriptAvailable && (
-        <section className="rrd-card rrd-transcript-card">
-          <header className="rrd-card-head">
-            <FileText size={20} className="rrd-card-icon" />
-            <h2>발표 전사본</h2>
-            <span className="rrd-transcript-ttl">{minutesLeft}분 후 만료</span>
-            <div className="rrd-transcript-actions">
-              <button
-                type="button"
-                className="rrd-transcript-download"
-                onClick={() =>
-                  downloadTranscriptDocx(
-                    deck?.title ?? "리허설",
-                    report.transcript ?? "",
-                  )
-                }
-              >
-                <Download size={14} />
-                DOCX 내려받기
-              </button>
-              <button
-                type="button"
-                className="rrd-transcript-toggle"
-                onClick={() => setTranscriptOpen((value) => !value)}
-                aria-expanded={transcriptOpen}
-              >
-                {transcriptOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                {transcriptOpen ? "접기" : "펼치기"}
-              </button>
-            </div>
-          </header>
-
-          {transcriptOpen && (
-            <pre className="rrd-transcript-body">{report.transcript}</pre>
-          )}
-        </section>
-      )}
-      </div>
-
-      <div
-        id="rrd-panel-slides"
-        className="rrd-report-panel"
-        role="tabpanel"
-        aria-labelledby="rrd-tab-slides"
-        hidden={activeTab !== "slides"}
-      >
+      <div id="rrd-panel-slides" className="rrd-report-panel" hidden>
         <RehearsalSlideCoachingViewer
           deck={reportDeck}
           formatDelta={fmtDelta}
@@ -272,6 +245,14 @@ export function RehearsalReportDocument({
         </section>
       </div>
 
+      <div id="rrd-panel-test" className="rrd-report-panel">
+        <RehearsalReportTestView
+          audioPlaybackAvailable={audioPlaybackAvailable}
+          deck={reportDeck}
+          formatDuration={fmt}
+          report={report}
+        />
+      </div>
     </div>
   );
 }

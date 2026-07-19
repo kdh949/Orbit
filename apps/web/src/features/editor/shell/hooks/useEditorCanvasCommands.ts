@@ -6,8 +6,13 @@ import {
   createElementId,
   createGroupedElementFramePatch,
   createSlideId,
+  createTableOperationPatch,
   getGroupChildElements,
   getGroupedSelectionBounds,
+  getTableOperationCapability,
+  getTableStructureCapability,
+  type TableOperation,
+  type TableCellRange,
 } from "../../../../../../../packages/editor-core/src/index";
 import {
   createElementFramePatch,
@@ -27,7 +32,7 @@ import type {
   TableCellProps,
   TableElementProps,
 } from "@orbit/shared";
-import { useRef, type MutableRefObject } from "react";
+import { useEffect, useRef, type MutableRefObject } from "react";
 
 import { resolveRedesignPalette } from "../../../../styles/redesignPalette";
 import { normalizeCustomShapeAbsoluteGeometry } from "../../canvas/custom-shape/geometry";
@@ -41,7 +46,11 @@ import type {
   EditorShellUiUpdater,
   ElementContextMenuState,
   InsertTool,
+  TableCellTarget,
+  TableContextAction,
 } from "../editorShellUiStore";
+import {
+  getTableCellTargetRange, useEditorShellUiStore, } from "../editorShellUiStore";
 import {
   getContextMenuPosition,
   getNextElementZIndex,
@@ -75,6 +84,246 @@ type CommitPatch = (
   baseDeck?: Deck,
 ) => boolean;
 
+type TableElement = Extract<DeckElement, { type: "table" }>;
+type TableActionState =
+  | { enabled: true; reason: null }
+  | { enabled: false; reason: string };
+
+export type TableContextActionStates = Record<
+  TableContextAction | "cellText",
+  TableActionState
+>;
+
+const tableDisabledReasonLabels = {
+  "cell-out-of-bounds": "선택한 셀을 찾을 수 없습니다.",
+  "cell-covered-by-merge": "병합된 셀의 대표 셀을 선택해 주세요.",
+  "cell-not-merged": "선택한 셀은 병합되어 있지 않습니다.",
+  "column-index-out-of-bounds": "선택한 열을 찾을 수 없습니다.",
+  "column-track-mismatch": "열 너비 정보가 표 구조와 일치하지 않습니다.",
+  "empty-grid": "비어 있는 표는 셀을 편집할 수 없습니다.",
+  "jagged-grid": "행마다 셀 수가 다른 표는 안전하게 편집할 수 없습니다.",
+  "last-column": "마지막 열은 삭제할 수 없습니다.",
+  "last-row": "마지막 행은 삭제할 수 없습니다.",
+  "invalid-cell-span": "셀 병합 범위가 표 경계를 벗어났습니다.",
+  "merge-selection-too-small": "두 개 이상의 인접 셀을 선택해 주세요.",
+  "overlapping-cell-span":
+    "서로 겹치는 병합 범위가 있어 표를 편집할 수 없습니다.",
+  "row-index-out-of-bounds": "선택한 행을 찾을 수 없습니다.",
+  "row-track-mismatch": "행 높이 정보가 표 구조와 일치하지 않습니다.",
+  "selection-partially-overlaps-merged-cell":
+    "기존 병합 셀 전체를 포함하도록 선택해 주세요.",
+  "table-element-not-found": "편집할 표를 찾지 못했습니다.",
+  "table-element-type-mismatch": "선택한 요소가 표가 아닙니다."
+} as const;
+
+export function getTableContextActionStates(args: {
+  deck: Deck;
+  element: TableElement;
+  selection?: TableCellRange;
+}): TableContextActionStates {
+  const structure = getTableStructureCapability(args.element.props);
+  const structureReason = structure.enabled
+    ? null
+    : tableDisabledReasonLabels[structure.reason];
+  const importedDeck = args.deck.metadata.sourceType === "import";
+  const importedElement = args.element.ooxmlOrigin === "imported";
+  const missingImportedProvenance =
+    importedDeck && args.element.ooxmlOrigin === undefined;
+
+  let cellText: TableActionState;
+  if (structureReason) {
+    cellText = { enabled: false, reason: structureReason };
+  } else if (
+    importedDeck &&
+    importedElement &&
+    args.element.ooxmlEditCapabilities?.tableCellText !== true
+  ) {
+    cellText = {
+      enabled: false,
+      reason: "이 표의 셀 위치를 OOXML에 안전하게 연결할 수 없습니다."
+    };
+  } else if (missingImportedProvenance) {
+    cellText = {
+      enabled: false,
+      reason: "가져온 표의 원본 정보가 없어 셀을 안전하게 편집할 수 없습니다."
+    };
+  } else {
+    cellText = { enabled: true, reason: null };
+  }
+
+  let structuralState: TableActionState;
+  if (structureReason) {
+    structuralState = { enabled: false, reason: structureReason };
+  } else if (importedDeck && importedElement) {
+    structuralState = {
+      enabled: false,
+      reason: "가져온 표의 행과 열 구조는 원본 OOXML 보존을 위해 편집할 수 없습니다."
+    };
+  } else if (missingImportedProvenance) {
+    structuralState = {
+      enabled: false,
+      reason: "가져온 표의 원본 정보가 없어 행과 열을 안전하게 편집할 수 없습니다."
+    };
+  } else {
+    structuralState = { enabled: true, reason: null };
+  }
+
+  const deleteRow = structuralState.enabled
+    ? tableOperationState(
+        getTableOperationCapability(args.element.props, {
+          index: 0,
+          type: "delete_row"
+        })
+      )
+    : structuralState;
+  const deleteColumn = structuralState.enabled
+    ? tableOperationState(
+        getTableOperationCapability(args.element.props, {
+          index: 0,
+          type: "delete_column"
+        })
+      )
+    : structuralState;
+  const selection = args.selection ?? {
+    startRowIndex: 0,
+    endRowIndex: 0,
+    startColumnIndex: 0,
+    endColumnIndex: 0,
+  };
+  const mergeStructuralState = importedDeck
+    ? {
+        enabled: false as const,
+        reason:
+          "가져온 Deck에서는 병합된 authored 표를 원본 OOXML에 안전하게 저장할 수 없습니다.",
+      }
+    : structuralState;
+  const mergeCells = mergeStructuralState.enabled
+    ? tableOperationState(
+        getTableOperationCapability(args.element.props, {
+          ...selection,
+          type: "merge_cells",
+        }),
+      )
+    : mergeStructuralState;
+  const unmergeCell = mergeStructuralState.enabled
+    ? tableOperationState(
+        getTableOperationCapability(args.element.props, {
+          rowIndex: selection.startRowIndex,
+          columnIndex: selection.startColumnIndex,
+          type: "unmerge_cell",
+        }),
+      )
+    : mergeStructuralState;
+
+  return {
+    cellText,
+    deleteColumn,
+    deleteRow,
+    insertColumnLeft: structuralState,
+    insertColumnRight: structuralState,
+    insertRowAbove: structuralState,
+    insertRowBelow: structuralState,
+    mergeCells,
+    unmergeCell,
+  };
+}
+
+export function createTableUiOperationPatch(args: {
+  deck: Deck;
+  elementId: string;
+  operation: TableOperation;
+  slideId: string;
+}) {
+  return createTableOperationPatch(
+    args.deck,
+    args.slideId,
+    args.elementId,
+    args.operation
+  );
+}
+
+function tableOperationState(
+  capability: ReturnType<typeof getTableOperationCapability>
+): TableActionState {
+  return capability.enabled
+    ? { enabled: true, reason: null }
+    : {
+        enabled: false,
+        reason:
+          tableDisabledReasonLabels[capability.reason] ??
+          "이 표 작업을 안전하게 실행할 수 없습니다."
+      };
+}
+
+function tableOperationForContextAction(
+  action: TableContextAction,
+  rowIndex: number,
+  columnIndex: number,
+  selection?: TableCellRange,
+): TableOperation {
+  switch (action) {
+    case "insertRowAbove":
+      return { index: rowIndex, type: "insert_row" };
+    case "insertRowBelow":
+      return { index: rowIndex + 1, type: "insert_row" };
+    case "insertColumnLeft":
+      return { index: columnIndex, type: "insert_column" };
+    case "insertColumnRight":
+      return { index: columnIndex + 1, type: "insert_column" };
+    case "deleteRow":
+      return { index: rowIndex, type: "delete_row" };
+    case "deleteColumn":
+      return { index: columnIndex, type: "delete_column" };
+    case "mergeCells":
+      return {
+        ...(selection ?? {
+          startRowIndex: rowIndex,
+          endRowIndex: rowIndex,
+          startColumnIndex: columnIndex,
+          endColumnIndex: columnIndex,
+  }),
+        type: "merge_cells",
+};
+    case "unmergeCell":
+      return { rowIndex, columnIndex, type: "unmerge_cell" };
+  }
+}
+
+function nextTableCellTarget(
+  target: TableCellTarget,
+  action: TableContextAction,
+  selection?: TableCellRange,
+): TableCellTarget {
+  if (action === "mergeCells" && selection) {
+    return {
+      ...target,
+      anchorColumnIndex: selection.startColumnIndex,
+      anchorRowIndex: selection.startRowIndex,
+      columnIndex: selection.startColumnIndex,
+      rowIndex: selection.startRowIndex,
+    };
+  }
+  if (action === "insertRowAbove") {
+    return { ...target,
+      anchorRowIndex: target. rowIndex + 1,
+      rowIndex: target.rowIndex + 1, };
+  }
+  if (action === "insertColumnLeft") {
+    return { ...target,
+      anchorColumnIndex: target. columnIndex + 1,
+      columnIndex: target.columnIndex + 1, };
+  }
+  if (action === "deleteRow") {
+    const rowIndex = Math.max(0, target.rowIndex - 1);
+    return { ...target, anchorRowIndex: rowIndex, rowIndex };
+  }
+  if (action === "deleteColumn") {
+    const columnIndex = Math.max(0, target.columnIndex - 1);
+    return { ...target, anchorColumnIndex: columnIndex, columnIndex };
+  }
+  return target;
+}
+
 export function useEditorCanvasCommands(args: {
   commitPatch: CommitPatch;
   confirmDiscardSpeakerNotesDraft: () => boolean;
@@ -99,6 +348,84 @@ export function useEditorCanvasCommands(args: {
   workingDeckRef: MutableRefObject<Deck>;
 }) {
   const copiedElementRef = useRef<ClipboardState | null>(null);
+  const tableOperationRequest = useEditorShellUiStore(
+    (state) => state.tableOperationRequest
+  );
+
+  useEffect(() => {
+    if (!tableOperationRequest) return;
+    useEditorShellUiStore.getState().setTableOperationRequest(null);
+
+    const activeDeck = args.workingDeckRef.current;
+    const slide = activeDeck.slides.find(
+      (candidate) => candidate.slideId === tableOperationRequest.slideId
+    );
+    const element = slide?.elements.find(
+      (candidate) => candidate.elementId === tableOperationRequest.elementId
+    );
+    if (!slide || !element || element.type !== "table") {
+      args.setLastPatchLabel("편집할 표를 찾지 못했습니다.");
+      return;
+    }
+
+    const actionStates = getTableContextActionStates({
+      deck: activeDeck,
+      element,
+      selection: tableOperationRequest.selection,
+    });
+    const actionState =
+      tableOperationRequest.action === "updateCellText"
+        ? actionStates.cellText
+        : actionStates[tableOperationRequest.action];
+    if (!actionState.enabled) {
+      args.setLastPatchLabel(actionState.reason);
+      return;
+    }
+
+    const operation: TableOperation =
+      tableOperationRequest.action === "updateCellText"
+        ? {
+            columnIndex: tableOperationRequest.columnIndex,
+            rowIndex: tableOperationRequest.rowIndex,
+            text: tableOperationRequest.text,
+            type: "update_cell_text"
+          }
+        : tableOperationForContextAction(
+            tableOperationRequest.action,
+            tableOperationRequest.rowIndex,
+            tableOperationRequest.columnIndex,
+            tableOperationRequest.selection,
+          );
+    const result = createTableUiOperationPatch({
+      deck: activeDeck,
+      elementId: element.elementId,
+      operation,
+      slideId: slide.slideId
+    });
+    if (!result.ok) {
+      args.setLastPatchLabel(
+        tableDisabledReasonLabels[result.reason] ??
+          "표 편집 작업을 적용하지 못했습니다."
+      );
+      return;
+    }
+    if (!args.commitPatch(result.patch)) return;
+
+    const currentTarget = useEditorShellUiStore.getState().activeTableCell;
+    if (
+      tableOperationRequest.action !== "updateCellText" &&
+      currentTarget?.slideId === slide.slideId &&
+      currentTarget.elementId === element.elementId
+    ) {
+      useEditorShellUiStore
+        .getState()
+        .setActiveTableCell(
+          nextTableCellTarget(currentTarget, tableOperationRequest.action,
+            tableOperationRequest.selection,)
+        );
+    }
+    args.setElementContextMenu(null);
+  }, [tableOperationRequest]);
 
   function addTextElement() {
     if (!canEditSlideCanvas(args.currentSlide)) return;
@@ -985,17 +1312,19 @@ export function useEditorCanvasCommands(args: {
     );
     const isGroupingTarget =
       isSelectedElement && args.selectedElementIds.length > 1;
+    const isTableCellTarget = input.element.type === "table";
     if (
       !isGroupingTarget &&
       input.element.type !== "image" &&
-      input.element.type !== "group"
+      input.element.type !== "group" &&
+      !isTableCellTarget
     ) {
       return;
     }
     const { left, top } = getContextMenuPosition({
       clientX: input.clientX,
       clientY: input.clientY,
-      height: 60,
+      height: isTableCellTarget ? 384 : 60,
       width: 196,
     });
     args.setEditingElementId(null);
@@ -1006,6 +1335,52 @@ export function useEditorCanvasCommands(args: {
         slideId: input.slideId,
         top,
         type: "selection",
+      });
+      return;
+    }
+    if (input.element.type === "table") {
+      const activeTableCell = useEditorShellUiStore.getState().activeTableCell;
+      if (
+        !activeTableCell ||
+        activeTableCell.elementId !== input.element.elementId ||
+        activeTableCell.slideId !== input.slideId
+      ) {
+        return;
+      }
+      const actionStates = getTableContextActionStates({
+        deck: args.workingDeckRef.current,
+        element: input.element,
+        selection: getTableCellTargetRange(activeTableCell),
+      });
+      const actionDisabledReasons = Object.fromEntries(
+        (
+          [
+            "insertRowAbove",
+            "insertRowBelow",
+            "insertColumnLeft",
+            "insertColumnRight",
+            "deleteRow",
+            "deleteColumn",
+            "mergeCells",
+            "unmergeCell",
+          ] as const
+        ).flatMap((action) =>
+          actionStates[action].enabled
+            ? []
+            : [[action, actionStates[action].reason] as const]
+        )
+      );
+      args.setSelectedElementIds([input.element.elementId]);
+      args.setElementContextMenu({
+        actionDisabledReasons,
+        columnIndex: activeTableCell.columnIndex,
+        elementId: input.element.elementId,
+        left,
+        rowIndex: activeTableCell.rowIndex,
+        selection: getTableCellTargetRange(activeTableCell),
+        slideId: input.slideId,
+        top,
+        type: "table-cell"
       });
       return;
     }

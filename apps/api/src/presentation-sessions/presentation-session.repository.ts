@@ -28,11 +28,6 @@ export type PresentationSessionRow = {
   updated_at: Date | string;
 };
 
-export type StoredDeckIdentity = {
-  deck_id: string;
-  version: number;
-};
-
 export type AudiencePresentationSessionRow = PresentationSessionRow & {
   project_title: string;
 };
@@ -63,18 +58,6 @@ export class PresentationSessionRepository {
 
   transaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
     return this.dataSource.transaction(work);
-  }
-
-  async findStoredDeckForUpdate(
-    manager: EntityManager,
-    projectId: string,
-    deckId: string
-  ): Promise<StoredDeckIdentity | null> {
-    const rows = await manager.query<StoredDeckIdentity[]>(
-      `SELECT deck_id, version FROM decks WHERE project_id = $1 AND deck_id = $2 FOR UPDATE`,
-      [projectId, deckId]
-    );
-    return rows[0] ?? null;
   }
 
   async findCurrent(projectId: string, deckId: string): Promise<PresentationSessionRow | null> {

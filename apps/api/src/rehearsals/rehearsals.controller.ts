@@ -1,9 +1,16 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
-import { AuthService } from "../auth/auth.service";
 import {
-  getCurrentUser,
-  type SignedCookieRequest,
-} from "../auth/current-user";
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  StreamableFile,
+} from "@nestjs/common";
+import { AuthService } from "../auth/auth.service";
+import { getCurrentUser, type SignedCookieRequest } from "../auth/current-user";
 import { ProjectsService } from "../projects/projects.service";
 import { RehearsalsService } from "./rehearsals.service";
 
@@ -61,7 +68,7 @@ export class RehearsalsController {
   @Post("api/v1/rehearsals/:runId/semantic-evaluation/retry")
   async retrySemanticEvaluation(
     @Param("runId") runId: string,
-    @Req() request: SignedCookieRequest
+    @Req() request: SignedCookieRequest,
   ) {
     const user = await getCurrentUser(this.authService, request);
     await this.assertCanWriteRun(runId, user.userId);
@@ -94,7 +101,7 @@ export class RehearsalsController {
   async getComparison(
     @Param("projectId") projectId: string,
     @Param("runId") runId: string,
-    @Req() request: SignedCookieRequest
+    @Req() request: SignedCookieRequest,
   ) {
     const user = await getCurrentUser(this.authService, request);
     await this.projectsService.assertCanReadProject(projectId, user.userId);
@@ -121,6 +128,21 @@ export class RehearsalsController {
     return this.rehearsalsService.getReport(runId);
   }
 
+  @Post("api/v1/rehearsals/:runId/audio/clip")
+  async getAudioClip(
+    @Param("runId") runId: string,
+    @Body() body: unknown,
+    @Req() request: SignedCookieRequest,
+  ) {
+    const user = await getCurrentUser(this.authService, request);
+    await this.assertCanReadRun(runId, user.userId);
+    const clip = await this.rehearsalsService.getAudioClip(runId, body);
+    return new StreamableFile(clip.body, {
+      type: clip.contentType,
+      disposition: "inline",
+      length: clip.body.byteLength,
+    });
+  }
   @Get("api/v1/rehearsals/:runId/audio/playback-url")
   async getAudioPlaybackUrl(
     @Param("runId") runId: string,

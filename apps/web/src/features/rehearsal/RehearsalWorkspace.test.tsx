@@ -1352,7 +1352,9 @@ describe("RehearsalWorkspace", () => {
     expect(html).toContain("슬라이드별 소요 시간");
     expect(html).toContain("rrd-cumulative-chart");
     expect(html).toContain("1번 슬라이드");
-    expect(html).toContain("누적 0분 52초");
+    expect(html).toContain("rrd-timing-slide-option-times");
+    expect(html).toContain("소요</small><strong>0분 52초");
+    expect(html).toContain("권장</small><strong>1분 00초");
     expect(html).not.toContain("이번 시간");
     expect(html).not.toContain("계속 문제였던 장표");
     expect(html).not.toContain("종합 발표 점수");
@@ -1865,6 +1867,59 @@ describe("RehearsalWorkspace", () => {
       analysis.detectedKeywords.map((keyword) => keyword.keywordId),
     ).toEqual(["kw_1", "kw_2"]);
     expect(analysis.missingKeywordIds).toEqual([]);
+  });
+
+  it("matches generated Korean pronunciations and exposes them to live STT bias", () => {
+    const deck = createDemoDeck();
+    deck.slides[0]!.speakerNotes = "OpenAI API를 활용했습니다.";
+    deck.slides[0]!.keywords = [
+      {
+        keywordId: "kw_openai",
+        text: "OpenAI",
+        synonyms: [],
+        abbreviations: [],
+        required: true,
+      },
+      {
+        keywordId: "kw_api",
+        text: "API",
+        synonyms: [],
+        abbreviations: [],
+        required: true,
+      },
+    ];
+    const snapshot = createRehearsalEvaluationSnapshot(deck);
+    const lexicon = snapshot.pronunciationLexicon;
+
+    const analysis = evaluateLiveTranscript(
+      deck.slides[0]!,
+      "오픈 에이아이 에이피아이를 활용했습니다.",
+      lexicon,
+    );
+    const biasContext = buildLiveSttBiasContext(deck.slides[0]!, {
+      pronunciationLexicon: lexicon,
+    });
+    const sessionSlide = buildP3SessionSlides(deck, snapshot)[0];
+
+    expect(analysis.coverage).toBe(1);
+    expect(
+      analysis.detectedKeywords.map((keyword) => keyword.matchedText),
+    ).toEqual(["오픈 에이아이", "에이피아이"]);
+    expect(biasContext.terms).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          text: "오픈에이아이",
+          source: "pronunciation-alias",
+        }),
+        expect.objectContaining({
+          text: "에이피아이",
+          source: "pronunciation-alias",
+        }),
+      ]),
+    );
+    expect(
+      sessionSlide?.pronunciationEntries?.map((entry) => entry.canonicalKey),
+    ).toEqual(["openai", "api"]);
   });
 
   it("builds current-slide live STT bias terms from keywords and slide context", () => {

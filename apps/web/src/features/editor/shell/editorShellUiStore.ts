@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+import type { TableCellRange } from "../../../../../../packages/editor-core/src/index";
+
 import { defaultAnimationPaneWidth } from "./components/animation/utils/layout";
 
 export const defaultSlidesPaneWidth = 184;
@@ -18,6 +20,34 @@ export type ShapeMenuPosition = {
   left: number;
   top: number;
 };
+export type TableContextAction =
+  | "insertRowAbove"
+  | "insertRowBelow"
+  | "insertColumnLeft"
+  | "insertColumnRight"
+  | "deleteRow"
+  | "deleteColumn"
+  | "mergeCells"
+  | "unmergeCell";
+export type TableCellTarget = {
+  anchorColumnIndex?: number;
+  anchorRowIndex?: number;
+  cellEditDisabledReason: string | null;
+  columnIndex: number;
+  elementId: string;
+  rowIndex: number;
+  slideId: string;
+};
+export type TableOperationRequest = {
+  columnIndex: number;
+  elementId: string;
+  rowIndex: number;
+  selection?: TableCellRange;
+  slideId: string;
+} & (
+  | { action: TableContextAction }
+  | { action: "updateCellText"; text: string }
+);
 export type ElementContextMenuState =
   | {
       elementId: string;
@@ -39,12 +69,24 @@ export type ElementContextMenuState =
       slideId: string;
       top: number;
       type: "selection";
+    }
+  | {
+      actionDisabledReasons: Partial<Record<TableContextAction, string>>;
+      columnIndex: number;
+      elementId: string;
+      left: number;
+      rowIndex: number;
+      selection: TableCellRange;
+      slideId: string;
+      top: number;
+      type: "table-cell";
     };
 
 export type EditorShellUiUpdater<T> = T | ((current: T) => T);
 
 type EditorShellUiStateValues = {
   activeTopMenu: TopMenu | null;
+  activeTableCell: TableCellTarget | null;
   animationPanelFocusedAnimationId: string | null;
   animationPaneWidth: number;
   customShapeEditElementId: string | null;
@@ -68,11 +110,28 @@ type EditorShellUiStateValues = {
   showIds: boolean;
   slidePanelView: SlidePanelView;
   slidesPaneWidth: number;
+  tableOperationRequest: TableOperationRequest | null;
 };
+
+export function getTableCellTargetRange(
+  target: TableCellTarget,
+): TableCellRange {
+  const anchorRowIndex = target.anchorRowIndex ?? target.rowIndex;
+  const anchorColumnIndex = target.anchorColumnIndex ?? target.columnIndex;
+  return {
+    startRowIndex: Math.min(anchorRowIndex, target.rowIndex),
+    endRowIndex: Math.max(anchorRowIndex, target.rowIndex),
+    startColumnIndex: Math.min(anchorColumnIndex, target.columnIndex),
+    endColumnIndex: Math.max(anchorColumnIndex, target.columnIndex),
+  };
+}
 
 type EditorShellUiStateActions = {
   resetProjectUiState: () => void;
   setActiveTopMenu: (updater: EditorShellUiUpdater<TopMenu | null>) => void;
+  setActiveTableCell: (
+    updater: EditorShellUiUpdater<TableCellTarget | null>
+  ) => void;
   setAnimationPanelFocusedAnimationId: (
     updater: EditorShellUiUpdater<string | null>
   ) => void;
@@ -106,12 +165,16 @@ type EditorShellUiStateActions = {
   setShowIds: (updater: EditorShellUiUpdater<boolean>) => void;
   setSlidePanelView: (updater: EditorShellUiUpdater<SlidePanelView>) => void;
   setSlidesPaneWidth: (updater: EditorShellUiUpdater<number>) => void;
+  setTableOperationRequest: (
+    updater: EditorShellUiUpdater<TableOperationRequest | null>
+  ) => void;
 };
 
 export type EditorShellUiState = EditorShellUiStateValues & EditorShellUiStateActions;
 
 export const editorShellUiInitialState: EditorShellUiStateValues = {
   activeTopMenu: null,
+  activeTableCell: null,
   animationPanelFocusedAnimationId: null,
   animationPaneWidth: defaultAnimationPaneWidth,
   customShapeEditElementId: null,
@@ -134,7 +197,8 @@ export const editorShellUiInitialState: EditorShellUiStateValues = {
   shapeMenuPosition: null,
   showIds: false,
   slidePanelView: "thumbnail",
-  slidesPaneWidth: defaultSlidesPaneWidth
+  slidesPaneWidth: defaultSlidesPaneWidth,
+  tableOperationRequest: null
 };
 
 export const useEditorShellUiStore = create<EditorShellUiState>((set) => ({
@@ -142,6 +206,7 @@ export const useEditorShellUiStore = create<EditorShellUiState>((set) => ({
   resetProjectUiState: () =>
     set({
       activeTopMenu: null,
+      activeTableCell: null,
       animationPanelFocusedAnimationId: null,
       customShapeEditElementId: null,
       editingElementId: null,
@@ -154,11 +219,16 @@ export const useEditorShellUiStore = create<EditorShellUiState>((set) => ({
       selectedElementIds: [],
       selectedKeywordId: null,
       selectedKeywordOccurrenceKey: null,
-      shapeMenuPosition: null
+      shapeMenuPosition: null,
+      tableOperationRequest: null
     }),
   setActiveTopMenu: (updater) =>
     set((state) => ({
       activeTopMenu: resolveUpdater(state.activeTopMenu, updater)
+    })),
+  setActiveTableCell: (updater) =>
+    set((state) => ({
+      activeTableCell: resolveUpdater(state.activeTableCell, updater)
     })),
   setAnimationPanelFocusedAnimationId: (updater) =>
     set((state) => ({
@@ -231,9 +301,20 @@ export const useEditorShellUiStore = create<EditorShellUiState>((set) => ({
       rightPaneWidth: resolveUpdater(state.rightPaneWidth, updater)
     })),
   setSelectedElementIds: (updater) =>
-    set((state) => ({
-      selectedElementIds: resolveUpdater(state.selectedElementIds, updater)
-    })),
+    set((state) => {
+      const selectedElementIds = resolveUpdater(
+        state.selectedElementIds,
+        updater
+      );
+      return {
+        activeTableCell:
+          state.activeTableCell &&
+          selectedElementIds.includes(state.activeTableCell.elementId)
+            ? state.activeTableCell
+            : null,
+        selectedElementIds
+      };
+    }),
   setSelectedKeywordId: (updater) =>
     set((state) => ({
       selectedKeywordId: resolveUpdater(state.selectedKeywordId, updater)
@@ -260,6 +341,10 @@ export const useEditorShellUiStore = create<EditorShellUiState>((set) => ({
   setSlidesPaneWidth: (updater) =>
     set((state) => ({
       slidesPaneWidth: resolveUpdater(state.slidesPaneWidth, updater)
+    })),
+  setTableOperationRequest: (updater) =>
+    set((state) => ({
+      tableOperationRequest: resolveUpdater(state.tableOperationRequest, updater)
     }))
 }));
 

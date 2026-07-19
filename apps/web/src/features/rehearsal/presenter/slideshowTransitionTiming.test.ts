@@ -7,7 +7,7 @@ import {
 } from "./slideshowTransitionTiming";
 
 describe("slideshowTransitionTiming", () => {
-  it("caps individual animation duration at 500ms while preserving delay", () => {
+  it("preserves the authored duration and delay", () => {
     expect(
       getSlideshowTransitionDurationMs([
         createAnimation({
@@ -19,27 +19,30 @@ describe("slideshowTransitionTiming", () => {
           delayMs: 200
         })
       ])
-    ).toBe(700);
+    ).toBe(1000);
   });
 
   it("sequences entry animations by order groups before applying per-animation delay", () => {
     const sequencedAnimations = createSlideshowEntryTransitionTimeline([
       createAnimation({
-        animationId: "anim_second",
-        elementId: "el_second",
-        order: 2,
-        delayMs: 50
+        animationId: "anim_first",
+        elementId: "el_first",
+        order: 1,
+        startMode: "on-slide-enter"
       }),
       createAnimation({
         animationId: "anim_same_second",
         elementId: "el_same_second",
         order: 2,
-        durationMs: 200
+        durationMs: 200,
+        startMode: "after-previous"
       }),
       createAnimation({
-        animationId: "anim_first",
-        elementId: "el_first",
-        order: 1
+        animationId: "anim_second",
+        elementId: "el_second",
+        order: 2,
+        delayMs: 50,
+        startMode: "with-previous"
       })
     ]);
 

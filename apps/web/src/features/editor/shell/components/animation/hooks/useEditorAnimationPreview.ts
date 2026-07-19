@@ -68,6 +68,7 @@ export function useEditorAnimationPreview(args: {
       setElementStates(
         interpolateSlideshowTransitionStates({
           animations: plan.timeline,
+          baseStates: plan.baseStates,
           progress,
           startStates: plan.startStates,
           targetStates: plan.targetStates,

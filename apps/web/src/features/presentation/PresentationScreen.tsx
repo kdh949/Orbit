@@ -153,6 +153,7 @@ export function PresentationScreen(props: {
             <ActivityPresenterPanel
               autoStart
               deckId={props.deck.deckId}
+              deckVersion={props.deck.version}
               projectId={props.deck.projectId}
               slide={props.currentSlide}
             />

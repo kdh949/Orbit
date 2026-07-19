@@ -21,17 +21,20 @@ import {
   appendDeckPatchRequestSchema,
   appendDeckPatchResponseSchema,
   deckApiErrorSchema,
+  deckExportEnqueueErrorSchema,
   deckExportRequestSchema,
   deckSchema,
   deckSnapshotIdSchema,
   deckSnapshotReasonSchema,
   deckSnapshotSchema,
   getDeckResponseSchema,
+  getPptxImportQualityResponseSchema,
   getOoxmlSyncStateResponseSchema,
   jobSchema,
   listDeckSnapshotsResponseSchema,
   putDeckRequestSchema,
   putDeckResponseSchema,
+  qualityReportSchema,
   retryOoxmlSyncResponseSchema,
   restoreDeckSnapshotResponseSchema,
   recoverTemplateBlueprintSlideIds,
@@ -58,6 +61,7 @@ import type {
   DeckSnapshot,
   DeckSnapshotReason,
   GetDeckResponse,
+  GetPptxImportQualityResponse,
   Job,
   OoxmlSyncState,
   ListDeckSnapshotsResponse,
@@ -115,6 +119,10 @@ type DeckPatchRow = {
 type TemplateBlueprintRow = {
   template_id: string;
   blueprint_json: unknown;
+};
+
+type PptxImportQualityRow = {
+  quality_report_json: unknown;
 };
 
 type OoxmlTemplateBlueprint = TemplateBlueprintRow & {
@@ -194,6 +202,62 @@ export class DecksService {
     });
   }
 
+  async getDeckForUpdate(
+    manager: EntityManager,
+    projectId: string,
+    deckId: string,
+  ): Promise<Deck> {
+    const deckRow = await this.findDeckRowForUpdate(
+      manager,
+      projectId,
+      deckId,
+    );
+
+    if (!deckRow) {
+      throwDeckApiException(
+        "DECK_NOT_FOUND",
+        HttpStatus.NOT_FOUND,
+        `Deck not found for project: ${projectId}`,
+      );
+    }
+
+    return (
+      await this.readCurrentDeckState(
+        manager,
+        parseDeckRow(deckRow),
+        projectId,
+        deckId,
+        toIso(deckRow.updated_at),
+        true,
+      )
+    ).deck;
+  }
+
+  async getPptxImportQuality(
+    projectId: string,
+  ): Promise<GetPptxImportQualityResponse> {
+    const { deck } = await this.getDeck(projectId);
+    const rows = await this.dataSource.query<PptxImportQualityRow[]>(
+      `
+        SELECT quality_report_json
+        FROM template_blueprints
+        WHERE project_id = $1 AND deck_id = $2
+        ORDER BY updated_at DESC, created_at DESC
+        LIMIT 1
+      `,
+      [projectId, deck.deckId],
+    );
+    const qualityReport = qualityReportSchema.safeParse(
+      rows[0]?.quality_report_json,
+    );
+
+    return getPptxImportQualityResponseSchema.parse({
+      importQuality: qualityReport.success
+        ? { qualityReport: qualityReport.data }
+        : null,
+    });
+  }
+
   async createExportJob(projectId: string, body: unknown) {
     if (!this.jobsService) {
       throw new HttpException(
@@ -258,24 +322,51 @@ export class DecksService {
           event: "deck_export.enqueued",
           jobId: queuedJob.jobId,
           projectId,
+          deckId: deck.deckId,
+          format: request.format,
           presentationSessionId: request.presentationSessionId,
         },
         "Deck export job enqueued.",
       );
     } catch (error) {
-      await this.jobsService.update(queuedJob.jobId, {
+      const publicMessage = "Deck export queue is unavailable.";
+      const failedJobPatch = {
         status: "failed",
         progress: 0,
-        message: "Deck export enqueue failed.",
+        message: publicMessage,
         error: {
           code: "DECK_EXPORT_ENQUEUE_FAILED",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Deck export enqueue failed.",
+          message: publicMessage,
+          retryable: true,
         },
-      });
-      throw error;
+      } as const;
+      const updatedJob = await this.jobsService.update(
+        queuedJob.jobId,
+        failedJobPatch,
+      );
+      const failedJob = jobSchema.parse(
+        updatedJob ?? { ...queuedJob, ...failedJobPatch },
+      );
+      this.logger?.error(
+        {
+          event: "deck_export.enqueue_failed",
+          jobId: queuedJob.jobId,
+          projectId,
+          deckId: deck.deckId,
+          format: request.format,
+          presentationSessionId: request.presentationSessionId,
+          error: serializeLogError(error),
+        },
+        "Deck export job enqueue failed.",
+      );
+      throw new HttpException(
+        deckExportEnqueueErrorSchema.parse({
+          code: "DECK_EXPORT_ENQUEUE_FAILED",
+          message: publicMessage,
+          job: failedJob,
+        }),
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
     }
 
     return { job: jobSchema.parse(queuedJob) };
@@ -874,6 +965,25 @@ export class DecksService {
     return listDeckSnapshotsResponseSchema.parse({
       projectId,
       snapshots: rows.map(parseSnapshotRow),
+    });
+  }
+
+  async getOrCreateSnapshot(deck: Deck): Promise<DeckSnapshot> {
+    return this.dataSource.transaction(async (manager) => {
+      await manager.query(
+        `SELECT deck_id FROM decks WHERE project_id = $1 AND deck_id = $2 FOR UPDATE`,
+        [deck.projectId, deck.deckId],
+      );
+      const rows = await manager.query<DeckSnapshotRow[]>(
+        `SELECT snapshot_id, project_id, deck_id, deck_json, version, reason, created_at
+         FROM deck_snapshots
+         WHERE project_id = $1 AND deck_id = $2 AND version = $3
+         ORDER BY created_at DESC, snapshot_id DESC LIMIT 1`,
+        [deck.projectId, deck.deckId, deck.version],
+      );
+      return rows[0]
+        ? parseSnapshotRow(rows[0])
+        : this.createSnapshot(manager, deck, "auto-save", nowIso());
     });
   }
 

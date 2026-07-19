@@ -1,0 +1,22 @@
+.table-cell-editor-overlay {
+  position: absolute;
+  z-index: 6;
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--redesign-space-2);
+  overflow: auto;
+  resize: none;
+  border: 2px solid var(--redesign-color-primary-emphasis);
+  border-radius: var(--redesign-radius-md);
+  outline: none;
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-light-surface) 98%,
+    transparent
+  );
+  color: var(--redesign-color-on-light);
+  caret-color: var(--redesign-color-primary-emphasis);
+  box-shadow: var(--redesign-focus-ring);
+  line-height: 1.2;
+  transform-origin: top left;
+}

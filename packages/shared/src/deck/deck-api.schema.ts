@@ -5,6 +5,7 @@ import { jobSchema } from "../jobs/job.schema";
 import { deckSchema } from "./deck.schema";
 import { deckIdSchema } from "./id.schema";
 import { deckChangeRecordSchema, deckPatchSchema } from "./patch.schema";
+import { qualityReportSchema } from "./template-blueprint.schema";
 
 type DeckApiIssuePath = Array<string | number>;
 
@@ -131,6 +132,14 @@ export const getDeckResponseSchema = z
       "projectId",
     ]);
   });
+
+export const pptxImportQualitySchema = z.object({
+  qualityReport: qualityReportSchema,
+});
+
+export const getPptxImportQualityResponseSchema = z.object({
+  importQuality: pptxImportQualitySchema.nullable(),
+});
 
 export const ooxmlSyncStatusSchema = z.enum([
   "not-applicable",
@@ -347,6 +356,10 @@ export type DeckSnapshot = z.infer<typeof deckSnapshotSchema>;
 export type DeckSnapshotDetail = z.infer<typeof deckSnapshotDetailSchema>;
 export type DeckPatchLogEntry = z.infer<typeof deckPatchLogEntrySchema>;
 export type GetDeckResponse = z.infer<typeof getDeckResponseSchema>;
+export type PptxImportQuality = z.infer<typeof pptxImportQualitySchema>;
+export type GetPptxImportQualityResponse = z.infer<
+  typeof getPptxImportQualityResponseSchema
+>;
 export type OoxmlSyncStatus = z.infer<typeof ooxmlSyncStatusSchema>;
 export type OoxmlSyncState = z.infer<typeof ooxmlSyncStateSchema>;
 export type GetOoxmlSyncStateResponse = z.infer<

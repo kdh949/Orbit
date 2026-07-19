@@ -10,7 +10,12 @@ from app.audio.analysis import decoder
 from app.audio.analysis.decoder import decode_audio
 from app.audio.analysis.models import AudioAnalysisError, DecodedAudio
 from app.audio.analysis.service import analyze_volume_safely
-from app.audio.analysis.volume import analyze_volume
+from app.audio.analysis.volume import (
+    _IssueCandidate,
+    _finalize_issue_segments,
+    _merge_issue_candidate,
+    analyze_volume,
+)
 from app.audio.models import AudioContent
 
 SAMPLE_RATE_HZ = 16_000
@@ -33,9 +38,9 @@ def test_analyze_volume_finds_quiet_and_loud_blocks() -> None:
     samples = np.concatenate(
         [
             np.full(SAMPLE_RATE_HZ * 2, 0.1, np.float32),
-            np.full(int(SAMPLE_RATE_HZ * 1.5), 0.02, np.float32),
+            np.full(int(SAMPLE_RATE_HZ * 2.5), 0.02, np.float32),
             np.full(SAMPLE_RATE_HZ * 2, 0.1, np.float32),
-            np.full(int(SAMPLE_RATE_HZ * 1.5), 0.5, np.float32),
+            np.full(int(SAMPLE_RATE_HZ * 2.5), 0.5, np.float32),
             np.full(SAMPLE_RATE_HZ * 2, 0.1, np.float32),
         ]
     )
@@ -43,7 +48,7 @@ def test_analyze_volume_finds_quiet_and_loud_blocks() -> None:
     analysis = analyze_volume(_decoded_audio(samples))
 
     assert [segment.kind for segment in analysis.issue_segments] == ["quiet", "loud"]
-    assert all(segment.duration_seconds >= 1 for segment in analysis.issue_segments)
+    assert all(segment.duration_seconds >= 2 for segment in analysis.issue_segments)
     assert analysis.issue_segments[0].mean_deviation_db < -6
     assert analysis.issue_segments[1].mean_deviation_db > 6
 
@@ -62,6 +67,36 @@ def test_analyze_volume_does_not_report_silence_as_quiet_speech() -> None:
     assert analysis.measurement_state == "measured"
     assert analysis.active_ratio < 1
     assert analysis.issue_segments == []
+
+
+def test_volume_issues_merge_same_kind_across_a_one_second_gap() -> None:
+    candidates: list[_IssueCandidate] = []
+    _merge_issue_candidate(candidates, "quiet", 0, 1.2, -7)
+    _merge_issue_candidate(candidates, "quiet", 2, 3.2, -8)
+
+    segments = _finalize_issue_segments(candidates)
+
+    assert len(segments) == 1
+    assert segments[0].start_seconds == 0
+    assert segments[0].end_seconds == 3.2
+    assert segments[0].duration_seconds == 3.2
+
+
+def test_volume_issues_keep_only_five_most_significant_segments_in_time_order() -> None:
+    candidates = [
+        _IssueCandidate(
+            kind="quiet",
+            start_seconds=index * 10,
+            end_seconds=index * 10 + 2 + index,
+            deviations_db=[-7],
+        )
+        for index in range(6)
+    ]
+
+    segments = _finalize_issue_segments(candidates)
+
+    assert len(segments) == 5
+    assert [segment.start_seconds for segment in segments] == [10, 20, 30, 40, 50]
 
 
 def test_analyze_volume_rejects_short_active_audio() -> None:
@@ -164,7 +199,9 @@ def test_safe_analysis_never_returns_non_finite_values() -> None:
     )
 
 
-def _decoded_audio(samples: np.ndarray[tuple[int], np.dtype[np.float32]]) -> DecodedAudio:
+def _decoded_audio(
+    samples: np.ndarray[tuple[int], np.dtype[np.float32]],
+) -> DecodedAudio:
     return DecodedAudio(
         samples=samples,
         sample_rate_hz=SAMPLE_RATE_HZ,

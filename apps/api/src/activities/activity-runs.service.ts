@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import {
   activityDefinitionSchema,
   activityRunSchema,
-  deckSchema,
   ensureActivityRunResponseSchema,
   getCurrentActivityRunResponseSchema,
   supersedeActivityRunResponseSchema,
@@ -12,6 +11,7 @@ import type {
   ActivityDefinition,
   ActivityRun,
   ActivityRuntimeStatus,
+  Deck,
   SupersedeActivityRunRequest,
   UpdateActivityRunStatusRequest
 } from "@orbit/shared";
@@ -25,11 +25,12 @@ import {
 } from "@nestjs/common";
 import { InjectPinoLogger, PinoLogger } from "nestjs-pino";
 
+import { DecksService } from "../decks/decks.service";
 import { createActivityDefinitionFingerprint } from "./activity-definition-fingerprint";
 import {
   ActivityRunRepository,
   type ActivityRunRow,
-  type ActivitySessionDeckRow
+  type ActivitySessionRow
 } from "./activity-run.repository";
 import { ActivityRealtimePublisher } from "./activity-realtime.publisher";
 
@@ -44,6 +45,7 @@ const allowedTransitions: Record<ActivityRuntimeStatus, ActivityRuntimeStatus[]>
 export class ActivityRunsService {
   constructor(
     private readonly repository: ActivityRunRepository,
+    private readonly decksService: DecksService,
     @InjectPinoLogger(ActivityRunsService.name)
     private readonly logger: PinoLogger,
     @Optional() private readonly realtimePublisher?: ActivityRealtimePublisher
@@ -51,10 +53,12 @@ export class ActivityRunsService {
 
   async ensureCurrentRun(projectId: string, sessionId: string, activityId: string) {
     const run = await this.repository.transaction(async (manager) => {
-      const session = await this.requireUsableSession(
-        await this.repository.lockSessionDeck(manager, projectId, sessionId)
+      const { deck } = await this.lockSessionDeck(
+        manager,
+        projectId,
+        sessionId
       );
-      const source = findActivitySource(session, activityId);
+      const source = findActivitySource(deck, activityId);
       const fingerprint = createActivityDefinitionFingerprint(source.definition);
       const current = await this.repository.findCurrent(manager, projectId, sessionId, activityId);
       if (!current) {
@@ -94,13 +98,11 @@ export class ActivityRunsService {
     input: SupersedeActivityRunRequest
   ) {
     const result = await this.repository.transaction(async (manager) => {
-      const session = await this.requireUsableSession(
-        await this.repository.lockSessionDeck(manager, projectId, sessionId)
-      );
+      const { deck } = await this.lockSessionDeck(manager, projectId, sessionId);
       const previous = await this.repository.findById(manager, projectId, sessionId, runId);
       if (!previous || !previous.is_current) throw new NotFoundException("Current activity run not found");
       assertRevision(previous, input.expectedRevision);
-      const source = findActivitySource(session, previous.activity_id);
+      const source = findActivitySource(deck, previous.activity_id);
       const now = new Date();
       await this.repository.markSuperseded(manager, previous, now);
       const run = await this.repository.insert(manager, {
@@ -140,8 +142,10 @@ export class ActivityRunsService {
     input: UpdateActivityRunStatusRequest
   ) {
     const result = await this.repository.transaction(async (manager) => {
-      const session = await this.requireUsableSession(
-        await this.repository.lockSessionDeck(manager, projectId, sessionId),
+      const { deck } = await this.lockSessionDeck(
+        manager,
+        projectId,
+        sessionId,
         input.status === "open"
       );
       let run = await this.repository.findById(manager, projectId, sessionId, runId);
@@ -159,7 +163,7 @@ export class ActivityRunsService {
         throw activityConflict("ACTIVITY_RUN_NOT_CURRENT", "Only the current activity run can open", run);
       }
       if (input.status === "open") {
-        const source = findActivitySource(session, run.activity_id);
+        const source = findActivitySource(deck, run.activity_id);
         run = await this.syncDefinition(
           manager,
           run,
@@ -207,10 +211,40 @@ export class ActivityRunsService {
     return updateActivityRunStatusResponseSchema.parse({ run: this.toRun(result.run) });
   }
 
-  private async requireUsableSession(
-    session: ActivitySessionDeckRow | null,
+  private async lockSessionDeck(
+    manager: Parameters<ActivityRunRepository["findCurrent"]>[0],
+    projectId: string,
+    sessionId: string,
     requireStarted = false
-  ): Promise<ActivitySessionDeckRow> {
+  ): Promise<{ deck: Deck; session: ActivitySessionRow }> {
+    const identity = await this.repository.findSessionIdentity(
+      manager,
+      projectId,
+      sessionId
+    );
+    if (!identity?.deck_id) {
+      throw new NotFoundException("Presentation session not found");
+    }
+
+    const deck = await this.decksService.getDeckForUpdate(
+      manager,
+      projectId,
+      identity.deck_id
+    );
+    const session = await this.requireUsableSession(
+      await this.repository.lockSession(manager, projectId, sessionId),
+      requireStarted
+    );
+    if (session.deck_id !== identity.deck_id || session.deck_id !== deck.deckId) {
+      throw new NotFoundException("Presentation session not found");
+    }
+    return { deck, session };
+  }
+
+  private async requireUsableSession(
+    session: ActivitySessionRow | null,
+    requireStarted = false
+  ): Promise<ActivitySessionRow> {
     if (!session || session.session_status === "ended") {
       throw new NotFoundException("Presentation session not found");
     }
@@ -278,8 +312,7 @@ export class ActivityRunsService {
   }
 }
 
-function findActivitySource(session: ActivitySessionDeckRow, activityId: string) {
-  const deck = deckSchema.parse(session.deck_json);
+function findActivitySource(deck: Deck, activityId: string) {
   const slide = deck.slides.find(
     (candidate) => candidate.kind === "activity" && candidate.activity.activityId === activityId
   );

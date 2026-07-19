@@ -308,6 +308,22 @@ describe("IME-safe contentEditable session", () => {
 });
 
 describe("contentEditable paste and terminal actions", () => {
+  it("finishes a no-op blur without persisting a deck change", () => {
+    const onCommit = vi.fn();
+    const onFinish = vi.fn();
+    const initialProps = textProps("  unchanged  ");
+    const session = createContentEditableEditSession({
+      initialProps,
+      onCommit,
+      onFinish,
+    });
+
+    session.handleBlur({ nextTargetInsideComposite: false });
+
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(onFinish).toHaveBeenCalledOnce();
+  });
+
   it("prevents rich HTML paste and inserts only normalized plain text", () => {
     const preventDefault = vi.fn();
     const updated = applyContentEditablePlainTextPaste({

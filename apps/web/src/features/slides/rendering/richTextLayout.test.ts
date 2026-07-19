@@ -162,6 +162,35 @@ describe("richTextLayout", () => {
     ]);
   });
 
+  it("preserves intentional indentation after an explicit newline", () => {
+    const result = richTextLayout({
+      baseStyle,
+      frame: { height: 180, width: 200 },
+      measureText: fixedMeasure,
+      props: props({
+        bodyInset: { bottom: 0, left: 0, right: 0, top: 0 },
+        runs: [
+          {
+            baseline: "normal",
+            text: "첫째 줄\n   둘째 줄"
+          }
+        ],
+        text: "첫째 줄\n   둘째 줄"
+      })
+    });
+
+    expect(
+      result.lineBoxes.map((line) =>
+        line.fragments.map((fragment) => fragment.text).join("")
+      )
+    ).toEqual(["첫째 줄", "   둘째 줄"]);
+    expect(result.lineBoxes[1]?.width).toBe(70);
+    expect(result.lineBoxes[1]?.fragments[0]).toMatchObject({
+      text: "   둘째 줄",
+      x: 0
+    });
+  });
+
   it("justifies wrapped non-final lines while leaving the final line ragged", () => {
     const result = richTextLayout({
       baseStyle,

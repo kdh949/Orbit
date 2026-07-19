@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { SelectionQuickBar } from "./SelectionQuickBar";
+import { useEditorShellUiStore } from "../editorShellUiStore";
 
 describe("SelectionQuickBar", () => {
   it("keeps animation editing out of the visual property controls", () => {
@@ -205,5 +206,79 @@ describe("SelectionQuickBar", () => {
     expect(disabledHtml).toContain("disabled");
     expect(disabledHtml).toContain(reason);
     expect(disabledHtml).toContain("aria-describedby");
+  });
+
+  it("replaces raw TSV editing with selected-cell controls", () => {
+    const deck = createDemoDeck();
+    const slide = deck.slides[0]!;
+    const element = {
+      elementId: "el_table",
+      height: 120,
+      locked: false,
+      opacity: 1,
+      props: {
+        borderColor: "#94A3B8",
+        borderWidth: 1,
+        columnWidths: [120],
+        rowHeights: [120],
+        rows: [[{
+          align: "left" as const,
+          borderColor: "#CBD5E1",
+          borderWidth: 1,
+          colSpan: 1,
+          fill: "#FFFFFF",
+          fontSize: 18,
+          fontWeight: "normal" as const,
+          rowSpan: 1,
+          text: "A1",
+          verticalAlign: "middle" as const
+        }]]
+      },
+      rotation: 0,
+      type: "table" as const,
+      visible: true,
+      width: 120,
+      x: 100,
+      y: 100,
+      zIndex: 1
+    };
+    useEditorShellUiStore.getState().setActiveTableCell({
+      cellEditDisabledReason: null,
+      columnIndex: 0,
+      elementId: element.elementId,
+      rowIndex: 0,
+      slideId: slide.slideId
+    });
+
+    const html = renderToString(
+      <SelectionQuickBar
+        animations={[]}
+        animationDiagnostics={validateSlideAnimations(slide, element.elementId)}
+        canCreateAnimation={false}
+        canvas={deck.canvas}
+        customShapeEditActive={false}
+        element={element}
+        selectedKeywordLabel={null}
+        slide={slide}
+        theme={deck.theme}
+        showIds={false}
+        onOpenAnimationEditor={vi.fn()}
+        onChangeFrame={vi.fn()}
+        onChangeProps={vi.fn()}
+        onConvertChartToTable={vi.fn()}
+        onChangeSlideStyle={vi.fn()}
+        onChangeTheme={vi.fn()}
+        onDeleteAnimation={vi.fn()}
+        onToggleCustomShapeClosed={vi.fn()}
+        onToggleCustomShapeEdit={vi.fn()}
+      />
+    );
+
+    expect(html).not.toContain("표 내용");
+    expect(html).not.toContain("행은 줄바꿈");
+    expect(html).toContain("셀 편집");
+    expect(html).toContain("캔버스에서 편집할 셀을 선택하세요.");
+    expect(html).toContain("선두께");
+    useEditorShellUiStore.getState().setActiveTableCell(null);
   });
 });

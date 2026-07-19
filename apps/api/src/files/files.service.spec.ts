@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { Project, demoIds } from "@orbit/shared";
 import { StoragePort } from "@orbit/storage";
 import { Repository } from "typeorm";
@@ -78,6 +82,10 @@ function createStorage(overrides: Partial<StoragePort> = {}): StoragePort {
         "content-type": input.contentType,
       },
       expiresAt: "2026-06-27T01:15:00.000Z",
+    })),
+    getObject: vi.fn(async () => ({
+      body: new Uint8Array([1, 2, 3]),
+      contentType: "application/octet-stream",
     })),
     getSignedReadUrl: vi.fn(
       async (key) => `http://localhost:9000/orbit-local/${key}`,
@@ -215,7 +223,9 @@ describe("FilesService", () => {
       service.getUploadedAsset(demoProject.projectId, "file_private_1"),
     ).rejects.toBeInstanceOf(NotFoundException);
     await expect(
-      service.completeUpload(demoProject.projectId, { fileId: "file_private_1" }),
+      service.completeUpload(demoProject.projectId, {
+        fileId: "file_private_1",
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
     await expect(
       service.readUploadedAssetContent(demoProject.projectId, "file_private_1"),
@@ -277,6 +287,67 @@ describe("FilesService", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it("stores a generated clip beside the rehearsal audio and reuses it", async () => {
+    const storageKey =
+      "rehearsals/2026-07-18/project_demo_created/run_123/audio.webm";
+    const { repository } = createAssetRepository([
+      {
+        fileId: "file_audio_1",
+        projectId: demoProject.projectId,
+        storageKey,
+        originalName: "rehearsal.webm",
+        mimeType: "audio/webm",
+        size: 1024,
+        url: "internal://private-audio",
+        purpose: "rehearsal-audio",
+        status: "uploaded",
+        createdAt: new Date(),
+        uploadedAt: new Date(),
+        deletedAt: null,
+      } as ProjectAssetEntity,
+    ]);
+    const headObject = vi.fn(async () => null);
+    const getObject = vi.fn(async () => ({
+      body: new Uint8Array([1, 2, 3]),
+      contentType: "audio/webm",
+    }));
+    const storage = createStorage({ headObject, getObject });
+    const service = new FilesService(
+      repository,
+      {
+        getAccessibleProject: vi.fn(async () => demoProject),
+      } as unknown as ProjectsService,
+      storage,
+    );
+    const createDerivative = vi.fn(async () => new Uint8Array([4, 5, 6]));
+
+    const result = await service.getOrCreatePrivateAudioDerivative(
+      demoProject.projectId,
+      "file_audio_1",
+      "rehearsal-audio",
+      "volume-10000-12000.wav",
+      createDerivative,
+    );
+
+    expect(result).toMatchObject({
+      storageKey:
+        "rehearsals/2026-07-18/project_demo_created/run_123/volume-10000-12000.wav",
+      contentType: "audio/wav",
+      created: true,
+    });
+    expect(createDerivative).toHaveBeenCalledWith({
+      body: new Uint8Array([1, 2, 3]),
+      contentType: "audio/webm",
+    });
+    expect(storage.putObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: result.storageKey,
+        body: new Uint8Array([4, 5, 6]),
+        contentType: "audio/wav",
+        purpose: "rehearsal-audio",
+      }),
+    );
+  });
   it("hides rehearsal transcripts from generic asset boundaries", async () => {
     const { repository } = createAssetRepository([
       {
@@ -351,7 +422,9 @@ describe("FilesService", () => {
       "http://127.0.0.1:5173",
     );
 
-    expect(upload.uploadUrl).toContain("http://127.0.0.1:5173/api/v1/projects/");
+    expect(upload.uploadUrl).toContain(
+      "http://127.0.0.1:5173/api/v1/projects/",
+    );
   });
 
   it("falls back to the configured web origin when the request origin is absent", async () => {
@@ -371,7 +444,9 @@ describe("FilesService", () => {
       purpose: "reference-material",
     });
 
-    expect(upload.uploadUrl).toContain("http://localhost:5173/api/v1/projects/");
+    expect(upload.uploadUrl).toContain(
+      "http://localhost:5173/api/v1/projects/",
+    );
   });
 
   it("rejects complete requests for an asset outside the project boundary", async () => {
@@ -706,7 +781,8 @@ describe("FilesService", () => {
       {
         fileId: "file_audio_1",
         projectId: demoProject.projectId,
-        storageKey: "projects/project_demo_created/assets/file_audio_1/rehearsal.webm",
+        storageKey:
+          "projects/project_demo_created/assets/file_audio_1/rehearsal.webm",
         originalName: "rehearsal.webm",
         mimeType: "audio/webm",
         size: 1024,
@@ -748,7 +824,8 @@ describe("FilesService", () => {
       {
         fileId: "file_audio_1",
         projectId: demoProject.projectId,
-        storageKey: "projects/project_demo_created/assets/file_audio_1/rehearsal.webm",
+        storageKey:
+          "projects/project_demo_created/assets/file_audio_1/rehearsal.webm",
         originalName: "rehearsal.webm",
         mimeType: "audio/webm",
         size: 1024,
@@ -785,7 +862,8 @@ describe("FilesService", () => {
       {
         fileId: "file_audio_1",
         projectId: demoProject.projectId,
-        storageKey: "projects/project_demo_created/assets/file_audio_1/rehearsal.webm",
+        storageKey:
+          "projects/project_demo_created/assets/file_audio_1/rehearsal.webm",
         originalName: "rehearsal.webm",
         mimeType: "audio/webm",
         size: 1024,
@@ -827,7 +905,8 @@ describe("FilesService", () => {
       {
         fileId: "file_audio_1",
         projectId: demoProject.projectId,
-        storageKey: "projects/project_demo_created/assets/file_audio_1/rehearsal.webm",
+        storageKey:
+          "projects/project_demo_created/assets/file_audio_1/rehearsal.webm",
         originalName: "rehearsal.webm",
         mimeType: "audio/webm",
         size: 1024,

@@ -14,6 +14,7 @@ function renderPanel(isExpanded: boolean, isEditing = false) {
 
   return renderToStaticMarkup(
     <SpeakerNotesPanel
+      canGenerateQuestionGuides
       contentRef={createRef<HTMLDivElement>()}
       currentSlide={currentSlide}
       deck={deck}
@@ -23,6 +24,7 @@ function renderPanel(isExpanded: boolean, isEditing = false) {
       height={240}
       isEditing={isEditing}
       isExpanded={isExpanded}
+      isMaximized={false}
       isResizing={false}
       maxHeight={480}
       minHeight={120}
@@ -35,13 +37,15 @@ function renderPanel(isExpanded: boolean, isEditing = false) {
       onResizeStart={vi.fn()}
       onSaveEdit={vi.fn()}
       onSelectKeyword={vi.fn()}
+      onSelectKeywordActionMode={vi.fn()}
       onSelectKeywordText={vi.fn()}
       onStartEdit={vi.fn()}
       onTabSelected={vi.fn()}
-      onToggleAdvanceSlide={vi.fn()}
+      onToggleMaximized={vi.fn()}
       onTogglePanel={vi.fn()}
-      onToggleRequired={vi.fn()}
       projectId={deck.projectId}
+      questionGuideAutoStatus="idle"
+      questionGuideRefreshToken={0}
       reportRefreshToken={0}
       requestedTab={null}
       selectedKeyword={null}
@@ -78,14 +82,14 @@ describe("SpeakerNotesPanel", () => {
     expect(html).toContain('id="speaker-notes-script-tab"');
     expect(html).toContain('aria-selected="true"');
     expect(html).toContain("script-notes-surface-actions");
+    expect(html).toContain('aria-label="발표 메모를 슬라이드 편집 영역까지 확대"');
+    expect(html).toContain("tabler-icon-maximize");
     expect(html).not.toContain("speaker-notes-action-row");
     expect(html).toContain('aria-label="AI로 메모 다듬기"');
     expect(html).toContain("tabler-icon-wand");
     expect(html).not.toContain('aria-label="메모 편집"');
     expect(html).toContain("더블클릭하거나 Enter 키를 눌러 편집");
-    expect(html.indexOf("speaker-notes-length-meter")).toBeLessThan(
-      html.indexOf("script-keyword-section"),
-    );
+    expect(html).not.toContain("speaker-notes-length-meter");
   });
 
   it("편집 상태에서는 대본 안에 취소와 저장 액션을 표시한다", () => {
@@ -102,9 +106,12 @@ describe("SpeakerNotesPanel", () => {
     const slide = deck.slides[0] ?? null;
     const qnaHtml = renderToStaticMarkup(
       <SpeakerNotesQnaTab
+        canGenerate
         deck={deck}
         flushPendingSaves={vi.fn()}
         projectId={deck.projectId}
+        questionGuideAutoStatus="idle"
+        questionGuideRefreshToken={0}
         slide={slide}
       />,
     );

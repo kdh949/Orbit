@@ -22,6 +22,8 @@ import {
   getCustomShapeOverlayViewBox,
 } from "./CustomShapeOverlays";
 import { ElementNodeContent } from "./ElementNodeContent";
+import { useEditorShellUiStore } from "../../shell/editorShellUiStore";
+import { TableCellHitTargets } from "../table/TableCellHitTargets";
 import { getTextElementLayout } from "../text/textLayout";
 import {
   CANVAS_ID_BADGE_FONT_SIZE,
@@ -67,6 +69,7 @@ export function EditableElementNode(props: {
   selectedCount: number;
   showIds: boolean;
   slide: Slide;
+  stageScale: number;
   onChangeCustomShapeEditDraft: (draft: CustomShapeEditDraft | null) => void;
   onDoubleClick: () => void;
   onCommitCustomShapeEditDraft: (draft: CustomShapeEditDraft) => void;
@@ -98,6 +101,7 @@ export function EditableElementNode(props: {
     selectedCount,
     showIds,
     slide,
+    stageScale,
     onChangeCustomShapeEditDraft,
     onDoubleClick,
     onCommitCustomShapeEditDraft,
@@ -108,6 +112,9 @@ export function EditableElementNode(props: {
     onSnapGuidesChange,
     snapThreshold,
   } = props;
+  const editingElementId = useEditorShellUiStore(
+    (state) => state.editingElementId
+  );
   const [previewFrame, setPreviewFrame] = useState<{
     x: number;
     y: number;
@@ -158,7 +165,9 @@ export function EditableElementNode(props: {
       draggable={
         canDragCanvasElement({
           interactionDisabled: disablePointerEvents,
-          isCustomShapeEditing: Boolean(customShapeEditDraft),
+          isCustomShapeEditing:
+            Boolean(customShapeEditDraft) ||
+            (element.type === "table" && editingElementId === element.elementId),
           isSelected,
           locked: element.locked
         })
@@ -189,6 +198,7 @@ export function EditableElementNode(props: {
         if (
           element.type !== "image" &&
           element.type !== "group" &&
+          element.type !== "table" &&
           !shouldKeepSelection
         ) {
           return;
@@ -202,7 +212,7 @@ export function EditableElementNode(props: {
         onOpenContextMenu(event.evt.clientX, event.evt.clientY);
       }}
       onDblClick={() => {
-        if (element.type === "text" || element.type === "table" || element.type === "chart") {
+        if (element.type === "text" || element.type === "chart") {
           onDoubleClick();
         }
       }}
@@ -279,12 +289,6 @@ export function EditableElementNode(props: {
         onCommitFrame(nextFrame);
       }}
     >
-      <ElementInteractionHitTargets
-        deck={deck}
-        element={element}
-        frame={frame}
-        slide={slide}
-      />
       <Rect
         cornerRadius={10}
         dash={selectionDash}
@@ -299,6 +303,27 @@ export function EditableElementNode(props: {
         <ElementNodeContent
           accentColor={accentColor}
           customShapePreview={customShapeEditDraft}
+          deck={deck}
+          element={element}
+          frame={frame}
+          slide={slide}
+        />
+      )}
+      {element.type === "table" ? (
+        <TableCellHitTargets
+          deck={deck}
+          disabled={disablePointerEvents}
+          element={element}
+          frame={frame}
+          isSelected={isSelected}
+          selectionColor={editorPrimaryColor}
+          slide={slide}
+          stageScale={stageScale}
+          onOpenContextMenu={onOpenContextMenu}
+          onSelect={onSelect}
+        />
+      ) : (
+        <ElementInteractionHitTargets
           deck={deck}
           element={element}
           frame={frame}

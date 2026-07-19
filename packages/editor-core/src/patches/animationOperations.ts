@@ -29,7 +29,10 @@ export function createAddAnimationPatch(
       {
         type: "add_animation",
         slideId,
-        animation
+        animation: {
+          ...animation,
+          startMode: animation.startMode ?? "on-click"
+        }
       }
     ]
   };
@@ -102,6 +105,7 @@ export function createDefaultAnimation(
     elementId,
     type: "fade-in",
     order: getNextAnimationOrder(slide),
+    startMode: "on-click",
     durationMs: 400,
     delayMs: 0,
     easing: "ease-out"

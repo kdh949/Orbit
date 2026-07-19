@@ -1,5 +1,7 @@
+import type { PronunciationLexiconEntry } from "@orbit/shared";
 import type { LiveSttResult } from "../stt/liveSttPort";
 import { createCanonicalScriptSentenceIndex } from "./canonicalScriptSentenceIndex";
+import { toCanonicalPronunciationMatchingText } from "./pronunciationMatchingAdapter";
 import type { ScriptProgressSnapshot } from "./speechTrackingEvents";
 
 const MATCH_RESULT_TOLERANCE = 20;
@@ -17,6 +19,10 @@ export type ScriptProgressTracker = {
 
 export function createScriptProgressTracker(
   speakerNotes: string,
+  options: {
+    pronunciationEntries?: readonly PronunciationLexiconEntry[];
+    slideId?: string;
+  } = {},
 ): ScriptProgressTracker {
   const sentenceIndex = createCanonicalScriptSentenceIndex(speakerNotes);
   const sourceText = sentenceIndex.sourceText;
@@ -29,7 +35,13 @@ export function createScriptProgressTracker(
   function acceptResult(
     result: Pick<LiveSttResult, "text" | "isFinal">,
   ): ScriptProgressSnapshot {
-    const spoken = normalizeSourceText(result.text);
+    const spoken = normalizeSourceText(
+      toCanonicalPronunciationMatchingText(
+        result.text,
+        options.pronunciationEntries,
+        options.slideId,
+      ),
+    );
     if (!spoken || sourceCharacters.length === 0) {
       if (result.isFinal) {
         finishSegment();

@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   canAcceptCanvasImageDrop,
+  createRehydratedPptxImportState,
   getCanvasDropPlacement,
   getDroppedFiles,
   getImageBatchStatusMessage,
@@ -21,6 +22,41 @@ vi.mock("../utils/slideRenderUtils", () => ({
 }));
 
 describe("useEditorFileTransfer image insert action", () => {
+  it("rehydrates a persisted PPTX quality report after reload", () => {
+    const qualityReport = {
+      compositeScore: 82,
+      metrics: {
+        geometry: 90,
+        text: 80,
+        color: 80,
+        layer: 90,
+        editability: 60,
+        pixelSimilarity: null
+      },
+      weights: {
+        geometry: 25 as const,
+        text: 15 as const,
+        color: 10 as const,
+        layer: 10 as const,
+        editability: 10 as const,
+        pixelSimilarity: 30 as const
+      },
+      editabilityCoverage: 0.6,
+      appliedCap: null,
+      slideReports: [],
+      notes: ["pixel renderer unavailable"]
+    };
+
+    expect(
+      createRehydratedPptxImportState({ qualityReport })
+    ).toMatchObject({
+      status: "succeeded",
+      message: "저장된 PPTX 가져오기 품질",
+      qualityReport
+    });
+    expect(createRehydratedPptxImportState(null).status).toBe("idle");
+  });
+
   it("selects only the first fully valid image and reports every other file", () => {
     const invalid = mockFile("notes.txt", "text/plain", 12);
     const emptyPng = mockFile("empty.png", "image/png", 0);

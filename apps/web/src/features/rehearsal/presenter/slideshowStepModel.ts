@@ -1,3 +1,8 @@
+import {
+  createAnimationTimeline,
+  type AnimationTimelineDiagnostic,
+  type PlannedAnimationTimelineEffect
+} from "@orbit/editor-core";
 import type { Deck, DeckAnimation, DeckElement, Slide } from "@orbit/shared";
 import type { ElementPresentationState } from "../../slides/rendering/ReadOnlySlideCanvas";
 import { normalizeRenderableElement } from "../../slides/rendering/elementNormalization";
@@ -5,6 +10,7 @@ import { normalizeRenderableElement } from "../../slides/rendering/elementNormal
 export type SlideshowModelInput = {
   slide: Slide;
   triggerAnimationIds?: Iterable<string>;
+  transitionDurationMs?: number;
 };
 
 export type SlideshowStepAddress = {
@@ -12,19 +18,26 @@ export type SlideshowStepAddress = {
   stepIndex: number;
 };
 
-export type PlannedSlideshowAnimation = DeckAnimation & {
+export type PlannedSlideshowAnimation = PlannedAnimationTimelineEffect & {
   animationIndex: number;
-  hasTargetElement: boolean;
+  timelineStartMs: number;
+  transitionDelayMs: number;
 };
 
 export type SlideshowTriggerStep = {
-  order: number;
   animations: PlannedSlideshowAnimation[];
+  durationMs: number;
+  order: number;
+  rootAnimationId: string;
 };
 
 export type SlideshowAnimationPlan = {
+  animations: PlannedSlideshowAnimation[];
   danglingAnimationIds: string[];
+  diagnostics: AnimationTimelineDiagnostic[];
+  diagnosticsTruncatedCount: number;
   entryAnimations: PlannedSlideshowAnimation[];
+  entryDurationMs: number;
   maxStepIndex: number;
   triggerSteps: SlideshowTriggerStep[];
 };
@@ -32,41 +45,36 @@ export type SlideshowAnimationPlan = {
 export function createSlideshowAnimationPlan(
   input: SlideshowModelInput
 ): SlideshowAnimationPlan {
-  const triggerAnimationIds = new Set(input.triggerAnimationIds ?? []);
-  const elementIds = new Set(input.slide.elements.map((element) => element.elementId));
-  const plannedAnimations = input.slide.animations.map((animation, animationIndex) => ({
-    ...animation,
-    animationIndex,
-    hasTargetElement: elementIds.has(animation.elementId)
-  }));
-  const entryAnimations = plannedAnimations
-    .filter((animation) => !triggerAnimationIds.has(animation.animationId))
-    .sort(compareEntryAnimations);
-  const triggerAnimations = plannedAnimations.filter((animation) =>
-    triggerAnimationIds.has(animation.animationId)
+  const triggerAnimationIds = [...(input.triggerAnimationIds ?? [])];
+  const timeline = createAnimationTimeline({
+    animations: input.slide.animations,
+    legacyOnClickAnimationIds: triggerAnimationIds,
+    targetElementIds: input.slide.elements.map((element) => element.elementId),
+    transitionDurationMs:
+      input.transitionDurationMs ?? input.slide.transition?.durationMs ?? 0
+  });
+  const animations = timeline.effects.map(toPlannedSlideshowAnimation);
+  const entryRoots = timeline.entryRoots;
+  const triggerRoots = timeline.clickSteps;
+  const entryAnimations = entryRoots.flatMap((root) =>
+    root.effects.map(toPlannedSlideshowAnimation)
   );
-  const orderGroups = new Map<number, PlannedSlideshowAnimation[]>();
-
-  for (const animation of triggerAnimations) {
-    const animations = orderGroups.get(animation.order) ?? [];
-    animations.push(animation);
-    orderGroups.set(animation.order, animations);
-  }
-
-  const triggerSteps = [...orderGroups.entries()]
-    .sort(([leftOrder], [rightOrder]) => leftOrder - rightOrder)
-    .map(([order, animations]) => ({
-      order,
-      animations: animations.sort(
-        (left, right) => left.animationIndex - right.animationIndex
-      )
-    }));
+  const triggerSteps = triggerRoots.map((root) => ({
+    animations: root.effects.map(toPlannedSlideshowAnimation),
+    durationMs: root.durationMs,
+    order: root.effects[0]?.order ?? 0,
+    rootAnimationId: root.rootAnimationId
+  }));
 
   return {
-    danglingAnimationIds: plannedAnimations
+    animations,
+    danglingAnimationIds: timeline.effects
       .filter((animation) => !animation.hasTargetElement)
       .map((animation) => animation.animationId),
+    diagnostics: timeline.diagnostics,
+    diagnosticsTruncatedCount: timeline.diagnosticsTruncatedCount,
     entryAnimations,
+    entryDurationMs: Math.max(0, ...entryRoots.map((root) => root.durationMs)),
     maxStepIndex: triggerSteps.length,
     triggerSteps
   };
@@ -83,7 +91,7 @@ export function computeSettledElementStates(args: {
     triggerAnimationIds: args.triggerAnimationIds
   });
   const baseStates = createBaseElementStates(args.deck, args.slide);
-  const states = createInitialElementStates(baseStates, args.slide);
+  const states = createInitialElementStates(baseStates, plan.animations);
 
   // 복원 경로에서는 진입 자동 재생을 이미 끝난 상태로 취급해 창 재열기 때 반복 재생을 막는다.
   for (const animation of plan.entryAnimations) {
@@ -124,22 +132,13 @@ export function createBaseElementStates(deck: Deck, slide: Slide) {
 
 function createInitialElementStates(
   baseStates: Record<string, ElementPresentationState>,
-  slide: Slide
+  animations: DeckAnimation[]
 ) {
   const states = cloneElementStates(baseStates);
   const firstAnimationsByElementId = new Map<string, DeckAnimation>();
 
-  for (const [animationIndex, animation] of slide.animations.entries()) {
-    const existing = firstAnimationsByElementId.get(animation.elementId);
-    if (
-      !existing ||
-      compareAnimationExecutionOrder(
-        animation,
-        animationIndex,
-        existing,
-        slide.animations.indexOf(existing)
-      ) < 0
-    ) {
+  for (const animation of animations) {
+    if (!firstAnimationsByElementId.has(animation.elementId)) {
       firstAnimationsByElementId.set(animation.elementId, animation);
     }
   }
@@ -227,34 +226,13 @@ function cloneElementStates(states: Record<string, ElementPresentationState>) {
   );
 }
 
-function compareAnimationExecutionOrder(
-  left: DeckAnimation,
-  leftIndex: number,
-  right: DeckAnimation,
-  rightIndex: number
-) {
-  if (left.order !== right.order) {
-    return left.order - right.order;
-  }
-
-  if (left.delayMs !== right.delayMs) {
-    return left.delayMs - right.delayMs;
-  }
-
-  return leftIndex - rightIndex;
-}
-
-function compareEntryAnimations(
-  left: PlannedSlideshowAnimation,
-  right: PlannedSlideshowAnimation
-) {
-  if (left.order !== right.order) {
-    return left.order - right.order;
-  }
-
-  if (left.delayMs !== right.delayMs) {
-    return left.delayMs - right.delayMs;
-  }
-
-  return left.animationIndex - right.animationIndex;
+function toPlannedSlideshowAnimation(
+  animation: PlannedAnimationTimelineEffect
+): PlannedSlideshowAnimation {
+  return {
+    ...animation,
+    animationIndex: animation.sourceIndex,
+    timelineStartMs: animation.startMs,
+    transitionDelayMs: animation.startMs
+  };
 }

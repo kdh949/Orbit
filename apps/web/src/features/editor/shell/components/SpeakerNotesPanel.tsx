@@ -3,6 +3,8 @@ import {
   IconChevronDown as ChevronDown,
   IconChevronUp as ChevronUp,
   IconGripHorizontal as GripHorizontal,
+  IconMaximize as Maximize,
+  IconMinimize as Minimize,
 } from "@tabler/icons-react";
 import type {
   CSSProperties,
@@ -11,6 +13,7 @@ import type {
   RefObject
 } from "react";
 import { useEffect, useState } from "react";
+import type { AutoSlideQuestionGuideStatus } from "../../practice/useAutoSlideQuestionGuides";
 
 import { SpeakerNotesQnaTab } from "./SpeakerNotesQnaTab";
 import { SpeakerNotesReportTab } from "./SpeakerNotesReportTab";
@@ -28,19 +31,24 @@ const speakerNotesTabs: Array<{ id: SpeakerNotesTab; label: string }> = [
 ];
 
 export function SpeakerNotesPanel(props: SpeakerNotesScriptTabProps & {
+  canGenerateQuestionGuides: boolean;
   contentRef: RefObject<HTMLDivElement | null>;
   deck: Deck;
   flushPendingSaves: () => Promise<void>;
   height: number;
   isExpanded: boolean;
+  isMaximized: boolean;
   isResizing: boolean;
   maxHeight: number;
   minHeight: number;
   onTabSelected: (tab: SpeakerNotesTab) => void;
   onResizeKeyDown: (event: ReactKeyboardEvent<HTMLButtonElement>) => void;
   onResizeStart: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+  onToggleMaximized: () => void;
   onTogglePanel: () => void;
   projectId: string;
+  questionGuideAutoStatus: AutoSlideQuestionGuideStatus;
+  questionGuideRefreshToken: number;
   reportRefreshToken: number;
   requestedTab: SpeakerNotesTab | null;
 }) {
@@ -61,6 +69,7 @@ export function SpeakerNotesPanel(props: SpeakerNotesScriptTabProps & {
       aria-labelledby="speaker-notes-title"
       className={`script-panel stage-speaker-notes-panel ${
         props.isExpanded ? "expanded" : "collapsed"
+      } ${props.isMaximized ? "maximized" : ""
       } ${props.isEditing ? "editing" : ""} ${
         props.isResizing ? "is-resizing" : ""
       }`}
@@ -109,18 +118,44 @@ export function SpeakerNotesPanel(props: SpeakerNotesScriptTabProps & {
                 </button>
               ))}
             </div>
-            <button
-              aria-controls="speaker-notes-content"
-              aria-expanded="true"
-              aria-label="발표 메모 접기"
-              className="speaker-notes-collapse-button"
-              disabled={props.isEditing}
-              title="발표 메모 접기"
-              type="button"
-              onClick={props.onTogglePanel}
-            >
-              <ChevronDown aria-hidden="true" size={16} />
-            </button>
+            <div className="speaker-notes-header-actions">
+              <button
+                aria-controls="speaker-notes-content"
+                aria-label={
+                  props.isMaximized
+                    ? "발표 메모 기본 크기로 축소"
+                    : "발표 메모를 슬라이드 편집 영역까지 확대"
+                }
+                aria-pressed={props.isMaximized}
+                className="speaker-notes-maximize-button"
+                disabled={props.isEditing}
+                title={
+                  props.isMaximized
+                    ? "기본 크기로 축소"
+                    : "슬라이드 편집 영역까지 확대"
+                }
+                type="button"
+                onClick={props.onToggleMaximized}
+              >
+                {props.isMaximized ? (
+                  <Minimize aria-hidden="true" size={16} />
+                ) : (
+                  <Maximize aria-hidden="true" size={16} />
+                )}
+              </button>
+              <button
+                aria-controls="speaker-notes-content"
+                aria-expanded="true"
+                aria-label="발표 메모 접기"
+                className="speaker-notes-collapse-button"
+                disabled={props.isEditing}
+                title="발표 메모 접기"
+                type="button"
+                onClick={props.onTogglePanel}
+              >
+                <ChevronDown aria-hidden="true" size={16} />
+              </button>
+            </div>
           </>
         ) : (
           <button
@@ -149,9 +184,12 @@ export function SpeakerNotesPanel(props: SpeakerNotesScriptTabProps & {
         ) : null}
         {activeTab === "qna" ? (
           <SpeakerNotesQnaTab
+            canGenerate={props.canGenerateQuestionGuides}
             deck={props.deck}
             flushPendingSaves={props.flushPendingSaves}
             projectId={props.projectId}
+            questionGuideAutoStatus={props.questionGuideAutoStatus}
+            questionGuideRefreshToken={props.questionGuideRefreshToken}
             slide={props.currentSlide}
           />
         ) : null}

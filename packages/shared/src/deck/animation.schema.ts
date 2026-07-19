@@ -19,11 +19,19 @@ export const animationEasingSchema = z.enum([
   "ease-in-out"
 ]);
 
+export const animationStartModeSchema = z.enum([
+  "on-slide-enter",
+  "on-click",
+  "with-previous",
+  "after-previous"
+]);
+
 export const animationSchema = z.object({
   animationId: deckAnimationIdSchema,
   elementId: deckElementIdSchema,
   type: animationTypeSchema,
   order: z.number().int().positive(),
+  startMode: animationStartModeSchema.optional(),
   durationMs: z.number().int().positive().default(400),
   delayMs: z.number().int().nonnegative().default(0),
   easing: animationEasingSchema.default("ease-out")
@@ -31,4 +39,5 @@ export const animationSchema = z.object({
 
 export type DeckAnimationType = z.infer<typeof animationTypeSchema>;
 export type DeckAnimationEasing = z.infer<typeof animationEasingSchema>;
+export type DeckAnimationStartMode = z.infer<typeof animationStartModeSchema>;
 export type DeckAnimation = z.infer<typeof animationSchema>;

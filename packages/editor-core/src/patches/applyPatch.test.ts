@@ -833,6 +833,7 @@ describe("applyDeckPatch", () => {
           animationId: "anim_1",
           animation: {
             durationMs: 1000,
+            startMode: "on-click",
           },
         },
         {
@@ -1216,6 +1217,65 @@ describe("applyDeckPatch", () => {
       error: {
         code: "SLIDE_NOT_FOUND",
       },
+    });
+  });
+
+  it("sets and clears a destination slide transition", () => {
+    const deck = createPatchTestDeck();
+    const setResult = applyPatchOrFail(
+      deck,
+      createPatch([
+        {
+          type: "update_slide_transition",
+          slideId: "slide_1",
+          transition: { type: "fade", durationMs: 700 }
+        }
+      ])
+    );
+
+    expect(setResult.deck.slides[0]?.transition).toEqual({
+      type: "fade",
+      durationMs: 700
+    });
+
+    const clearResult = applyPatchOrFail(setResult.deck, {
+      ...createPatch([
+        {
+          type: "update_slide_transition",
+          slideId: "slide_1",
+          transition: null
+        }
+      ]),
+      baseVersion: setResult.deck.version
+    });
+
+    expect(clearResult.deck.slides[0]?.transition).toBeUndefined();
+  });
+
+  it("rejects a slide action targeting a slide-entry animation chain", () => {
+    const deck = createPatchTestDeck();
+    deck.slides[0]!.animations[0]!.startMode = "on-slide-enter";
+    const animationId = deck.slides[0]!.animations[0]!.animationId;
+    const result = applyDeckPatch(
+      deck,
+      createPatch([
+        {
+          type: "add_slide_action",
+          slideId: "slide_1",
+          action: {
+            actionId: "act_entry_animation",
+            trigger: { kind: "cue", cue: "entry" },
+            effect: { kind: "play-animation", animationId }
+          }
+        }
+      ])
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: "SLIDE_ACTION_ANIMATION_TIMING_INCOMPATIBLE"
+      }
     });
   });
 

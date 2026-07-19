@@ -1,13 +1,89 @@
 import { describe, expect, it } from "vitest";
+import type { Slide } from "../deck/deck.schema";
 
 import {
+  autoCreateSlideQuestionGuidesRequestSchema,
+  autoCreateSlideQuestionGuidesResponseSchema,
   slideQuestionGuideDeckContextSlideSchema,
   slideQuestionGuideJobPayloadSchema,
   slideQuestionGuideJobResultSchema,
   slideQuestionGuideSchema,
+  slideQuestionGuideSourceSnapshotSchema,
+  slideQuestionGuideTextHashInput,
 } from "./slide-question-guide.schema";
 
 describe("slide question guide privacy contract", () => {
+  it("validates the auto batch contract and bounded per-slide failures", () => {
+    expect(autoCreateSlideQuestionGuidesRequestSchema.safeParse({
+      clientRequestId: "auto-request-1",
+      deckId: "deck-1",
+      expectedDeckVersion: 3,
+      questionCount: 3,
+    }).success).toBe(true);
+    expect(autoCreateSlideQuestionGuidesResponseSchema.safeParse({
+      deckId: "deck-1",
+      deckVersion: 3,
+      slides: [
+        {
+          status: "accepted",
+          slideId: "slide-1",
+          guideId: "guide-1",
+          job: {
+            jobId: "job-1",
+            projectId: "project-1",
+            type: "slide-question-guide-generation",
+            status: "queued",
+            progress: 0,
+            message: "queued",
+            result: null,
+            error: null,
+            createdAt: "2026-07-19T00:00:00.000Z",
+            updatedAt: "2026-07-19T00:00:00.000Z",
+          },
+        },
+        { status: "failed", slideId: "slide-2", errorCode: "ENQUEUE_FAILED" },
+      ],
+    }).success).toBe(true);
+  });
+
+  it("accepts frozen and legacy source snapshots", () => {
+    const legacy = {
+      slideId: "slide-1",
+      deckVersion: 3,
+      contentHash: "a".repeat(64),
+      title: "시장 진입 전략",
+      content: "교육 시장을 우선 검증합니다.",
+    };
+    expect(slideQuestionGuideSourceSnapshotSchema.safeParse(legacy).success).toBe(true);
+    expect(slideQuestionGuideSourceSnapshotSchema.safeParse({
+      ...legacy,
+      deckSnapshotId: "snapshot_1",
+      contentHashVersion: "slide-text-v1",
+    }).success).toBe(true);
+  });
+
+  it("keeps visual-only edits fresh and invalidates text edits", () => {
+    const slide = {
+      title: "시장 진입 전략",
+      speakerNotes: "교육 시장을 우선 검증합니다.",
+      style: { backgroundColor: "#ffffff" },
+      elements: [{ props: { text: "첫 고객군", color: "#111111" } }],
+    } as Slide;
+    const visualEdit = {
+      ...slide,
+      style: { backgroundColor: "#000000" },
+      elements: [{ props: { text: "첫 고객군", color: "#ffffff" } }],
+    } as Slide;
+    const textEdit = { ...slide, title: "수정된 시장 진입 전략" } as Slide;
+
+    expect(slideQuestionGuideTextHashInput(visualEdit)).toEqual(
+      slideQuestionGuideTextHashInput(slide),
+    );
+    expect(slideQuestionGuideTextHashInput(textEdit)).not.toEqual(
+      slideQuestionGuideTextHashInput(slide),
+    );
+  });
+
   it("keeps job payload and result identifier-only", () => {
     expect(slideQuestionGuideJobPayloadSchema.safeParse({
       jobId: "job-1",

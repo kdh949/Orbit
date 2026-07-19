@@ -127,6 +127,7 @@ export function getTextElementLayout(args: {
     });
 
     return {
+      availableHeight,
       color,
       contentHeight: richText.contentHeight,
       contentWidth: richText.contentWidth,
@@ -137,6 +138,7 @@ export function getTextElementLayout(args: {
       richText,
       text,
       textDecoration: underline ? ("underline" as const) : undefined,
+      totalContentHeight: richText.totalContentHeight,
       width: richText.innerWidth,
       x: richText.innerX,
       y: richText.contentY
@@ -174,6 +176,7 @@ export function getTextElementLayout(args: {
   }
 
   return {
+    availableHeight,
     color,
     contentHeight,
     contentWidth,
@@ -184,10 +187,42 @@ export function getTextElementLayout(args: {
     richText: null,
     text,
     textDecoration: underline ? ("underline" as const) : undefined,
+    totalContentHeight: contentMetrics.height,
     width,
     x: bodyInset.left,
     y
   };
+}
+
+export function isTextElementOverflowing(args: {
+  frame: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotation: number;
+  };
+  props: TextElementProps;
+  slide: Slide;
+  theme: Deck["theme"];
+}) {
+  const layout = getTextElementLayout(args);
+
+  if (args.props.writingMode !== "vertical-270") {
+    return layout.totalContentHeight > layout.availableHeight;
+  }
+
+  const metrics = measureTextContentBounds({
+    align: args.props.align,
+    fontFamily: layout.fontFamily,
+    fontSize: layout.fontSize,
+    fontStyle: layout.fontStyle,
+    lineHeight: args.props.lineHeight,
+    text: layout.text,
+    width: Math.max(1, args.frame.height)
+  });
+
+  return metrics.height > Math.max(1, args.frame.width);
 }
 
 export function estimateTextContentBounds(args: {

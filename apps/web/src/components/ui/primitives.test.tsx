@@ -5,6 +5,7 @@ import {
   OrbitColorBlock,
   OrbitDialog,
   OrbitEmptyState,
+  OrbitFailureState,
   OrbitField,
   OrbitIconLabel,
   OrbitIconButton,
@@ -93,6 +94,21 @@ describe("Redesign System primitives", () => {
     expect(html).toContain('role="dialog"');
     expect(html).toContain('aria-modal="true"');
     expect(html).toContain('role="status"');
+  });
+
+  it("renders a reusable failure state with text-only variations", () => {
+    const html = renderToStaticMarkup(
+      <OrbitFailureState
+        description="연결을 확인한 뒤 프로젝트 목록을 다시 불러오세요."
+        onRetry={() => undefined}
+        retryLabel="목록 다시 불러오기"
+        title="프로젝트를 불러오지 못했습니다."
+      />,
+    );
+
+    expect(html).toContain('role="alert"');
+    expect(html).toContain("프로젝트를 불러오지 못했습니다.");
+    expect(html).toContain("목록 다시 불러오기");
   });
 
   it("blocks every dialog dismiss path while closing is disabled", () => {

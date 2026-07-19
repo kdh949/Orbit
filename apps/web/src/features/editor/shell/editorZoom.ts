@@ -7,8 +7,8 @@ const maximumFitEditorStageScale = 0.66;
 const minimumFitEditorStageScale = 0.16;
 const compactEditorBreakpoint = 760;
 const compactEditorCanvasInset = 32;
-const fittedEditorCanvasHorizontalInset = 48;
-const fittedEditorCanvasVerticalInset = 64;
+const fittedEditorCanvasHorizontalInset = 52;
+const fittedEditorCanvasVerticalInset = 88;
 const editorZoomStoragePrefix = "orbit:editor-zoom:";
 
 export type EditorZoomState =

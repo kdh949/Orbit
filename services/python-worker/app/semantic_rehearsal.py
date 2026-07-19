@@ -68,17 +68,20 @@ class SnapshotSemanticCue(StrictApiModel):
     meaning: str = Field(min_length=1, max_length=240)
     report_label: str | None = Field(default=None, alias="reportLabel", max_length=80)
     presenter_tag: str | None = Field(default=None, alias="presenterTag", max_length=40)
-    cue_type: Literal[
-        "definition",
-        "problem",
-        "cause",
-        "solution",
-        "result",
-        "warning",
-        "lesson",
-        "transition",
-        "closing",
-    ] | None = Field(default=None, alias="cueType")
+    cue_type: (
+        Literal[
+            "definition",
+            "problem",
+            "cause",
+            "solution",
+            "result",
+            "warning",
+            "lesson",
+            "transition",
+            "closing",
+        ]
+        | None
+    ) = Field(default=None, alias="cueType")
     importance: Literal["core", "supporting", "optional"] = "supporting"
     review_status: Literal["approved", "excluded"] = Field(alias="reviewStatus")
     freshness: Literal["current", "stale"] = "current"
@@ -132,11 +135,76 @@ class SnapshotSlide(StrictApiModel):
         return self
 
 
+class SnapshotPronunciationAlias(StrictApiModel):
+    text: str = Field(min_length=1)
+    normalized_text: str = Field(alias="normalizedText", min_length=1)
+    origin: Literal[
+        "static",
+        "domain",
+        "rule",
+        "existing-keyword",
+        "existing-semantic-cue",
+        "llm",
+        "user",
+    ]
+    confidence: float = Field(ge=0, le=1)
+    enabled: bool
+
+
+class SnapshotPronunciationOccurrence(StrictApiModel):
+    slide_id: str = Field(alias="slideId", min_length=1)
+    sentence_id: str | None = Field(default=None, alias="sentenceId", min_length=1)
+    start: int = Field(ge=0)
+    end: int = Field(gt=0)
+
+
+class SnapshotPronunciationEntry(StrictApiModel):
+    id: str = Field(min_length=1)
+    source_text: str = Field(alias="sourceText", min_length=1)
+    normalized_source: str = Field(alias="normalizedSource", min_length=1)
+    canonical_text: str = Field(alias="canonicalText", min_length=1)
+    canonical_key: str = Field(alias="canonicalKey", min_length=1)
+    category: Literal["acronym", "word", "product", "numeric-symbol", "mixed"]
+    aliases: list[SnapshotPronunciationAlias] = Field(default_factory=list)
+    confidence: float = Field(ge=0, le=1)
+    status: Literal["active", "needs-review", "disabled"]
+    script_occurrences: list[SnapshotPronunciationOccurrence] = Field(
+        alias="scriptOccurrences",
+        min_length=1,
+    )
+
+
+class SnapshotPronunciationLexicon(StrictApiModel):
+    schema_version: Literal[1] = Field(alias="schemaVersion")
+    generator_version: str = Field(alias="generatorVersion", min_length=1)
+    deck_id: str = Field(alias="deckId", min_length=1)
+    deck_version: int = Field(alias="deckVersion", ge=1)
+    source_hash: str = Field(alias="sourceHash", pattern=r"^[a-f0-9]{16}$")
+    entries: list[SnapshotPronunciationEntry] = Field(default_factory=list)
+
+
 class EvaluationSnapshot(StrictApiModel):
     deck_id: str = Field(alias="deckId", min_length=1)
     deck_version: int = Field(alias="deckVersion", ge=1)
+    deck_content_hash: str | None = Field(
+        default=None,
+        alias="deckContentHash",
+        min_length=1,
+    )
     captured_at: str = Field(alias="capturedAt", min_length=1)
     slides: list[SnapshotSlide] = Field(default_factory=list)
+    evaluation_plan: dict[str, Any] | None = Field(
+        default=None,
+        alias="evaluationPlan",
+    )
+    focus_profile_snapshot: dict[str, Any] | None = Field(
+        default=None,
+        alias="focusProfileSnapshot",
+    )
+    pronunciation_lexicon: SnapshotPronunciationLexicon | None = Field(
+        default=None,
+        alias="pronunciationLexicon",
+    )
 
 
 class SemanticTranscriptSegment(StrictApiModel):
@@ -259,9 +327,9 @@ class SemanticCueOutcome(StrictApiModel):
     importance: Literal["core", "supporting", "optional"]
     status: SemanticOutcomeStatus
     confidence: float | None = Field(default=None, ge=0, le=1)
-    matched_by: Literal[
-        "lexical", "alias", "embedding", "nli", "post_run_semantic"
-    ] | None = Field(default=None, alias="matchedBy")
+    matched_by: (
+        Literal["lexical", "alias", "embedding", "nli", "post_run_semantic"] | None
+    ) = Field(default=None, alias="matchedBy")
     measurement_mode: SemanticMeasurementMode = Field(alias="measurementMode")
     fallback_used: bool = Field(alias="fallbackUsed")
     fallback_reason: SemanticFallbackReason | None = Field(
@@ -471,7 +539,10 @@ class OpenAISemanticGrader:
                 text=SEMANTIC_GRADER_RESPONSE_FORMAT,
             )
         except Exception as error:
-            if isinstance(error, TimeoutError) or "timeout" in type(error).__name__.casefold():
+            if (
+                isinstance(error, TimeoutError)
+                or "timeout" in type(error).__name__.casefold()
+            ):
                 raise SemanticGraderError("timeout") from None
             raise SemanticGraderError("runtime_error") from None
 
@@ -485,7 +556,10 @@ class OpenAISemanticGrader:
 
         requested_ids = {item.cue_id for item in inputs}
         returned_ids = [outcome.cue_id for outcome in payload.outcomes]
-        if len(returned_ids) != len(set(returned_ids)) or set(returned_ids) != requested_ids:
+        if (
+            len(returned_ids) != len(set(returned_ids))
+            or set(returned_ids) != requested_ids
+        ):
             raise SemanticGraderError("provider_unavailable")
 
         return [
@@ -551,31 +625,6 @@ def analyze_semantic_cues(
             if transcript_reason is not None:
                 outcomes.append(_unmeasured_outcome(cue, transcript_reason))
                 continue
-
-            concepts = _concepts(cue)
-            matches = _match_concepts(concepts, cue.aliases, slide_segments)
-            if matches:
-                covered = [concept for concept, _term, matched in matches if matched]
-                missing = [concept for concept, _term, matched in matches if not matched]
-                if covered:
-                    outcomes.append(
-                        _basic_outcome(
-                            cue,
-                            covered=covered,
-                            missing=missing,
-                            matched_by=(
-                                "alias"
-                                if any(
-                                    matched and _normalize_text(term) != _normalize_text(concept)
-                                    for concept, term, matched in matches
-                                )
-                                else "lexical"
-                            ),
-                            segments=slide_segments,
-                            matched_terms=[term for _concept, term, matched in matches if matched],
-                        )
-                    )
-                    continue
 
             provider_reason = _provider_blocking_reason(
                 request.capability_events, slide.slide_id, cue.cue_id

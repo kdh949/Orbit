@@ -5,12 +5,14 @@ import {
   appendDeckPatchResponseSchema,
   deckApiErrorSchema,
   getDeckResponseSchema,
+  getPptxImportQualityResponseSchema,
   putDeckResponseSchema,
   type AppendDeckPatchAckResponse,
   type Deck,
   type DeckApiErrorCode,
   type DeckPatch,
-  type Job
+  type Job,
+  type PptxImportQuality
 } from "@orbit/shared";
 
 import type {
@@ -120,6 +122,16 @@ export async function fetchProjectDeck(projectId: string): Promise<Deck | null> 
   return getDeckResponseSchema.parse(await response.json()).deck;
 }
 
+export async function fetchPptxImportQuality(
+  projectId: string
+): Promise<PptxImportQuality | null> {
+  const response = await fetch(`/api/v1/projects/${projectId}/deck/import-quality`);
+  if (!response.ok) {
+    throw await readResponseError(response, "PPTX import quality fetch failed");
+  }
+  return getPptxImportQualityResponseSchema.parse(await response.json()).importQuality;
+}
+
 export function hasPendingEditorChanges(args: {
   hasUnackedLocalChanges: boolean;
   pendingPatchCount: number;
@@ -186,6 +198,42 @@ export async function putProjectDeck(
   const payload = putDeckResponseSchema.parse(await response.json());
   emitOoxmlSyncJob(payload.ooxmlSyncJob);
   return payload.deck;
+}
+
+export async function putProjectDeckWithConflictRecovery(args: {
+  baseVersion: number;
+  deck: Deck;
+  projectId: string;
+  fetchLatest?: (projectId: string) => Promise<Deck | null>;
+  put?: (
+    projectId: string,
+    deck: Deck,
+    options: { baseVersion?: number },
+  ) => Promise<Deck>;
+}): Promise<{ deck: Deck; recoveredConflict: boolean }> {
+  const put = args.put ?? putProjectDeck;
+  try {
+    return {
+      deck: await put(args.projectId, args.deck, {
+        baseVersion: args.baseVersion,
+      }),
+      recoveredConflict: false,
+    };
+  } catch (error) {
+    if (!isDeckRequestErrorWithCode(error, "STALE_BASE_VERSION")) throw error;
+    const latestDeck = await (args.fetchLatest ?? fetchProjectDeck)(
+      args.projectId,
+    );
+    if (!latestDeck) {
+      throw new Error("최신 저장 상태를 다시 불러오지 못했습니다.");
+    }
+    return {
+      deck: await put(args.projectId, args.deck, {
+        baseVersion: latestDeck.version,
+      }),
+      recoveredConflict: true,
+    };
+  }
 }
 
 export function applyDeckPatchAcknowledgement(

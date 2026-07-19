@@ -231,6 +231,73 @@ def test_imported_rich_text_style_sync_preserves_unknown_rpr_and_unselected_run(
     )
 
 
+def test_highlight_and_numbered_list_round_trip_through_ooxml_sync(
+    tmp_path: Path,
+) -> None:
+    pptx_path = rich_text_source_pptx(tmp_path)
+    generated = generate_pptx_ooxml(pptx_path, "file_rich_text", render=False)
+    text = text_element(generated, "Simple source")
+    source = source_for_text(generated, "Simple source")
+    props = copy.deepcopy(text["props"])
+    paragraph = props["paragraphs"][0]
+    paragraph["bullet"] = {
+        "enabled": True,
+        "character": "•",
+        "indent": 24,
+        "kind": "number",
+        "numberStyle": "upper-alpha",
+        "startAt": 3,
+    }
+    paragraph["runs"][0]["highlightColor"] = "#FEF08A"
+
+    result = sync_pptx_ooxml(
+        pptx_path,
+        template_blueprint=generated.template_blueprint,
+        operations=[
+            {
+                "type": "update_element_props",
+                "slideId": template_slide_id(generated),
+                "elementId": text["elementId"],
+                "props": props,
+            }
+        ],
+        deck_canvas=generated.canvas,
+        synced_deck_version=2,
+        render=False,
+    )
+
+    assert result.unsupported_operations == []
+    package = current_package_bytes(result.assets)
+    shape = shape_element(package, source["shapeId"])
+    first_run_properties = next(shape.iter(f"{{{DML_NS}}}rPr"))
+    highlight = first_run_properties.find(
+        f"{{{DML_NS}}}highlight/{{{DML_NS}}}srgbClr"
+    )
+    assert highlight is not None
+    assert highlight.attrib["val"] == "FEF08A"
+    auto_number = next(shape.iter(f"{{{DML_NS}}}buAutoNum"))
+    assert auto_number.attrib == {"type": "alphaUcPeriod", "startAt": "3"}
+
+    round_trip_path = tmp_path / "highlight-number-round-trip.pptx"
+    round_trip_path.write_bytes(package)
+    round_trip = generate_pptx_ooxml(
+        round_trip_path,
+        "file_rich_text_round_trip",
+        render=False,
+    )
+    round_trip_props = text_element(round_trip, "Simple source")["props"]
+    round_trip_paragraph = round_trip_props["paragraphs"][0]
+    assert round_trip_paragraph["runs"][0]["highlightColor"] == "#FEF08A"
+    assert round_trip_paragraph["bullet"] == {
+        "enabled": True,
+        "character": "•",
+        "indent": 24.0,
+        "kind": "number",
+        "numberStyle": "upper-alpha",
+        "startAt": 3,
+    }
+
+
 def test_partial_style_props_preserve_existing_text_and_hyperlink(
     tmp_path: Path,
 ) -> None:

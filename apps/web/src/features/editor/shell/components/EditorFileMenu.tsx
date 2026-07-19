@@ -34,7 +34,6 @@ export function EditorFileMenu(props: EditorFileMenuProps) {
       variant={dropdownVariant}
     >
       <div className="editor-file-menu-context">
-        <strong>{props.title}</strong>
         <span>{props.subtitle}</span>
       </div>
       {props.groups.map((group, groupIndex) => (

@@ -24,6 +24,7 @@ import {
 import type { JoinAudiencePresentationRequest } from "@orbit/shared";
 import { InjectPinoLogger, PinoLogger } from "nestjs-pino";
 
+import { DecksService } from "../decks/decks.service";
 import {
   PresentationSessionRepository,
   type PresentationSessionRow
@@ -36,6 +37,7 @@ const defaultAccessDays = 14;
 export class PresentationSessionsService {
   constructor(
     private readonly repository: PresentationSessionRepository,
+    private readonly decksService: DecksService,
     @InjectPinoLogger(PresentationSessionsService.name)
     private readonly logger: PinoLogger,
     @Optional() private readonly audienceRateLimit?: AudienceRateLimitService
@@ -58,18 +60,17 @@ export class PresentationSessionsService {
     const sessionId = `session_${randomUUID()}`;
 
     const result = await this.repository.transaction(async (manager) => {
-      const deck = await this.repository.findStoredDeckForUpdate(
+      const deck = await this.decksService.getDeckForUpdate(
         manager,
         projectId,
         input.deckId
       );
-      if (!deck) throw new NotFoundException("Deck not found for presentation session");
 
       const closedSessionIds = await this.repository.closeActive(manager, projectId, now);
       const row = await this.repository.insert(manager, {
         sessionId,
         projectId,
-        deckId: deck.deck_id,
+        deckId: deck.deckId,
         deckVersion: deck.version,
         userId,
         status: startsAt.getTime() > now.getTime() ? "draft" : "live",

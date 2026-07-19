@@ -1,0 +1,162 @@
+.orbit-shell .validation-card {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius-xl);
+  background: var(--redesign-color-surface-container-low);
+}
+
+.orbit-shell .validation-list,
+.orbit-shell .validation-item {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.orbit-shell .validation-item {
+  display: grid;
+  gap: var(--redesign-space-2);
+  overflow-wrap: anywhere;
+  border: 1px solid var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius-lg);
+  background: var(--redesign-color-surface);
+}
+
+.orbit-shell .validation-item:hover,
+.orbit-shell .validation-item:focus-within {
+  border-color: var(--redesign-color-primary-outline);
+  background: var(--redesign-color-primary-subtle);
+}
+
+.orbit-shell .validation-item-risk {
+  border-color: var(--redesign-color-warning);
+  background: var(--redesign-color-warning-subtle);
+}
+
+.orbit-shell .validation-severity-label {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 700;
+}
+
+.orbit-shell .validation-target-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: var(--redesign-space-2) var(--redesign-space-3);
+  overflow-wrap: anywhere;
+  border: 1px solid var(--redesign-color-outline);
+  border-radius: var(--redesign-radius-lg);
+  background: var(--redesign-color-surface-container);
+  color: var(--redesign-color-on-surface);
+  font: inherit;
+  font-size: var(--redesign-type-body-sm-size);
+  line-height: var(--redesign-type-body-sm-line-height);
+  text-align: left;
+}
+
+.orbit-shell .validation-target-button:hover:not(:disabled) {
+  border-color: var(--redesign-color-primary-outline);
+  background: var(--redesign-color-primary-subtle);
+}
+
+.orbit-shell .validation-target-button:focus-visible,
+.orbit-shell .validation-action-button:focus-visible,
+.orbit-shell .validation-apply-all-button:focus-visible {
+  outline: none;
+  box-shadow: var(--redesign-focus-ring);
+}
+
+.orbit-shell .validation-target-button:disabled {
+  color: var(--redesign-color-on-surface-variant);
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.orbit-shell .validation-recovery-instruction {
+  margin: 0;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-body-sm-size);
+  line-height: var(--redesign-type-body-sm-line-height);
+}
+
+.orbit-shell .validation-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--redesign-space-2);
+  max-width: 100%;
+  min-width: 0;
+  margin-top: var(--redesign-space-1);
+}
+
+.orbit-shell .validation-action-button,
+.orbit-shell .validation-apply-all-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-height: 36px;
+  padding: var(--redesign-space-2) var(--redesign-space-3);
+  overflow-wrap: anywhere;
+  border: 1px solid var(--redesign-color-primary-outline);
+  border-radius: var(--redesign-radius-lg);
+  background: var(--redesign-color-surface);
+  color: var(--redesign-color-primary-emphasis);
+  font-size: var(--redesign-type-body-sm-size);
+  font-weight: 700;
+  line-height: var(--redesign-type-body-sm-line-height);
+  white-space: normal;
+}
+
+.orbit-shell .validation-action-button {
+  gap: var(--redesign-space-1);
+}
+
+.orbit-shell .validation-action-button:hover,
+.orbit-shell .validation-apply-all-button:hover {
+  background: var(--redesign-color-primary-subtle);
+}
+
+.orbit-shell .validation-apply-all-button {
+  width: 100%;
+  margin-top: var(--redesign-space-1);
+}
+
+.orbit-shell .validation-repair-status {
+  margin: 0;
+  padding: var(--redesign-space-2) var(--redesign-space-3);
+  overflow-wrap: anywhere;
+  border-radius: var(--redesign-radius-lg);
+  background: var(--redesign-color-info-container);
+  color: var(--redesign-color-on-info-container);
+  font-size: var(--redesign-type-body-sm-size);
+  line-height: var(--redesign-type-body-sm-line-height);
+}
+
+.orbit-shell .validation-repair-status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.orbit-shell .validation-empty-state {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-body-sm-size);
+}
+
+@media (any-pointer: coarse) {
+  .orbit-shell .validation-target-button,
+  .orbit-shell .validation-action-button,
+  .orbit-shell .validation-apply-all-button {
+    min-height: 44px;
+  }
+}

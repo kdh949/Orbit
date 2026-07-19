@@ -340,11 +340,9 @@ export function EditorSlideRehearsalRightPanel(
   return (
     <div className="editor-slide-rehearsal-side">
       <section className="editor-slide-rehearsal-summary">
-        <span className="redesign-eyebrow">CURRENT SLIDE</span>
         <strong>
           {props.slide.order}. {props.slide.title || "제목 없는 슬라이드"}
         </strong>
-        <p>현재 슬라이드만 반복해서 연습합니다.</p>
       </section>
 
       <section className="editor-slide-rehearsal-checkpoints">
@@ -366,7 +364,6 @@ export function EditorSlideRehearsalRightPanel(
                     <IconCircle aria-hidden="true" size={16} />
                   )}
                   <span>{keyword.text}</span>
-                  {keyword.required ? <small>필수</small> : null}
                 </li>
               );
             })}

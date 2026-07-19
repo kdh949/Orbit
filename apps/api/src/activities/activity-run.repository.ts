@@ -24,7 +24,11 @@ export type ActivityRunRow = {
   updated_at: Date | string;
 };
 
-export type ActivitySessionDeckRow = {
+export type ActivitySessionIdentityRow = {
+  deck_id: string | null;
+};
+
+export type ActivitySessionRow = {
   session_id: string;
   project_id: string;
   deck_id: string;
@@ -32,8 +36,6 @@ export type ActivitySessionDeckRow = {
   session_status: "draft" | "live" | "ended";
   starts_at: Date | string;
   expires_at: Date | string;
-  deck_json: unknown;
-  current_deck_version: number;
 };
 
 const runColumns = `
@@ -51,29 +53,41 @@ export class ActivityRunRepository {
     return this.dataSource.transaction(work);
   }
 
-  async lockSessionDeck(
+  async findSessionIdentity(
     manager: EntityManager,
     projectId: string,
     sessionId: string
-  ): Promise<ActivitySessionDeckRow | null> {
-    const rows = await manager.query<ActivitySessionDeckRow[]>(
+  ): Promise<ActivitySessionIdentityRow | null> {
+    const rows = await manager.query<ActivitySessionIdentityRow[]>(
+      `
+        SELECT deck_id
+        FROM presentation_sessions
+        WHERE project_id = $1 AND session_id = $2
+        LIMIT 1
+      `,
+      [projectId, sessionId]
+    );
+    return rows[0] ?? null;
+  }
+
+  async lockSession(
+    manager: EntityManager,
+    projectId: string,
+    sessionId: string
+  ): Promise<ActivitySessionRow | null> {
+    const rows = await manager.query<ActivitySessionRow[]>(
       `
         SELECT
-          sessions.session_id,
-          sessions.project_id,
-          sessions.deck_id,
-          sessions.deck_version,
-          sessions.status AS session_status,
-          sessions.starts_at,
-          sessions.expires_at,
-          decks.deck_json,
-          decks.version AS current_deck_version
-        FROM presentation_sessions AS sessions
-        INNER JOIN decks
-          ON decks.project_id = sessions.project_id
-         AND decks.deck_id = sessions.deck_id
-        WHERE sessions.project_id = $1 AND sessions.session_id = $2
-        FOR UPDATE OF sessions
+          session_id,
+          project_id,
+          deck_id,
+          deck_version,
+          status AS session_status,
+          starts_at,
+          expires_at
+        FROM presentation_sessions
+        WHERE project_id = $1 AND session_id = $2
+        FOR UPDATE
       `,
       [projectId, sessionId]
     );

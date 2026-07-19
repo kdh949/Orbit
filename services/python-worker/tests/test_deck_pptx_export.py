@@ -104,6 +104,40 @@ def test_export_deck_pptx_rejects_crop_outside_shared_contract(
         export_deck_pptx(DeckPptxExportRequest(deck=image_deck(crop=crop)))
 
 
+def test_export_deck_pptx_clips_text_to_its_fixed_frame() -> None:
+    deck = image_deck()
+    deck["slides"][0]["elements"] = [
+        {
+            "elementId": "el_overflow_text",
+            "type": "text",
+            "x": 120,
+            "y": 180,
+            "width": 320,
+            "height": 80,
+            "zIndex": 1,
+            "visible": True,
+            "props": {
+                "text": "한글 English Supercalifragilisticexpialidocious",
+                "fontSize": 28,
+                "fontWeight": "normal",
+                "align": "left",
+                "verticalAlign": "top",
+                "lineHeight": 1.2,
+            },
+        }
+    ]
+
+    binary = export_binary(deck)
+
+    with ZipFile(BytesIO(binary)) as archive:
+        slide_root = ET.fromstring(archive.read("ppt/slides/slide1.xml"))
+    body_pr = slide_root.find(f".//{{{DRAWING_NS}}}bodyPr")
+    assert body_pr is not None
+    assert body_pr.get("horzOverflow") == "clip"
+    assert body_pr.get("vertOverflow") == "clip"
+    assert body_pr.get("wrap") == "square"
+
+
 def export_binary(deck: dict[str, Any]) -> bytes:
     response = export_deck_pptx(DeckPptxExportRequest(deck=deck))
     return base64.b64decode(response.content_base64)

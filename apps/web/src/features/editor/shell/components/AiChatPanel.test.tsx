@@ -1,5 +1,7 @@
 import { createActivitySlide, createDemoDeck } from "@orbit/editor-core";
 import { deckElementSchema } from "@orbit/shared";
+import fs from "node:fs";
+import path from "node:path";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -11,6 +13,11 @@ import {
 vi.mock("./DesignProposalPreviewModal", () => ({
   DesignProposalPreviewModal: () => null
 }));
+
+const editorShellCssPath = path.join(
+  process.cwd(),
+  "src/features/editor/editor-shell.css"
+);
 
 describe("AiChatPanel", () => {
   it("renders the history and message composer", () => {
@@ -30,6 +37,9 @@ describe("AiChatPanel", () => {
     );
 
     expect(html).toContain('aria-label="AI 채팅"');
+    expect(html).not.toContain('aria-label="AI 챗봇 안내"');
+    expect(html).not.toContain("무엇을 도와드릴까요?");
+    expect(html).not.toContain("Response");
     expect(html).toContain("현재 슬라이드에서 바꾸고 싶은 디자인");
     expect(html).toContain('placeholder="바꾸고 싶은 디자인을 말씀해 주세요"');
     expect(html).toContain('aria-label="메시지 보내기"');
@@ -72,6 +82,29 @@ describe("AiChatPanel", () => {
     expect(firstSlideHtml).toContain("아이스브레이킹 인트로 추가");
     expect(secondSlideHtml).toContain("가운데 내용을 SmartArt로 디자인");
     expect(secondSlideHtml).not.toContain("아이스브레이킹 인트로 추가");
+  });
+
+  it("keeps assistant suggestion and mode controls compact", () => {
+    const css = fs.readFileSync(editorShellCssPath, "utf8");
+
+    expect(css).toMatch(
+      /\.editor-ai-assistant-panel\s*\.ai-chat-suggestions\s*\{[^}]*gap:\s*var\(--redesign-space-2\);[^}]*padding:\s*0 var\(--redesign-space-4\) var\(--redesign-space-3\);/s
+    );
+    expect(css).toMatch(
+      /\.editor-ai-assistant-panel\s*\.ai-chat-suggestions\s*button\s*\{[^}]*min-height:\s*42px;[^}]*padding:\s*0 var\(--redesign-space-4\);/s
+    );
+    expect(css).toMatch(
+      /\.editor-ai-assistant-panel\s*\.ai-chat-mode-switch\s*button\s*\{[^}]*min-height:\s*34px;[^}]*padding:\s*0 var\(--redesign-space-3\);/s
+    );
+    expect(css).toMatch(
+      /\.editor-ai-assistant-panel\s*\.ai-chat-input-shell\s*\{[^}]*min-height:\s*58px;/s
+    );
+    expect(css).toMatch(
+      /\.editor-ai-assistant-panel\s*\.ai-chat-input-shell\s*textarea\s*\{[^}]*min-height:\s*44px;/s
+    );
+    expect(css).toMatch(
+      /\.editor-ai-assistant-panel\s*\.ai-chat-message\.user\s*\.ai-chat-message-stack\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*78%;/s
+    );
   });
 
   it("renders editor-owned history again after the panel remounts", () => {

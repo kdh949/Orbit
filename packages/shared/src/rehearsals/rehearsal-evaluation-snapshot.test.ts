@@ -114,6 +114,51 @@ describe("createRehearsalEvaluationSnapshot", () => {
       "도입부에서 발표 목적 먼저 말하기",
     );
   });
+
+  it("freezes a deterministic pronunciation lexicon without copying speaker notes", () => {
+    const fixture = deckFixture();
+    fixture.slides[0]!.speakerNotes =
+      "OpenAI API를 활용하지만 발표자 전용 원문은 저장하지 않습니다.";
+
+    const snapshot = createRehearsalEvaluationSnapshot(
+      deckSchema.parse(fixture),
+      "2026-07-10T08:00:00.000Z",
+    );
+
+    expect(snapshot.pronunciationLexicon?.entries).toEqual([
+      expect.objectContaining({
+        sourceText: "OpenAI",
+        canonicalKey: "openai",
+        aliases: expect.arrayContaining([
+          expect.objectContaining({ text: "오픈에이아이" }),
+        ]),
+      }),
+      expect.objectContaining({
+        sourceText: "API",
+        canonicalKey: "api",
+        aliases: expect.arrayContaining([
+          expect.objectContaining({ text: "에이피아이" }),
+        ]),
+      }),
+    ]);
+    expect(snapshot.pronunciationLexicon?.sourceHash).toMatch(/^[a-f0-9]{16}$/);
+    expect(JSON.stringify(snapshot)).not.toContain(
+      "OpenAI API를 활용하지만 발표자 전용 원문은 저장하지 않습니다.",
+    );
+  });
+
+  it("accepts legacy snapshots without a pronunciation lexicon", () => {
+    const snapshot = createRehearsalEvaluationSnapshot(
+      deckSchema.parse(deckFixture()),
+      "2026-07-10T08:00:00.000Z",
+    );
+    const { pronunciationLexicon: _pronunciationLexicon, ...legacySnapshot } =
+      snapshot;
+
+    const parsed = rehearsalEvaluationSnapshotSchema.parse(legacySnapshot);
+
+    expect(parsed.pronunciationLexicon).toBeUndefined();
+  });
 });
 
 function deckFixture() {

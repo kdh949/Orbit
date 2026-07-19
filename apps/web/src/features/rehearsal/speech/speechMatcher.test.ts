@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PronunciationLexiconSnapshot } from "@orbit/shared";
 
 import {
   calculateWordMultisetRecall,
@@ -86,6 +87,23 @@ describe("matchKeywordAliases", () => {
       })
     ).toEqual([{ keywordId: "kw_ai", matchedAlias: "AI" }]);
   });
+
+  it("발음 사전 evidence로 영문 키워드의 한국어 발음을 매칭한다", () => {
+    expect(
+      matchKeywordAliases({
+        transcript: "오픈 에이아이 에이피아이를 활용했습니다",
+        keywords: [
+          { keywordId: "kw_openai", aliases: ["OpenAI"] },
+          { keywordId: "kw_api", aliases: ["API"] },
+        ],
+        pronunciationLexicon: pronunciationLexicon(),
+        slideId: "slide_1",
+      }),
+    ).toEqual([
+      { keywordId: "kw_openai", matchedAlias: "오픈 에이아이" },
+      { keywordId: "kw_api", matchedAlias: "에이피아이" },
+    ]);
+  });
 });
 
 describe("calculateWordMultisetRecall", () => {
@@ -107,3 +125,44 @@ describe("calculateWordMultisetRecall", () => {
     ).toBe(0);
   });
 });
+
+function pronunciationLexicon(): PronunciationLexiconSnapshot {
+  return {
+    schemaVersion: 1,
+    generatorVersion: "test",
+    deckId: "deck_1",
+    deckVersion: 1,
+    sourceHash: "0123456789abcdef",
+    entries: [
+      lexiconEntry("openai", "OpenAI", "오픈에이아이"),
+      lexiconEntry("api", "API", "에이피아이"),
+    ],
+  };
+}
+
+function lexiconEntry(canonicalKey: string, sourceText: string, alias: string) {
+  return {
+    id: `pron_${canonicalKey}`,
+    sourceText,
+    normalizedSource: sourceText.toLocaleLowerCase("en-US"),
+    canonicalText: sourceText,
+    canonicalKey,
+    category: (canonicalKey === "api" ? "acronym" : "product") as
+      | "acronym"
+      | "product",
+    aliases: [
+      {
+        text: alias,
+        normalizedText: alias,
+        origin: "static" as const,
+        confidence: 1,
+        enabled: true,
+      },
+    ],
+    confidence: 1,
+    status: "active" as const,
+    scriptOccurrences: [
+      { slideId: "slide_1", start: 0, end: sourceText.length },
+    ],
+  };
+}

@@ -1,4 +1,4 @@
-import type { SemanticCue } from "@orbit/shared";
+import type { PronunciationLexiconEntry, SemanticCue } from "@orbit/shared";
 
 import { defaultSpeechTrackingConfig } from "./speechTrackingConfig";
 import { normalizeSpeechText } from "./phraseExtractor";
@@ -12,6 +12,8 @@ export type SpeechBiasSource =
   | "abbreviation"
   | "semantic-cue-term"
   | "semantic-cue-alias"
+  | "pronunciation-source"
+  | "pronunciation-alias"
   | "representative-phrase"
   | "legacy";
 
@@ -40,6 +42,8 @@ export type BuildSpeechTrackingBiasPhrasesInput = {
   legacyPhrases?: readonly string[];
   semanticCues?: readonly SemanticCue[];
   adjacentSemanticCues?: readonly SemanticCue[];
+  pronunciationEntries?: readonly PronunciationLexiconEntry[];
+  adjacentPronunciationEntries?: readonly PronunciationLexiconEntry[];
   semanticCueTermBudget?: number;
 };
 
@@ -112,6 +116,15 @@ export function buildSpeechTrackingBiasPhrases(
     }
   }
 
+  addPronunciationEntries(input.pronunciationEntries ?? [], {
+    sourceWeight: 0.93,
+    aliasWeight: 0.9,
+  });
+  addPronunciationEntries(input.adjacentPronunciationEntries ?? [], {
+    sourceWeight: 0.78,
+    aliasWeight: 0.74,
+  });
+
   const semanticCueTermBudget = Math.max(
     0,
     input.semanticCueTermBudget ?? DEFAULT_SEMANTIC_CUE_BIAS_TERM_BUDGET
@@ -180,6 +193,34 @@ export function buildSpeechTrackingBiasPhrases(
   }
 
   return terms;
+
+  function addPronunciationEntries(
+    entries: readonly PronunciationLexiconEntry[],
+    weights: { sourceWeight: number; aliasWeight: number },
+  ) {
+    for (const entry of entries) {
+      if (entry.status !== "active") {
+        continue;
+      }
+      addTerm({
+        text: entry.sourceText,
+        source: "pronunciation-source",
+        weight: weights.sourceWeight,
+        canonicalText: entry.canonicalText,
+      });
+      for (const alias of entry.aliases) {
+        if (!alias.enabled || alias.confidence < 0.8) {
+          continue;
+        }
+        addTerm({
+          text: alias.text,
+          source: "pronunciation-alias",
+          weight: weights.aliasWeight * alias.confidence,
+          canonicalText: entry.canonicalText,
+        });
+      }
+    }
+  }
 }
 
 function technicalCueTermGroups(cue: SemanticCue) {

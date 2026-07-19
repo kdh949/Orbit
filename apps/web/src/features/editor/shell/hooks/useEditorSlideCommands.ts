@@ -1,36 +1,37 @@
 import {
   createAddAnimationPatch,
   createAddAnimationWithKeywordTriggerPatch,
+  createAnimationTimeline,
   createDefaultAnimation,
   createDeleteAnimationPatch,
   createKeyword,
   createReplaceKeywordsPatch,
   createUpdateAnimationPatch,
   createUpdateElementPropsPatch,
+  createUpdateSlideTransitionPatch,
   createUpsertAdvanceSlideKeywordActionPatch,
-  findKeywordByTerm
+  findKeywordByTerm,
+  getAnimationTimelineRoot
 } from "../../../../../../../packages/editor-core/src/index";
-import { normalizeElementFrameDraft } from "../../../../../../../packages/editor-core/src/patches/elementFrame";
 import { createKeywordOccurrenceId } from "@orbit/shared";
-import type { Deck, DeckAnimation, DeckElement, DeckPatch, Keyword, Slide } from "@orbit/shared";
+import type {
+  Deck,
+  DeckAnimation,
+  DeckPatch,
+  Keyword,
+  Slide,
+  SlideTransition
+} from "@orbit/shared";
 import type { MutableRefObject } from "react";
 
-import type { ValidationTextOverflowAction } from "../../ai/quality/ValidationPanel";
-import type { EditorValidationItem } from "../../ai/quality/editorValidation";
-import {
-  createExpandTextWidthToFitFrame,
-  createShrinkToFitTextProps,
-  createSingleLineTextFit
-} from "../components/SelectionQuickBar";
 import type { EditorShellUiUpdater } from "../editorShellUiStore";
-import {
-  getCenteredTextAutoFitFrame,
-  getSingleLineTextMinimumFontSize,
-  getTextAutoFitMaxWidth
-} from "../utils/editorLayout";
 import { createThemeCascadePatch } from "../utils/themeCascadePatch";
 import type { PatchProducer } from "./useEditorPersistenceState";
-import type { ElementFrameChange } from "./useEditorCanvasCommands";
+import {
+  getAnimationMutationDisabledReason,
+  getAnimationTypeMutationDisabledReason,
+  getTransitionMutationDisabledReason
+} from "../utils/motionEditingPolicy";
 
 type CommitPatch = (patch: DeckPatch | PatchProducer, baseDeck?: Deck) => boolean;
 
@@ -42,138 +43,16 @@ export function useEditorSlideCommands(args: {
     { advancesSlide: boolean; animationIds: string[] }
   >;
   deck: Deck;
-  editorValidationItems: EditorValidationItem[];
-  onChangeElementFrame: (slideId: string, elementId: string, frame: ElementFrameChange) => void;
   selectedKeywordId: string | null;
   selectedKeywordOccurrenceKey: string | null;
   setAnimationPanelFocusedAnimationId: (updater: EditorShellUiUpdater<string | null>) => void;
   setLastPatchLabel: (label: string) => void;
-  setSelectedElementIds: (updater: EditorShellUiUpdater<string[]>) => void;
   setSelectedKeywordId: (updater: EditorShellUiUpdater<string | null>) => void;
   setSelectedKeywordOccurrenceKey: (updater: EditorShellUiUpdater<string | null>) => void;
   workingDeckRef: MutableRefObject<Deck>;
 }) {
   function changeElementProps(slideId: string, elementId: string, props: Record<string, unknown>) {
     args.commitPatch((deck) => createUpdateElementPropsPatch(deck, slideId, elementId, props));
-  }
-
-  function handleValidationTextOverflowAction(
-    item: EditorValidationItem,
-    action: ValidationTextOverflowAction
-  ) {
-    if (!args.currentSlide || !item.elementId) return;
-    const element = args.currentSlide.elements.find((candidate) => candidate.elementId === item.elementId);
-    if (!element || element.type !== "text") return;
-    args.setSelectedElementIds([element.elementId]);
-    const textFitContext = {
-      fontFamily: element.props.fontFamily ?? args.currentSlide.style.fontFamily ?? args.deck.theme.typography.bodyFontFamily
-    };
-    if (action === "shrinkText") {
-      changeElementProps(args.currentSlide.slideId, element.elementId, createShrinkToFitTextProps(element, textFitContext));
-      return;
-    }
-    if (action === "singleLineTextBox") {
-      const fit = createSingleLineTextFit(element, textFitContext, {
-        maxWidth: getTextAutoFitMaxWidth(args.deck.canvas, element),
-        minFontSize: getSingleLineTextMinimumFontSize(element)
-      });
-      const frame = getCenteredTextAutoFitFrame(args.deck.canvas, element, fit.width);
-      args.commitPatch((deck) => ({
-        deckId: deck.deckId,
-        baseVersion: deck.version,
-        source: "user",
-        operations: [
-          { type: "update_element_props", slideId: args.currentSlide!.slideId, elementId: element.elementId, props: fit.props },
-          { type: "update_element_frame", slideId: args.currentSlide!.slideId, elementId: element.elementId, frame: normalizeElementFrameDraft(deck.canvas, element, frame) }
-        ]
-      }));
-      return;
-    }
-    const nextWidth = createExpandTextWidthToFitFrame(
-      element,
-      args.deck.canvas.width - element.x,
-      textFitContext
-    );
-    if (!nextWidth || nextWidth <= element.width) {
-      args.setLastPatchLabel("상자 넓히기 불가 · 줄바꿈 또는 높이 확인");
-      return;
-    }
-    args.onChangeElementFrame(args.currentSlide.slideId, element.elementId, { width: nextWidth });
-  }
-
-  function applyAllValidationTextOverflow() {
-    if (!args.currentSlide) return;
-    const issuesByElementId = new Map<string, Set<EditorValidationItem["issue"]>>();
-    for (const item of args.editorValidationItems) {
-      if (!item.elementId || !isAutoFitTextValidationIssue(item)) continue;
-      const issues = issuesByElementId.get(item.elementId) ?? new Set();
-      issues.add(item.issue);
-      issuesByElementId.set(item.elementId, issues);
-    }
-    const fittedElements = args.currentSlide.elements.filter(
-      (element): element is Extract<DeckElement, { type: "text" }> =>
-        element.type === "text" && issuesByElementId.has(element.elementId)
-    );
-    const operations: DeckPatch["operations"] = [];
-    for (const element of fittedElements) {
-      const issues = issuesByElementId.get(element.elementId);
-      const context = {
-        fontFamily: element.props.fontFamily ?? args.currentSlide.style.fontFamily ?? args.deck.theme.typography.bodyFontFamily
-      };
-      if (issues?.has("titleWrap") || issues?.has("labelWrap")) {
-        const fit = createSingleLineTextFit(element, context, {
-          maxWidth: getTextAutoFitMaxWidth(args.deck.canvas, element),
-          minFontSize: getSingleLineTextMinimumFontSize(element)
-        });
-        const frame = getCenteredTextAutoFitFrame(args.deck.canvas, element, fit.width);
-        if (!fit.fits && (issues?.has("labelWrap") || issues?.has("textOverflow"))) {
-          const nextProps = createShrinkToFitTextProps(element, context);
-          if (hasTextPropsChange(element, nextProps)) {
-            operations.push({
-              type: "update_element_props",
-              slideId: args.currentSlide.slideId,
-              elementId: element.elementId,
-              props: nextProps
-            });
-          }
-          continue;
-        }
-        if (hasTextPropsChange(element, fit.props)) {
-          operations.push({
-            type: "update_element_props",
-            slideId: args.currentSlide.slideId,
-            elementId: element.elementId,
-            props: fit.props
-          });
-        }
-        if (frame.x !== element.x || frame.width !== element.width) {
-          operations.push({
-            type: "update_element_frame",
-            slideId: args.currentSlide.slideId,
-            elementId: element.elementId,
-            frame: normalizeElementFrameDraft(args.deck.canvas, element, frame)
-          });
-        }
-      } else {
-        const nextProps = createShrinkToFitTextProps(element, context);
-        if (hasTextPropsChange(element, nextProps)) {
-          operations.push({
-            type: "update_element_props",
-            slideId: args.currentSlide.slideId,
-            elementId: element.elementId,
-            props: nextProps
-          });
-        }
-      }
-    }
-    if (operations.length === 0) return;
-    args.setSelectedElementIds(fittedElements.map((element) => element.elementId));
-    args.commitPatch((deck) => ({
-      deckId: deck.deckId,
-      baseVersion: deck.version,
-      source: "user",
-      operations
-    }));
   }
 
   function changeSlideStyle(slideId: string, style: {
@@ -223,25 +102,41 @@ export function useEditorSlideCommands(args: {
   }
 
   function selectSpeakerNotesKeyword(rawValue: string, start: number) {
-    if (!args.currentSlide) return;
+    if (!args.currentSlide) return null;
     const matchedKeyword = findKeywordByTerm(args.currentSlide, rawValue);
     if (matchedKeyword) {
+      const occurrenceKey = createKeywordOccurrenceId(
+        args.currentSlide.slideId,
+        matchedKeyword.keywordId,
+        start,
+        start + rawValue.length
+      );
       selectKeyword(
         matchedKeyword.keywordId,
-        createKeywordOccurrenceId(args.currentSlide.slideId, matchedKeyword.keywordId, start, start + rawValue.length)
+        occurrenceKey
       );
-      return;
+      return {
+        keywordId: matchedKeyword.keywordId,
+        occurrenceKey
+      };
     }
     const nextKeyword = createKeyword(args.workingDeckRef.current, rawValue, { required: false });
+    const occurrenceKey = createKeywordOccurrenceId(args.currentSlide.slideId, nextKeyword.keywordId, start, start + rawValue.length);
     args.setSelectedKeywordId(nextKeyword.keywordId);
-    args.setSelectedKeywordOccurrenceKey(
-      createKeywordOccurrenceId(args.currentSlide.slideId, nextKeyword.keywordId, start, start + rawValue.length)
-    );
+    args.setSelectedKeywordOccurrenceKey(occurrenceKey);
     replaceKeywords(args.currentSlide.slideId, (keywords) => [...keywords, nextKeyword]);
+    return {
+      keywordId: nextKeyword.keywordId,
+      occurrenceKey
+    };
   }
 
   function toggleKeywordRequired(slideId: string, keywordId: string, occurrenceKey: string | null = null) {
-    const keyword = args.currentSlide?.keywords.find((candidate) => candidate.keywordId === keywordId);
+    const keyword =
+      args.workingDeckRef.current.slides
+        .find((candidate) => candidate.slideId === slideId)
+        ?.keywords.find((candidate) => candidate.keywordId === keywordId) ??
+      args.currentSlide?.keywords.find((candidate) => candidate.keywordId === keywordId);
     if (!occurrenceKey && !keyword?.required) {
       if (typeof window !== "undefined") window.alert(
         "반복되는 단어일 수 있습니다. 발표 메모에서 필수 발화로 표시할 단어 위치를 선택하세요."
@@ -259,8 +154,13 @@ export function useEditorSlideCommands(args: {
     }));
   }
 
-  function toggleAdvanceSlideKeyword(slideId: string, keywordId: string, enabled: boolean) {
-    if (enabled && !args.selectedKeywordOccurrenceKey) {
+  function toggleAdvanceSlideKeyword(
+    slideId: string,
+    keywordId: string,
+    enabled: boolean,
+    occurrenceKey: string | null = args.selectedKeywordOccurrenceKey
+  ) {
+    if (enabled && !occurrenceKey) {
       if (typeof window !== "undefined") window.alert(
         "반복되는 단어일 수 있습니다. 발표 메모에서 실제로 트리거할 단어 위치를 선택하세요."
       );
@@ -271,7 +171,7 @@ export function useEditorSlideCommands(args: {
       slideId,
       keywordId,
       enabled,
-      args.selectedKeywordOccurrenceKey
+      occurrenceKey
     );
     if (patch) args.commitPatch(patch);
   }
@@ -281,8 +181,18 @@ export function useEditorSlideCommands(args: {
     elementId: string,
     keywordId?: string | null,
     keywordOccurrenceId?: string | null,
-    draft?: Partial<Pick<DeckAnimation, "delayMs" | "durationMs" | "type">>
+    draft?: Partial<
+      Pick<DeckAnimation, "delayMs" | "durationMs" | "startMode" | "type">
+    >
   ) {
+    if (!allowMotionMutation(slideId, "animation")) return;
+    const typeReason = draft?.type
+      ? getAnimationTypeMutationDisabledReason(draft.type)
+      : null;
+    if (typeReason) {
+      args.setLastPatchLabel(typeReason);
+      return;
+    }
     let createdAnimationId: string | null = null;
     args.commitPatch((deck) => {
       const slide = deck.slides.find((candidate) => candidate.slideId === slideId);
@@ -297,40 +207,103 @@ export function useEditorSlideCommands(args: {
   }
 
   function updateAnimation(slideId: string, animationId: string, animation: Partial<DeckAnimation>) {
+    if (!allowMotionMutation(slideId, "animation")) return;
+    const slide = args.workingDeckRef.current.slides.find(
+      (candidate) => candidate.slideId === slideId
+    );
+    if (
+      animation.startMode !== undefined &&
+      slide &&
+      isAnimationInActionLinkedRoot(slide, animationId)
+    ) {
+      args.setLastPatchLabel(
+        "action과 연결된 재생 체인의 시작 방식은 변경할 수 없습니다."
+      );
+      return;
+    }
+    const typeReason = animation.type
+      ? getAnimationTypeMutationDisabledReason(animation.type)
+      : null;
+    if (typeReason) {
+      args.setLastPatchLabel(typeReason);
+      return;
+    }
     args.commitPatch((deck) => createUpdateAnimationPatch(deck, slideId, animationId, animation));
   }
 
   function deleteAnimation(slideId: string, animationId: string) {
+    if (!allowMotionMutation(slideId, "animation")) return;
+    const slide = args.workingDeckRef.current.slides.find(
+      (candidate) => candidate.slideId === slideId
+    );
+    if (slide && isAnimationInActionLinkedRoot(slide, animationId)) {
+      args.setLastPatchLabel(
+        "action과 연결된 재생 체인은 action을 먼저 제거한 뒤 삭제할 수 있습니다."
+      );
+      return;
+    }
     args.commitPatch((deck) => createDeleteAnimationPatch(deck, slideId, animationId));
+  }
+
+  function updateSlideTransition(
+    slideId: string,
+    transition: SlideTransition | null
+  ) {
+    if (!allowMotionMutation(slideId, "transition")) return;
+    args.commitPatch((deck) =>
+      createUpdateSlideTransitionPatch(deck, slideId, transition)
+    );
+  }
+
+  function allowMotionMutation(
+    slideId: string,
+    scope: "animation" | "transition"
+  ) {
+    const deck = args.workingDeckRef.current;
+    const slide = deck.slides.find((candidate) => candidate.slideId === slideId);
+    if (!slide) return false;
+    const reason =
+      scope === "transition"
+        ? getTransitionMutationDisabledReason(deck, slide)
+        : getAnimationMutationDisabledReason(deck, slide);
+    if (!reason) return true;
+    args.setLastPatchLabel(reason);
+    return false;
   }
 
   return {
     addAnimation,
-    applyAllValidationTextOverflow,
     changeElementProps,
     changeSlideStyle,
     changeTheme,
     clearSelectedKeyword,
     deleteAnimation,
     deleteSelectedKeyword,
-    handleValidationTextOverflowAction,
     selectKeyword,
     selectSpeakerNotesKeyword,
     toggleAdvanceSlideKeyword,
     toggleKeywordRequired,
-    updateAnimation
+    updateAnimation,
+    updateSlideTransition
   };
 }
 
-function isAutoFitTextValidationIssue(item: EditorValidationItem) {
-  return item.issue === "textOverflow" || item.issue === "titleWrap" || item.issue === "labelWrap";
-}
-
-function hasTextPropsChange(
-  element: Extract<DeckElement, { type: "text" }>,
-  props: Record<string, unknown>
-) {
-  return Object.entries(props).some(
-    ([key, value]) => element.props[key as keyof typeof element.props] !== value
+function isAnimationInActionLinkedRoot(slide: Slide, animationId: string) {
+  const actionAnimationIds = slide.actions.flatMap((action) =>
+    action.effect.kind === "play-animation"
+      ? [action.effect.animationId]
+      : []
+  );
+  if (actionAnimationIds.length === 0) return false;
+  const actionAnimationIdSet = new Set(actionAnimationIds);
+  const timeline = createAnimationTimeline({
+    animations: slide.animations,
+    legacyOnClickAnimationIds: actionAnimationIds
+  });
+  const root = getAnimationTimelineRoot(timeline, animationId);
+  return (
+    root?.effects.some((animation) =>
+      actionAnimationIdSet.has(animation.animationId)
+    ) ?? false
   );
 }

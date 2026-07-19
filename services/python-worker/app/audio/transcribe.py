@@ -22,12 +22,27 @@ _MULTIPART_SAFE_FILENAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 AudioTranscriptionError = AudioProcessingError
 
 
+class PronunciationContextTerm(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source: str = Field(min_length=1, max_length=64)
+    aliases: list[Annotated[str, Field(min_length=1, max_length=64)]] = Field(
+        min_length=1,
+        max_length=4,
+    )
+
+
 class AudioTranscribeRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     run_id: str = Field(alias="runId", min_length=1)
     project_id: str = Field(alias="projectId", min_length=1)
     audio: AudioReference
+    pronunciation_context: list[PronunciationContextTerm] = Field(
+        default_factory=list,
+        alias="pronunciationContext",
+        max_length=32,
+    )
 
 
 class TranscriptSegment(BaseModel):
@@ -65,7 +80,11 @@ class ReportSttProvider(Protocol):
     name: str
     model: str
 
-    def transcribe(self, audio: AudioContent) -> ProviderTranscription:
+    def transcribe(
+        self,
+        audio: AudioContent,
+        pronunciation_context: list[PronunciationContextTerm] | None = None,
+    ) -> ProviderTranscription:
         pass
 
 
@@ -80,18 +99,28 @@ class OpenAISpeechToTextProvider:
         self._api_key = api_key
         self._language = language
 
-    def transcribe(self, audio: AudioContent) -> ProviderTranscription:
+    def transcribe(
+        self,
+        audio: AudioContent,
+        pronunciation_context: list[PronunciationContextTerm] | None = None,
+    ) -> ProviderTranscription:
         try:
             from io import BytesIO
 
             from openai import OpenAI
 
             client: Any = OpenAI(api_key=self._api_key)
+            request_options: dict[str, Any] = {
+                "model": self.model,
+                "file": (audio.file_name, BytesIO(audio.data), audio.mime_type),
+                "language": _openai_language(self._language),
+                "response_format": _openai_response_format(self.model),
+            }
+            prompt = _build_openai_pronunciation_prompt(pronunciation_context or [])
+            if prompt:
+                request_options["prompt"] = prompt
             result: Any = client.audio.transcriptions.create(
-                model=self.model,
-                file=(audio.file_name, BytesIO(audio.data), audio.mime_type),
-                language=_openai_language(self._language),
-                response_format=_openai_response_format(self.model),
+                **request_options,
             )
         except Exception as exc:  # pragma: no cover - exercised via fake provider.
             raise AudioTranscriptionError(
@@ -110,12 +139,15 @@ class OpenAISpeechToTextProvider:
 
         provider_language = _read_field(result, "language", None)
         duration = _read_optional_float(result, "duration")
+        resolved_language = (
+            provider_language
+            if isinstance(provider_language, str) and provider_language
+            else self._language
+        )
 
         return ProviderTranscription(
             transcript=transcript,
-            language=provider_language
-            if isinstance(provider_language, str) and provider_language
-            else self._language,
+            language=_normalize_transcription_language(resolved_language),
             provider=self.name,
             model=self.model,
             duration_seconds=duration,
@@ -143,7 +175,11 @@ class WhisperXSpeechToTextProvider:
         self._timeout_seconds = timeout_ms / 1000
         self._opener = opener
 
-    def transcribe(self, audio: AudioContent) -> ProviderTranscription:
+    def transcribe(
+        self,
+        audio: AudioContent,
+        pronunciation_context: list[PronunciationContextTerm] | None = None,
+    ) -> ProviderTranscription:
         body, content_type = _build_whisperx_multipart_body(
             audio,
             {
@@ -241,7 +277,11 @@ def transcribe_rehearsal_audio(
     provider: ReportSttProvider,
 ) -> AudioTranscribeResponse:
     audio_content = load_audio_content(payload.audio)
-    provider_transcription = transcribe_audio_content(audio_content, provider)
+    provider_transcription = transcribe_audio_content(
+        audio_content,
+        provider,
+        payload.pronunciation_context,
+    )
 
     return build_audio_transcribe_response(payload, provider_transcription)
 
@@ -249,11 +289,12 @@ def transcribe_rehearsal_audio(
 def transcribe_audio_content(
     audio_content: AudioContent,
     provider: ReportSttProvider,
+    pronunciation_context: list[PronunciationContextTerm] | None = None,
 ) -> ProviderTranscription:
     """이미 로드된 음성을 STT Provider로 전사한다."""
 
     try:
-        return provider.transcribe(audio_content)
+        return provider.transcribe(audio_content, pronunciation_context)
     except AudioTranscriptionError:
         raise
     except Exception as exc:
@@ -298,8 +339,40 @@ ReportSttProviderDependency = Annotated[
 ]
 
 
+def _build_openai_pronunciation_prompt(
+    context: list[PronunciationContextTerm],
+    max_characters: int = 800,
+) -> str:
+    if not context or max_characters <= 0:
+        return ""
+
+    prefix = "발표 용어 표기와 발음: "
+    suffix = "."
+    terms: list[str] = []
+    for term in context[:32]:
+        source = " ".join(term.source.split())
+        aliases = [" ".join(alias.split()) for alias in term.aliases[:2]]
+        aliases = [alias for alias in aliases if alias]
+        if not source or not aliases:
+            continue
+        candidate = f"{source}({', '.join(aliases)})"
+        next_prompt = prefix + ", ".join([*terms, candidate]) + suffix
+        if len(next_prompt) > max_characters:
+            break
+        terms.append(candidate)
+
+    return prefix + ", ".join(terms) + suffix if terms else ""
+
+
 def _openai_language(language_code: str) -> str:
     return language_code.split("-", maxsplit=1)[0]
+
+
+def _normalize_transcription_language(language: str) -> str:
+    normalized = language.strip().lower().replace("_", "-")
+    if normalized == "korean" or normalized.split("-", maxsplit=1)[0] == "ko":
+        return "ko"
+    return language.strip()
 
 
 def _openai_response_format(model: str) -> str:
@@ -371,7 +444,7 @@ def _parse_whisperx_response(
 
     return ProviderTranscription(
         transcript=transcript,
-        language=language,
+        language=_normalize_transcription_language(language),
         provider=provider,
         model=model,
         duration_seconds=duration,

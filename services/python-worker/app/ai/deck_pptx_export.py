@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import base64
 import math
+import zipfile
 from io import BytesIO
 from typing import Any, Literal
+from xml.etree import ElementTree as ET
 
 from pptx import Presentation
 from pptx.chart.data import CategoryChartData
@@ -14,6 +16,8 @@ from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.oxml.xmlchemy import OxmlElement
 from pptx.util import Inches, Pt
 from pydantic import BaseModel, Field
+
+from app.ai.pptx_motion import apply_generic_slide_motion
 
 
 DECK_UNITS_PER_INCH = 144
@@ -48,6 +52,10 @@ class DeckPptxExportRequest(BaseModel):
 class DeckPptxExportResponse(BaseModel):
     content_base64: str = Field(alias="contentBase64")
     warnings: list[str] = Field(default_factory=list)
+    motion_diagnostics: list[dict[str, Any]] = Field(
+        default_factory=list,
+        alias="motionDiagnostics",
+    )
 
 
 def export_deck_pptx(request: DeckPptxExportRequest) -> DeckPptxExportResponse:
@@ -57,6 +65,7 @@ def export_deck_pptx(request: DeckPptxExportRequest) -> DeckPptxExportResponse:
     presentation.slide_height = Inches(float(deck["canvas"]["height"]) / 144)
     blank_layout = presentation.slide_layouts[6]
     warnings: list[str] = []
+    element_targets_by_slide: list[dict[str, list[str]]] = []
 
     for slide_data in deck.get("slides", []):
         slide = presentation.slides.add_slide(blank_layout)
@@ -65,18 +74,139 @@ def export_deck_pptx(request: DeckPptxExportRequest) -> DeckPptxExportResponse:
             slide_data.get("elements", []),
             key=lambda element: int(element.get("zIndex", 0)),
         )
+        element_targets: dict[str, list[str]] = {}
         for element in elements:
             if not element.get("visible", True):
                 continue
+            before_ids = {int(shape.shape_id) for shape in slide.shapes}
             add_element(slide, element, deck, warnings)
+            element_id = str(element.get("elementId", ""))
+            if element_id:
+                element_targets[element_id] = [
+                    str(shape.shape_id)
+                    for shape in slide.shapes
+                    if int(shape.shape_id) not in before_ids
+                ]
+        resolve_group_targets(elements, element_targets)
+        element_targets_by_slide.append(element_targets)
         add_speaker_notes(slide, slide_data, warnings)
 
     output = BytesIO()
     presentation.save(output)
-    return DeckPptxExportResponse(
-        contentBase64=base64.b64encode(output.getvalue()).decode("ascii"),
-        warnings=dedupe(warnings),
+    package_bytes, motion_diagnostics = inject_generic_motion(
+        output.getvalue(),
+        deck,
+        element_targets_by_slide,
     )
+    return DeckPptxExportResponse(
+        contentBase64=base64.b64encode(package_bytes).decode("ascii"),
+        warnings=dedupe(warnings),
+        motionDiagnostics=bound_motion_diagnostics(motion_diagnostics),
+    )
+
+
+def bound_motion_diagnostics(
+    diagnostics: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if len(diagnostics) <= 500:
+        return diagnostics
+    aggregates: dict[str, dict[str, Any]] = {}
+    for diagnostic in diagnostics:
+        code = str(diagnostic.get("code", "PPTX_MOTION_PAYLOAD_INVALID"))
+        slide_index = max(1, int(diagnostic.get("slideIndex", 1)))
+        count = max(1, int(diagnostic.get("count", 1)))
+        current = aggregates.get(code)
+        if current is None:
+            aggregates[code] = {
+                "code": code,
+                "slideIndex": slide_index,
+                "count": count,
+            }
+            continue
+        current["slideIndex"] = min(int(current["slideIndex"]), slide_index)
+        current["count"] = int(current["count"]) + count
+    return [aggregates[code] for code in sorted(aggregates)]
+
+
+def resolve_group_targets(
+    elements: list[dict[str, Any]],
+    element_targets: dict[str, list[str]],
+) -> None:
+    groups = {
+        str(element.get("elementId", "")): element
+        for element in elements
+        if element.get("type") == "group" and element.get("elementId")
+    }
+
+    def targets_for(element_id: str, visiting: set[str]) -> list[str]:
+        direct = element_targets.get(element_id, [])
+        if direct or element_id not in groups or element_id in visiting:
+            return direct
+        visiting.add(element_id)
+        result: list[str] = []
+        child_ids = groups[element_id].get("props", {}).get("childElementIds", [])
+        if isinstance(child_ids, list):
+            for child_id in child_ids:
+                for shape_id in targets_for(str(child_id), visiting):
+                    if shape_id not in result:
+                        result.append(shape_id)
+        visiting.remove(element_id)
+        element_targets[element_id] = result
+        return result
+
+    for group_id in groups:
+        targets_for(group_id, set())
+
+
+def inject_generic_motion(
+    package_bytes: bytes,
+    deck: dict[str, Any],
+    element_targets_by_slide: list[dict[str, list[str]]],
+) -> tuple[bytes, list[dict[str, Any]]]:
+    diagnostics: list[dict[str, Any]] = []
+    changed_entries: dict[str, bytes] = {}
+    with zipfile.ZipFile(BytesIO(package_bytes), "r") as source:
+        source_names = set(source.namelist())
+        for slide_index, slide_data in enumerate(deck.get("slides", []), start=1):
+            slide_part = f"ppt/slides/slide{slide_index}.xml"
+            if slide_part not in source_names or not isinstance(slide_data, dict):
+                continue
+            try:
+                slide_root = ET.fromstring(source.read(slide_part))
+                slide_diagnostics = apply_generic_slide_motion(
+                    slide_root,
+                    slide_data,
+                    slide_index=slide_index,
+                    element_targets=(
+                        element_targets_by_slide[slide_index - 1]
+                        if slide_index <= len(element_targets_by_slide)
+                        else {}
+                    ),
+                )
+            except (ET.ParseError, TypeError, ValueError):
+                diagnostics.append(
+                    {
+                        "code": "PPTX_MOTION_PAYLOAD_INVALID",
+                        "slideIndex": slide_index,
+                    }
+                )
+                continue
+            diagnostics.extend(slide_diagnostics)
+            changed_entries[slide_part] = ET.tostring(
+                slide_root,
+                encoding="utf-8",
+                xml_declaration=True,
+            )
+        if not changed_entries:
+            return package_bytes, diagnostics
+        target_buffer = BytesIO()
+        with zipfile.ZipFile(target_buffer, "w") as target:
+            for info in source.infolist():
+                target.writestr(
+                    info,
+                    changed_entries.get(info.filename, source.read(info.filename)),
+                )
+        return target_buffer.getvalue(), diagnostics
 
 
 def add_speaker_notes(
@@ -151,6 +281,10 @@ def add_text(
     text_frame = shape.text_frame
     text_frame.clear()
     text_frame.word_wrap = True
+    body_pr = text_frame._txBody.bodyPr
+    body_pr.set("horzOverflow", "clip")
+    body_pr.set("vertOverflow", "clip")
+    body_pr.set("wrap", "square")
     inset = props.get("bodyInset") or {}
     text_frame.margin_left = Inches(float(inset.get("left", 0)) / 144)
     text_frame.margin_right = Inches(float(inset.get("right", 0)) / 144)
@@ -479,6 +613,12 @@ def add_table(
         return
     row_count = len(rows)
     col_count = len(rows[0])
+    merge_anchors, covered_cells, merge_issue = table_merge_layout(
+        rows, element_id
+    )
+    if merge_issue is not None:
+        warnings.append(merge_issue)
+        return
     table_shape = slide.shapes.add_table(
         row_count,
         col_count,
@@ -516,7 +656,11 @@ def add_table(
                 str(cell_payload.get("align", "left"))
             )
             run = paragraph.add_run()
-            run.text = str(cell_payload.get("text", ""))
+            run.text = (
+                ""
+                if (row_index, col_index) in covered_cells
+                else str(cell_payload.get("text", ""))
+            )
             apply_font(
                 run.font,
                 {
@@ -541,6 +685,81 @@ def add_table(
                 cell_payload.get("borderWidth", props.get("borderWidth", 1)),
             )
 
+    for row_index, col_index, row_span, col_span in merge_anchors:
+        if row_span == 1 and col_span == 1:
+            continue
+        table.cell(row_index, col_index).merge(
+            table.cell(row_index + row_span - 1, col_index + col_span - 1)
+        )
+
+
+def table_merge_layout(
+    rows: list[list[dict[str, Any]]],
+    element_id: str,
+) -> tuple[
+    list[tuple[int, int, int, int]],
+    set[tuple[int, int]],
+    str | None,
+]:
+    row_count = len(rows)
+    column_count = len(rows[0])
+    occupied: set[tuple[int, int]] = set()
+    covered: set[tuple[int, int]] = set()
+    anchors: list[tuple[int, int, int, int]] = []
+
+    for row_index, row in enumerate(rows):
+        for column_index, cell in enumerate(row):
+            row_span = cell.get("rowSpan", 1)
+            col_span = cell.get("colSpan", 1)
+            if (
+                isinstance(row_span, bool)
+                or not isinstance(row_span, int)
+                or isinstance(col_span, bool)
+                or not isinstance(col_span, int)
+                or row_span < 1
+                or col_span < 1
+                or row_index + row_span > row_count
+                or column_index + col_span > column_count
+            ):
+                return (
+                    [],
+                    set(),
+                    f"{TABLE_STRUCTURE_UNSUPPORTED}: element={element_id}; "
+                    "reason=invalid-cell-span",
+                )
+
+            origin = (row_index, column_index)
+            if origin in occupied:
+                if row_span != 1 or col_span != 1:
+                    return (
+                        [],
+                        set(),
+                        f"{TABLE_STRUCTURE_UNSUPPORTED}: element={element_id}; "
+                        "reason=overlapping-cell-span",
+                    )
+                covered.add(origin)
+                continue
+
+            cells = {
+                (candidate_row, candidate_column)
+                for candidate_row in range(row_index, row_index + row_span)
+                for candidate_column in range(
+                    column_index, column_index + col_span
+                )
+            }
+            if occupied.intersection(cells):
+                return (
+                    [],
+                    set(),
+                    f"{TABLE_STRUCTURE_UNSUPPORTED}: element={element_id}; "
+                    "reason=overlapping-cell-span",
+                )
+            occupied.update(cells)
+            covered.update(cells - {origin})
+            anchors.append((row_index, column_index, row_span, col_span))
+
+    return anchors, covered, None
+
 
 def table_export_issue(props: Any, element_id: str) -> str | None:
     rows = props.get("rows") if isinstance(props, dict) else None
@@ -559,12 +778,9 @@ def table_export_issue(props: Any, element_id: str) -> str | None:
             f"{TABLE_STRUCTURE_UNSUPPORTED}: element={element_id}; "
             "reason=invalid-cell"
         )
-    if any(
-        int(cell.get("colSpan", 1)) != 1 or int(cell.get("rowSpan", 1)) != 1
-        for row in rows
-        for cell in row
-    ):
-        return f"{TABLE_STRUCTURE_UNSUPPORTED}: element={element_id}; reason=merged-cell"
+    _, _, merge_issue = table_merge_layout(rows, element_id)
+    if merge_issue is not None:
+        return merge_issue
 
     for row_index, row in enumerate(rows):
         for column_index, cell in enumerate(row):

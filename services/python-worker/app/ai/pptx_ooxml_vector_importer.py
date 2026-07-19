@@ -27,6 +27,11 @@ from app.ai.pptx_design_importer import (
     import_pptx_design,
     preset_custom_shape_path,
 )
+from app.ai.pptx_motion import (
+    main_sequence_node,
+    parse_slide_motion,
+    supported_main_sequence_shape_ids,
+)
 
 PML_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
 DML_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
@@ -64,6 +69,7 @@ RICH_TEXT_UNSUPPORTED_LETTER_SPACING = (
 TABLE_STRUCTURE_UNSUPPORTED = "PPTX_TABLE_STRUCTURE_UNSUPPORTED"
 TABLE_TRACK_MISMATCH = "PPTX_TABLE_TRACK_MISMATCH"
 MAX_TABLE_CELL_LOCATORS = 10_000
+MAX_MOTION_DIAGNOSTIC_DETAILS = 500
 FALLBACK_SCHEME_COLORS = {
     "bg1": "#FFFFFF",
     "tx1": "#111827",
@@ -258,6 +264,7 @@ def import_pptx_ooxml_visual_tree(
         )
         slides: list[dict[str, Any]] = []
         slot_sources_by_slide: list[dict[str, dict[str, Any]]] = []
+        motion_diagnostics: list[dict[str, Any]] = []
 
         for slide_index, slide_part in enumerate(slide_parts, start=1):
             slide = read_xml(package, slide_part)
@@ -315,6 +322,20 @@ def import_pptx_ooxml_visual_tree(
                     locked=source_name != "slide",
                 )
 
+            shape_targets = animation_shape_targets(
+                slide,
+                slide_index=slide_index,
+                slide_part=slide_part,
+                elements=elements,
+                slot_sources=slot_sources,
+            )
+            motion = parse_slide_motion(
+                slide,
+                slide_index=slide_index,
+                shape_targets=shape_targets,
+            )
+            motion_diagnostics.extend(motion.diagnostics)
+
             assign_text_roles(
                 elements,
                 slot_sources,
@@ -322,15 +343,22 @@ def import_pptx_ooxml_visual_tree(
                 slide_count=len(slide_parts),
             )
             background = slide_background_color(slide, state.theme_colors) or "#FFFFFF"
-            slides.append(
-                {
-                    "sourceFileId": file_id,
-                    "sourceSlideIndex": slide_index,
-                    "sourceSlidePart": slide_part,
-                    "style": imported_slide_style(elements, background),
-                    "elements": elements,
-                }
-            )
+            slide_payload: dict[str, Any] = {
+                "sourceFileId": file_id,
+                "sourceSlideIndex": slide_index,
+                "sourceSlidePart": slide_part,
+                "style": imported_slide_style(elements, background),
+                "elements": elements,
+                "animations": motion.animations,
+                "ooxmlMotionCapabilities": {
+                    "transitionWritable": True,
+                    "importedMainSequenceCoverage": motion.coverage,
+                },
+                "motionDiagnostics": motion.diagnostics,
+            }
+            if motion.transition is not None:
+                slide_payload["transition"] = motion.transition
+            slides.append(slide_payload)
             slot_sources_by_slide.append(slot_sources)
 
         apply_repeated_text_roles(slides, slot_sources_by_slide)
@@ -355,13 +383,216 @@ def import_pptx_ooxml_visual_tree(
             template_blueprint,
             slot_sources_by_slide,
         )
+        copy_animation_group_sources_to_blueprint(
+            template_blueprint,
+            slides,
+            slot_sources_by_slide,
+        )
+        blueprint_payload = blueprint.model_dump(by_alias=True)
+        for payload_slide, source_slide in zip(
+            blueprint_payload.get("slides", []),
+            slides,
+            strict=True,
+        ):
+            for field in (
+                "animations",
+                "transition",
+                "ooxmlMotionCapabilities",
+                "motionDiagnostics",
+            ):
+                if field in source_slide:
+                    payload_slide[field] = copy.deepcopy(source_slide[field])
+        for template_slide, source_slide in zip(
+            template_blueprint.get("slides", []),
+            slides,
+            strict=True,
+        ):
+            template_slide["ooxmlMotionCapabilities"] = copy.deepcopy(
+                source_slide["ooxmlMotionCapabilities"]
+            )
+        quality_report = build_quality_report(slides, state.warnings)
+        quality_report["motionDiagnostics"] = motion_diagnostic_summary(
+            motion_diagnostics
+        )
         return PptxDesignImportResult(
-            blueprint=blueprint.model_dump(by_alias=True),
+            blueprint=blueprint_payload,
             templateBlueprint=template_blueprint,
-            qualityReport=build_quality_report(slides, state.warnings),
+            qualityReport=quality_report,
             assets=state.assets,
             warnings=state.warnings,
         )
+
+
+def motion_diagnostic_summary(
+    diagnostics: list[dict[str, Any]],
+) -> dict[str, Any]:
+    categorized: list[tuple[int, str, str]] = []
+    for diagnostic in diagnostics:
+        code = str(diagnostic.get("code", ""))
+        slide_index = int(diagnostic.get("slideIndex", 0) or 0)
+        if slide_index <= 0:
+            continue
+        if "UNSUPPORTED" in code:
+            category = "unsupported"
+        elif "DOWNGRADED" in code:
+            category = "downgraded"
+        elif "UNRESOLVED" in code or code.endswith("SOURCE_UNAVAILABLE"):
+            category = "unresolved"
+        elif "EXCLUDED" in code:
+            category = "excluded"
+        else:
+            continue
+        categorized.append((slide_index, code, category))
+
+    counts = {
+        category: sum(item_category == category for _, _, item_category in categorized)
+        for category in ("unsupported", "downgraded", "unresolved", "excluded")
+    }
+    detail_counts: dict[tuple[int, str], int] = {}
+    for slide_index, code, _ in categorized:
+        key = (slide_index, code)
+        detail_counts[key] = detail_counts.get(key, 0) + 1
+    details = [
+        {"slideIndex": slide_index, "code": code, "count": count}
+        for (slide_index, code), count in sorted(detail_counts.items())
+    ]
+    return {
+        "total": sum(counts.values()),
+        **counts,
+        "details": details if len(details) <= MAX_MOTION_DIAGNOSTIC_DETAILS else [],
+    }
+
+
+def animation_shape_targets(
+    slide_root: ET.Element[Any],
+    *,
+    slide_index: int,
+    slide_part: str,
+    elements: list[dict[str, Any]],
+    slot_sources: dict[str, dict[str, Any]],
+) -> dict[str, str]:
+    timing = first_local_child(slide_root, "timing")
+    main_sequence = main_sequence_node(timing) if timing is not None else None
+    if main_sequence is None:
+        return {}
+    referenced_shape_ids = supported_main_sequence_shape_ids(main_sequence)
+    element_order = {
+        str(element.get("elementId", "")): index
+        for index, element in enumerate(elements)
+    }
+    targets: dict[str, str] = {}
+    for shape_id in sorted(referenced_shape_ids):
+        child_ids = sorted(
+            (
+                element_id_value
+                for element_id_value, source in slot_sources.items()
+                if str(source.get("slidePart", "")) == slide_part
+                and str(source.get("shapeId", "")) == shape_id
+                and bool(source.get("writable", False))
+            ),
+            key=lambda element_id_value: element_order.get(
+                element_id_value,
+                len(element_order),
+            ),
+        )
+        if len(child_ids) == 1:
+            targets[shape_id] = child_ids[0]
+            continue
+        if not child_ids:
+            continue
+        child_elements = [
+            element
+            for element in elements
+            if str(element.get("elementId", "")) in child_ids
+        ]
+        frame = union_element_frame(child_elements)
+        if frame is None:
+            continue
+        group_id = element_id(slide_index, "slide", shape_id, "animation_group")
+        elements.append(
+            {
+                **element_base(
+                    element_id=group_id,
+                    role="decoration",
+                    frame=frame,
+                    z_index=max(
+                        (int(element.get("zIndex", 0)) for element in child_elements),
+                        default=0,
+                    ),
+                    locked=False,
+                ),
+                "type": "group",
+                "props": {"childElementIds": child_ids},
+            }
+        )
+        slot_sources[group_id] = {
+            "type": "slide",
+            "name": "animation-group",
+            "slidePart": slide_part,
+            "shapeId": shape_id,
+            "writable": True,
+            "animationSyntheticTarget": True,
+        }
+        targets[shape_id] = group_id
+    return targets
+
+
+def union_element_frame(
+    elements: list[dict[str, Any]],
+) -> dict[str, int] | None:
+    if not elements:
+        return None
+    left = min(int(element.get("x", 0)) for element in elements)
+    top = min(int(element.get("y", 0)) for element in elements)
+    right = max(
+        int(element.get("x", 0)) + max(1, int(element.get("width", 1)))
+        for element in elements
+    )
+    bottom = max(
+        int(element.get("y", 0)) + max(1, int(element.get("height", 1)))
+        for element in elements
+    )
+    return {
+        "x": left,
+        "y": top,
+        "width": max(1, right - left),
+        "height": max(1, bottom - top),
+    }
+
+
+def copy_animation_group_sources_to_blueprint(
+    template_blueprint: dict[str, Any],
+    slides: list[dict[str, Any]],
+    slot_sources_by_slide: list[dict[str, dict[str, Any]]],
+) -> None:
+    for slide_index, template_slide in enumerate(template_blueprint.get("slides", [])):
+        if slide_index >= len(slides) or slide_index >= len(slot_sources_by_slide):
+            break
+        existing_ids = {
+            str(source.get("elementId", ""))
+            for source in template_slide.get("elementSources", [])
+            if isinstance(source, dict)
+        }
+        for element in slides[slide_index].get("elements", []):
+            if not isinstance(element, dict) or element.get("type") != "group":
+                continue
+            element_id_value = str(element.get("elementId", ""))
+            source = slot_sources_by_slide[slide_index].get(element_id_value)
+            if not source or element_id_value in existing_ids:
+                continue
+            slide_part = str(source.get("slidePart", ""))
+            shape_id = str(source.get("shapeId", ""))
+            if not slide_part or not shape_id:
+                continue
+            template_slide.setdefault("elementSources", []).append(
+                {
+                    "elementId": element_id_value,
+                    "slidePart": slide_part,
+                    "shapeId": shape_id,
+                    "sourceType": str(source.get("type", "slide")),
+                    "writable": bool(source.get("writable", False)),
+                }
+            )
 
 
 def append_visual_tree(
@@ -1090,6 +1321,13 @@ def append_group_shape(
                 "childElementIds": child_element_ids,
             },
         }
+    )
+    slot_sources[group_element_id] = shape_source(
+        group,
+        part_path,
+        group_id,
+        source_name,
+        locked,
     )
     return [group_element_id]
 

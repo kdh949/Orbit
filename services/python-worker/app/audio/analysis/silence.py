@@ -16,7 +16,7 @@ from app.audio.analysis.vad import (
 )
 
 MINIMUM_DETECTED_SPEECH_SECONDS = 1.0
-LONG_SILENCE_MS: Literal[1000] = 1_000
+LONG_SILENCE_MS: Literal[5000] = 5_000
 MAXIMUM_SILENCE_SEGMENTS = 1_000
 
 
@@ -46,7 +46,7 @@ def analyze_silence(
     total_silence_seconds = sum(segment.duration_seconds for segment in all_segments)
 
     return RehearsalSilenceAnalysis(
-        metricDefinitionVersion=1,
+        metricDefinitionVersion=2,
         measurementState="measured",
         reasonCode=None,
         detector="silero-vad",
@@ -120,7 +120,7 @@ def _build_silence_segments(
                 ),
                 startSeconds=start_seconds,
                 endSeconds=end_seconds,
-                durationSeconds=round(end_seconds - start_seconds, 3),
+                durationSeconds=round(duration_samples / decoded_audio.sample_rate_hz, 4),
             )
         )
     return segments

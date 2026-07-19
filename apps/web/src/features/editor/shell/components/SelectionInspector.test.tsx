@@ -66,20 +66,20 @@ describe("SelectionInspector", () => {
     expect(multiHtml).not.toContain('data-control="element"');
   });
 
-  it("uses a stable region name while keeping mode details visible", () => {
+  it("uses a stable region name without rendering editable mode summaries", () => {
     const slideHtml = renderInspector(slideModel);
     const elementHtml = renderInspector(elementModel);
     const multiHtml = renderInspector(multiModel);
 
     expect(slideHtml).toContain('role="region"');
     expect(slideHtml).toContain('aria-label="현재 선택"');
-    expect(slideHtml).toContain("Opening 슬라이드 속성");
+    expect(slideHtml).not.toContain("Opening 슬라이드 속성");
     expect(elementHtml).toContain('role="region"');
     expect(elementHtml).toContain('aria-label="현재 선택"');
-    expect(elementHtml).toContain("선택한 텍스트 요소 속성");
+    expect(elementHtml).not.toContain("선택한 텍스트 요소 속성");
     expect(multiHtml).toContain('role="region"');
     expect(multiHtml).toContain('aria-label="현재 선택"');
-    expect(multiHtml).toContain("선택한 요소 3개 속성");
+    expect(multiHtml).not.toContain("선택한 요소 3개 속성");
     expect(elementHtml).toContain('tabindex="0"');
 
     const focusRef = createRef<HTMLElement>();
@@ -93,7 +93,7 @@ describe("SelectionInspector", () => {
     const defaultLabelsHtml = renderToString(
       <SelectionInspector canEdit model={slideModel} />,
     );
-    expect(defaultLabelsHtml).toContain("현재 슬라이드 속성");
+    expect(defaultLabelsHtml).not.toContain("현재 슬라이드 속성");
     expect(defaultLabelsHtml).not.toContain("슬라이드 슬라이드");
   });
 

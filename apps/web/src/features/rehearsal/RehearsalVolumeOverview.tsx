@@ -1,30 +1,22 @@
-import {
-  ChevronDown,
-  ChevronUp,
-  Pause,
-  Play,
-  Volume1,
-  Volume2,
-} from "lucide-react";
-import { useMemo, useState } from "react";
+import { Pause, Play, MicOff, Volume1, Volume2 } from "lucide-react";
+import { useMemo } from "react";
 import type { RehearsalReport } from "@orbit/shared";
 import { useRehearsalAudioSegmentPlayback } from "./useRehearsalAudioSegmentPlayback";
 
 type Props = {
+  audioPlaybackAvailable?: boolean;
   formatDuration: (totalSeconds: number) => string;
   report: RehearsalReport;
 };
 
-const initiallyVisibleIssueCount = 5;
-
-export function RehearsalVolumeOverview({ formatDuration, report }: Props) {
-  const [expanded, setExpanded] = useState(false);
+export function RehearsalVolumeOverview({
+  audioPlaybackAvailable = true,
+  formatDuration,
+  report,
+}: Props) {
   const analysis = report.volumeAnalysis;
   const issues = useMemo(
-    () =>
-      [...analysis.issueSegments].sort(
-        (left, right) => left.startSeconds - right.startSeconds,
-      ),
+    () => selectRepresentativeVolumeIssues(analysis.issueSegments),
     [analysis.issueSegments],
   );
   const quietCount = issues.filter((issue) => issue.kind === "quiet").length;
@@ -34,9 +26,6 @@ export function RehearsalVolumeOverview({ formatDuration, report }: Props) {
     report.metrics.durationSeconds,
     ...issues.map((issue) => issue.endSeconds),
   );
-  const visibleIssues = expanded
-    ? issues
-    : issues.slice(0, initiallyVisibleIssueCount);
   const playback = useRehearsalAudioSegmentPlayback(report.runId);
 
   return (
@@ -47,21 +36,18 @@ export function RehearsalVolumeOverview({ formatDuration, report }: Props) {
             <Volume2 size={22} aria-hidden="true" />
             <h2>음량 변화 구간</h2>
           </div>
-          <p>
-            이 리허설의 전체 발화와 비교해 음량이 달라진 구간을
-            확인하세요.
-          </p>
+          <p>이 리허설의 전체 발화와 비교해 음량이 달라진 구간을 확인하세요.</p>
         </div>
         <div className="rrd-volume-section-stats" aria-label="음량 변화 요약">
           <div>
-            <span>전체 발화보다 작게 말한 구간</span>
+            <span>전체 발화보다 작게 말한 주요 구간</span>
             <strong>
               {quietCount}
               <em>개</em>
             </strong>
           </div>
           <div>
-            <span>전체 발화보다 크게 말한 구간</span>
+            <span>전체 발화보다 크게 말한 주요 구간</span>
             <strong>
               {loudCount}
               <em>개</em>
@@ -124,7 +110,7 @@ export function RehearsalVolumeOverview({ formatDuration, report }: Props) {
           )}
 
           <div className="rrd-volume-issue-list">
-            {visibleIssues.map((issue, index) => {
+            {issues.map((issue, index) => {
               const segmentId = `${issue.kind}-${issue.startSeconds}-${issue.endSeconds}`;
               const isLoading =
                 playback.status === "loading" &&
@@ -151,58 +137,113 @@ export function RehearsalVolumeOverview({ formatDuration, report }: Props) {
                       {formatDuration(issue.durationSeconds)} 동안 이어졌어요.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    className="rrd-volume-playback-button"
-                    disabled={isLoading}
-                    onClick={() => {
-                      if (isPlaying) {
-                        playback.stop();
-                        return;
-                      }
-                      void playback.playSegment(
-                        segmentId,
-                        issue.startSeconds,
-                        issue.endSeconds,
-                      );
-                    }}
-                    aria-label={`${issueLabel(issue.kind)} ${formatDuration(issue.startSeconds)} 지점 ${isPlaying ? "재생 중지" : "재생"}`}
-                  >
-                    {isPlaying ? (
-                      <Pause size={15} aria-hidden="true" />
-                    ) : (
-                      <Play size={15} aria-hidden="true" />
-                    )}
-                    {isLoading
-                      ? "불러오는 중"
-                      : isPlaying
-                        ? "재생 중지"
-                        : "이 구간 들어보기"}
-                  </button>
+                  {audioPlaybackAvailable ? (
+                    <button
+                      type="button"
+                      className="rrd-volume-playback-button"
+                      disabled={isLoading}
+                      onClick={() => {
+                        if (isPlaying) {
+                          playback.stop();
+                          return;
+                        }
+                        void playback.playSegment(
+                          segmentId,
+                          issue.startSeconds,
+                          issue.endSeconds,
+                        );
+                      }}
+                      aria-label={`${issueLabel(issue.kind)} ${formatDuration(issue.startSeconds)} 지점 ${isPlaying ? "재생 중지" : "재생"}`}
+                    >
+                      {isPlaying ? (
+                        <Pause size={15} aria-hidden="true" />
+                      ) : (
+                        <Play size={15} aria-hidden="true" />
+                      )}
+                      {isLoading
+                        ? "불러오는 중"
+                        : isPlaying
+                          ? "재생 중지"
+                          : "이 구간 들어보기"}
+                    </button>
+                  ) : (
+                    <span
+                      className="rrd-volume-playback-unavailable"
+                      role="status"
+                    >
+                      <MicOff size={15} aria-hidden="true" />
+                      녹음 재생 불가
+                    </span>
+                  )}
                 </article>
               );
             })}
           </div>
-
-          {issues.length > initiallyVisibleIssueCount && (
-            <button
-              type="button"
-              className="rrd-volume-expand-button"
-              onClick={() => setExpanded((value) => !value)}
-              aria-expanded={expanded}
-            >
-              {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              {expanded ? "접기" : `전체 ${issues.length}개 보기`}
-            </button>
-          )}
         </div>
       )}
     </section>
   );
 }
 
+type VolumeIssue = RehearsalReport["volumeAnalysis"]["issueSegments"][number];
+
+const minimumRepresentativeSeconds = 2;
+const representativeMergeGapSeconds = 1;
+const maximumRepresentativeSegments = 5;
+
+export function selectRepresentativeVolumeIssues(
+  issueSegments: readonly VolumeIssue[],
+): VolumeIssue[] {
+  const merged: Array<{ issue: VolumeIssue; evidenceSeconds: number }> = [];
+  const ordered = [...issueSegments].sort(
+    (left, right) => left.startSeconds - right.startSeconds,
+  );
+
+  for (const issue of ordered) {
+    const previous = merged.at(-1);
+    if (
+      previous &&
+      previous.issue.kind === issue.kind &&
+      issue.startSeconds - previous.issue.endSeconds <=
+        representativeMergeGapSeconds
+    ) {
+      const previousEvidenceSeconds = previous.evidenceSeconds;
+      const issueEvidenceSeconds = issue.durationSeconds;
+      const evidenceSeconds = previousEvidenceSeconds + issueEvidenceSeconds;
+      previous.issue.endSeconds = Math.max(
+        previous.issue.endSeconds,
+        issue.endSeconds,
+      );
+      previous.issue.durationSeconds =
+        previous.issue.endSeconds - previous.issue.startSeconds;
+      previous.issue.meanDeviationDb =
+        (previous.issue.meanDeviationDb * previousEvidenceSeconds +
+          issue.meanDeviationDb * issueEvidenceSeconds) /
+        evidenceSeconds;
+      previous.evidenceSeconds = evidenceSeconds;
+      continue;
+    }
+
+    merged.push({
+      issue: { ...issue },
+      evidenceSeconds: issue.durationSeconds,
+    });
+  }
+
+  return merged
+    .map(({ issue }) => issue)
+    .filter((issue) => issue.durationSeconds >= minimumRepresentativeSeconds)
+    .sort((left, right) => {
+      const scoreDifference =
+        right.durationSeconds * Math.abs(right.meanDeviationDb) -
+        left.durationSeconds * Math.abs(left.meanDeviationDb);
+      return scoreDifference || right.durationSeconds - left.durationSeconds;
+    })
+    .slice(0, maximumRepresentativeSegments)
+    .sort((left, right) => left.startSeconds - right.startSeconds);
+}
 function issueLabel(kind: "quiet" | "loud") {
   return kind === "quiet"
-    ? "전체 발화보다 작게 말한 구간"
-    : "전체 발화보다 크게 말한 구간";
+    ? "전체 발화보다 작게 말한 주요 구간"
+    : "전체 발화보다 크게 말한 주요 구간";
 }

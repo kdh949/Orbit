@@ -6,6 +6,25 @@ import { ActivityResultsRepository } from "./activity-results.repository";
 import { ActivityRunRepository } from "./activity-run.repository";
 
 describe("Activity SQL returning projections", () => {
+  it("reads session identity before locking the session without joining raw Deck JSON", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ deck_id: "deck_1" }])
+      .mockResolvedValueOnce([{ session_id: "session_1", deck_id: "deck_1" }]);
+    const repository = new ActivityRunRepository({} as DataSource);
+    const manager = { query } as unknown as EntityManager;
+
+    await repository.findSessionIdentity(manager, "project_1", "session_1");
+    await repository.lockSession(manager, "project_1", "session_1");
+
+    const identitySql = String(query.mock.calls[0]?.[0]);
+    const lockSql = String(query.mock.calls[1]?.[0]);
+    expect(identitySql).not.toContain("FOR UPDATE");
+    expect(lockSql).toContain("FOR UPDATE");
+    expect(lockSql).not.toContain("JOIN decks");
+    expect(lockSql).not.toContain("deck_json");
+  });
+
   it("wraps run status UPDATE RETURNING in a SELECT-shaped CTE", async () => {
     const query = vi.fn().mockResolvedValue([{ activity_run_id: "activity_run_1" }]);
     const repository = new ActivityRunRepository({} as DataSource);

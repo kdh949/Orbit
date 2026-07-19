@@ -19,6 +19,11 @@ import type {
   ApplyDeckPatchResult,
 } from "./deckPatch";
 import { getRichTextSemanticText } from "../text/richTextOperations";
+import {
+  createAnimationTimeline,
+  getAnimationTimelineRoot
+} from "../playback/animationTimeline";
+import { normalizeLegacyAnimationStartModes } from "./legacyAnimationStartModeMigration";
 
 type OperationResult = { ok: true } | ApplyDeckPatchFailure;
 
@@ -31,7 +36,9 @@ export function applyDeckPatch(
   patchInput: unknown,
   options: ApplyDeckPatchOptions = {},
 ): ApplyDeckPatchResult {
-  const deckResult = deckSchema.safeParse(deckInput);
+  const deckResult = deckSchema.safeParse(
+    normalizeLegacyAnimationStartModes(deckInput)
+  );
 
   if (!deckResult.success) {
     return failure("DECK_VALIDATION_FAILED", "Deck input is invalid", {
@@ -85,7 +92,9 @@ export function applyDeckPatch(
 
   nextDeck.version = deck.version + 1;
 
-  const nextDeckResult = deckSchema.safeParse(nextDeck);
+  const nextDeckResult = deckSchema.safeParse(
+    normalizeLegacyAnimationStartModes(nextDeck)
+  );
 
   if (!nextDeckResult.success) {
     return failure("DECK_VALIDATION_FAILED", "Patched deck is invalid", {
@@ -172,6 +181,21 @@ function applyOperation(
         slide.thumbnailUrl = operation.thumbnailUrl;
       }
 
+      return { ok: true };
+    }
+
+    case "update_slide_transition": {
+      const slide = findSlide(deck, operation.slideId);
+
+      if (!slide) {
+        return slideNotFound(operation.type, operation.slideId);
+      }
+
+      if (operation.transition === null) {
+        delete slide.transition;
+      } else {
+        slide.transition = cloneJson(operation.transition);
+      }
       return { ok: true };
     }
 
@@ -396,8 +420,16 @@ function applyOperation(
         });
       }
 
-      slide.animations.push(cloneJson(operation.animation));
+      slide.animations.push({
+        ...cloneJson(operation.animation),
+        startMode: operation.animation.startMode ?? "on-click"
+      });
       sortAnimations(slide);
+      const timingFailure = validateSlideActionAnimationTimings(
+        slide,
+        operation.type
+      );
+      if (timingFailure) return timingFailure;
       return { ok: true };
     }
 
@@ -429,6 +461,11 @@ function applyOperation(
         operation.animation as Record<string, unknown>,
       );
       sortAnimations(slide);
+      const timingFailure = validateSlideActionAnimationTimings(
+        slide,
+        operation.type
+      );
+      if (timingFailure) return timingFailure;
       return { ok: true };
     }
 
@@ -452,6 +489,11 @@ function applyOperation(
         slide,
         removeActionsForAnimations(slide, [operation.animationId]),
       );
+      const timingFailure = validateSlideActionAnimationTimings(
+        slide,
+        operation.type
+      );
+      if (timingFailure) return timingFailure;
       return { ok: true };
     }
 
@@ -492,6 +534,13 @@ function applyOperation(
           operation.action.effect.animationId,
         );
       }
+
+      const timingFailure = validateSlideActionAnimationTiming(
+        slide,
+        operation.action.effect,
+        operation.type
+      );
+      if (timingFailure) return timingFailure;
 
       slide.actions.push(cloneJson(operation.action));
       return { ok: true };
@@ -534,6 +583,13 @@ function applyOperation(
             operation.action.effect.animationId,
           );
         }
+
+        const timingFailure = validateSlideActionAnimationTiming(
+          slide,
+          operation.action.effect,
+          operation.type
+        );
+        if (timingFailure) return timingFailure;
 
         action.effect = cloneJson(operation.action.effect);
       }
@@ -654,6 +710,44 @@ function findSlideAction(
   actionId: string,
 ): DeckSlideAction | undefined {
   return slide.actions.find((action) => action.actionId === actionId);
+}
+
+function validateSlideActionAnimationTiming(
+  slide: Slide,
+  effect: DeckSlideAction["effect"],
+  operationType: string
+): ApplyDeckPatchFailure | null {
+  if (effect.kind !== "play-animation") return null;
+  const timeline = createAnimationTimeline({
+    animations: slide.animations,
+    legacyOnClickAnimationIds: [effect.animationId]
+  });
+  const root = getAnimationTimelineRoot(timeline, effect.animationId);
+  if (root?.kind === "click") return null;
+
+  return failure(
+    "SLIDE_ACTION_ANIMATION_TIMING_INCOMPATIBLE",
+    "Slide action can only target an on-click animation chain",
+    {
+      operationType,
+      details: [`animationId=${effect.animationId}`]
+    }
+  );
+}
+
+function validateSlideActionAnimationTimings(
+  slide: Slide,
+  operationType: string
+): ApplyDeckPatchFailure | null {
+  for (const action of slide.actions) {
+    const timingFailure = validateSlideActionAnimationTiming(
+      slide,
+      action.effect,
+      operationType
+    );
+    if (timingFailure) return timingFailure;
+  }
+  return null;
 }
 
 function findKeyword(slide: Slide, keywordId: string) {

@@ -9,6 +9,7 @@ import "reflect-metadata";
 import { AppModule } from "./app.module";
 import { resolveAllowedWebOrigins } from "./common/web-origin";
 import { configureHttpTrustProxy } from "./common/http-trust-proxy";
+import { DatabaseReadinessService } from "./database/database-readiness.service";
 import { writeBootstrapError } from "./logging";
 
 async function bootstrap() {
@@ -19,6 +20,7 @@ async function bootstrap() {
     bodyParser: false
   });
   const logger = app.get(Logger);
+  const databaseReadiness = app.get(DatabaseReadinessService);
   app.useLogger(logger);
   configureHttpTrustProxy(app, config.API_TRUST_PROXY_HOPS);
 
@@ -43,6 +45,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup("docs", app, document);
 
+  await databaseReadiness.assertReady();
   await app.listen(config.API_PORT, "0.0.0.0");
   logger.log(
     {

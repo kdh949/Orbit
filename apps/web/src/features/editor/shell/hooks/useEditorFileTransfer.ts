@@ -8,7 +8,8 @@ import type {
   DeckCanvas,
   DeckExportRequest,
   DeckPatch,
-  DesignImageGenerationResult
+  DesignImageGenerationResult,
+  PptxImportQuality
 } from "@orbit/shared";
 import type { ChangeEvent, MutableRefObject } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -56,6 +57,24 @@ export type CanvasImageDropGate = {
   isUploadPending: boolean;
   speakerNotesEditing: boolean;
 };
+
+export function createRehydratedPptxImportState(
+  importQuality?: PptxImportQuality | null
+): PptxImportState {
+  return importQuality
+    ? {
+        status: "succeeded",
+        warnings: [],
+        qualityReport: importQuality.qualityReport,
+        message: "저장된 PPTX 가져오기 품질"
+      }
+    : {
+        status: "idle",
+        warnings: [],
+        qualityReport: null,
+        message: ""
+      };
+}
 
 type CommitPatch = (
   patch: DeckPatch | PatchProducer,
@@ -330,6 +349,7 @@ export function useEditorFileTransfer(args: {
   onSelectSlide: (index: number) => void;
   onSetSelectTool: () => void;
   persistedProjectId?: string;
+  rehydratedPptxImportQuality?: PptxImportQuality | null;
   prepareForImport: () => Promise<void>;
   projectId: string;
   refetchDeck: () => Promise<Deck | undefined>;
@@ -346,12 +366,22 @@ export function useEditorFileTransfer(args: {
   const [isPptxExporting, setIsPptxExporting] = useState(false);
   const [pptxExportStatus, setPptxExportStatus] = useState("");
   const [pptxExportError, setPptxExportError] = useState("");
-  const [pptxImportState, setPptxImportState] = useState<PptxImportState>({
-    status: "idle",
-    warnings: [],
-    qualityReport: null,
-    message: ""
-  });
+  const [pptxImportState, setPptxImportState] = useState<PptxImportState>(() =>
+    createRehydratedPptxImportState(args.rehydratedPptxImportQuality)
+  );
+
+  useEffect(() => {
+    setPptxImportState(createRehydratedPptxImportState());
+  }, [args.projectId]);
+
+  useEffect(() => {
+    if (args.rehydratedPptxImportQuality === undefined) return;
+    setPptxImportState((current) =>
+      current.status === "idle"
+        ? createRehydratedPptxImportState(args.rehydratedPptxImportQuality)
+        : current
+    );
+  }, [args.projectId, args.rehydratedPptxImportQuality]);
 
   useEffect(() => {
     if (args.persistedProjectId) {

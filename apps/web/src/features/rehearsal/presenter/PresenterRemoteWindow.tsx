@@ -289,6 +289,7 @@ export function PresenterRemoteWindow(props: {
       {slide?.kind === "activity" ? (
         <ActivityPresenterPanel
           deckId={deck.deckId}
+          deckVersion={deck.version}
           projectId={deck.projectId}
           slide={slide}
         />

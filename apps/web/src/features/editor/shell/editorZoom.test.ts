@@ -113,7 +113,7 @@ describe("editor zoom", () => {
       1124,
     );
 
-    expect(compactFit).toBeCloseTo(604 / 1920, 5);
+    expect(compactFit).toBeCloseTo(600 / 1920, 5);
     expect(wideFit).toBe(0.66);
     expect(
       resolveEditorStageScale(
@@ -124,6 +124,18 @@ describe("editor zoom", () => {
         600,
       ),
     ).toBe(1.5);
+  });
+
+  it("accounts for editor canvas chrome when Fit is height constrained", () => {
+    expect(
+      resolveEditorStageScale(
+        { mode: "fit" },
+        1920,
+        1400,
+        1080,
+        600,
+      ),
+    ).toBeCloseTo(512 / 1080, 5);
   });
 
   it("preserves the existing small-screen Fit floor", () => {

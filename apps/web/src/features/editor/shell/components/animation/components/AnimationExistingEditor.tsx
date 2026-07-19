@@ -6,13 +6,23 @@ import { AnimationTimingFields } from "./AnimationTimingFields";
 
 export function AnimationExistingEditor(props: {
   animation: DeckAnimation;
+  deleteDisabledReason?: string | null;
+  previousEffectSummary?: string | null;
+  startModeChangeDisabledReason?: string | null;
   onDeleteAnimation: (animationId: string) => void;
   onUpdateAnimation: (
     animationId: string,
     patch: Partial<DeckAnimation>
   ) => void;
 }) {
-  const { animation, onDeleteAnimation, onUpdateAnimation } = props;
+  const {
+    animation,
+    deleteDisabledReason = null,
+    previousEffectSummary = null,
+    startModeChangeDisabledReason = null,
+    onDeleteAnimation,
+    onUpdateAnimation
+  } = props;
 
   return (
     <AnimationPanelSection
@@ -27,16 +37,24 @@ export function AnimationExistingEditor(props: {
       <AnimationTimingFields
         delayMs={animation.delayMs}
         durationMs={animation.durationMs}
+        previousEffectSummary={previousEffectSummary}
+        startMode={animation.startMode ?? "on-click"}
+        startModeChangeDisabledReason={startModeChangeDisabledReason}
         onDelayChange={(delayMs) =>
           onUpdateAnimation(animation.animationId, { delayMs })
         }
         onDurationChange={(durationMs) =>
           onUpdateAnimation(animation.animationId, { durationMs })
         }
+        onStartModeChange={(startMode) =>
+          onUpdateAnimation(animation.animationId, { startMode })
+        }
       />
       <div className="animation-panel-timing-actions">
         <button
           className="animation-panel-danger-button"
+          disabled={Boolean(deleteDisabledReason)}
+          title={deleteDisabledReason ?? undefined}
           type="button"
           onClick={() => onDeleteAnimation(animation.animationId)}
         >

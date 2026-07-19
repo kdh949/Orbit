@@ -1,4 +1,5 @@
 import {
+  canonicalJson,
   deckPatchSchema,
   deckSchema,
   jobSchema,
@@ -9,6 +10,7 @@ import {
   slideQuestionGuideJobResultSchema,
   slideQuestionGuideResearchSchema,
   slideQuestionGuideSourceSnapshotSchema,
+  slideQuestionGuideTextHashInput,
   slideQuestionGuideWebSourceRefSchema,
   type Job,
 } from "@orbit/shared";
@@ -27,6 +29,13 @@ const deckCheckpointRowSchema = z.object({
   deck_json: z.unknown(),
   version: z.coerce.number().int().nonnegative(),
   patch_rows: z.unknown(),
+});
+const deckSnapshotRowSchema = z.object({
+  snapshot_id: z.string().min(1),
+  project_id: z.string().min(1),
+  deck_id: z.string().min(1),
+  deck_json: z.unknown(),
+  version: z.coerce.number().int().positive(),
 });
 const deckPatchRowSchema = z.object({
   before_version: z.coerce.number().int().nonnegative(),
@@ -105,31 +114,38 @@ export async function processSlideQuestionGuideGenerationJob(
     }
 
     failureStage = "generation-context-load";
-    const [deckRows, briefRows, references] = await Promise.all([
-      dataSource.query(
-        `SELECT
-           d.deck_json,
-           d.version,
-           COALESCE((
-             SELECT jsonb_agg(
-               jsonb_build_object(
-                 'before_version', p.before_version,
-                 'after_version', p.after_version,
-                 'source', p.source,
-                 'operations', p.operations,
-                 'created_at', p.created_at
+    const deckQuery = sourceSnapshot.deckSnapshotId
+      ? dataSource.query(
+          `SELECT snapshot_id, project_id, deck_id, deck_json, version
+           FROM deck_snapshots WHERE snapshot_id = $1`,
+          [sourceSnapshot.deckSnapshotId],
+        )
+      : dataSource.query(
+          `SELECT
+             d.deck_json,
+             d.version,
+             COALESCE((
+               SELECT jsonb_agg(
+                 jsonb_build_object(
+                   'before_version', p.before_version,
+                   'after_version', p.after_version,
+                   'source', p.source,
+                   'operations', p.operations,
+                   'created_at', p.created_at
+                 )
+                 ORDER BY p.after_version ASC, p.created_at ASC, p.change_id ASC
                )
-               ORDER BY p.after_version ASC, p.created_at ASC, p.change_id ASC
-             )
-             FROM deck_patches p
-             WHERE p.project_id = d.project_id
-               AND p.deck_id = d.deck_id
-               AND p.after_version > d.version
-           ), '[]'::jsonb) AS patch_rows
-         FROM decks d
-         WHERE d.project_id = $1 AND d.deck_id = $2`,
-        [payload.projectId, guide.deck_id],
-      ),
+               FROM deck_patches p
+               WHERE p.project_id = d.project_id
+                 AND p.deck_id = d.deck_id
+                 AND p.after_version > d.version
+             ), '[]'::jsonb) AS patch_rows
+           FROM decks d
+           WHERE d.project_id = $1 AND d.deck_id = $2`,
+          [payload.projectId, guide.deck_id],
+        );
+    const [deckRows, briefRows, references] = await Promise.all([
+      deckQuery,
       dataSource.query(
         `SELECT content_json FROM presentation_briefs WHERE project_id = $1`,
         [payload.projectId],
@@ -150,7 +166,16 @@ export async function processSlideQuestionGuideGenerationJob(
       ),
     ]);
     const deckRow = firstRow(deckRows);
-    const deck = deckRow ? replayCurrentDeckState(deckRow) : null;
+    const deck = sourceSnapshot.deckSnapshotId
+      ? readFrozenDeckSnapshot(deckRow, {
+          snapshotId: sourceSnapshot.deckSnapshotId,
+          projectId: payload.projectId,
+          deckId: String(guide.deck_id),
+          deckVersion: Number(guide.deck_version),
+        })
+      : deckRow
+        ? replayCurrentDeckState(deckRow)
+        : null;
     if (!deck || deck.version !== Number(guide.deck_version)) {
       throw new Error("SLIDE_QUESTION_GUIDE_SOURCE_STALE");
     }
@@ -159,13 +184,16 @@ export async function processSlideQuestionGuideGenerationJob(
     }
     const slides = deck.slides.map((slide) => {
       const isTarget = slide.slideId === guide.slide_id;
+      const textHashInput = slideQuestionGuideTextHashInput(slide);
       return slideQuestionGuideDeckContextSlideSchema.parse({
         slideId: slide.slideId,
         order: slide.order,
         deckVersion: deck.version,
-        contentHash: sha256Canonical(slide),
+        contentHash: sha256Canonical(
+          sourceSnapshot.contentHashVersion === "slide-text-v1" ? textHashInput : slide,
+        ),
         title: slide.title.slice(0, 500),
-        content: collectSlideContent(slide).slice(0, isTarget ? 4_000 : 600),
+        content: textHashInput.textSegments.join("\n").slice(0, isTarget ? 4_000 : 600),
         speakerNotes: slide.speakerNotes.slice(0, isTarget ? 6_000 : 600),
       });
     });
@@ -492,34 +520,30 @@ function replayCurrentDeckState(rawRow: unknown) {
   return deck;
 }
 
-function collectSlideContent(value: unknown): string {
-  const collected: string[] = [];
-  const visit = (candidate: unknown, key = "") => {
-    if (typeof candidate === "string" && ["title", "text", "alt"].includes(key)) {
-      if (candidate.trim()) collected.push(candidate.trim());
-      return;
-    }
-    if (Array.isArray(candidate)) {
-      candidate.forEach((item) => visit(item, key));
-      return;
-    }
-    if (candidate && typeof candidate === "object") {
-      Object.entries(candidate).forEach(([childKey, child]) => visit(child, childKey));
-    }
-  };
-  visit(value);
-  return Array.from(new Set(collected)).join("\n");
-}
-
-function canonicalJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
-  if (value && typeof value === "object") {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
-      .join(",")}}`;
+function readFrozenDeckSnapshot(
+  rawRow: unknown,
+  expected: {
+    snapshotId: string;
+    projectId: string;
+    deckId: string;
+    deckVersion: number;
+  },
+) {
+  if (!rawRow) throw new Error("SLIDE_QUESTION_GUIDE_SOURCE_STALE");
+  const row = deckSnapshotRowSchema.parse(rawRow);
+  const deck = deckSchema.parse(jsonValue(row.deck_json));
+  if (
+    row.snapshot_id !== expected.snapshotId ||
+    row.project_id !== expected.projectId ||
+    row.deck_id !== expected.deckId ||
+    row.version !== expected.deckVersion ||
+    deck.projectId !== expected.projectId ||
+    deck.deckId !== expected.deckId ||
+    deck.version !== expected.deckVersion
+  ) {
+    throw new Error("SLIDE_QUESTION_GUIDE_SOURCE_STALE");
   }
-  return JSON.stringify(value);
+  return deck;
 }
 
 function sha256Canonical(value: unknown): string {

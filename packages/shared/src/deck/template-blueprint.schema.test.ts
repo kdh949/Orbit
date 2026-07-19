@@ -156,6 +156,97 @@ describe("templateBlueprintSchema", () => {
     ).toBeUndefined();
   });
 
+  it("rejects writable motion capability without an unambiguous slide locator", () => {
+    const withoutLocator = templateBlueprintSchema.safeParse({
+      templateId: "template_file_1",
+      sourceFileId: "file_1",
+      slides: [
+        {
+          slideIndex: 1,
+          sourceSlideIndex: 1,
+          ooxmlMotionCapabilities: {
+            transitionWritable: true,
+            importedMainSequenceCoverage: "partial",
+          },
+        },
+      ],
+    });
+    expect(withoutLocator.success).toBe(false);
+
+    const duplicateLocator = templateBlueprintSchema.safeParse({
+      templateId: "template_file_1",
+      sourceFileId: "file_1",
+      slides: [1, 2].map((slideIndex) => ({
+        slideIndex,
+        sourceSlideIndex: slideIndex,
+        sourceSlidePart: "ppt/slides/slide1.xml",
+        ooxmlMotionCapabilities: {
+          transitionWritable: false,
+          importedMainSequenceCoverage: "complete",
+        },
+      })),
+    });
+    expect(duplicateLocator.success).toBe(false);
+  });
+
+  it("derives a writable motion slide locator from one authoritative element source", () => {
+    const parsed = templateBlueprintSchema.parse({
+      templateId: "template_file_1",
+      sourceFileId: "file_1",
+      slides: [
+        {
+          slideIndex: 1,
+          sourceSlideIndex: 1,
+          ooxmlMotionCapabilities: {
+            transitionWritable: true,
+            importedMainSequenceCoverage: "complete",
+          },
+          elementSources: [
+            {
+              elementId: "el_title",
+              elementType: "text",
+              slidePart: "ppt/slides/slide7.xml",
+              shapeId: "2",
+              sourceType: "shape",
+              writable: true,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(parsed.slides[0]?.sourceSlidePart).toBe("ppt/slides/slide7.xml");
+  });
+
+  it("rejects a writable locator shared with a non-writable motion slide", () => {
+    const parsed = templateBlueprintSchema.safeParse({
+      templateId: "template_file_1",
+      sourceFileId: "file_1",
+      slides: [
+        {
+          slideIndex: 1,
+          sourceSlideIndex: 1,
+          sourceSlidePart: "ppt/slides/slide1.xml",
+          ooxmlMotionCapabilities: {
+            transitionWritable: true,
+            importedMainSequenceCoverage: "complete",
+          },
+        },
+        {
+          slideIndex: 2,
+          sourceSlideIndex: 2,
+          sourceSlidePart: "ppt/slides/slide1.xml",
+          ooxmlMotionCapabilities: {
+            transitionWritable: false,
+            importedMainSequenceCoverage: "partial",
+          },
+        },
+      ],
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
   it("accepts bounded row-major table cell locators", () => {
     const blueprint = templateBlueprintSchema.parse({
       templateId: "template_file_1",
@@ -525,6 +616,85 @@ describe("qualityReportSchema", () => {
       status: "vectorization_failed",
       fallback: "rendered-background",
     });
+  });
+
+  it("accepts bounded aggregate motion diagnostics", () => {
+    const parsed = qualityReportSchema.parse({
+      ...qualityReport,
+      motionDiagnostics: {
+        total: 20,
+        unsupported: 2,
+        downgraded: 15,
+        unresolved: 1,
+        excluded: 2,
+        details: [
+          {
+            slideIndex: 8,
+            code: "PPTX_MOTION_PARAGRAPH_BUILD_DOWNGRADED",
+            count: 15,
+          },
+          {
+            slideIndex: 8,
+            code: "PPTX_MOTION_PRESET_UNSUPPORTED",
+            count: 2,
+          },
+          {
+            slideIndex: 8,
+            code: "PPTX_MOTION_TARGET_UNRESOLVED",
+            count: 1,
+          },
+          {
+            slideIndex: 8,
+            code: "PPTX_MOTION_MEDIA_EXCLUDED",
+            count: 2,
+          },
+        ],
+      },
+    });
+
+    expect(parsed.motionDiagnostics?.total).toBe(20);
+    expect(parsed.motionDiagnostics?.details).toHaveLength(4);
+  });
+
+  it("rejects free-text or unbounded motion diagnostic details", () => {
+    const base = {
+      ...qualityReport,
+      motionDiagnostics: {
+        total: 1,
+        unsupported: 1,
+        downgraded: 0,
+        unresolved: 0,
+        excluded: 0,
+      },
+    };
+    expect(
+      qualityReportSchema.safeParse({
+        ...base,
+        motionDiagnostics: {
+          ...base.motionDiagnostics,
+          details: [
+            {
+              slideIndex: 1,
+              code: "arbitrary user text",
+              count: 1,
+            },
+          ],
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      qualityReportSchema.safeParse({
+        ...base,
+        motionDiagnostics: {
+          ...base.motionDiagnostics,
+          details: Array.from({ length: 501 }, () => ({
+            slideIndex: 1,
+            code: "PPTX_MOTION_EFFECT_UNSUPPORTED",
+            count: 1,
+          })),
+        },
+      }).success,
+    ).toBe(false);
   });
 });
 

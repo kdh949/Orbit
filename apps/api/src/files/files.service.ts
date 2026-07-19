@@ -238,6 +238,51 @@ export class FilesService {
     return asset;
   }
 
+  async getOrCreatePrivateAudioDerivative(
+    projectId: string,
+    fileId: string,
+    purpose: FilePurpose,
+    derivativeFileName: string,
+    createDerivative: (source: {
+      body: Uint8Array;
+      contentType: string;
+    }) => Promise<Uint8Array>,
+  ): Promise<{
+    body: Uint8Array;
+    contentType: string;
+    storageKey: string;
+    created: boolean;
+  }> {
+    if (!privateAudioPurposes.has(purpose)) {
+      throw new BadRequestException("Private audio purpose is required.");
+    }
+    if (!/^[a-z0-9][a-z0-9._-]{0,127}$/.test(derivativeFileName)) {
+      throw new BadRequestException(
+        "Private audio derivative name is invalid.",
+      );
+    }
+
+    const asset = await this.getUploadedAsset(projectId, fileId, purpose);
+    const separatorIndex = asset.storageKey.lastIndexOf("/");
+    const storageFolder =
+      separatorIndex >= 0 ? asset.storageKey.slice(0, separatorIndex + 1) : "";
+    const storageKey = `${storageFolder}${derivativeFileName}`;
+    const existing = await this.storage.headObject(storageKey);
+    if (existing) {
+      const stored = await this.storage.getObject(storageKey);
+      return { ...stored, storageKey, created: false };
+    }
+
+    const source = await this.storage.getObject(asset.storageKey);
+    const body = await createDerivative(source);
+    await this.storage.putObject({
+      key: storageKey,
+      body,
+      contentType: "audio/wav",
+      purpose,
+    });
+    return { body, contentType: "audio/wav", storageKey, created: true };
+  }
   async createPrivateAudioReadUrl(
     projectId: string,
     fileId: string,
@@ -252,18 +297,40 @@ export class FilesService {
       expiresInSeconds < 1 ||
       expiresInSeconds > maximumPrivateAudioReadUrlExpiresInSeconds
     ) {
-      throw new BadRequestException("Private audio read URL expiry is invalid.");
+      throw new BadRequestException(
+        "Private audio read URL expiry is invalid.",
+      );
     }
 
     const asset = await this.getUploadedAsset(projectId, fileId, purpose);
     return this.storage.getSignedReadUrl(asset.storageKey, expiresInSeconds);
   }
 
+  async isPrivateAudioAvailable(
+    projectId: string,
+    fileId: string,
+    purpose: FilePurpose,
+  ): Promise<boolean> {
+    if (!privateAudioPurposes.has(purpose)) {
+      throw new BadRequestException("Private audio purpose is required.");
+    }
+
+    try {
+      const asset = await this.getUploadedAsset(projectId, fileId, purpose);
+      return (await this.storage.headObject(asset.storageKey)) !== null;
+    } catch (error) {
+      if (error instanceof NotFoundException) return false;
+      throw error;
+    }
+  }
+
   private async verifyUploadedObject(asset: ProjectAssetEntity): Promise<void> {
     const head = await this.storage.headObject(asset.storageKey);
 
     if (!head) {
-      throw new NotFoundException(`Asset not found in storage: ${asset.fileId}`);
+      throw new NotFoundException(
+        `Asset not found in storage: ${asset.fileId}`,
+      );
     }
 
     if (head.contentLength !== asset.size) {
@@ -304,7 +371,9 @@ export class FilesService {
 
     if (asset.status === "deleted") {
       if (!asset.deletedAt) {
-        throw new NotFoundException(`Asset is deleted without deletion time: ${fileId}`);
+        throw new NotFoundException(
+          `Asset is deleted without deletion time: ${fileId}`,
+        );
       }
 
       return asset.deletedAt.toISOString();
@@ -406,7 +475,10 @@ export class FilesService {
     fileId: string,
     requestOrigin?: string | null,
   ): string {
-    const origin = (requestOrigin ?? this.uploadProxyOrigin ?? "").replace(/\/+$/, "");
+    const origin = (requestOrigin ?? this.uploadProxyOrigin ?? "").replace(
+      /\/+$/,
+      "",
+    );
     return `${origin}/api/v1/projects/${encodeURIComponent(
       projectId,
     )}/assets/${encodeURIComponent(fileId)}/content`;

@@ -11,6 +11,13 @@ const positiveFiniteNumberSchema = z.number().finite().positive();
 const nullablePositiveFiniteNumberSchema =
   positiveFiniteNumberSchema.nullable();
 
+export const rehearsalPronunciationContextTermSchema = z
+  .object({
+    source: z.string().trim().min(1).max(64),
+    aliases: z.array(z.string().trim().min(1).max(64)).min(1).max(4),
+  })
+  .strict();
+
 export const rehearsalSlideSpeakingRateReasonCodeSchema = z.enum([
   "UNSUPPORTED_LANGUAGE",
   "SEGMENT_TIMESTAMPS_UNAVAILABLE",
@@ -156,6 +163,10 @@ export const rehearsalAnalyzeRequestV2Schema = z
     providerDurationSeconds: nullablePositiveFiniteNumberSchema,
     segments: z.array(rehearsalAnalyzeTranscriptSegmentV2Schema),
     deckKeywords: z.array(rehearsalAnalyzeDeckKeywordV2Schema),
+    pronunciationContext: z
+      .array(rehearsalPronunciationContextTermSchema)
+      .max(32)
+      .default([]),
     slideTimeline: z.array(rehearsalAnalyzeSlideTimelineEntryV2Schema),
     silenceAnalysis: rehearsalSilenceAnalysisSchema,
   })
@@ -712,6 +723,10 @@ export const rehearsalAnalyzeRequestV1Schema = z
     durationSeconds: z.number().finite().nonnegative(),
     segments: z.array(rehearsalAnalyzeTranscriptSegmentV1Schema),
     deckKeywords: z.array(rehearsalAnalyzeDeckKeywordV1Schema),
+    pronunciationContext: z
+      .array(rehearsalPronunciationContextTermSchema)
+      .max(32)
+      .default([]),
     slideTimeline: z.array(rehearsalAnalyzeSlideTimelineEntryV1Schema),
     silenceAnalysis: rehearsalSilenceAnalysisSchema.default(
       legacyRehearsalSilenceAnalysis,

@@ -32,6 +32,7 @@ import {
   DropdownMenuItem,
   OrbitButton,
   OrbitEmptyState,
+  OrbitFailureState,
   OrbitIconButton,
   OrbitInput,
 } from "../../components/ui";
@@ -283,28 +284,26 @@ export function ProjectListPage(props: {
               >
                 AI 발표자료 만들기
               </OrbitButton>
-              <OrbitButton
+              <ProjectCommandbarAction
                 className="orbit-project-commandbar-blank"
                 disabled={isImportingPptx}
                 icon={<IconPlus aria-hidden="true" size={18} />}
                 loading={isCreating}
                 onClick={() => void createBlankProject()}
-                variant="secondary"
               >
                 {isCreating ? "생성 중" : "빈 프로젝트"}
-              </OrbitButton>
-              <OrbitButton
+              </ProjectCommandbarAction>
+              <ProjectCommandbarAction
                 className="orbit-project-commandbar-upload"
                 disabled={isCreating}
                 icon={<IconFileUpload aria-hidden="true" size={18} />}
                 loading={isImportingPptx}
                 onClick={() => pptxInputRef.current?.click()}
-                variant="quiet"
               >
                 {pptxImportPhase === "importing"
                   ? "PPTX 변환 중"
                   : "PPTX 업로드"}
-              </OrbitButton>
+              </ProjectCommandbarAction>
               <input
                 accept={pptxImportAccept}
                 aria-label="PPTX 파일 선택"
@@ -351,6 +350,33 @@ export function ProjectListPage(props: {
         </>
       )}
     </WorkspaceContainer>
+  );
+}
+
+function ProjectCommandbarAction(props: {
+  children: ReactNode;
+  className?: string;
+  disabled?: boolean;
+  icon: ReactNode;
+  loading?: boolean;
+  onClick: () => void;
+}) {
+  const className = [
+    "orbit-project-commandbar-action",
+    props.className,
+  ].filter(Boolean).join(" ");
+
+  return (
+    <OrbitButton
+      className={className}
+      disabled={props.disabled}
+      icon={props.icon}
+      loading={props.loading}
+      onClick={props.onClick}
+      variant="quiet"
+    >
+      {props.children}
+    </OrbitButton>
   );
 }
 
@@ -530,16 +556,9 @@ function ProjectState(props: {
   }
   if (props.query.isError) {
     return (
-      <OrbitEmptyState
-        action={
-          <OrbitButton
-            onClick={() => void props.query.refetch()}
-            variant="secondary"
-          >
-            다시 시도
-          </OrbitButton>
-        }
+      <OrbitFailureState
         description="연결을 확인한 뒤 프로젝트 목록을 다시 불러오세요."
+        onRetry={() => void props.query.refetch()}
         title="프로젝트를 불러오지 못했습니다."
       />
     );
@@ -584,7 +603,7 @@ function ProjectTable(props: {
       <div className="orbit-project-row heading" role="row">
         <span role="columnheader">프로젝트</span>
         <span role="columnheader">생성일</span>
-        <span role="columnheader">작업</span>
+        <span aria-hidden="true" role="columnheader" />
       </div>
       {props.projects.map((project) => {
         const rehearsalPath = `/rehearsal/${encodeURIComponent(project.projectId)}`;
@@ -637,7 +656,7 @@ function ProjectTable(props: {
                   onClick={() => props.onNavigate(rehearsalPath)}
                   size="compact"
                 >
-                  연습하러 가기
+                  연습하기
                 </OrbitButton>
               ) : (
                 <>

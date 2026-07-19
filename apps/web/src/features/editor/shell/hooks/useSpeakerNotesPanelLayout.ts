@@ -23,6 +23,7 @@ export function useSpeakerNotesPanelLayout(args: {
   projectId: string;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [height, setHeight] = useState(defaultHeight);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -48,6 +49,7 @@ export function useSpeakerNotesPanelLayout(args: {
 
   function collapse() {
     setIsExpanded(false);
+    setIsMaximized(false);
     setIsResizing(false);
   }
 
@@ -57,6 +59,15 @@ export function useSpeakerNotesPanelLayout(args: {
       return;
     }
     setIsExpanded(true);
+    if (!hasExpandedRef.current) {
+      hasExpandedRef.current = true;
+      shouldMeasureInitialHeightRef.current = true;
+    }
+  }
+
+  function toggleMaximized() {
+    setIsExpanded(true);
+    setIsMaximized((current) => !current);
     if (!hasExpandedRef.current) {
       hasExpandedRef.current = true;
       shouldMeasureInitialHeightRef.current = true;
@@ -114,6 +125,7 @@ export function useSpeakerNotesPanelLayout(args: {
 
   useEffect(() => {
     setIsExpanded(false);
+    setIsMaximized(false);
     hasExpandedRef.current = false;
     shouldMeasureInitialHeightRef.current = false;
     setHeight(defaultHeight);
@@ -146,9 +158,10 @@ export function useSpeakerNotesPanelLayout(args: {
       getMaxHeight,
       handleResizeKeyDown,
       handleResizeStart,
-      toggle
+      toggle,
+      toggleMaximized
     },
     refs: { contentRef },
-    state: { height, isExpanded, isResizing }
+    state: { height, isExpanded, isMaximized, isResizing }
   };
 }

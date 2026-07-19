@@ -1,10 +1,12 @@
 import {
+  animationSchema,
   deckCanvasSchema,
   deckElementSchema,
   deckSchema,
   pptxOoxmlGenerationJobResultSchema,
   pptxOoxmlGenerationRequestSchema,
   qualityReportSchema,
+  slideTransitionSchema,
   slideStyleSchema,
   templateBlueprintSchema,
   themeSchema,
@@ -37,6 +39,8 @@ const ooxmlGenerationBlueprintSlideSchema = z
     sourceSlideIndex: z.number().int().positive().optional(),
     style: slideStyleSchema,
     elements: z.array(deckElementSchema).default([]),
+    transition: slideTransitionSchema.optional(),
+    animations: z.array(animationSchema).default([]),
   })
   .passthrough();
 
@@ -50,7 +54,7 @@ const ooxmlGenerationBlueprintSchema = z
 const pptxOoxmlGenerationWorkerResponseSchema = z.object({
   canvas: deckCanvasSchema,
   blueprint: ooxmlGenerationBlueprintSchema,
-  templateBlueprint: templateBlueprintSchema.passthrough(),
+  templateBlueprint: templateBlueprintSchema,
   qualityReport: qualityReportSchema,
   assets: z.array(generatedDesignAssetSchema).default([]),
   warnings: z.array(z.string()).default([]),
@@ -179,13 +183,16 @@ export async function processPptxOoxmlGenerationJob(
       templateBlueprint,
       assetRefs.urls,
     );
-    const mappedTemplateBlueprint = templateBlueprintSchema.parse({
-      ...templateBlueprint,
-      slides: templateBlueprint.slides.map((slide, index) => ({
-        ...slide,
-        slideId: deck.slides[index]?.slideId,
-      })),
-    });
+    const mappedTemplateBlueprint = reconcileMotionCapabilitiesWithDeck(
+      templateBlueprintSchema.parse({
+        ...templateBlueprint,
+        slides: templateBlueprint.slides.map((slide, index) => ({
+          ...slide,
+          slideId: deck.slides[index]?.slideId,
+        })),
+      }),
+      deck,
+    );
 
     await dataSource.transaction(async (manager) => {
       await saveDeck(manager, deck);
@@ -414,13 +421,39 @@ function buildOoxmlDeck(
               },
             }),
           );
+      const elementIds = new Set(elements.map((element) => element.elementId));
+      const sourceAnimations = blueprintSlide?.animations ?? [];
+      const animations = useSnapshotFallback
+        ? []
+        : sourceAnimations.filter((animation) =>
+            elementIds.has(animation.elementId),
+          );
+      const sourceMotionCapabilities = slide.ooxmlMotionCapabilities ?? {
+        transitionWritable: false,
+        importedMainSequenceCoverage: "unknown" as const,
+      };
+      const ooxmlMotionCapabilities =
+        sourceMotionCapabilities.importedMainSequenceCoverage === "complete" &&
+        animations.length !== sourceAnimations.length
+          ? {
+              ...sourceMotionCapabilities,
+              importedMainSequenceCoverage: "partial" as const,
+            }
+          : sourceMotionCapabilities;
 
       return {
         slideId: `slide_ooxml_${safeId(asset.file_id)}_${index + 1}`,
         ooxmlOrigin: "imported",
+        ...(slide.sourceSlidePart
+          ? { ooxmlSourceSlidePart: slide.sourceSlidePart }
+          : {}),
+        ooxmlMotionCapabilities,
         order: index + 1,
         title: `Slide ${index + 1}`,
         thumbnailUrl: renderUrl,
+        ...(blueprintSlide?.transition
+          ? { transition: blueprintSlide.transition }
+          : {}),
         style: {
           ...(blueprintSlide?.style ?? {}),
           layout: "title-content",
@@ -438,13 +471,28 @@ function buildOoxmlDeck(
         speakerNotes: "",
         elements,
         keywords: [],
-        animations: [],
+        animations,
         aiNotes: {
           emphasisPoints: [],
           sourceEvidence: [],
         },
       };
     }),
+  });
+}
+
+function reconcileMotionCapabilitiesWithDeck(
+  templateBlueprint: OoxmlTemplateBlueprint,
+  deck: Deck,
+): OoxmlTemplateBlueprint {
+  return pptxOoxmlGenerationWorkerResponseSchema.shape.templateBlueprint.parse({
+    ...templateBlueprint,
+    slides: templateBlueprint.slides.map((slide, index) => ({
+      ...slide,
+      ooxmlMotionCapabilities:
+        deck.slides[index]?.ooxmlMotionCapabilities ??
+        slide.ooxmlMotionCapabilities,
+    })),
   });
 }
 

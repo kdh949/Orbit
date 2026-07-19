@@ -1,8 +1,11 @@
 import { demoIds } from "@orbit/shared";
 import { Controller, Get } from "@nestjs/common";
+import { DatabaseReadinessService } from "../database/database-readiness.service";
 
 @Controller("health")
 export class HealthController {
+  constructor(private readonly databaseReadiness: DatabaseReadinessService) {}
+
   @Get()
   health() {
     return {
@@ -13,7 +16,8 @@ export class HealthController {
   }
 
   @Get("readiness")
-  readiness() {
+  async readiness() {
+    await this.databaseReadiness.assertReady();
     return {
       status: "ready",
       dependencies: {
@@ -24,4 +28,3 @@ export class HealthController {
     };
   }
 }
-

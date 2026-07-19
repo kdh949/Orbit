@@ -4,7 +4,8 @@ import type {
   SemanticCapabilityEvent,
   SemanticCue,
   SemanticCueImportance,
-  SemanticMeasurementMode
+  SemanticMeasurementMode,
+  PronunciationLexiconEntry,
 } from "@orbit/shared";
 
 import type {
@@ -50,6 +51,7 @@ export type P3RehearsalSessionSlide = {
   controlPhrases?: readonly string[];
   cuePhrases?: readonly string[];
   legacyPhrases?: readonly string[];
+  pronunciationEntries?: readonly PronunciationLexiconEntry[];
 };
 
 export type P3RehearsalSessionState = {
@@ -505,6 +507,7 @@ export function createP3RehearsalSession(
       speakerNotes: slide.speakerNotes,
       keywords: slide.keywords,
       controlPhrases: slide.controlPhrases,
+      pronunciationEntries: slide.pronunciationEntries,
       threshold: input.threshold,
       config: input.config
     });
@@ -1051,8 +1054,12 @@ export function buildBiasPhrasesForSlide(
     cuePhrases: slide.cuePhrases,
     keywords: slide.keywords,
     semanticCues: slide.semanticCues,
+    pronunciationEntries: slide.pronunciationEntries,
     adjacentSemanticCues: context.adjacentSlides?.flatMap(
-      (adjacentSlide) => adjacentSlide.semanticCues ?? []
+      (adjacentSlide) => adjacentSlide.semanticCues ?? [],
+    ),
+    adjacentPronunciationEntries: context.adjacentSlides?.flatMap(
+      (adjacentSlide) => adjacentSlide.pronunciationEntries ?? [],
     ),
     representativePhrases,
     legacyPhrases: slide.legacyPhrases

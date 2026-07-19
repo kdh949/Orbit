@@ -746,3 +746,33 @@
 - Rationale: 시연자가 STT 누락을 즉시 복구하면서도 읽지 않은 문장을 완료했다고 기록하지 않고, 화면 포커스와 다음 음성 판정을 같은 문장에 맞춘다.
 - Affected files: `apps/web/src/features/rehearsal/speech/prompterProgressTracker.ts`, `apps/web/src/features/rehearsal/speech/speechTracker.ts`, `apps/web/src/features/editor/shell/hooks/useEditorSlideRehearsal.ts`, `apps/web/src/features/editor/shell/components/EditorSlideRehearsal.tsx`, `apps/web/src/features/editor/shell/EditorShell.tsx`, 관련 테스트와 `docs/decision-log.md`.
 - Follow-up review notes: 자동 모드에서 첫 문장을 skip한 뒤 진행률이 오르지 않는지, 다음 문장 final STT만 commit되는지, 마지막 문장 skip이 거부되는지, 수동 모드의 화살표 동작과 전체 리허설 wheel 동작이 유지되는지 확인한다.
+
+## ORBIT editor slide question guide runtime flag guard
+
+- Context: `SLIDE_QUESTION_GUIDES_ENABLED=false`인 배포 환경에서도 Editor QnA 탭은 `질문 생성` 버튼을 노출했다. 사용자가 버튼을 누르면 API가 의도대로 403 `Slide question guides are not enabled.`를 반환하지만, UI는 사용할 수 없는 기능을 실행 가능한 것처럼 보이게 했다.
+- Options considered:
+  - API의 feature flag 검사를 제거하고 항상 Job을 생성한다.
+  - UI는 그대로 두고 API 오류 문구만 바꾼다.
+  - UI가 공개 runtime config의 `slideQuestionGuidesEnabled`를 먼저 확인하고 비활성 상태에서는 조회·생성 요청을 보내지 않는다.
+- Final decision: `SlideQuestionGuidePanel`은 mount 시 `/api/v1/runtime-config`를 확인한다. 확인 전과 비활성 상태에서는 생성 버튼을 disabled로 유지하고, 비활성 상태에서는 guide 목록 조회와 생성 API 호출도 하지 않는다. API의 feature flag 검사는 계속 최종 권한 경계로 유지한다.
+- Rationale: 배포별 기능 활성화 결정은 API runtime config가 소유하고, Web은 이를 따라 사용 불가능한 작업을 시작하지 않는다. 네트워크 지연이나 설정 조회 실패 중에도 생성 요청을 낙관적으로 보내지 않아 사용자에게 403을 노출하지 않는다.
+- Affected files: `apps/web/src/features/editor/practice/SlideQuestionGuidePanel.tsx`, `apps/web/src/features/editor/practice/SlideQuestionGuidePanel.test.tsx`, `docs/decision-log.md`.
+- Follow-up review notes: enabled 환경에서는 runtime config 확인 뒤 버튼이 활성화되고 기존 guide 목록·생성 polling이 동작하는지, disabled 환경에서는 QnA 탭을 열어도 slide question guide API 요청이 발생하지 않는지 확인한다.
+
+## ORBIT editor slide question guide automatic batch snapshot
+
+- Context: 예상 질문은 사용자가 QnA 탭을 열고 slide별 생성 버튼을 눌러야만 예약됐고, Worker가 처리 시점의 live Deck을 재구성해 enqueue 뒤 편집으로 정상 작업이 stale 실패할 수 있었다. UI도 전체 `deckVersion`으로 freshness를 판단해 다른 slide 편집만으로 현재 slide 질문을 숨겼다.
+- Options considered:
+  - Web이 기존 단일 생성 API를 slide 수만큼 직접 호출하고 Worker가 계속 live Deck을 읽는다.
+  - 전체 Deck을 새 Job payload에 넣거나 전용 batch Queue와 전역 진행 UI를 추가한다.
+  - API가 Deck을 한 번 검증해 기존 Job을 slide별 예약하고, 기존 `deck_snapshots`를 frozen source로 참조하며 UI는 target slide hash만 비교한다.
+- Final decision: write 권한과 `SLIDE_QUESTION_GUIDES_ENABLED`가 유효한 editor mount는 persisted Deck 최초 로드 후 `POST /slide-question-guides/auto`를 한 번 호출한다. API는 current target hash와 `slide-question-guide-v2`의 active/succeeded guide를 재사용하고, deterministic batch·slide request ID로 나머지만 기존 Queue에 예약한다. 신규 guide의 `source_snapshot_json.deckSnapshotId`는 같은 version의 재사용 가능한 `deck_snapshots` row를 가리키며 Worker는 ID·project·deck·version·target hash를 검증한 frozen Deck을 사용한다. `deckSnapshotId`가 없는 guide는 checkpoint와 patch tail 재구성 경로를 유지한다. UI는 target slide canonical hash로 current guide를 선택하고 자동 생성 실패를 반복 재시도하지 않는다.
+- Rationale: 새 Queue·테이블·payload 원문 없이 기존 순차 Worker와 privacy 경계를 유지하면서 editor 진입 시 전체 slide를 준비한다. frozen snapshot은 live 편집과 생성 source를 분리하고, target hash freshness는 관련 없는 slide 수정으로 질문이 사라지는 문제를 막는다.
+- Affected files: `packages/shared/src/common/canonical-json.ts`, `packages/shared/src/slide-practice/slide-question-guide.schema.ts`, `apps/api/src/decks/decks.service.ts`, `apps/api/src/slide-question-guides/**`, `apps/worker/src/slide-question-guide-generation.processor.ts`, `apps/web/src/features/editor/practice/**`, `apps/web/src/features/editor/shell/**`, `docs/contracts.md`.
+
+## ORBIT slide question text freshness and bounded parallelism
+
+- Context: 전체 slide JSON hash는 도형 색상·위치 같은 질문 근거와 무관한 시각 변경에도 기존 질문을 stale 처리했고, QnA Worker 기본 동시성 1은 여러 slide를 모두 준비하는 시간을 선형으로 늘렸다.
+- Final decision: API·Worker·Web은 shared `slideQuestionGuideTextHashInput`으로 title·text·alt·speaker notes만 canonical hash 입력에 포함한다. 신규 source snapshot은 `contentHashVersion: slide-text-v1`을 기록하고, version이 없는 기존 guide는 Worker에서 전체 slide hash 검증을 유지한다. 기존 `slide-question-guide-generation` Queue의 BullMQ Worker에만 `concurrency: 2`를 적용한다.
+- Rationale: 실제 질문 생성 입력이 달라질 때만 stale 처리하면서 새 Queue·dependency·전역 설정 없이 전체 준비 시간을 줄인다. 동시성 2는 provider 부하를 제한하면서 뒤쪽 Job의 120초 Web polling 초과 가능성도 낮춘다.
+- Affected files: `packages/shared/src/slide-practice/slide-question-guide.schema.ts`, `apps/api/src/slide-question-guides/**`, `apps/worker/src/slide-question-guide-generation.processor.ts`, `apps/worker/src/worker.service.ts`, `apps/web/src/features/editor/practice/**`, `docs/contracts.md`.

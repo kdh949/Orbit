@@ -52,6 +52,7 @@ type EditorTopbarProps = {
   onRenameDeckTitle: (title: string) => void;
   onRetryOoxmlSync: () => void;
   onSave: () => void;
+  onStartFullRehearsal: () => void;
   onStartPresentation: () => void;
   onStartRehearsal: () => void;
   projectId: string;
@@ -59,6 +60,7 @@ type EditorTopbarProps = {
   pptxExportMessage: string;
   pptxImportMeta: string;
   recoveryHint: string | null;
+  saveFailed: boolean;
   saveMenuMeta: string;
   saveStatusLabel: string;
   setActiveTopMenu: (updater: EditorShellUiUpdater<TopMenu | null>) => void;
@@ -96,6 +98,7 @@ export function EditorTopbar(props: EditorTopbarProps) {
     onRenameDeckTitle,
     onRetryOoxmlSync,
     onSave,
+    onStartFullRehearsal,
     onStartPresentation,
     onStartRehearsal,
     projectId,
@@ -103,6 +106,7 @@ export function EditorTopbar(props: EditorTopbarProps) {
     pptxExportMessage,
     pptxImportMeta,
     recoveryHint,
+    saveFailed,
     saveMenuMeta,
     saveStatusLabel,
     setActiveTopMenu,
@@ -265,7 +269,7 @@ export function EditorTopbar(props: EditorTopbarProps) {
                   ]}
                   subtitle={`프레젠테이션 · ${canvas.width} × ${canvas.height}px`}
                   title={deckTitle}
-                  variant="white"
+                  variant="soft-gray"
                 />
               ) : null}
             </div>
@@ -307,6 +311,7 @@ export function EditorTopbar(props: EditorTopbarProps) {
             lastSavedAtLabel={lastSavedAtLabel}
             onSave={onSave}
             recoveryHint={recoveryHint}
+            retrying={saveFailed}
             statusLabel={saveStatusLabel}
           />
         ) : null}
@@ -342,6 +347,7 @@ export function EditorTopbar(props: EditorTopbarProps) {
           isSlideRehearsalActive={isSlideRehearsalActive}
           isOpen={activeTopMenu === "presentation"}
           onOpenAudienceLink={onOpenAudienceLink}
+          onStartFullRehearsal={onStartFullRehearsal}
           onStartPresentation={onStartPresentation}
           onStartRehearsal={onStartRehearsal}
           onToggle={() =>

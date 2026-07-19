@@ -1,117 +1,210 @@
-export type DurationPoint = { label: string; seconds: number };
+export type TrendPoint = {
+  label: string;
+  value: number;
+};
 
-export function DurationLineChart({ series }: { series: DurationPoint[] }) {
+type TrendChartProps = {
+  ariaLabel: string;
+  className?: string;
+  series: TrendPoint[];
+  targetValue?: number | null;
+  valueFormatter?: (value: number) => string;
+};
+
+export function DurationLineChart({
+  series,
+  targetValue = null,
+}: {
+  series: Array<{ label: string; seconds: number }>;
+  targetValue?: number | null;
+}) {
+  return (
+    <TrendLineChart
+      ariaLabel="회차별 총 소요시간 추이"
+      className="is-duration"
+      series={series.map((point) => ({
+        label: point.label,
+        value: point.seconds,
+      }))}
+      targetValue={targetValue}
+      valueFormatter={formatDuration}
+    />
+  );
+}
+
+export function MetricTrendChart({
+  ariaLabel,
+  series,
+  valueFormatter,
+}: Omit<TrendChartProps, "className" | "targetValue">) {
+  return (
+    <TrendLineChart
+      ariaLabel={ariaLabel}
+      className="is-compact"
+      series={series}
+      valueFormatter={valueFormatter}
+    />
+  );
+}
+
+function TrendLineChart({
+  ariaLabel,
+  className = "",
+  series,
+  targetValue = null,
+  valueFormatter = (value) => String(Math.round(value)),
+}: TrendChartProps) {
   if (series.length < 2) return null;
 
-  const max = Math.max(...series.map((p) => p.seconds), 1);
-  const maxIndex = series.reduce(
-    (bestIndex, point, index, points) =>
-      point.seconds > points[bestIndex].seconds ? index : bestIndex,
-    0,
-  );
-  const width = 640;
-  const height = 220;
-  const padX = 42;
-  const padY = 24;
-  const bottomPad = 34;
+  const values = [
+    ...series.map((point) => point.value),
+    ...(targetValue !== null ? [targetValue] : []),
+  ];
+  const rawMax = Math.max(...values, 1);
+  const rawMin = Math.min(...values, 0);
+  const range = Math.max(rawMax - rawMin, 1);
+  const max = rawMax + range * 0.16;
+  const min = Math.max(0, rawMin - range * 0.08);
+  const isCompact = className === "is-compact";
+  const width = isCompact ? 320 : 720;
+  const height = isCompact ? 120 : 350;
+  const padX = isCompact ? 30 : 48;
+  const padTop = 30;
+  const bottomPad = 38;
   const chartW = width - padX * 2;
-  const chartH = height - padY - bottomPad;
+  const chartH = height - padTop - bottomPad;
   const axisStep = Math.max(1, Math.ceil((series.length - 1) / 5));
   const axisIndexes = new Set<number>([0, series.length - 1]);
-  for (let i = 0; i < series.length; i += axisStep) axisIndexes.add(i);
-  const valueIndexes = new Set([0, maxIndex, series.length - 1]);
+  for (let index = 0; index < series.length; index += axisStep) {
+    axisIndexes.add(index);
+  }
 
-  const points = series.map((p, i) => ({
-    x: padX + (i / (series.length - 1)) * chartW,
-    y: padY + (1 - p.seconds / max) * chartH,
-    label: p.label,
-    seconds: p.seconds,
+  const toY = (value: number) =>
+    padTop + (1 - (value - min) / Math.max(max - min, 1)) * chartH;
+  const points = series.map((point, index) => ({
+    ...point,
+    x: padX + (index / (series.length - 1)) * chartW,
+    y: toY(point.value),
   }));
-
-  const polyline = points.map((p) => `${p.x},${p.y}`).join(" ");
+  const polyline = points.map((point) => `${point.x},${point.y}`).join(" ");
+  const latest = points.at(-1)!;
+  const maxPointIndex = points.reduce(
+    (bestIndex, point, index, allPoints) =>
+      point.value > allPoints[bestIndex].value ? index : bestIndex,
+    0,
+  );
 
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="report-project-chart-svg"
+      className={`report-project-chart-svg ${className}`.trim()}
       role="img"
-      aria-label="회차별 총 소요시간 추이"
+      aria-label={ariaLabel}
     >
+      {targetValue !== null ? (
+        <rect
+          x={padX}
+          y={toY(targetValue + 30)}
+          width={chartW}
+          height={Math.max(0, toY(Math.max(0, targetValue - 30)) - toY(targetValue + 30))}
+          className="report-project-chart-target-band"
+        />
+      ) : null}
+
       {[0, 0.5, 1].map((ratio) => {
-        const y = padY + ratio * chartH;
+        const y = padTop + ratio * chartH;
+        const tickValue = max - ratio * (max - min);
         return (
-          <line
-            key={ratio}
-            x1={padX}
-            x2={width - padX}
-            y1={y}
-            y2={y}
-            stroke="#e2e8f0"
-            strokeDasharray="4 5"
-          />
+          <g key={ratio}>
+            <line
+              x1={padX}
+              x2={width - padX}
+              y1={y}
+              y2={y}
+              className="report-project-chart-grid"
+            />
+            <text
+              x={padX - 7}
+              y={y + 4}
+              textAnchor="end"
+              className="report-project-chart-axis-value"
+            >
+              {isCompact ? Math.round(tickValue) : valueFormatter(tickValue)}
+            </text>
+          </g>
         );
       })}
-      <polyline
-        points={polyline}
-        fill="none"
-        stroke="var(--color-primary, #6366f1)"
-        strokeWidth="3"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-      {points.map((p, i) => (
-        <g key={p.label}>
-          <circle cx={p.x} cy={p.y} r="4.5" fill="var(--color-primary, #6366f1)" stroke="#ffffff" strokeWidth="2" />
-          {valueIndexes.has(i) ? (
-            <text x={p.x} y={Math.max(14, p.y - 12)} textAnchor="middle" fontSize="12" fill="var(--color-primary, #6366f1)" fontWeight="800">
-              {`${Math.round(p.seconds)}초`}
-            </text>
-          ) : null}
-          {axisIndexes.has(i) ? (
+
+      {targetValue !== null ? (
+        <g>
+          <line
+            x1={padX}
+            x2={width - padX}
+            y1={toY(targetValue)}
+            y2={toY(targetValue)}
+            className="report-project-chart-target"
+          />
+          <text
+            x={width - padX}
+            y={Math.max(14, toY(targetValue) - 8)}
+            textAnchor="end"
+            className="report-project-chart-target-label"
+          >
+            목표 {valueFormatter(targetValue)}
+          </text>
+        </g>
+      ) : null}
+
+      <polyline points={polyline} className="report-project-chart-line" />
+      {points.map((point, index) => (
+        <g key={`${point.label}-${index}`}>
+          <circle
+            cx={point.x}
+            cy={point.y}
+            r={index === points.length - 1 ? 5.5 : 4}
+            className={
+              index === points.length - 1
+                ? "report-project-chart-point is-latest"
+                : "report-project-chart-point"
+            }
+          />
+          {isCompact || index === points.length - 1 || index === maxPointIndex ? (
             <text
-              x={p.x}
-              y={height - 8}
-              textAnchor={i === 0 ? "start" : i === series.length - 1 ? "end" : "middle"}
-              fontSize="11"
-              fill="currentColor"
-              opacity="0.66"
+              x={point.x}
+              y={Math.max(14, point.y - 13)}
+              textAnchor={index === 0 ? "start" : index === points.length - 1 ? "end" : "middle"}
+              className="report-project-chart-latest-value"
             >
-              {p.label}
+              {valueFormatter(point.value)}
             </text>
           ) : null}
-          <title>{`${p.label}: ${Math.round(p.seconds)}초`}</title>
+          {axisIndexes.has(index) ? (
+            <text
+              x={point.x}
+              y={height - 10}
+              textAnchor={
+                index === 0
+                  ? "start"
+                  : index === series.length - 1
+                    ? "end"
+                    : "middle"
+              }
+              className="report-project-chart-axis-label"
+            >
+              {point.label}
+            </text>
+          ) : null}
+          <title>{`${point.label}: ${valueFormatter(point.value)}`}</title>
         </g>
       ))}
+      <title>{`${ariaLabel}. 최근 값 ${valueFormatter(latest.value)}`}</title>
     </svg>
   );
 }
 
-export type SlideAvgTiming = { slideId: string; avgSeconds: number };
-
-export function SlideAvgBarChart({ timings }: { timings: SlideAvgTiming[] }) {
-  if (timings.length === 0) return null;
-
-  const max = Math.max(...timings.map((t) => t.avgSeconds), 1);
-  const barW = Math.max(16, Math.floor(280 / timings.length) - 4);
-
-  return (
-    <div className="report-project-slide-chart">
-      {timings.map((t, i) => (
-        <div
-          key={t.slideId}
-          className="report-project-slide-bar-wrap"
-          title={`슬라이드 ${i + 1}: 평균 ${t.avgSeconds}초`}
-        >
-          <span className="report-project-slide-bar-value">
-            {Math.round(t.avgSeconds)}초
-          </span>
-          <div
-            className="report-project-slide-bar"
-            style={{ height: `${Math.round((t.avgSeconds / max) * 80)}px`, width: `${barW}px` }}
-          />
-          <span className="report-project-slide-bar-label">{i + 1}</span>
-        </div>
-      ))}
-    </div>
-  );
+function formatDuration(totalSeconds: number) {
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return minutes > 0 ? `${minutes}:${String(remainder).padStart(2, "0")}` : `${remainder}초`;
 }

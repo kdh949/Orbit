@@ -50,7 +50,7 @@ const rehearsalEvaluationPlanObjectSchema = z
       .object({
         timing: z.literal(1),
         filler: z.literal(1),
-        silence: z.literal(1),
+        silence: z.union([z.literal(1), z.literal(2)]),
         semantic: z.literal(1),
       })
       .strict(),

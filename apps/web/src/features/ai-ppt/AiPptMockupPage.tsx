@@ -19,11 +19,13 @@ import {
   IconFileText,
   IconFileDescription,
   IconListDetails,
+  IconLoader2,
   IconMessageCircle,
   IconMessageCircleHeart,
   IconPaperclip,
   IconPhoto,
   IconPlayerPlay,
+  IconPlus,
   IconPresentationAnalytics,
   IconSparkles,
   IconTrash,
@@ -563,6 +565,11 @@ export function AiPptMockupPage() {
   const projectIdRef = useRef<string | null>(null);
   const referenceFilesRef = useRef<File[]>([]);
   const generationStartedRef = useRef(false);
+  const showStyleLoadingPreview =
+    import.meta.env.DEV &&
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("preview") ===
+      "style-loading";
 
   useEffect(() => {
     return () => {
@@ -756,7 +763,7 @@ export function AiPptMockupPage() {
     }
   }
 
-  if (isGenerating) {
+  if (isGenerating || showStyleLoadingPreview) {
     return <AiPptStyleStartingPage />;
   }
 
@@ -820,36 +827,21 @@ export function AiPptMockupPage() {
 }
 
 function AiPptStyleStartingPage() {
-  const font = recommendGenerateDeckFonts(defaultFontMood)[0];
-  const palette = defaultPaletteOptions[0];
   return (
     <WorkspaceContainer as="section" className="ai-ppt-page" width="content">
-      <header className="ai-ppt-header">
-        <div>
-          <span>AI PPT</span>
-          <h1>Style &amp; Color</h1>
-          <p>콘텐츠 생성을 시작하면서 스타일 선택 화면을 준비하고 있습니다.</p>
-        </div>
-      </header>
       <div className="ai-ppt-layout">
         <WizardSteps activeIndex={1} />
-        <main className="ai-ppt-workspace">
-          <section className="ai-ppt-panel" aria-busy="true">
-            <PanelHeading
-              description="발표 분위기에 맞는 폰트와 컬러를 준비하고 있습니다."
-              kicker="2단계 · Style & Color"
-              title="폰트와 색상을 선택하세요"
-            />
+        <main className="ai-ppt-workspace ai-ppt-loading-workspace">
+          <section className="ai-ppt-panel ai-ppt-loading-panel" aria-busy="true">
             <p className="ai-ppt-status" role="status">
               프로젝트를 확정하고 발표 구성을 백그라운드에서 시작하는 중입니다.
             </p>
-          </section>
-          <aside className="ai-ppt-preview-panel">
-            <MiniSlide
-              font={font}
-              palette={palette.palette}
+            <IconLoader2
+              aria-hidden="true"
+              className="ai-ppt-style-loader"
+              size={48}
             />
-          </aside>
+          </section>
         </main>
       </div>
     </WorkspaceContainer>
@@ -871,6 +863,7 @@ export function AiPptStyleColorPage(props: {
     null,
   );
   const [palettePrompt, setPalettePrompt] = useState("");
+  const [isAiPaletteOpen, setIsAiPaletteOpen] = useState(false);
   const [isCustomizingPalette, setIsCustomizingPalette] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [status, setStatus] = useState("스타일 정보를 불러오는 중...");
@@ -989,22 +982,17 @@ export function AiPptStyleColorPage(props: {
 
   return (
     <WorkspaceContainer as="section" className="ai-ppt-page" width="content">
-      <header className="ai-ppt-header">
-        <div>
-          <span>AI PPT</span>
-          <h1>발표에 어울리는 스타일을 선택하세요</h1>
-          <p>컬러와 폰트를 선택하면 미리보기와 최종 슬라이드에 반영됩니다.</p>
-        </div>
-      </header>
       <div className="ai-ppt-layout">
         <WizardSteps activeIndex={1} />
-        <main className="ai-ppt-workspace">
+        <main className="ai-ppt-workspace ai-ppt-workspace-single ai-ppt-context-panel">
           <section className="ai-ppt-panel">
             <StyleColorStep
+              isAiPaletteOpen={isAiPaletteOpen}
               customPalette={customPalette}
               fontOptions={fontOptions}
               isCustomizing={isCustomizingPalette}
               onCustomize={() => void customizePalette()}
+              onOpenAiPalette={() => setIsAiPaletteOpen((isOpen) => !isOpen)}
               onFontSelect={setSelectedFontId}
               onPalettePromptChange={setPalettePrompt}
               onSelectPalette={setSelectedPaletteId}
@@ -1023,14 +1011,6 @@ export function AiPptStyleColorPage(props: {
               </p>
             ) : null}
           </section>
-          <aside className="ai-ppt-live-preview">
-            {selectedFont ? (
-              <LivePreview
-                selectedFont={selectedFont}
-                selectedPalette={selectedPalette}
-              />
-            ) : null}
-          </aside>
         </main>
       </div>
       <footer className="ai-ppt-footer">
@@ -1302,10 +1282,12 @@ function PolicySelect<T extends string>(props: {
 }
 
 function StyleColorStep(props: {
+  isAiPaletteOpen: boolean;
   customPalette: PaletteOption | null;
   fontOptions: GenerateDeckFontOption[];
   isCustomizing: boolean;
   onCustomize: () => void;
+  onOpenAiPalette: () => void;
   onFontSelect: (fontId: string) => void;
   onPalettePromptChange: (value: string) => void;
   onSelectPalette: (optionId: string) => void;
@@ -1315,16 +1297,8 @@ function StyleColorStep(props: {
 }) {
   return (
     <>
-      <PanelHeading
-        description="발표 분위기에 맞는 폰트와 컬러를 선택하면 슬라이드 전체에 일관되게 적용됩니다."
-        kicker="2단계 · Style & Color"
-        title="폰트와 색상을 선택하세요"
-      />
       <fieldset className="ai-ppt-style-fieldset">
         <legend>폰트</legend>
-        <p className="ai-ppt-field-hint">
-          이름만 보고 고르지 않도록 제목과 본문에 적용된 글자 모양을 함께 확인하세요.
-        </p>
         <div className="ai-ppt-font-grid" role="list">
           {props.fontOptions.map((font) => (
             <button
@@ -1335,9 +1309,6 @@ function StyleColorStep(props: {
               onClick={() => props.onFontSelect(font.fontId)}
             >
               <span className="ai-ppt-font-card-topline">
-                <span className="ai-ppt-font-badge">
-                  {props.selectedFontId === font.fontId ? "선택됨" : "폰트"}
-                </span>
                 <span className="ai-ppt-font-check" aria-hidden="true">
                   {props.selectedFontId === font.fontId ? <IconCheck size={14} /> : null}
                 </span>
@@ -1352,22 +1323,12 @@ function StyleColorStep(props: {
               <strong style={{ fontFamily: font.headingFontFamily }}>
                 {font.name}
               </strong>
-              <span className="ai-ppt-font-korean" style={{ fontFamily: font.bodyFontFamily }}>
-                가나다라 · 핵심을 선명하게
-              </span>
-              <span className="ai-ppt-font-latin" style={{ fontFamily: font.bodyFontFamily }}>
-                Aa Bb Cc 123
-              </span>
-              <small>{font.rationale}</small>
             </button>
           ))}
         </div>
       </fieldset>
       <fieldset className="ai-ppt-style-fieldset">
         <legend>컬러 팔레트</legend>
-        <p className="ai-ppt-field-hint">
-          색상만 바꾸는 것이 아니라, 해당 팔레트로 만든 대표 슬라이드 구조까지 미리 확인하세요.
-        </p>
         <div className="ai-ppt-palette-grid ai-ppt-palette-grid-expanded" role="list">
           {defaultPaletteOptions.map((option) => (
             <PaletteButton
@@ -1377,46 +1338,77 @@ function StyleColorStep(props: {
               onSelect={props.onSelectPalette}
             />
           ))}
-          <div
-            className={[
-              "ai-ppt-ai-palette-tile",
-              props.selectedPaletteId === "ai-custom" ? "selected" : "",
-            ].join(" ")}
+        </div>
+        <div className="ai-ppt-ai-palette-flow">
+          <button
+            aria-controls="ai-ppt-ai-palette-panel"
+            aria-expanded={props.isAiPaletteOpen}
+            className="workspace-home-create ai-ppt-ai-palette-create"
+            type="button"
+            onClick={props.onOpenAiPalette}
           >
-            <div className="ai-ppt-ai-palette-heading">
-              <IconSparkles size={18} />
-              <strong>{props.customPalette?.name ?? "AI 팔레트"}</strong>
-            </div>
-            {props.customPalette ? (
-              <button
-                className="ai-ppt-ai-palette-result"
-                type="button"
-                onClick={() => props.onSelectPalette("ai-custom")}
-              >
-                <PaletteSwatches palette={props.customPalette.palette} />
-                <span>{props.customPalette.rationale}</span>
-              </button>
-            ) : (
-              <p>선택한 팔레트를 수정하거나 새로운 분위기를 추천받으세요.</p>
-            )}
-            <textarea
-              aria-label="AI 팔레트 요청"
-              placeholder="예: 배경은 유지하고 포인트 컬러만 더 따뜻하게"
-              value={props.palettePrompt}
-              onChange={(event) =>
-                props.onPalettePromptChange(event.target.value)
-              }
-            />
-            <button
-              className="ai-ppt-secondary"
-              disabled={props.isCustomizing}
-              type="button"
-              onClick={props.onCustomize}
+            <span aria-hidden="true" className="workspace-home-create-icon">
+              <IconPlus size={22} stroke={1.8} />
+            </span>
+            <strong>AI로 컬러 팔레트 만들기</strong>
+            <small>
+              선택한 팔레트를 수정하거나
+              <br />
+              새로운 컬러를 추천 받으세요.
+            </small>
+          </button>
+          {props.isAiPaletteOpen ? (
+            <section
+              aria-live="polite"
+              className={[
+                "ai-ppt-ai-palette-panel",
+                props.customPalette ? "has-result" : "",
+                props.selectedPaletteId === "ai-custom" ? "selected" : "",
+              ].join(" ")}
+              id="ai-ppt-ai-palette-panel"
             >
-              <IconSparkles size={16} />
-              {props.isCustomizing ? "추천 중..." : "AI로 적용"}
-            </button>
-          </div>
+              {props.customPalette ? (
+                <button
+                  aria-pressed={props.selectedPaletteId === "ai-custom"}
+                  className="ai-ppt-ai-palette-result"
+                  type="button"
+                  onClick={() => props.onSelectPalette("ai-custom")}
+                >
+                  <span className="ai-ppt-ai-palette-result-topline">
+                    <PaletteSwatches palette={props.customPalette.palette} />
+                    <span className="ai-ppt-palette-selected-mark" aria-hidden="true">
+                      {props.selectedPaletteId === "ai-custom" ? (
+                        <IconCheck size={14} />
+                      ) : null}
+                    </span>
+                  </span>
+                  <strong>{props.customPalette.name}</strong>
+                  <span>{props.customPalette.rationale}</span>
+                </button>
+              ) : (
+                <div className="ai-ppt-ai-palette-heading">
+                  <IconSparkles size={18} />
+                  <strong>AI 팔레트</strong>
+                </div>
+              )}
+              <textarea
+                aria-label="AI 팔레트 요청"
+                placeholder="예: 배경은 유지하고 포인트 컬러만 더 따뜻하게"
+                value={props.palettePrompt}
+                onChange={(event) =>
+                  props.onPalettePromptChange(event.target.value)
+                }
+              />
+              <OrbitButton
+                className="ai-ppt-ai-palette-action"
+                loading={props.isCustomizing}
+                type="button"
+                onClick={props.onCustomize}
+              >
+                {props.customPalette ? "다시 생성하기" : "AI로 생성하기"}
+              </OrbitButton>
+            </section>
+          ) : null}
         </div>
       </fieldset>
     </>
@@ -1436,6 +1428,7 @@ function PaletteButton(props: {
       type="button"
       onClick={() => props.onSelect(props.option.optionId)}
     >
+      <PaletteSwatches palette={props.option.palette} />
       <PaletteMockupSlide option={props.option} />
       <span className="ai-ppt-palette-card-meta">
         <span className="ai-ppt-palette-card-heading">
@@ -1443,14 +1436,6 @@ function PaletteButton(props: {
           <span className="ai-ppt-palette-selected-mark" aria-hidden="true">
             {props.selected ? <IconCheck size={14} /> : null}
           </span>
-        </span>
-        <span className="ai-ppt-palette-hex">
-          {props.option.palette.primary.toUpperCase()} · {hexToRgb(props.option.palette.primary)}
-        </span>
-        <PaletteSwatches palette={props.option.palette} />
-        <span className="ai-ppt-palette-card-footer">
-          <span>{paletteMockupPresets[props.option.optionId]?.role ?? "--color-custom"}</span>
-          <span>{paletteMockupPresets[props.option.optionId]?.version ?? "v1.0.0"}</span>
         </span>
         <small>{props.option.rationale}</small>
       </span>
@@ -1490,15 +1475,6 @@ function PaletteMockupSlide(props: { option: PaletteOption; large?: boolean }) {
         color: option.palette.text,
       }}
     >
-      <span className="ai-ppt-palette-mockup-header">
-        <span>{preset.eyebrow}</span>
-        <span
-          className="ai-ppt-palette-mockup-category"
-          style={{ background: option.palette.primary, color: option.palette.background }}
-        >
-          {preset.category}
-        </span>
-      </span>
       <span className="ai-ppt-palette-mockup-content">
         <strong style={{ color: option.palette.primary }}>{preset.title}</strong>
         <span>{preset.subtitle}</span>
@@ -1508,10 +1484,6 @@ function PaletteMockupSlide(props: { option: PaletteOption; large?: boolean }) {
           </span>
         ) : null}
         <PaletteMockupBody kind={preset.kind} colors={colors} palette={option.palette} />
-      </span>
-      <span className="ai-ppt-palette-mockup-footer">
-        <span>ORBIT · 02</span>
-        <span>{preset.version}</span>
       </span>
     </span>
   );
@@ -1631,38 +1603,6 @@ function PaletteSwatches(props: { palette: Required<PaletteOverride> }) {
   );
 }
 
-function hexToRgb(hex: string) {
-  const value = hex.replace("#", "");
-  const normalized = value.length === 3
-    ? value.split("").map((character) => `${character}${character}`).join("")
-    : value;
-  const number = Number.parseInt(normalized, 16);
-  return `${(number >> 16) & 255}, ${(number >> 8) & 255}, ${number & 255}`;
-}
-
-function LivePreview(props: {
-  selectedFont: GenerateDeckFontOption;
-  selectedPalette: PaletteOption;
-}) {
-  return (
-    <div className="ai-ppt-preview-card ai-ppt-live-preview-card">
-      <div className="ai-ppt-preview-top">
-        <span>Live Preview · Slide 04</span>
-        <strong>
-          {props.selectedPalette.name} · {props.selectedFont.name}
-        </strong>
-      </div>
-      <div className="ai-ppt-live-slide-frame" style={{ fontFamily: props.selectedFont.headingFontFamily }}>
-        <PaletteMockupSlide large option={props.selectedPalette} />
-      </div>
-      <div className="ai-ppt-live-preview-meta">
-        <span>이 슬라이드에 적용된 컬러 DNA</span>
-        <PaletteSwatches palette={props.selectedPalette.palette} />
-      </div>
-    </div>
-  );
-}
-
 export function miniSlideFontStyles(
   font: Pick<
     GenerateDeckFontOption,
@@ -1675,75 +1615,6 @@ export function miniSlideFontStyles(
     heading: { fontFamily: stack(font.headingFontFamily) },
     body: { fontFamily: stack(font.bodyFontFamily) },
   };
-}
-
-function MiniSlide(props: {
-  dense?: boolean;
-  font: GenerateDeckFontOption;
-  palette: Required<PaletteOverride>;
-}) {
-  const fontStyles = miniSlideFontStyles(props.font);
-  const { palette } = props;
-  return (
-    <div
-      className={[
-        "ai-ppt-mini-slide",
-        props.dense ? "ai-ppt-mini-slide-dense" : "ai-ppt-mini-slide-cover",
-      ].join(" ")}
-      style={{
-        background: palette.background,
-        borderColor: palette.border,
-        color: palette.text,
-        ...fontStyles.body,
-      }}
-    >
-      <i
-        className="ai-ppt-mini-top-rule"
-        style={{ background: palette.primary }}
-      />
-      <header className="ai-ppt-mini-section" style={fontStyles.heading}>
-        <span style={{ color: palette.primary }}>01</span>
-        <b>발표 디자인</b>
-      </header>
-      {props.dense ? (
-        <main className="ai-ppt-mini-body-recipe">
-          {[palette.primary, palette.secondary, palette.accentColor].map(
-            (color, index) => (
-              <section
-                key={`${color}-${index}`}
-                style={{ borderColor: palette.border }}
-              >
-                <i style={{ background: color }} />
-                <strong style={fontStyles.heading}>
-                  {index === 0 ? "과정" : index === 1 ? "핵심" : "근거"}
-                </strong>
-                <p style={{ background: palette.muted }} />
-              </section>
-            ),
-          )}
-        </main>
-      ) : (
-        <main className="ai-ppt-mini-cover-recipe">
-          <section>
-            <strong style={fontStyles.heading}>핵심 메시지</strong>
-            <p style={fontStyles.body}>발표 흐름과 실행안</p>
-          </section>
-          <aside
-            style={{ background: palette.muted, borderColor: palette.border }}
-          >
-            <i style={{ background: palette.primary }} />
-            <span style={{ borderColor: palette.border }} />
-            <span style={{ borderColor: palette.border }} />
-            <span style={{ borderColor: palette.border }} />
-          </aside>
-        </main>
-      )}
-      <i
-        className="ai-ppt-mini-bottom-rule"
-        style={{ background: palette.secondary }}
-      />
-    </div>
-  );
 }
 
 function AttachmentField(props: {
@@ -2015,16 +1886,6 @@ function TextAreaField(props: {
         onChange={(event) => props.onChange(event.target.value)}
       />
     </OrbitField>
-  );
-}
-
-function PanelHeading(props: { description?: string; kicker: string; title: string }) {
-  return (
-    <div className="ai-ppt-panel-heading">
-      <span>{props.kicker}</span>
-      <h2>{props.title}</h2>
-      {props.description ? <p>{props.description}</p> : null}
-    </div>
   );
 }
 

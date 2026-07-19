@@ -43,6 +43,13 @@ describe("evaluation plan", () => {
     expect(plan.evaluatorLensRef.lensId).toBe("decision-maker");
     expect(plan.approvedReferences).toHaveLength(1);
     expect(plan.criteria.some((criterion) => criterion.category === "timing")).toBe(true);
+    expect(plan.metricDefinitionVersions.silence).toBe(2);
+    expect(plan.criteria).toContainEqual(
+      expect.objectContaining({
+        criterionId: "criterion_system_long_silence_v2",
+        revision: 2,
+      }),
+    );
   });
 
   it("turns only approved Brief requirements into criteria and keeps Q&A topics separate", () => {

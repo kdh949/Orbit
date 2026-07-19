@@ -9,6 +9,8 @@ export { OrbitCard } from "./Card";
 export { OrbitColorBlock } from "./ColorBlock";
 export { isOrbitDialogDismissAllowed, OrbitDialog } from "./Dialog";
 export { OrbitEmptyState } from "./EmptyState";
+export { OrbitFailureState } from "./FailureState";
+export type { OrbitFailureStateProps } from "./FailureState";
 export { OrbitField, OrbitInput, OrbitSelect, OrbitTextarea } from "./FormControls";
 export { GradientButton } from "./GradientButton";
 export { OrbitIconLabel } from "./IconLabel";

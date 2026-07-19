@@ -47,6 +47,16 @@ export class DecksController {
     return this.decksService.putDeck(projectId, body);
   }
 
+  @Get("deck/import-quality")
+  async getPptxImportQuality(
+    @Param("projectId") projectId: string,
+    @Req() request: SignedCookieRequest,
+  ) {
+    const user = await this.getCurrentUser(request);
+    await this.projectsService.assertCanReadProject(projectId, user.userId);
+    return this.decksService.getPptxImportQuality(projectId);
+  }
+
   @Post("deck/patches")
   async appendPatch(
     @Param("projectId") projectId: string,

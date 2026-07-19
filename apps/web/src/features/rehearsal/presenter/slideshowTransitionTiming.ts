@@ -1,52 +1,27 @@
+import { createAnimationTimeline } from "@orbit/editor-core";
 import type { DeckAnimation } from "@orbit/shared";
 
-export const maxTransitionDurationMs = 500;
-
 export type SlideshowTransitionAnimation = DeckAnimation & {
+  timelineStartMs?: number;
   transitionDelayMs?: number;
 };
 
 export function createSlideshowEntryTransitionTimeline(
-  animations: DeckAnimation[]
+  animations: DeckAnimation[],
+  transitionDurationMs = 0
 ): SlideshowTransitionAnimation[] {
-  const orderGroups = new Map<
-    number,
-    Array<{ animation: DeckAnimation; animationIndex: number }>
-  >();
+  const timeline = createAnimationTimeline({
+    animations,
+    transitionDurationMs
+  });
 
-  for (const [animationIndex, animation] of animations.entries()) {
-    const group = orderGroups.get(animation.order) ?? [];
-    group.push({ animation, animationIndex });
-    orderGroups.set(animation.order, group);
-  }
-
-  let groupStartMs = 0;
-  const timeline: SlideshowTransitionAnimation[] = [];
-
-  for (const [, groupAnimations] of [...orderGroups.entries()].sort(
-    ([leftOrder], [rightOrder]) => leftOrder - rightOrder
-  )) {
-    const sortedGroupAnimations = [...groupAnimations].sort((left, right) => {
-      if (left.animation.delayMs !== right.animation.delayMs) {
-        return left.animation.delayMs - right.animation.delayMs;
-      }
-
-      return left.animationIndex - right.animationIndex;
-    });
-
-    for (const { animation } of sortedGroupAnimations) {
-      timeline.push({
-        ...animation,
-        transitionDelayMs: groupStartMs + animation.delayMs
-      });
-    }
-
-    groupStartMs += getSlideshowTransitionDurationMs(
-      sortedGroupAnimations.map(({ animation }) => animation)
-    );
-  }
-
-  return timeline;
+  return timeline.entryRoots.flatMap((root) =>
+    root.effects.map((animation) => ({
+      ...animation,
+      timelineStartMs: animation.startMs,
+      transitionDelayMs: animation.startMs
+    }))
+  );
 }
 
 export function sequenceEntryAnimationsByOrder(animations: DeckAnimation[]) {
@@ -63,10 +38,11 @@ export function getSlideshowTransitionDurationMs(
   animations: SlideshowTransitionAnimation[]
 ) {
   return Math.max(
-    1,
-    ...animations.map((animation) =>
-      (animation.transitionDelayMs ?? animation.delayMs) +
-      Math.max(1, Math.min(animation.durationMs, maxTransitionDurationMs))
+    0,
+    ...animations.map(
+      (animation) =>
+        (animation.transitionDelayMs ?? animation.delayMs) +
+        Math.max(1, animation.durationMs)
     )
   );
 }

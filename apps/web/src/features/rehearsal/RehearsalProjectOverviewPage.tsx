@@ -4,7 +4,6 @@ import {
   Loader2,
   Mic,
   Sparkles,
-  TrendingUp,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type {
@@ -22,15 +21,14 @@ import {
 } from "./reportApi";
 import { fetchProjectDeck } from "./keywords/keywordEditorApi";
 import { RehearsalRunNav } from "./RehearsalRunNav";
-import { RehearsalRunComparisonOverview } from "./RehearsalRunComparisonOverview";
-import { DurationLineChart, SlideAvgBarChart } from "./ReportProgressCharts";
+import { RehearsalProjectSummaryDashboard } from "./RehearsalProjectSummaryDashboard";
 import { buildRehearsalRunComparisonViewModel } from "./rehearsalRunComparisonModel";
-import { OrbitButton, OrbitEmptyState } from "../../components/ui";
+import { OrbitButton, OrbitEmptyState, OrbitFailureState } from "../../components/ui";
 import { getRehearsalReportPath } from "./RehearsalWorkspace";
 import orbitReportMascot from "../../assets/orbit-report-mascot-transparent.png";
 import {
-  navigateTo,
   formatRunDate,
+  navigateTo,
   sortRehearsalRunsByCreatedAt,
 } from "./rehearsalUtils";
 import "./rehearsal-project-report.css";
@@ -100,20 +98,12 @@ export function RehearsalProjectOverviewPage({
   }, [projectId, reloadKey]);
 
   const latestRun = runs[runs.length - 1] ?? null;
-  const showSummary = runs.length >= 2;
   const comparisonModel = comparison
     ? buildRehearsalRunComparisonViewModel(comparison, deck, projectId)
     : null;
 
-  const durationSeries = (summary?.runDurationSeries ?? []).map((p, i) => ({
-    label: `${i + 1}회차`,
-    seconds: p.durationSeconds,
-  }));
-  const latestDuration = durationSeries.at(-1)?.seconds ?? null;
-  const primaryBriefing = comparisonModel?.briefing[0] ?? null;
-
   return (
-    <main className="rehearsal-report-page">
+    <main className="rehearsal-report-page report-project-overview-page">
       <header className="rehearsal-report-topbar">
         <div className="rehearsal-report-topbar-left">
           <button
@@ -152,9 +142,9 @@ export function RehearsalProjectOverviewPage({
               <span>불러오는 중</span>
             </div>
           ) : state === "error" ? (
-            <OrbitEmptyState
-              action={<OrbitButton onClick={() => setReloadKey((value) => value + 1)} variant="secondary">다시 시도</OrbitButton>}
+            <OrbitFailureState
               description="연결을 확인한 뒤 프로젝트 리포트를 다시 불러오세요."
+              onRetry={() => setReloadKey((value) => value + 1)}
               title="프로젝트 리포트를 불러오지 못했습니다."
             />
           ) : runs.length === 0 ? (
@@ -172,9 +162,17 @@ export function RehearsalProjectOverviewPage({
                   </span>
                   <h1>{project?.title ?? "프로젝트 리포트"}</h1>
                   <p>{runs.length}회차 발표 기록을 한눈에 비교해보세요.</p>
-                  <span className="report-overview-hero-status">
-                    <i aria-hidden="true" /> AI 분석 준비 완료
-                  </span>
+                  <div className="report-overview-hero-actions">
+                    {latestRun ? (
+                      <a href={getRehearsalReportPath(projectId, latestRun.runId)}>
+                        <strong>LATEST REPORT</strong>
+                        <span>
+                          {formatRunDate(latestRun.createdAt)} · {runs.length}회차 중 최신 완료 리포트
+                        </span>
+                        <ArrowUpRight size={16} />
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="report-overview-hero-visual" aria-hidden="true">
                   <img
@@ -185,120 +183,19 @@ export function RehearsalProjectOverviewPage({
                 </div>
               </header>
 
-              {latestRun ? (
-                <section className="report-overview-latest" aria-label="최신 리포트">
-                  <div className="report-overview-latest-copy">
-                    <span className="report-section-kicker">LATEST REPORT</span>
-                    <h2>가장 최근 발표 리포트</h2>
-                    <p>
-                      {formatRunDate(latestRun.createdAt)} · {runs.length}회차 중
-                      최신 완료 리포트
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="report-overview-latest-action"
-                    onClick={() =>
-                      navigateTo(getRehearsalReportPath(projectId, latestRun.runId))
-                    }
-                  >
-                    상세 리포트 보기
-                    <ArrowUpRight size={17} />
-                  </button>
-                </section>
-              ) : null}
-
-              <section className="report-overview-focus" aria-label="다음 발표 핵심 안내">
-                <header className="report-overview-focus-header">
+              {summary ? (
+                <RehearsalProjectSummaryDashboard
+                  comparison={comparisonModel}
+                  summary={summary}
+                />
+              ) : (
+                <section className="project-summary-dashboard is-empty">
+                  <Loader2 size={22} />
                   <div>
-                    <span>WHAT TO DO NEXT</span>
-                    <h2>다음 발표에서 먼저 챙길 것</h2>
+                    <h2>프로젝트 분석을 준비하고 있습니다</h2>
+                    <p>최신 리허설 분석이 완료되면 회차별 변화가 이곳에 표시됩니다.</p>
                   </div>
-                  <small>회차 비교와 발표 흐름에서 뽑은 핵심</small>
-                </header>
-                <div className="report-overview-focus-grid">
-                  {primaryBriefing ? (
-                    <a className="report-overview-focus-card is-primary" href={primaryBriefing.href}>
-                      <span>우선 개선</span>
-                      <strong>{primaryBriefing.label}</strong>
-                      <small>{primaryBriefing.slideLabel}</small>
-                      <p>{primaryBriefing.reason}</p>
-                    </a>
-                  ) : (
-                    <article className="report-overview-focus-card is-primary">
-                      <span>우선 개선</span>
-                      <strong>반복 이슈가 없습니다</strong>
-                      <p>다음 회차에서 새로운 변화가 생기면 이곳에 바로 보여드려요.</p>
-                    </article>
-                  )}
-                  <article className="report-overview-focus-card">
-                    <span>발표 흐름 요약</span>
-                    <strong>최근 발표 흐름을 확인하세요</strong>
-                    <p>
-                      {summary?.progressComment ??
-                        "회차가 쌓이면 발표 흐름의 변화가 이곳에 요약됩니다."}
-                    </p>
-                  </article>
-                </div>
-              </section>
-
-              <div className="report-overview-dates">
-                <div className="report-date-row">
-                  <span className="report-date-label">최신 리허설</span>
-                  <strong className="report-date-value">
-                    {latestRun ? formatRunDate(latestRun.createdAt) : "—"}
-                  </strong>
-                </div>
-                <div className="report-date-row">
-                  <span className="report-date-label">실전 리포트</span>
-                  <strong className="report-date-value report-date-empty">0건 · 준비 중</strong>
-                </div>
-              </div>
-
-              {comparisonModel ? (
-                <RehearsalRunComparisonOverview model={comparisonModel} />
-              ) : null}
-
-              {showSummary && (
-                <div className="report-project-summary-section">
-                  <header className="report-project-summary-header">
-                    <TrendingUp size={18} />
-                    <h2>종합 요약 리포트</h2>
-                    <span className="report-project-summary-count">
-                      {runs.length}회차 기반
-                    </span>
-                  </header>
-
-                  {summary?.progressComment && (
-                    <p className="report-project-progress-comment">
-                      {summary.progressComment}
-                    </p>
-                  )}
-
-                  {durationSeries.length >= 2 && (
-                    <div className="report-project-chart-block">
-                      <div className="report-project-chart-heading">
-                        <span className="report-project-chart-label">회차별 총 소요시간</span>
-                        <span className="report-project-chart-note">
-                          전체 {durationSeries.length}회 · 최근 {formatOverviewDuration(latestDuration ?? 0)}
-                        </span>
-                      </div>
-                      <DurationLineChart series={durationSeries} />
-                    </div>
-                  )}
-
-                  {(summary?.slideAvgTimings?.length ?? 0) > 0 && (
-                    <div className="report-project-chart-block">
-                      <div className="report-project-chart-heading">
-                        <span className="report-project-chart-label">슬라이드별 평균 소요시간</span>
-                        <span className="report-project-chart-note">
-                          {summary!.slideAvgTimings.length}장 · 실제 발표 기준
-                        </span>
-                      </div>
-                      <SlideAvgBarChart timings={summary!.slideAvgTimings} />
-                    </div>
-                  )}
-                </div>
+                </section>
               )}
             </>
           )}
@@ -306,11 +203,4 @@ export function RehearsalProjectOverviewPage({
       </div>
     </main>
   );
-}
-
-function formatOverviewDuration(totalSeconds: number) {
-  const roundedSeconds = Math.max(0, Math.round(totalSeconds));
-  const minutes = Math.floor(roundedSeconds / 60);
-  const seconds = roundedSeconds % 60;
-  return minutes > 0 ? `${minutes}분 ${seconds}초` : `${seconds}초`;
 }

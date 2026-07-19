@@ -6,6 +6,7 @@ import {
 } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import { WorkspaceContainer } from "../../components/patterns";
+import { OrbitFailureState } from "../../components/ui";
 import "../../styles/tokens.css";
 import { fetchProjects, updateProjectPin } from "./ProjectAssetWorkspace";
 import { WorkspaceProjectCard } from "./WorkspaceProjectCard";
@@ -92,11 +93,12 @@ export function OrbitWorkspaceHome(props: ProjectHubProps & { userName?: string 
           {projects.isLoading ? (
             <p className="workspace-home-state" role="status">프로젝트를 불러오는 중입니다.</p>
           ) : projects.isError ? (
-            <div className="workspace-home-state">
-              <strong>프로젝트를 불러오지 못했습니다.</strong>
-              <span>연결을 확인한 뒤 다시 시도해 주세요.</span>
-              <button onClick={() => void projects.refetch()} type="button">다시 시도</button>
-            </div>
+            <OrbitFailureState
+              className="workspace-home-state"
+              description="연결을 확인한 뒤 프로젝트 목록을 다시 불러오세요."
+              onRetry={() => void projects.refetch()}
+              title="프로젝트를 불러오지 못했습니다."
+            />
           ) : (
             recentProjects.map((project) => {
               return (

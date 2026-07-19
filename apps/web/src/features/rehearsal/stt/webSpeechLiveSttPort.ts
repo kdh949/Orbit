@@ -19,26 +19,18 @@ import {
   type LiveSttSessionConfig,
   type LiveSttUnsubscribe
 } from "./liveSttPort";
-import {
-  applyWebSpeechPhrases,
-  isWebSpeechPhrasesSupported
-} from "./webSpeechPhrases";
-import {
-  resolveWebSpeechAudioTrack,
-  startRecognitionWithAudioTrack
-} from "./webSpeechAudioTrack";
+import { applyWebSpeechPhrases, isWebSpeechPhrasesSupported } from "./webSpeechPhrases";
+import { resolveWebSpeechAudioTrack, startRecognitionWithAudioTrack } from "./webSpeechAudioTrack";
 
 export type BrowserSpeechRecognitionFactory = () => BrowserSpeechRecognition;
 
 export const WEB_SPEECH_LANGUAGE = "ko-KR";
-export const WEB_SPEECH_QUALITY = "command";
-export const WEB_SPEECH_MAX_ALTERNATIVES = 3;
-export const WEB_SPEECH_LANGUAGE_PACK_OPTIONS = {
-  langs: [WEB_SPEECH_LANGUAGE],
+export const WEB_SPEECH_ON_DEVICE_POLICY = Object.freeze({
   processLocally: true,
-  quality: WEB_SPEECH_QUALITY
-} satisfies BrowserSpeechRecognitionAvailabilityOptions;
-
+  quality: "command"
+} as const);
+export type WebSpeechOnDeviceQuality = typeof WEB_SPEECH_ON_DEVICE_POLICY.quality;
+export const WEB_SPEECH_MAX_ALTERNATIVES = 3;
 type WebSpeechLiveSttPortOptions = {
   consentGranted?: boolean;
   createRecognition?: BrowserSpeechRecognitionFactory | null;
@@ -120,17 +112,21 @@ export class WebSpeechLiveSttPort implements LiveSttPort {
           "이 브라우저는 온디바이스 Web Speech 인식을 지원하지 않습니다."
         );
       }
-      await this.ensureLocalLanguagePack(lang);
       recognition.processLocally = true;
+      await this.ensureLocalLanguagePack(lang);
     }
 
     this.recognition = recognition;
     this.startedAtMs = this.now();
     this.activeLang = lang;
-    this.activeAudioTrack = resolveWebSpeechAudioTrack(config.audioSource);
-    this.biasPhrases = normalizeLiveSttBiasPhrases(
-      config.biasPhrases ?? this.biasPhrases
-    );
+    // Chrome's MediaStreamTrack recognition path is independent from the
+    // on-device microphone path and has produced remote-style `network`
+    // failures even with processLocally enabled. Let Chrome's local recognizer
+    // capture the already-authorized default microphone directly.
+    this.activeAudioTrack = this.processLocally
+      ? null
+      : resolveWebSpeechAudioTrack(config.audioSource);
+    this.biasPhrases = normalizeLiveSttBiasPhrases(config.biasPhrases ?? this.biasPhrases);
 
     recognition.continuous = true;
     recognition.interimResults = true;
@@ -143,17 +139,10 @@ export class WebSpeechLiveSttPort implements LiveSttPort {
       recognition,
       this.speechRecognitionGlobal
     );
-    applyWebSpeechPhrases(
-      recognition,
-      this.biasPhrases,
-      this.speechRecognitionGlobal
-    );
+    applyWebSpeechPhrases(recognition, this.biasPhrases, this.speechRecognitionGlobal);
 
     try {
-      startRecognitionWithAudioTrack(
-        recognition,
-        this.activeAudioTrack
-      );
+      startRecognitionWithAudioTrack(recognition, this.activeAudioTrack);
     } catch (error) {
       this.startedAtMs = null;
       this.recognition = null;
@@ -263,33 +252,39 @@ export class WebSpeechLiveSttPort implements LiveSttPort {
 
   private async ensureLocalLanguagePack(lang: string) {
     const Recognition = this.recognitionConstructor;
-    if (!Recognition?.available) {
+    const available = Recognition?.available;
+    if (!Recognition || !available) {
       throw new LiveSttError(
         "unsupported_runtime",
         "이 브라우저는 온디바이스 Web Speech 언어팩 확인을 지원하지 않습니다."
       );
     }
 
-    const options =
-      lang === WEB_SPEECH_LANGUAGE
-        ? WEB_SPEECH_LANGUAGE_PACK_OPTIONS
-        : ({
-            langs: [lang],
-            processLocally: true,
-            quality: WEB_SPEECH_QUALITY
-          } satisfies BrowserSpeechRecognitionAvailabilityOptions);
-    const availability = await Recognition.available(options);
+    const options = {
+      langs: [lang],
+      ...WEB_SPEECH_ON_DEVICE_POLICY
+    } satisfies BrowserSpeechRecognitionAvailabilityOptions;
+    const availability = await available(options);
     if (availability === "available") {
       return;
     }
-
-    if (availability === "unavailable") {
-      throw new LiveSttError(
-        "model_unavailable",
-        `${lang} 온디바이스 Web Speech 언어팩을 사용할 수 없습니다.`
-      );
+    if (availability !== "unavailable") {
+      await this.installLocalLanguagePack(Recognition, available, options, lang);
+      return;
     }
 
+    throw new LiveSttError(
+      "model_unavailable",
+      `${lang} 온디바이스 Web Speech 언어팩을 사용할 수 없습니다.`
+    );
+  }
+
+  private async installLocalLanguagePack(
+    Recognition: BrowserSpeechRecognitionConstructor,
+    available: NonNullable<BrowserSpeechRecognitionConstructor["available"]>,
+    options: BrowserSpeechRecognitionAvailabilityOptions,
+    lang: string
+  ) {
     if (!Recognition.install) {
       throw new LiveSttError(
         "model_unavailable",
@@ -302,6 +297,14 @@ export class WebSpeechLiveSttPort implements LiveSttPort {
       throw new LiveSttError(
         "model_unavailable",
         `${lang} 온디바이스 Web Speech 언어팩 설치에 실패했습니다.`
+      );
+    }
+
+    const installedAvailability = await available(options);
+    if (installedAvailability !== "available") {
+      throw new LiveSttError(
+        "model_unavailable",
+        `${lang} 온디바이스 Web Speech 언어팩 설치가 아직 완료되지 않았습니다. 잠시 후 다시 시도해주세요.`
       );
     }
   }
@@ -351,9 +354,7 @@ export class WebSpeechLiveSttPort implements LiveSttPort {
       this.emitError(
         new LiveSttError(
           "start_failed",
-          error instanceof Error
-            ? error.message
-            : "Web Speech 인식을 재시작하지 못했습니다."
+          error instanceof Error ? error.message : "Web Speech 인식을 재시작하지 못했습니다."
         )
       );
     }
@@ -395,9 +396,7 @@ function getDefaultBrowserSpeechRecognitionConstructor() {
   return getBrowserSpeechRecognitionConstructor();
 }
 
-function collectFinalAlternatives(
-  result: BrowserSpeechRecognitionResult
-): LiveSttAlternative[] {
+function collectFinalAlternatives(result: BrowserSpeechRecognitionResult): LiveSttAlternative[] {
   const alternatives: LiveSttAlternative[] = [];
   for (let index = 0; index < result.length; index += 1) {
     const alternative = result[index];
@@ -408,9 +407,7 @@ function collectFinalAlternatives(
 
     alternatives.push({
       text,
-      ...(typeof alternative.confidence === "number"
-        ? { confidence: alternative.confidence }
-        : {})
+      ...(typeof alternative.confidence === "number" ? { confidence: alternative.confidence } : {})
     });
   }
 

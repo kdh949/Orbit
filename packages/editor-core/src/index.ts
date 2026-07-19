@@ -86,9 +86,11 @@ export type {
 export {
   createTableOperationPatch,
   getTableOperationCapability,
-  getTableStructureCapability
+  getTableStructureCapability,
+  normalizeTableCellRange
 } from "./table/tableOperations";
 export type {
+  TableCellRange,
   TableOperation,
   TableOperationCapability,
   TableOperationDisabledReason,
@@ -113,7 +115,23 @@ export {
   createAddSlidePatch,
   createDuplicateSlidePatch,
   createSlideId,
+  createUpdateSlideTransitionPatch,
 } from "./patches/slideOperations";
+export {
+  animationTimelineDiagnosticLimit,
+  createAnimationTimeline,
+  getAnimationTimelineRoot
+} from "./playback/animationTimeline";
+export type {
+  AnimationStartMode,
+  AnimationTimelineBaseReference,
+  AnimationTimelineDiagnostic,
+  AnimationTimelinePlan,
+  AnimationTimelineRoot,
+  PlannedAnimationTimelineEffect,
+  TimelineAnimationInput
+} from "./playback/animationTimeline";
+export { normalizeLegacyAnimationStartModes } from "./patches/legacyAnimationStartModeMigration";
 export {
   createActivityResultsSlide,
   createActivitySlide,

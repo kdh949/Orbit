@@ -4,8 +4,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  findCurrentSlideQuestionGuide,
   getAdjacentQuestionId,
   getInitialQuestionId,
+  isSlideQuestionGuideGenerationDisabled,
   OfficialSourceLinks,
   SlideQuestionGuidePanel,
   SlideQuestionGuideCarousel,
@@ -22,21 +24,68 @@ const source = {
 };
 
 describe("SlideQuestionGuidePanel official sources", () => {
-  it("상단 설명 없이 질문 생성 액션과 질문 영역을 위로 배치한다", () => {
+  it("상단 설명 없이 런타임 설정을 확인한 뒤 질문 생성 액션을 표시한다", () => {
     const deck = createDemoDeck();
     const html = renderToStaticMarkup(
       <SlideQuestionGuidePanel
+        autoStatus="idle"
+        canGenerate
         deck={deck}
         flushPendingSaves={vi.fn()}
         projectId={deck.projectId}
+        refreshToken={0}
         slide={deck.slides[0] ?? null}
       />,
     );
 
-    expect(html).toContain("질문 생성");
+    expect(html).toContain("질문 생성 준비 중…");
+    expect(html).toContain("disabled");
+    expect(html).toContain("redesign-button-primary");
     expect(html).not.toContain("현재 슬라이드 예상 질문");
     expect(html).not.toContain("검증된 공식 웹사이트에 근거한 질문 3개");
     expect(html).not.toContain("공식 웹 근거를 찾지 못해");
+  });
+
+  it("자동 생성 중에는 버튼을 비활성화하고 현재 상태를 표시한다", () => {
+    const deck = createDemoDeck();
+    const html = renderToStaticMarkup(
+      <SlideQuestionGuidePanel
+        autoStatus="generating"
+        canGenerate
+        deck={deck}
+        flushPendingSaves={vi.fn()}
+        projectId={deck.projectId}
+        refreshToken={0}
+        slide={deck.slides[0] ?? null}
+      />,
+    );
+
+    expect(html).toContain("질문 생성 중…");
+    expect(html).toContain("disabled");
+  });
+
+  it("자동 생성 실패 뒤에는 기존 버튼으로 수동 재시도할 수 있다", () => {
+    expect(isSlideQuestionGuideGenerationDisabled({
+      autoStatus: "failed",
+      canGenerate: true,
+      hasSlide: true,
+      slideQuestionGuidesEnabled: true,
+      status: "idle",
+    })).toBe(false);
+  });
+
+  it("전체 덱 버전이 달라도 대상 슬라이드 hash가 같으면 현재 guide로 선택한다", () => {
+    const matching = {
+      deckVersion: 1,
+      slideContentHash: "a".repeat(64),
+    } as unknown as SlideQuestionGuide;
+    const other = {
+      deckVersion: 9,
+      slideContentHash: "b".repeat(64),
+    } as unknown as SlideQuestionGuide;
+
+    expect(findCurrentSlideQuestionGuide([other, matching], "a".repeat(64))).toBe(matching);
+    expect(findCurrentSlideQuestionGuide([matching], "b".repeat(64))).toBeNull();
   });
 
   it("renders a visible, clickable official citation", () => {

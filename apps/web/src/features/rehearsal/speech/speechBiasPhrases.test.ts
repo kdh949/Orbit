@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { SemanticCue } from "@orbit/shared";
+import type { PronunciationLexiconEntry, SemanticCue } from "@orbit/shared";
 
 import { buildSpeechTrackingBiasPhrases } from "./speechBiasPhrases";
 
@@ -138,7 +138,7 @@ describe("buildSpeechTrackingBiasPhrases", () => {
         source: "semantic-cue-alias",
         weight: 0.91,
         canonicalText: "RSP"
-      })
+      }),
     ]);
     expect(terms.map((term) => term.text)).not.toContain("일반 정책");
     expect(terms.map((term) => term.text)).not.toContain("ROX");
@@ -172,6 +172,37 @@ describe("buildSpeechTrackingBiasPhrases", () => {
     ]);
     expect(terms.map((term) => term.weight)).toEqual([0.93, 0.91, 0.85, 0.82]);
   });
+
+  it("현재 slide 발음 alias를 인접 slide보다 먼저 STT bias에 포함한다", () => {
+    const terms = buildSpeechTrackingBiasPhrases({
+      budget: 6,
+      controlPhrases: ["다음 슬라이드"],
+      pronunciationEntries: [
+        pronunciationEntry("openai", "OpenAI", "오픈에이아이"),
+      ],
+      adjacentPronunciationEntries: [
+        pronunciationEntry("github", "GitHub", "깃허브", "slide_2"),
+      ],
+    });
+
+    expect(terms.map((term) => term.text)).toEqual([
+      "다음 슬라이드",
+      "OpenAI",
+      "오픈에이아이",
+      "GitHub",
+      "깃허브",
+    ]);
+    expect(terms.map((term) => term.source)).toEqual([
+      "control-phrase",
+      "pronunciation-source",
+      "pronunciation-alias",
+      "pronunciation-source",
+      "pronunciation-alias",
+    ]);
+    expect(terms.map((term) => term.weight)).toEqual([
+      1, 0.93, 0.9, 0.78, 0.74,
+    ]);
+  });
 });
 
 function semanticCue(overrides: Partial<SemanticCue> = {}): SemanticCue {
@@ -195,6 +226,34 @@ function semanticCue(overrides: Partial<SemanticCue> = {}): SemanticCue {
     negativeHints: [],
     targetElementIds: [],
     triggerActionIds: [],
-    ...overrides
+    ...overrides,
+  };
+}
+
+function pronunciationEntry(
+  canonicalKey: string,
+  sourceText: string,
+  alias: string,
+  slideId = "slide_1",
+): PronunciationLexiconEntry {
+  return {
+    id: `pron_${canonicalKey}`,
+    sourceText,
+    normalizedSource: sourceText.toLocaleLowerCase("en-US"),
+    canonicalText: sourceText,
+    canonicalKey,
+    category: "product",
+    aliases: [
+      {
+        text: alias,
+        normalizedText: alias,
+        origin: "static",
+        confidence: 1,
+        enabled: true,
+      },
+    ],
+    confidence: 1,
+    status: "active",
+    scriptOccurrences: [{ slideId, start: 0, end: sourceText.length }],
   };
 }

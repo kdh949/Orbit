@@ -1,4 +1,5 @@
 import {
+  createAddSlidePatch,
   createActivityResultsSlide,
   createActivitySlide,
   createDemoDeck
@@ -22,6 +23,108 @@ test.afterAll(async () => {
 });
 
 test.describe("activity slides full story", () => {
+  test("materializes an Activity added after the stored Deck checkpoint", async ({
+    page
+  }) => {
+    test.setTimeout(90_000);
+    const { deck, project } = await createAuthenticatedProject(page, {
+      deck: createDemoDeck(),
+      label: "activity-patch-materialization",
+      title: "Activity patch materialization 프로젝트"
+    });
+    if (!deck) throw new Error("Activity patch E2E deck was not persisted");
+
+    const activitySlide = createActivitySlide(deck, "pre-question", {
+      title: "Patch 기반 사전 질문"
+    });
+    const patch = createAddSlidePatch(deck, activitySlide);
+    const patchAck = await expectJson<{ version: number }>(
+      await page.request.post(
+        `/api/v1/projects/${encodeURIComponent(project.projectId)}/deck/patches`,
+        { data: { patch, responseMode: "ack" } }
+      )
+    );
+    expect(patchAck.version).toBe(deck.version + 1);
+
+    const storedState = await pool.query<{
+      checkpoint_version: number;
+      patch_count: string;
+    }>(
+      `
+        SELECT decks.version AS checkpoint_version,
+          count(deck_patches.change_id)::text AS patch_count
+        FROM decks
+        LEFT JOIN deck_patches
+          ON deck_patches.project_id = decks.project_id
+          AND deck_patches.deck_id = decks.deck_id
+        WHERE decks.project_id = $1 AND decks.deck_id = $2
+        GROUP BY decks.version
+      `,
+      [project.projectId, deck.deckId]
+    );
+    expect(storedState.rows[0]).toEqual({
+      checkpoint_version: deck.version,
+      patch_count: "1"
+    });
+
+    const materialized = await expectJson<{ deck: Deck }>(
+      await page.request.get(
+        `/api/v1/projects/${encodeURIComponent(project.projectId)}/deck`
+      )
+    );
+    expect(materialized.deck.version).toBe(patchAck.version);
+    expect(
+      materialized.deck.slides.some(
+        (slide) =>
+          slide.kind === "activity" &&
+          slide.activity.activityId === activitySlide.activity.activityId
+      )
+    ).toBe(true);
+
+    const session = await createSession(page, project.projectId, {
+      accessMode: "public",
+      deckId: deck.deckId
+    });
+    expect(session.session.deckVersion).toBe(materialized.deck.version);
+    await ensureAndOpenRun(
+      page,
+      project.projectId,
+      session.session.sessionId,
+      activitySlide.activity.activityId
+    );
+
+    const activitySlideIndex = materialized.deck.slides.findIndex(
+      (slide) =>
+        slide.kind === "activity" &&
+        slide.activity.activityId === activitySlide.activity.activityId
+    );
+    expect(activitySlideIndex).toBeGreaterThanOrEqual(0);
+    await page.goto(
+      `/rehearsal/${encodeURIComponent(project.projectId)}?slideIndex=${activitySlideIndex}`
+    );
+    await page.getByText("음성 없이 연습하기", { exact: true }).click();
+    await expect(page.getByLabel("참여 장표 운영")).toBeVisible();
+    await page.waitForTimeout(2_500);
+    await expect(
+      page.getByText("Presentation session not found", { exact: true })
+    ).toHaveCount(0);
+    await expect(
+      page.getByText("Activity definition not found in stored Deck", {
+        exact: true
+      })
+    ).toHaveCount(0);
+
+    const sessionCount = await pool.query<{ count: string }>(
+      `
+        SELECT count(*)::text AS count
+        FROM presentation_sessions
+        WHERE project_id = $1
+      `,
+      [project.projectId]
+    );
+    expect(sessionCount.rows[0]?.count).toBe("1");
+  });
+
   test("create, join, respond, moderate, reveal, archive, export, and retain", async ({
     browser,
     page
@@ -161,12 +264,13 @@ test.describe("activity slides full story", () => {
     await page.goto(`/project/${encodeURIComponent(project.projectId)}`);
     await expect(page.getByLabel("Presentation editor")).toBeVisible();
     await page.locator(".slide-item").nth(1).click();
-    await page.getByRole("tab", { name: "디자인" }).click();
     await expect(page.getByText("연결 결과 장표", { exact: true })).toBeVisible();
     await page
       .getByLabel("미리 볼 발표 세션")
       .selectOption(passcodeSession.session.sessionId);
-    const resultPreview = page.getByLabel("결과 장표 미리보기");
+    const resultPreview = page.getByLabel("결과 장표 미리보기", {
+      exact: true
+    });
     await expect(resultPreview).toHaveAttribute("data-state", "presenter-live");
     await expect(
       resultPreview.getByRole("listitem").filter({ hasText: privateText })
@@ -351,7 +455,7 @@ async function createSession(
 ) {
   return expectJson<{
     audienceUrl: string;
-    session: { sessionId: string };
+    session: { deckVersion: number; sessionId: string };
   }>(
     await page.request.post(
       `/api/v1/projects/${encodeURIComponent(projectId)}/presentation-sessions`,

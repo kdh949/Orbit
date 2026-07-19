@@ -10,16 +10,16 @@ function createElement(type: DeckElement["type"]): DeckElement {
 }
 
 describe("getSelectionTransformerConfig", () => {
-  it("keeps handles at a usable screen size on a zoomed-out canvas", () => {
+  it("keeps handles compact on a zoomed-out canvas", () => {
     const config = getSelectionTransformerConfig({
       disableInteractions: false,
       selectedElements: [createElement("text")],
       stageScale: 0.25,
     });
 
-    expect(config.anchorSize).toBe(48);
-    expect(config.anchorHitStrokeWidth).toBe(80);
-    expect(config.rotateAnchorOffset).toBe(128);
+    expect(config.anchorSize).toBe(12);
+    expect(config.anchorHitStrokeWidth).toBe(20);
+    expect(config.rotateAnchorOffset).toBe(32);
   });
 
   it.each(["image", "svg"] as const)(

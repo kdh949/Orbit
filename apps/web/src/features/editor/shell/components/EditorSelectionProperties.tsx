@@ -18,6 +18,7 @@ type EditorSelectionPropertiesProps = {
   animationDiagnostics: ReturnType<typeof validateSlideAnimations> | null;
   canvas: Deck["canvas"];
   customShapeEditActive: boolean;
+  deckSourceType?: Deck["metadata"]["sourceType"];
   element: DeckElement | null;
   imageCropActionState?: ImageCropActionState;
   onChangeElementFrame: (
@@ -70,6 +71,7 @@ export function EditorSelectionProperties(props: EditorSelectionPropertiesProps)
       canCreateAnimation={Boolean(slide && element)}
       canvas={props.canvas}
       customShapeEditActive={props.customShapeEditActive}
+      deckSourceType={props.deckSourceType}
       element={element}
       imageCropActionState={props.imageCropActionState}
       key={element?.elementId ?? slide?.slideId ?? "none"}

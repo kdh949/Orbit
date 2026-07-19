@@ -25,6 +25,7 @@ import type { ComponentType } from "react";
 import type { ElementPresentationState } from "./ReadOnlySlideCanvas";
 
 import { ImageElementContent } from "./ImageElementContent";
+import { getTableLayout } from "./tableLayout";
 import {
   buildCustomShapePathDataFromNodes,
   getCustomShapeDimension,
@@ -98,8 +99,10 @@ export function ElementNodeContent(props: {
     });
     const textProps = element.props as TextElementProps;
 
+    let content;
+
     if (textProps.writingMode === "vertical-270") {
-      return (
+      content = (
         <Text
           align={textProps.align}
           fill={textLayout.color}
@@ -118,10 +121,8 @@ export function ElementNodeContent(props: {
           y={frame.height}
         />
       );
-    }
-
-    if (textLayout.richText) {
-      return (
+    } else if (textLayout.richText) {
+      content = (
         <Group listening={false}>
           {textLayout.richText.fragments.map((fragment, index) => (
             <KonvaGroup key={`${fragment.paragraphIndex}-${fragment.lineIndex}-${index}`}>
@@ -152,25 +153,37 @@ export function ElementNodeContent(props: {
           ))}
         </Group>
       );
+    } else {
+      content = (
+        <Text
+          align={textProps.align}
+          fill={textLayout.color}
+          fontFamily={textLayout.fontFamily}
+          fontSize={textLayout.fontSize}
+          fontStyle={textLayout.fontStyle}
+          lineHeight={textProps.lineHeight}
+          listening={false}
+          padding={0}
+          text={textLayout.text}
+          textDecoration={textLayout.textDecoration}
+          width={textLayout.width}
+          wrap="word"
+          x={textLayout.x}
+          y={textLayout.y}
+        />
+      );
     }
 
     return (
-      <Text
-        align={textProps.align}
-        fill={textLayout.color}
-        fontFamily={textLayout.fontFamily}
-        fontSize={textLayout.fontSize}
-        fontStyle={textLayout.fontStyle}
-        lineHeight={textProps.lineHeight}
+      <Group
+        clipHeight={frame.height}
+        clipWidth={frame.width}
+        clipX={0}
+        clipY={0}
         listening={false}
-        padding={0}
-        text={textLayout.text}
-        textDecoration={textLayout.textDecoration}
-        width={textLayout.width}
-        wrap="word"
-        x={textLayout.x}
-        y={textLayout.y}
-      />
+      >
+        {content}
+      </Group>
     );
   }
 
@@ -1033,30 +1046,13 @@ function TableElementContent(props: {
   table: TableElementProps;
 }) {
   const { frame, table } = props;
-  const rows = table.rows ?? [];
-  const rowCount = Math.max(1, rows.length);
-  const columnCount = Math.max(1, ...rows.map((row) => row.length));
-  const columnWidths = distributeTableSizes(
-    table.columnWidths,
-    columnCount,
-    frame.width
-  );
-  const rowHeights = distributeTableSizes(table.rowHeights, rowCount, frame.height);
-  const rowOffsets = cumulativeOffsets(rowHeights);
-  const columnOffsets = cumulativeOffsets(columnWidths);
+  const layout = getTableLayout(table, frame);
 
   return (
     <Group listening={false}>
-      {rows.flatMap((row, rowIndex) =>
-        row.map((cell, columnIndex) => {
-          const colSpan = Math.max(1, cell.colSpan ?? 1);
-          const rowSpan = Math.max(1, cell.rowSpan ?? 1);
-          const width = sumRange(columnWidths, columnIndex, colSpan);
-          const height = sumRange(rowHeights, rowIndex, rowSpan);
-          const x = columnOffsets[columnIndex] ?? 0;
-          const y = rowOffsets[rowIndex] ?? 0;
-
-          return (
+      {layout.cells.map(
+        ({ cell, columnIndex, height, rowIndex, width, x, y }) =>
+          (
             <Group key={`${rowIndex}-${columnIndex}`} listening={false} x={x} y={y}>
               <Rect
                 {...getFillRenderProps(cell.fill ?? "transparent", {
@@ -1083,41 +1079,10 @@ function TableElementContent(props: {
                 width={Math.max(1, width - 12)}
               />
             </Group>
-          );
-        })
+          )
       )}
     </Group>
   );
-}
-
-function distributeTableSizes(
-  explicitSizes: number[] | undefined,
-  count: number,
-  total: number
-) {
-  if (explicitSizes?.length === count) {
-    const explicitTotal = explicitSizes.reduce((sum, size) => sum + size, 0);
-    if (explicitTotal > 0) {
-      return explicitSizes.map((size) => (size / explicitTotal) * total);
-    }
-  }
-
-  return Array.from({ length: count }, () => total / count);
-}
-
-function cumulativeOffsets(sizes: number[]) {
-  let offset = 0;
-  return sizes.map((size) => {
-    const current = offset;
-    offset += size;
-    return current;
-  });
-}
-
-function sumRange(values: number[], start: number, count: number) {
-  return values
-    .slice(start, Math.min(values.length, start + count))
-    .reduce((sum, value) => sum + value, 0);
 }
 
 function getSolidPaint(paint: DeckElementPaint | undefined, fallback: string) {

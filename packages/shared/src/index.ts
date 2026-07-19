@@ -1,4 +1,5 @@
 export * from "./common/demo-ids";
+export * from "./common/canonical-json";
 export * from "./common/time.schema";
 export * from "./activity/activity-api.schema";
 export * from "./activity/activity-aggregate";
@@ -56,6 +57,7 @@ export * from "./jobs/job.schema";
 export * from "./jobs/ai-deck-generation-stage.schema";
 export * from "./presentation/presentation.schema";
 export * from "./projects/project.schema";
+export * from "./pronunciation";
 export * from "./rehearsals/live-stt.schema";
 export * from "./rehearsals/realtime-transcription.schema";
 export * from "./rehearsals/rehearsal-audio-analysis.schema";

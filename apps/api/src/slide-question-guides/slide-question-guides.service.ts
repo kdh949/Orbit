@@ -1,11 +1,16 @@
 import { loadOrbitConfig } from "@orbit/config";
 import { enqueueSlideQuestionGuideGenerationJob } from "@orbit/job-queue";
 import {
+  autoCreateSlideQuestionGuidesRequestSchema,
+  autoCreateSlideQuestionGuidesResponseSchema,
   createSlideQuestionGuideRequestSchema,
   jobSchema,
   slideQuestionGuideJobResponseSchema,
   slideQuestionGuideListResponseSchema,
   slideQuestionGuideSchema,
+  slideQuestionGuideTextHashInput,
+  type Deck,
+  type Slide,
 } from "@orbit/shared";
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
@@ -39,15 +44,8 @@ export class SlideQuestionGuidesService {
   async create(projectId: string, actorUserId: string, body: unknown) {
     this.assertEnabled();
     const request = createSlideQuestionGuideRequestSchema.parse(body);
-    const existing = firstRow(await this.dataSource.query(
-      `SELECT guide_id, generation_job_id FROM slide_question_guides
-       WHERE project_id = $1 AND created_by = $2 AND client_request_id = $3`,
-      [projectId, actorUserId, request.clientRequestId],
-    ));
-    if (existing?.generation_job_id) {
-      const job = await this.jobsService.get(String(existing.generation_job_id));
-      if (job) return slideQuestionGuideJobResponseSchema.parse({ job, guideId: existing.guide_id });
-    }
+    const existing = await this.findByClientRequest(projectId, actorUserId, request.clientRequestId);
+    if (existing) return existing;
 
     const { deck } = await this.decksService.getDeck(projectId);
     if (deck.deckId !== request.deckId || deck.version !== request.expectedDeckVersion) {
@@ -60,9 +58,97 @@ export class SlideQuestionGuidesService {
     const slide = deck.slides.find((candidate) => candidate.slideId === request.slideId);
     if (!slide) throw new NotFoundException("Slide not found in the current deck.");
 
+    const snapshot = await this.decksService.getOrCreateSnapshot(deck);
+    return this.createForSlide({
+      projectId,
+      actorUserId,
+      clientRequestId: request.clientRequestId,
+      deck,
+      slide,
+      deckSnapshotId: snapshot.snapshotId,
+    });
+  }
+
+  async autoCreate(projectId: string, actorUserId: string, body: unknown) {
+    this.assertEnabled();
+    const request = autoCreateSlideQuestionGuidesRequestSchema.parse(body);
+    const { deck } = await this.decksService.getDeck(projectId);
+    if (deck.deckId !== request.deckId || deck.version !== request.expectedDeckVersion) {
+      throw new ConflictException({
+        code: "SLIDE_QUESTION_DECK_VERSION_MISMATCH",
+        message: "The expected deck version does not match the current deck version.",
+        actualDeckVersion: deck.version,
+      });
+    }
+
+    const snapshot = await this.decksService.getOrCreateSnapshot(deck);
+    const slides: Array<Record<string, unknown>> = [];
+    for (const slide of deck.slides) {
+      try {
+        const slideContentHash = sha256Canonical(slideQuestionGuideTextHashInput(slide));
+        const reusable = await this.findReusableGuide(
+          projectId,
+          deck.deckId,
+          slide.slideId,
+          slideContentHash,
+        );
+        const accepted = reusable ?? await this.createForSlide({
+          projectId,
+          actorUserId,
+          clientRequestId: `slide-guide-auto_${sha256Canonical({
+            clientRequestId: request.clientRequestId,
+            slideId: slide.slideId,
+          })}`,
+          deck,
+          slide,
+          deckSnapshotId: snapshot.snapshotId,
+        });
+        slides.push({ status: "accepted", slideId: slide.slideId, ...accepted });
+      } catch (error) {
+        slides.push({
+          status: "failed",
+          slideId: slide.slideId,
+          errorCode: autoErrorCode(error),
+        });
+      }
+    }
+
+    const response = autoCreateSlideQuestionGuidesResponseSchema.parse({
+      deckId: deck.deckId,
+      deckVersion: deck.version,
+      slides,
+    });
+    this.logger.info({
+      event: "slide_question_guide.auto_batch.completed",
+      projectId,
+      deckId: deck.deckId,
+      deckVersion: deck.version,
+      slideCount: deck.slides.length,
+      acceptedCount: response.slides.filter((slide) => slide.status === "accepted").length,
+      failedCount: response.slides.filter((slide) => slide.status === "failed").length,
+    }, "Slide question guide auto batch completed.");
+    return response;
+  }
+
+  private async createForSlide(input: {
+    projectId: string;
+    actorUserId: string;
+    clientRequestId: string;
+    deck: Deck;
+    slide: Slide;
+    deckSnapshotId: string;
+  }) {
+    const existing = await this.findByClientRequest(
+      input.projectId,
+      input.actorUserId,
+      input.clientRequestId,
+    );
+    if (existing) return existing;
+
     const guideId = `slide_guide_${randomUUID()}`;
     const now = new Date().toISOString();
-    const slideContentHash = sha256Canonical(slide);
+    const textHashInput = slideQuestionGuideTextHashInput(input.slide);
+    const slideContentHash = sha256Canonical(textHashInput);
     try {
       await this.dataSource.query(
         `INSERT INTO slide_question_guides (
@@ -72,20 +158,25 @@ export class SlideQuestionGuidesService {
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'queued',NULL,$9,3,2,$10,NULL,NULL,$11,$11,NULL)`,
         [
           guideId,
-          projectId,
-          deck.deckId,
-          deck.version,
-          slide.slideId,
+          input.projectId,
+          input.deck.deckId,
+          input.deck.version,
+          input.slide.slideId,
           slideContentHash,
           {
-            slideId: slide.slideId,
-            deckVersion: deck.version,
+            deckSnapshotId: input.deckSnapshotId,
+            contentHashVersion: "slide-text-v1",
+            slideId: input.slide.slideId,
+            deckVersion: input.deck.version,
             contentHash: slideContentHash,
-            title: slide.title,
-            content: collectSlideText(slide).slice(0, 8_000),
+            title: input.slide.title,
+            content: [...textHashInput.textSegments, textHashInput.speakerNotes]
+              .filter(Boolean)
+              .join("\n")
+              .slice(0, 8_000),
           },
-          request.clientRequestId,
-          actorUserId,
+          input.clientRequestId,
+          input.actorUserId,
           promptVersion,
           now,
         ],
@@ -94,7 +185,7 @@ export class SlideQuestionGuidesService {
       const raced = firstRow(await this.dataSource.query(
         `SELECT guide_id, generation_job_id FROM slide_question_guides
          WHERE project_id = $1 AND created_by = $2 AND client_request_id = $3`,
-        [projectId, actorUserId, request.clientRequestId],
+        [input.projectId, input.actorUserId, input.clientRequestId],
       ));
       if (!raced?.generation_job_id) throw error;
       const racedJob = await this.jobsService.get(String(raced.generation_job_id));
@@ -103,14 +194,14 @@ export class SlideQuestionGuidesService {
     }
 
     const job = await this.jobsService.create({
-      projectId,
+      projectId: input.projectId,
       type: "slide-question-guide-generation",
       payload: { guideId },
     });
     await this.dataSource.query(
       `UPDATE slide_question_guides SET generation_job_id = $2, updated_at = now()
        WHERE guide_id = $1 AND project_id = $3`,
-      [guideId, job.jobId, projectId],
+      [guideId, job.jobId, input.projectId],
     );
 
     try {
@@ -118,19 +209,19 @@ export class SlideQuestionGuidesService {
         driver: this.config.JOB_QUEUE_DRIVER,
         redisUrl: this.config.REDIS_URL,
         jobId: job.jobId,
-        projectId,
+        projectId: input.projectId,
         guideId,
       });
       this.logger.info({
         event: "slide_question_guide.enqueued",
-        projectId,
-        deckId: deck.deckId,
-        deckVersion: deck.version,
-        slideId: slide.slideId,
+        projectId: input.projectId,
+        deckId: input.deck.deckId,
+        deckVersion: input.deck.version,
+        slideId: input.slide.slideId,
         guideId,
         jobId: job.jobId,
       }, "Slide question guide generation enqueued.");
-    } catch (error) {
+    } catch {
       await this.jobsService.update(job.jobId, {
         status: "failed",
         progress: 0,
@@ -142,10 +233,49 @@ export class SlideQuestionGuidesService {
          WHERE guide_id = $1`,
         [guideId, "SLIDE_QUESTION_GUIDE_ENQUEUE_FAILED"],
       );
-      throw error;
+      throw new Error("SLIDE_QUESTION_GUIDE_ENQUEUE_FAILED");
     }
 
     return slideQuestionGuideJobResponseSchema.parse({ job: jobSchema.parse(job), guideId });
+  }
+
+  private async findByClientRequest(
+    projectId: string,
+    actorUserId: string,
+    clientRequestId: string,
+  ) {
+    const existing = firstRow(await this.dataSource.query(
+      `SELECT guide_id, generation_job_id FROM slide_question_guides
+       WHERE project_id = $1 AND created_by = $2 AND client_request_id = $3`,
+      [projectId, actorUserId, clientRequestId],
+    ));
+    if (!existing?.generation_job_id) return null;
+    const job = await this.jobsService.get(String(existing.generation_job_id));
+    return job
+      ? slideQuestionGuideJobResponseSchema.parse({ job, guideId: existing.guide_id })
+      : null;
+  }
+
+  private async findReusableGuide(
+    projectId: string,
+    deckId: string,
+    slideId: string,
+    slideContentHash: string,
+  ) {
+    const existing = firstRow(await this.dataSource.query(
+      `SELECT guide_id, generation_job_id FROM slide_question_guides
+       WHERE project_id = $1 AND deck_id = $2 AND slide_id = $3
+         AND slide_content_hash = $4 AND prompt_version = $5
+         AND status IN ('queued','running','succeeded')
+         AND generation_job_id IS NOT NULL
+       ORDER BY created_at DESC LIMIT 1`,
+      [projectId, deckId, slideId, slideContentHash, promptVersion],
+    ));
+    if (!existing?.generation_job_id) return null;
+    const job = await this.jobsService.get(String(existing.generation_job_id));
+    return job
+      ? slideQuestionGuideJobResponseSchema.parse({ job, guideId: existing.guide_id })
+      : null;
   }
 
   async get(projectId: string, guideId: string) {
@@ -245,21 +375,12 @@ function jsonArray(value: unknown): unknown[] {
   }
 }
 
-function collectSlideText(value: unknown): string {
-  const collected: string[] = [];
-  const visit = (candidate: unknown, key = "") => {
-    if (typeof candidate === "string" && ["title", "text", "alt", "speakerNotes"].includes(key)) {
-      if (candidate.trim()) collected.push(candidate.trim());
-      return;
-    }
-    if (Array.isArray(candidate)) {
-      candidate.forEach((item) => visit(item, key));
-      return;
-    }
-    if (candidate && typeof candidate === "object") {
-      Object.entries(candidate).forEach(([childKey, child]) => visit(child, childKey));
-    }
-  };
-  visit(value);
-  return Array.from(new Set(collected)).join("\n");
+function autoErrorCode(error: unknown): string {
+  if (
+    error instanceof Error &&
+    /^[A-Z0-9_]{1,100}$/.test(error.message)
+  ) {
+    return error.message;
+  }
+  return "SLIDE_QUESTION_GUIDE_AUTO_FAILED";
 }

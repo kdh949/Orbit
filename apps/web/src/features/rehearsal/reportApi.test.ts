@@ -59,6 +59,40 @@ describe("fetchRehearsalRunComparison", () => {
   });
 });
 
+describe("fetchProjectRehearsalSummary", () => {
+  it("공통 계약으로 프로젝트 요약 응답을 검증한다", async () => {
+    const fetcher = vi.fn(async () =>
+      jsonResponse({
+        summary: {
+          projectId: "project_1",
+          runCount: 1,
+          progressComment: null,
+        },
+      }),
+    );
+
+    await expect(
+      fetchProjectRehearsalSummary("project_1", fetcher),
+    ).resolves.toEqual({
+      projectId: "project_1",
+      runCount: 1,
+      progressComment: null,
+      runDurationSeries: [],
+      slideAvgTimings: [],
+      runMetricSeries: [],
+      slidePerformanceSummaries: [],
+    });
+  });
+
+  it("계약과 다른 요약 응답을 성공 데이터로 사용하지 않는다", async () => {
+    await expect(
+      fetchProjectRehearsalSummary("project_1", async () =>
+        jsonResponse({ summary: { projectId: "project_1", runCount: -1 } }),
+      ),
+    ).rejects.toThrow();
+  });
+});
+
 function comparisonFixture(): RehearsalRunComparison {
   return {
     currentRunId: "run current/1",

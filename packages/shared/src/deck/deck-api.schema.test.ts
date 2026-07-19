@@ -3,11 +3,49 @@ import { describe, expect, it } from "vitest";
 import {
   appendDeckPatchAckResponseSchema,
   appendDeckPatchRequestSchema,
+  getPptxImportQualityResponseSchema,
   getOoxmlSyncStateResponseSchema,
   putDeckResponseSchema,
   retryOoxmlSyncResponseSchema,
   restoreDeckSnapshotResponseSchema,
 } from "./deck-api.schema";
+
+const importQualityReport = {
+  compositeScore: 82,
+  metrics: {
+    geometry: 90,
+    text: 80,
+    color: 80,
+    layer: 90,
+    editability: 60,
+    pixelSimilarity: null,
+  },
+  weights: {
+    geometry: 25 as const,
+    text: 15 as const,
+    color: 10 as const,
+    layer: 10 as const,
+    editability: 10 as const,
+    pixelSimilarity: 30 as const,
+  },
+  editabilityCoverage: 0.6,
+  appliedCap: null,
+  slideReports: [],
+  notes: ["pixel renderer unavailable"],
+};
+
+describe("PPTX import quality API schema", () => {
+  it("accepts persisted quality and an absent import sidecar", () => {
+    expect(
+      getPptxImportQualityResponseSchema.parse({
+        importQuality: { qualityReport: importQualityReport },
+      }),
+    ).toEqual({ importQuality: { qualityReport: importQualityReport } });
+    expect(
+      getPptxImportQualityResponseSchema.parse({ importQuality: null }),
+    ).toEqual({ importQuality: null });
+  });
+});
 
 describe("OOXML sync state API schema", () => {
   const state = {

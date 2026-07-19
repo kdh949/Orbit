@@ -1,12 +1,9 @@
 import {
-  IconDots as Dots,
-  IconGripVertical as GripVertical,
-} from "@tabler/icons-react";
-import {
   useEffect,
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
   type PointerEvent,
   type ReactNode,
 } from "react";
@@ -40,19 +37,27 @@ export type SlideRailProps = {
   viewMode: "list" | "thumbnail";
 };
 
+type PendingSlideRailDrag = {
+  pointerId: number;
+  slideId: string;
+  startX: number;
+  startY: number;
+};
+
 export function SlideRail(props: SlideRailProps) {
   const [openMenuSlideId, setOpenMenuSlideId] = useState<string | null>(null);
   const [dragState, setDragState] = useState<SlideRailDragState | null>(null);
   const dragStateRef = useRef<SlideRailDragState | null>(null);
+  const pendingDragRef = useRef<PendingSlideRailDrag | null>(null);
   const selectionButtonRefs = useRef(new Map<string, HTMLButtonElement>());
-  const menuButtonRefs = useRef(new Map<string, HTMLButtonElement>());
 
   useEffect(() => {
-    if (!dragState) return;
+    if (!dragState && !pendingDragRef.current) return;
 
     function handleEscape(event: globalThis.KeyboardEvent) {
       if (event.key !== "Escape") return;
       event.preventDefault();
+      pendingDragRef.current = null;
       dragStateRef.current = cancelSlideRailDrag();
       setDragState(null);
     }
@@ -91,28 +96,53 @@ export function SlideRail(props: SlideRailProps) {
     selectAndFocus(targetSlideId);
   }
 
-  function refocusMenuButton(slideId: string) {
-    requestAnimationFrame(() => menuButtonRefs.current.get(slideId)?.focus());
+  function refocusSelectionButton(slideId: string) {
+    requestAnimationFrame(() => selectionButtonRefs.current.get(slideId)?.focus());
   }
 
   function handleMenuKeyDown(event: KeyboardEvent<HTMLDivElement>, slideId: string) {
     if (event.key !== "Escape") return;
     event.preventDefault();
     setOpenMenuSlideId(null);
-    refocusMenuButton(slideId);
+    refocusSelectionButton(slideId);
   }
 
   function handleDragStart(event: PointerEvent<HTMLButtonElement>, slideId: string) {
     if (!props.canMutate || event.button !== 0) return;
-    event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    const nextState = beginSlideRailDrag(event.pointerId, slideId);
-    dragStateRef.current = nextState;
-    setDragState(nextState);
+    pendingDragRef.current = {
+      pointerId: event.pointerId,
+      slideId,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
+  }
+
+  function handleSlideContextMenu(
+    event: MouseEvent<HTMLButtonElement>,
+    slideId: string,
+  ) {
+    if (!props.canMutate) return;
+    event.preventDefault();
+    props.onSelect(slideId);
+    setOpenMenuSlideId(slideId);
   }
 
   function handleDragMove(event: PointerEvent<HTMLElement>) {
-    const current = dragStateRef.current;
+    let current = dragStateRef.current;
+    const pending = pendingDragRef.current;
+    if (!current && pending?.pointerId === event.pointerId) {
+      const distance = Math.hypot(
+        event.clientX - pending.startX,
+        event.clientY - pending.startY,
+      );
+      if (distance < 6) return;
+      event.preventDefault();
+      current = beginSlideRailDrag(event.pointerId, pending.slideId);
+      dragStateRef.current = current;
+      pendingDragRef.current = null;
+      setDragState(current);
+    }
     if (!current || current.pointerId !== event.pointerId) return;
 
     const hit = document
@@ -129,6 +159,10 @@ export function SlideRail(props: SlideRailProps) {
   }
 
   function finishDrag(event: PointerEvent<HTMLElement>) {
+    if (pendingDragRef.current?.pointerId === event.pointerId) {
+      pendingDragRef.current = null;
+      return;
+    }
     const current = dragStateRef.current;
     if (!current || current.pointerId !== event.pointerId) return;
 
@@ -142,6 +176,9 @@ export function SlideRail(props: SlideRailProps) {
   }
 
   function cancelDrag(event: PointerEvent<HTMLElement>) {
+    if (pendingDragRef.current?.pointerId === event.pointerId) {
+      pendingDragRef.current = null;
+    }
     const current = dragStateRef.current;
     if (!current || current.pointerId !== event.pointerId) return;
     dragStateRef.current = cancelSlideRailDrag();
@@ -180,20 +217,17 @@ export function SlideRail(props: SlideRailProps) {
                 aria-current={item.isSelected ? "true" : undefined}
                 aria-label={`${item.index + 1}. ${item.title}`}
                 aria-selected={item.isSelected}
-                className={`slide-item ${item.isSelected ? "active" : ""}`}
+                className={`slide-item ${item.isSelected ? "active" : ""} ${props.canMutate ? "is-draggable" : ""} ${dragState?.sourceSlideId === item.slideId ? "is-dragging" : ""}`}
                 data-slide-id={item.slideId}
                 ref={(node) => setButtonRef(selectionButtonRefs.current, item.slideId, node)}
                 role="option"
                 tabIndex={item.isSelected ? 0 : -1}
                 type="button"
                 onClick={() => props.onSelect(item.slideId)}
+                onContextMenu={(event) => handleSlideContextMenu(event, item.slideId)}
                 onKeyDown={(event) => handleSelectionKeyDown(event, item.slideId)}
+                onPointerDown={(event) => handleDragStart(event, item.slideId)}
               >
-                <span aria-hidden="true" className="slide-number">{item.index + 1}</span>
-                <span className="slide-title">
-                  <span className="slide-title-text">{item.title}</span>
-                  {props.showIds ? <IdBadge id={item.slideId} /> : null}
-                </span>
                 {!props.collapsed && props.viewMode === "thumbnail" ? (
                   <span
                     aria-hidden="true"
@@ -203,75 +237,62 @@ export function SlideRail(props: SlideRailProps) {
                       background: props.thumbnailBackgrounds?.[item.slideId],
                     }}
                   >
+                    <span className="slide-number">{item.index + 1}</span>
                     {props.thumbnailContents?.[item.slideId]}
                   </span>
-                ) : null}
+                ) : (
+                  <>
+                    <span aria-hidden="true" className="slide-number">{item.index + 1}</span>
+                    <span className="slide-title">
+                      <span className="slide-title-text">{item.title}</span>
+                      {props.showIds ? <IdBadge id={item.slideId} /> : null}
+                    </span>
+                  </>
+                )}
               </button>
 
               {props.canMutate && !props.collapsed ? (
-                <div className="slide-rail-row-actions">
+                <div
+                  aria-label={`${item.title} 작업`}
+                  className="slide-rail-menu"
+                  hidden={!isMenuOpen}
+                  id={menuId}
+                  role="menu"
+                  onKeyDown={(event) => handleMenuKeyDown(event, item.slideId)}
+                >
+                  <button role="menuitem" type="button" onClick={() => {
+                    setOpenMenuSlideId(null);
+                    props.onDuplicate(item.slideId);
+                  }}>복제</button>
                   <button
-                    aria-label={`${item.title} 드래그하여 이동`}
-                    className="slide-rail-drag-handle"
+                    disabled={!item.canMoveUp}
+                    role="menuitem"
                     type="button"
-                    onPointerDown={(event) => handleDragStart(event, item.slideId)}
-                  >
-                    <GripVertical aria-hidden="true" size={16} />
-                  </button>
+                    onClick={() => {
+                      setOpenMenuSlideId(null);
+                      props.onMove(item.slideId, "up");
+                      refocusSelectionButton(item.slideId);
+                    }}
+                  >위로 이동</button>
                   <button
-                    aria-controls={menuId}
-                    aria-expanded={isMenuOpen}
-                    aria-haspopup="true"
-                    aria-label={`${item.title} 메뉴`}
-                    className="slide-rail-menu-button"
-                    ref={(node) => setButtonRef(menuButtonRefs.current, item.slideId, node)}
+                    disabled={!item.canMoveDown}
+                    role="menuitem"
                     type="button"
-                    onClick={() => setOpenMenuSlideId(isMenuOpen ? null : item.slideId)}
-                  >
-                    <Dots aria-hidden="true" size={17} />
-                  </button>
-                  <div
-                    aria-label={`${item.title} 작업`}
-                    className="slide-rail-menu"
-                    hidden={!isMenuOpen}
-                    id={menuId}
-                    role="group"
-                    onKeyDown={(event) => handleMenuKeyDown(event, item.slideId)}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenMenuSlideId(null);
-                        props.onDuplicate(item.slideId);
-                      }}
-                    >복제</button>
-                    <button
-                      disabled={!item.canMoveUp}
-                      type="button"
-                      onClick={() => {
-                        setOpenMenuSlideId(null);
-                        props.onMove(item.slideId, "up");
-                        refocusMenuButton(item.slideId);
-                      }}
-                    >위로 이동</button>
-                    <button
-                      disabled={!item.canMoveDown}
-                      type="button"
-                      onClick={() => {
-                        setOpenMenuSlideId(null);
-                        props.onMove(item.slideId, "down");
-                        refocusMenuButton(item.slideId);
-                      }}
-                    >아래로 이동</button>
-                    <button
-                      disabled={!item.canDelete}
-                      type="button"
-                      onClick={() => {
-                        setOpenMenuSlideId(null);
-                        props.onDelete(item.slideId);
-                      }}
-                    >삭제</button>
-                  </div>
+                    onClick={() => {
+                      setOpenMenuSlideId(null);
+                      props.onMove(item.slideId, "down");
+                      refocusSelectionButton(item.slideId);
+                    }}
+                  >아래로 이동</button>
+                  <button
+                    disabled={!item.canDelete}
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setOpenMenuSlideId(null);
+                      props.onDelete(item.slideId);
+                    }}
+                  >삭제</button>
                 </div>
               ) : null}
               {dropTarget?.edge === "after" ? <DropIndicator /> : null}

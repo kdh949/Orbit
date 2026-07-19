@@ -4,7 +4,7 @@ import {
   type Deck,
   type Job,
   type PresentationBrief,
-  type RehearsalFocusProfile
+  type RehearsalFocusProfile,
 } from "@orbit/shared";
 import { BadRequestException, ConflictException } from "@nestjs/common";
 import type { PinoLogger } from "nestjs-pino";
@@ -20,12 +20,12 @@ import { RehearsalRunEntity } from "./rehearsal-run.entity";
 import type { ProjectEntity } from "../projects/project.entity";
 import type {
   RehearsalTranscriptCache,
-  RedisRehearsalTranscriptCache
+  RedisRehearsalTranscriptCache,
 } from "./rehearsal-transcript-cache";
 import {
   RehearsalsService,
   type RehearsalSemanticEvaluationEnqueueJob,
-  type RehearsalSttEnqueueJob
+  type RehearsalSttEnqueueJob,
 } from "./rehearsals.service";
 
 const validEnv = {
@@ -70,7 +70,7 @@ const validEnv = {
   DEMO_WORKSPACE_ID: "workspace_demo_1",
   DEMO_PROJECT_ID: "project_demo_1",
   DEMO_DECK_ID: "deck_demo_1",
-  DEMO_SESSION_ID: "session_demo_1"
+  DEMO_SESSION_ID: "session_demo_1",
 };
 
 const createdAt = new Date("2026-06-27T00:00:00.000Z");
@@ -86,23 +86,24 @@ const job: Job = {
   result: null,
   error: null,
   createdAt: createdAt.toISOString(),
-  updatedAt: createdAt.toISOString()
+  updatedAt: createdAt.toISOString(),
 };
 
 const semanticRetryJob: Job = {
   ...job,
   jobId: "job-semantic-retry",
-  type: "rehearsal-semantic-evaluation"
+  type: "rehearsal-semantic-evaluation",
 };
 
 const upload: AssetUploadUrlResponse = {
   fileId: "file-audio",
   projectId: "project-a",
-  uploadUrl: "http://localhost:5173/api/v1/projects/project-a/assets/file-audio/content",
+  uploadUrl:
+    "http://localhost:5173/api/v1/projects/project-a/assets/file-audio/content",
   method: "PUT",
   headers: { "content-type": "audio/webm" },
   expiresAt: "2026-06-27T00:15:00.000Z",
-  purpose: "rehearsal-audio"
+  purpose: "rehearsal-audio",
 };
 
 const rehearsalReport = {
@@ -117,7 +118,7 @@ const rehearsalReport = {
     wordsPerMinute: 120,
     fillerWordCount: 1,
     pauseCount: 0,
-    keywordCoverage: 1
+    keywordCoverage: 1,
   },
   coaching: {
     status: "succeeded",
@@ -125,9 +126,9 @@ const rehearsalReport = {
     strengths: ["키워드를 언급했습니다."],
     improvements: ["불필요한 filler를 줄이세요."],
     nextPracticeFocus: "도입부를 더 짧게 연습하세요.",
-    message: ""
+    message: "",
   },
-  generatedAt: rawAudioDeletedAt
+  generatedAt: rawAudioDeletedAt,
 };
 
 describe("RehearsalsService", () => {
@@ -148,7 +149,7 @@ describe("RehearsalsService", () => {
       jobId: null,
       status: "created",
       deckVersion: 3,
-      semanticEvaluationMode: "full"
+      semanticEvaluationMode: "full",
     });
     expect(result.run.runId).toMatch(/^run_/);
     expect(result.run.evaluationSnapshot).toMatchObject({
@@ -159,13 +160,13 @@ describe("RehearsalsService", () => {
           slideId: "slide_1",
           semanticCues: [
             { cueId: "scue_approved", reviewStatus: "approved", revision: 2 },
-            { cueId: "scue_excluded", reviewStatus: "excluded", revision: 1 }
-          ]
-        }
-      ]
+            { cueId: "scue_excluded", reviewStatus: "excluded", revision: 1 },
+          ],
+        },
+      ],
     });
     expect(JSON.stringify(result.run.evaluationSnapshot)).not.toContain(
-      "민감한 발표자 노트"
+      "민감한 발표자 노트",
     );
     expect(service.testLogger.info).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -174,9 +175,9 @@ describe("RehearsalsService", () => {
         deckId: "deck-a",
         deckVersion: 3,
         slideCount: 1,
-        cueCount: 2
+        cueCount: 2,
       }),
-      "Rehearsal evaluation snapshot created."
+      "Rehearsal evaluation snapshot created.",
     );
   });
 
@@ -199,23 +200,23 @@ describe("RehearsalsService", () => {
           projectId: "project-a",
           purpose: "rehearsal-slide-snapshot",
           status: "uploaded",
-          mimeType: "image/png"
-        }) as ProjectAssetEntity
+          mimeType: "image/png",
+        }) as ProjectAssetEntity,
     );
     const service = createService({ filesServicePatch: { getUploadedAsset } });
 
     const result = await service.createRun("project-a", {
       deckId: "deck-a",
-      slideSnapshots: [{ slideId: "slide_1", fileId: "file-slide-1" }]
+      slideSnapshots: [{ slideId: "slide_1", fileId: "file-slide-1" }],
     });
 
     expect(getUploadedAsset).toHaveBeenCalledWith(
       "project-a",
       "file-slide-1",
-      "rehearsal-slide-snapshot"
+      "rehearsal-slide-snapshot",
     );
     expect(result.run.evaluationSnapshot?.slides[0]?.thumbnailUrl).toBe(
-      "/api/v1/projects/project-a/assets/file-slide-1/content"
+      "/api/v1/projects/project-a/assets/file-slide-1/content",
     );
   });
 
@@ -224,7 +225,7 @@ describe("RehearsalsService", () => {
     const service = createService({ deck: mutableDeck });
     const created = await service.createRun("project-a", {
       deckId: "deck-a",
-      expectedDeckVersion: 3
+      expectedDeckVersion: 3,
     });
 
     mutableDeck.version = 4;
@@ -232,9 +233,9 @@ describe("RehearsalsService", () => {
 
     const stored = await service.getRun(created.run.runId);
     expect(stored.run.deckVersion).toBe(3);
-    expect(stored.run.evaluationSnapshot?.slides[0]?.semanticCues[0]?.meaning).toBe(
-      "승인된 원래 의미"
-    );
+    expect(
+      stored.run.evaluationSnapshot?.slides[0]?.semanticCues[0]?.meaning,
+    ).toBe("승인된 원래 의미");
   });
 
   it("rejects a full run when the expected deck version is stale", async () => {
@@ -243,8 +244,8 @@ describe("RehearsalsService", () => {
     await expect(
       service.createRun("project-a", {
         deckId: "deck-a",
-        expectedDeckVersion: 2
-      })
+        expectedDeckVersion: 2,
+      }),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
@@ -254,13 +255,13 @@ describe("RehearsalsService", () => {
     const result = await service.createRun("project-a", {
       deckId: "deck-a",
       expectedDeckVersion: 2,
-      semanticEvaluationMode: "delivery-only"
+      semanticEvaluationMode: "delivery-only",
     });
 
     expect(result.run).toMatchObject({
       deckVersion: null,
       evaluationSnapshot: null,
-      semanticEvaluationMode: "delivery-only"
+      semanticEvaluationMode: "delivery-only",
     });
   });
 
@@ -279,7 +280,7 @@ describe("RehearsalsService", () => {
       challengeTopics: [],
       approvedReferences: [],
       createdAt: "2026-07-11T00:00:00.000Z",
-      updatedAt: "2026-07-11T00:00:00.000Z"
+      updatedAt: "2026-07-11T00:00:00.000Z",
     } as PresentationBrief;
     const focusProfile = {
       profileId: "focus_profile_1",
@@ -294,58 +295,64 @@ describe("RehearsalsService", () => {
           targetScope: {
             type: "slide",
             scopeId: "focus_scope_slide_1",
-            slideId: "slide_1"
-          }
-        }
+            slideId: "slide_1",
+          },
+        },
       ],
       createdBy: "user-a",
       updatedBy: "user-a",
       createdAt: "2026-07-11T00:00:00.000Z",
-      updatedAt: "2026-07-12T00:00:00.000Z"
+      updatedAt: "2026-07-12T00:00:00.000Z",
     } as RehearsalFocusProfile;
     const currentDeck = createDeck();
     const service = createService({
       presentationBrief: brief,
       focusProfile,
-      deck: currentDeck
+      deck: currentDeck,
     });
 
     const response = await service.createRun("project-a", {
       deckId: currentDeck.deckId,
       expectedDeckVersion: currentDeck.version,
-      briefRef: { mode: "briefed", briefId: brief.briefId, expectedRevision: 1 },
+      briefRef: {
+        mode: "briefed",
+        briefId: brief.briefId,
+        expectedRevision: 1,
+      },
       evaluatorLensRef: brief.evaluatorLensRef,
-      sourceGoalSetId: null
+      sourceGoalSetId: null,
     });
 
-    expect(response.run.evaluationSnapshot?.deckContentHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(response.run.evaluationSnapshot?.deckContentHash).toMatch(
+      /^[a-f0-9]{64}$/,
+    );
     expect(response.run.evaluationSnapshot?.evaluationPlan?.briefRef).toEqual({
       mode: "briefed",
       briefId: "brief_1",
-      revision: 1
+      revision: 1,
     });
-    expect(response.run.evaluationSnapshot?.evaluationPlan?.criteria.length).toBeGreaterThan(0);
+    expect(
+      response.run.evaluationSnapshot?.evaluationPlan?.criteria.length,
+    ).toBeGreaterThan(0);
     expect(response.run.evaluationSnapshot?.focusProfileSnapshot).toEqual({
       profileRef: { profileId: "focus_profile_1", revision: 2 },
-      items: focusProfile.items
+      items: focusProfile.items,
     });
 
     focusProfile.revision = 3;
     focusProfile.items[0]!.label = "변경된 목표";
     expect(response.run.evaluationSnapshot?.focusProfileSnapshot).toEqual({
       profileRef: { profileId: "focus_profile_1", revision: 2 },
-      items: [
-        expect.objectContaining({ label: "고객 가치를 우선 확인한다." })
-      ]
+      items: [expect.objectContaining({ label: "고객 가치를 우선 확인한다." })],
     });
   });
 
   it("rejects run creation when the deckId does not match the project deck", async () => {
     const service = createService();
 
-    await expect(service.createRun("project-a", { deckId: "deck-other" })).rejects.toBeInstanceOf(
-      BadRequestException
-    );
+    await expect(
+      service.createRun("project-a", { deckId: "deck-other" }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it("creates an upload URL and pins the audio file to the run", async () => {
@@ -355,31 +362,36 @@ describe("RehearsalsService", () => {
     const result = await service.createAudioUploadUrl(run.runId, {
       originalName: "rehearsal.webm",
       mimeType: "audio/webm",
-      size: 1024
+      size: 1024,
     });
 
     expect(result.upload).toEqual(upload);
     expect(result.run).toMatchObject({
       runId: run.runId,
       audioFileId: "file-audio",
-      status: "uploading"
+      status: "uploading",
     });
-    expect(service.testFilesService.createRehearsalAudioUploadUrl).toHaveBeenCalledWith(
+    expect(
+      service.testFilesService.createRehearsalAudioUploadUrl,
+    ).toHaveBeenCalledWith(
       "project-a",
       expect.objectContaining({
         originalName: "rehearsal.webm",
         mimeType: "audio/webm",
         size: 1024,
-        purpose: "rehearsal-audio"
+        purpose: "rehearsal-audio",
       }),
-      expect.objectContaining({ runId: run.runId, createdAt: expect.any(Date) })
+      expect.objectContaining({
+        runId: run.runId,
+        createdAt: expect.any(Date),
+      }),
     );
   });
 
   it("uses REHEARSAL_AUDIO_MAX_BYTES when validating rehearsal uploads", async () => {
     Object.assign(process.env, {
       ...validEnv,
-      REHEARSAL_AUDIO_MAX_BYTES: "1024"
+      REHEARSAL_AUDIO_MAX_BYTES: "1024",
     });
     const service = createService();
     const run = await createRun(service);
@@ -388,17 +400,19 @@ describe("RehearsalsService", () => {
       service.createAudioUploadUrl(run.runId, {
         originalName: "rehearsal.flac",
         mimeType: "audio/flac",
-        size: 1025
-      })
+        size: 1025,
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
 
-    expect(service.testFilesService.createRehearsalAudioUploadUrl).not.toHaveBeenCalled();
+    expect(
+      service.testFilesService.createRehearsalAudioUploadUrl,
+    ).not.toHaveBeenCalled();
   });
 
   it("rejects rehearsal uploads above the implemented OpenAI report STT limit", async () => {
     Object.assign(process.env, {
       ...validEnv,
-      REHEARSAL_AUDIO_MAX_BYTES: "25000001"
+      REHEARSAL_AUDIO_MAX_BYTES: "25000001",
     });
 
     expect(() => createService()).toThrow(/REHEARSAL_AUDIO_MAX_BYTES/);
@@ -411,11 +425,11 @@ describe("RehearsalsService", () => {
     await service.createAudioUploadUrl(run.runId, {
       originalName: "rehearsal.webm",
       mimeType: "audio/webm",
-      size: 1024
+      size: 1024,
     });
 
     const result = await service.completeAudioUpload(run.runId, {
-      fileId: "file-audio"
+      fileId: "file-audio",
     });
 
     expect(result.run).toMatchObject({
@@ -436,7 +450,7 @@ describe("RehearsalsService", () => {
       projectId: "project-a",
       runId: run.runId,
       deckId: "deck-a",
-      audioFileId: "file-audio"
+      audioFileId: "file-audio",
     });
   });
 
@@ -460,9 +474,9 @@ describe("RehearsalsService", () => {
       size: 1024,
     });
 
-    await expect(service.completeAudioUpload(run.runId, { fileId: "file-audio" })).rejects.toThrow(
-      "Asset size mismatch"
-    );
+    await expect(
+      service.completeAudioUpload(run.runId, { fileId: "file-audio" }),
+    ).rejects.toThrow("Asset size mismatch");
 
     expect(jobsService.create).not.toHaveBeenCalled();
     expect((await service.getRun(run.runId)).run).toMatchObject({
@@ -477,21 +491,27 @@ describe("RehearsalsService", () => {
     const run = await createRun(service);
 
     const result = await service.updateRunMeta(run.runId, {
-      slideTimeline: [{ slideId: "slide_1", enteredAt: "2026-07-02T00:00:00.000Z" }],
+      slideTimeline: [
+        { slideId: "slide_1", enteredAt: "2026-07-02T00:00:00.000Z" },
+      ],
       missedKeywords: [{ slideId: "slide_1", keywordId: "kw_1" }],
-      adviceEvents: [{ type: "pace-too-fast", at: "2026-07-02T00:00:30.000Z" }]
+      adviceEvents: [{ type: "pace-too-fast", at: "2026-07-02T00:00:30.000Z" }],
     });
 
     expect(result.run.runId).toBe(run.runId);
-    expect((await service.testRehearsalRuns.findOne({ where: { runId: run.runId } }))?.metaJson)
-      .toEqual({
+    expect(
+      (await service.testRehearsalRuns.findOne({ where: { runId: run.runId } }))
+        ?.metaJson,
+    ).toEqual({
         recordingDurationSeconds: null,
-        slideTimeline: [{ slideId: "slide_1", enteredAt: "2026-07-02T00:00:00.000Z" }],
+      slideTimeline: [
+        { slideId: "slide_1", enteredAt: "2026-07-02T00:00:00.000Z" },
+      ],
         missedKeywords: [{ slideId: "slide_1", keywordId: "kw_1" }],
         adviceEvents: [{ type: "pace-too-fast", at: "2026-07-02T00:00:30.000Z" }],
         utteranceOutcomes: [],
         semanticCueDecisions: [],
-        semanticCapabilityEvents: []
+      semanticCapabilityEvents: [],
       });
   });
 
@@ -500,12 +520,12 @@ describe("RehearsalsService", () => {
     const run = await createRun(service);
 
     await service.updateRunMeta(run.runId, {
-      recordingDurationSeconds: 90.25
+      recordingDurationSeconds: 90.25,
     });
 
     expect(
-      (await service.testRehearsalRuns.findOne({ where: { runId: run.runId } }))?.metaJson
-        ?.recordingDurationSeconds
+      (await service.testRehearsalRuns.findOne({ where: { runId: run.runId } }))
+        ?.metaJson?.recordingDurationSeconds,
     ).toBe(90.25);
   });
 
@@ -519,7 +539,7 @@ describe("RehearsalsService", () => {
 
     expect(cancelled.run.status).toBe("cancelled");
     expect(listed.runs.map((run: { runId: string }) => run.runId)).toEqual([
-      second.runId
+      second.runId,
     ]);
   });
 
@@ -529,12 +549,12 @@ describe("RehearsalsService", () => {
     await service.createAudioUploadUrl(run.runId, {
       originalName: "rehearsal.webm",
       mimeType: "audio/webm",
-      size: 1024
+      size: 1024,
     });
     await service.completeAudioUpload(run.runId, { fileId: "file-audio" });
 
     await expect(service.cancelRun(run.runId)).rejects.toBeInstanceOf(
-      BadRequestException
+      BadRequestException,
     );
   });
 
@@ -544,16 +564,18 @@ describe("RehearsalsService", () => {
     await service.createAudioUploadUrl(run.runId, {
       originalName: "rehearsal.webm",
       mimeType: "audio/webm",
-      size: 1024
+      size: 1024,
     });
     await service.completeAudioUpload(run.runId, { fileId: "file-audio" });
 
     await expect(
       service.updateRunMeta(run.runId, {
-        slideTimeline: [{ slideId: "slide_1", enteredAt: "2026-07-02T00:00:00.000Z" }],
+        slideTimeline: [
+          { slideId: "slide_1", enteredAt: "2026-07-02T00:00:00.000Z" },
+        ],
         missedKeywords: [],
-        adviceEvents: []
-      })
+        adviceEvents: [],
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -566,8 +588,8 @@ describe("RehearsalsService", () => {
         slideTimeline: [],
         missedKeywords: [],
         adviceEvents: [],
-        transcript: "민감한 전사 원문"
-      })
+        transcript: "민감한 전사 원문",
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -575,50 +597,54 @@ describe("RehearsalsService", () => {
     const deleteUploadedAsset = vi.fn(async () => rawAudioDeletedAt);
     const jobsService = {
       create: vi.fn(async () => job),
-      update: vi.fn(async () => ({ ...job, status: "failed" }))
+      update: vi.fn(async () => ({ ...job, status: "failed" })),
     } as unknown as JobsService;
     const service = createService({
       enqueueJob: vi.fn(async () => {
         throw new Error("redis down");
       }),
       jobsService,
-      filesServicePatch: { deleteUploadedAsset }
+      filesServicePatch: { deleteUploadedAsset },
     });
     const run = await createRun(service);
     await service.createAudioUploadUrl(run.runId, {
       originalName: "rehearsal.webm",
       mimeType: "audio/webm",
-      size: 1024
+      size: 1024,
     });
 
-    await expect(service.completeAudioUpload(run.runId, { fileId: "file-audio" })).rejects.toThrow(
-      "redis down"
-    );
+    await expect(
+      service.completeAudioUpload(run.runId, { fileId: "file-audio" }),
+    ).rejects.toThrow("redis down");
 
-    expect(deleteUploadedAsset).toHaveBeenCalledWith("project-a", "file-audio", "rehearsal-audio");
+    expect(deleteUploadedAsset).toHaveBeenCalledWith(
+      "project-a",
+      "file-audio",
+      "rehearsal-audio",
+    );
     expect(jobsService.update).toHaveBeenCalledWith("job-1", {
       status: "failed",
       progress: 0,
       message: "Rehearsal STT enqueue failed.",
       error: {
         code: "REHEARSAL_STT_ENQUEUE_FAILED",
-        message: "redis down"
-      }
+        message: "redis down",
+      },
     });
     expect((await service.getRun(run.runId)).run).toMatchObject({
       status: "failed",
       rawAudioDeletedAt,
       error: {
         code: "REHEARSAL_STT_ENQUEUE_FAILED",
-        message: "redis down"
-      }
+        message: "redis down",
+      },
     });
   });
 
   it("marks raw audio cleanup failure when enqueue cleanup fails", async () => {
     const jobsService = {
       create: vi.fn(async () => job),
-      update: vi.fn(async () => ({ ...job, status: "failed" }))
+      update: vi.fn(async () => ({ ...job, status: "failed" })),
     } as unknown as JobsService;
     const service = createService({
       enqueueJob: vi.fn(async () => {
@@ -628,19 +654,19 @@ describe("RehearsalsService", () => {
       filesServicePatch: {
         deleteUploadedAsset: vi.fn(async () => {
           throw new Error("delete down");
-        })
-      }
+        }),
+      },
     });
     const run = await createRun(service);
     await service.createAudioUploadUrl(run.runId, {
       originalName: "rehearsal.webm",
       mimeType: "audio/webm",
-      size: 1024
+      size: 1024,
     });
 
-    await expect(service.completeAudioUpload(run.runId, { fileId: "file-audio" })).rejects.toThrow(
-      "redis down"
-    );
+    await expect(
+      service.completeAudioUpload(run.runId, { fileId: "file-audio" }),
+    ).rejects.toThrow("redis down");
 
     expect(jobsService.update).toHaveBeenCalledWith("job-1", {
       status: "failed",
@@ -648,35 +674,35 @@ describe("RehearsalsService", () => {
       message: "Rehearsal raw audio cleanup failed.",
       error: {
         code: "RAW_AUDIO_DELETE_FAILED",
-        message: "delete down"
-      }
+        message: "delete down",
+      },
     });
     expect((await service.getRun(run.runId)).run).toMatchObject({
       status: "failed",
       rawAudioDeletedAt: null,
       error: {
         code: "RAW_AUDIO_DELETE_FAILED",
-        message: "delete down"
-      }
+        message: "delete down",
+      },
     });
   });
 
   it("does not create another job when audio complete is repeated", async () => {
     const jobsService = {
       create: vi.fn(async () => job),
-      update: vi.fn()
+      update: vi.fn(),
     } as unknown as JobsService;
     const service = createService({ jobsService });
     const run = await createRun(service);
     await service.createAudioUploadUrl(run.runId, {
       originalName: "rehearsal.webm",
       mimeType: "audio/webm",
-      size: 1024
+      size: 1024,
     });
 
     await service.completeAudioUpload(run.runId, { fileId: "file-audio" });
     await expect(
-      service.completeAudioUpload(run.runId, { fileId: "file-audio" })
+      service.completeAudioUpload(run.runId, { fileId: "file-audio" }),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(jobsService.create).toHaveBeenCalledTimes(1);
@@ -688,7 +714,7 @@ describe("RehearsalsService", () => {
     await service.createAudioUploadUrl(run.runId, {
       originalName: "rehearsal.webm",
       mimeType: "audio/webm",
-      size: 1024
+      size: 1024,
     });
     await service.completeAudioUpload(run.runId, { fileId: "file-audio" });
 
@@ -696,7 +722,9 @@ describe("RehearsalsService", () => {
 
     expect(result.run.status).toBe("processing");
     expect(result.report).toBeNull();
-    expect(service.testProjectsService.getAccessibleProject).toHaveBeenCalledWith("project-a");
+    expect(
+      service.testProjectsService.getAccessibleProject,
+    ).toHaveBeenCalledWith("project-a");
   });
 
   it("returns the saved report JSON for a succeeded rehearsal", async () => {
@@ -706,7 +734,7 @@ describe("RehearsalsService", () => {
       status: "succeeded",
       rehearsalReport,
       transcriptRetained: false,
-      rawAudioDeletedAt: new Date(rawAudioDeletedAt)
+      rawAudioDeletedAt: new Date(rawAudioDeletedAt),
     });
 
     const result = await service.getReport(run.runId);
@@ -718,9 +746,33 @@ describe("RehearsalsService", () => {
       transcript: null,
       metrics: {
         wordsPerMinute: 120,
-        keywordCoverage: 1
-      }
+        keywordCoverage: 1,
+      },
     });
+  });
+
+  it("reports audio playback as available when the retained object exists", async () => {
+    const isPrivateAudioAvailable = vi.fn(async () => true);
+    const service = createService({
+      filesServicePatch: { isPrivateAudioAvailable },
+    });
+    const run = await createRun(service);
+    await saveRunPatch(service, run.runId, {
+      audioFileId: "file-audio",
+      status: "succeeded",
+      rehearsalReport,
+      rawAudioDeletedAt: null,
+      rawAudioDeleteDeadlineAt: new Date("2099-07-30T00:00:00.000Z"),
+    });
+
+    const result = await service.getReport(run.runId);
+
+    expect(result.audioPlaybackAvailable).toBe(true);
+    expect(isPrivateAudioAvailable).toHaveBeenCalledWith(
+      "project-a",
+      "file-audio",
+      "rehearsal-audio",
+    );
   });
 
   it("compares a succeeded run with the previous succeeded run", async () => {
@@ -729,18 +781,18 @@ describe("RehearsalsService", () => {
     await saveRunPatch(service, previous.runId, {
       createdAt: new Date("2026-07-10T00:00:00.000Z"),
       status: "succeeded",
-      rehearsalReport: comparisonReport(previous.runId, "missed")
+      rehearsalReport: comparisonReport(previous.runId, "missed"),
     });
     const cancelled = await createRun(service);
     await saveRunPatch(service, cancelled.runId, {
       createdAt: new Date("2026-07-10T00:05:00.000Z"),
-      status: "cancelled"
+      status: "cancelled",
     });
     const current = await createRun(service);
     await saveRunPatch(service, current.runId, {
       createdAt: new Date("2026-07-10T00:10:00.000Z"),
       status: "succeeded",
-      rehearsalReport: comparisonReport(current.runId, "covered")
+      rehearsalReport: comparisonReport(current.runId, "covered"),
     });
 
     const comparison = await service.getComparison("project-a", current.runId);
@@ -748,7 +800,7 @@ describe("RehearsalsService", () => {
     expect(comparison.currentRunId).toBe(current.runId);
     expect(comparison.previousRunId).toBe(previous.runId);
     expect(comparison.improved).toMatchObject([
-      { category: "semantic-cue", cueId: "scue_compare", cueRevision: 2 }
+      { category: "semantic-cue", cueId: "scue_compare", cueRevision: 2 },
     ]);
     expect(comparison.repeated).toEqual([]);
   });
@@ -758,11 +810,11 @@ describe("RehearsalsService", () => {
     const current = await createRun(service);
     await saveRunPatch(service, current.runId, {
       status: "succeeded",
-      rehearsalReport: comparisonReport(current.runId, "covered")
+      rehearsalReport: comparisonReport(current.runId, "covered"),
     });
 
     await expect(
-      service.getComparison("project-other", current.runId)
+      service.getComparison("project-other", current.runId),
     ).rejects.toMatchObject({ status: 404 });
   });
 
@@ -773,17 +825,80 @@ describe("RehearsalsService", () => {
       status: "succeeded",
       rehearsalReport,
       transcriptRetained: false,
-      rawAudioDeletedAt: new Date(rawAudioDeletedAt)
+      rawAudioDeletedAt: new Date(rawAudioDeletedAt),
     });
 
     const result = await service.getReport(run.runId);
 
     expect(result.report).toMatchObject({
       transcriptRetained: false,
-      transcript: null
+      transcript: null,
     });
   });
 
+  it("generates and returns a cached same-folder audio clip", async () => {
+    const getOrCreatePrivateAudioDerivative = vi.fn(
+      async (
+        _projectId: string,
+        _fileId: string,
+        _purpose: string,
+        storageFileName: string,
+        createDerivative: (source: {
+          body: Uint8Array;
+          contentType: string;
+        }) => Promise<Uint8Array>,
+      ) => ({
+        body: await createDerivative({
+          body: new Uint8Array([1, 2, 3]),
+          contentType: "audio/webm",
+        }),
+        contentType: "audio/wav",
+        storageKey: `rehearsals/2026-07-18/project-a/run-1/${storageFileName}`,
+        created: true,
+      }),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(new Uint8Array([4, 5, 6]), {
+            status: 200,
+            headers: { "content-type": "audio/wav" },
+          }),
+      ),
+    );
+    const service = createService({
+      filesServicePatch: { getOrCreatePrivateAudioDerivative },
+    });
+    const run = await createRun(service);
+    await saveRunPatch(service, run.runId, {
+      audioFileId: "file-audio",
+      status: "succeeded",
+      rawAudioDeletedAt: null,
+      rawAudioDeleteDeadlineAt: new Date("2099-07-30T00:00:00.000Z"),
+  });
+
+    const result = await service.getAudioClip(run.runId, {
+      startSeconds: 10,
+      endSeconds: 12.5,
+    });
+
+    expect(result).toEqual({
+      body: Buffer.from([4, 5, 6]),
+      contentType: "audio/wav",
+    });
+    expect(getOrCreatePrivateAudioDerivative).toHaveBeenCalledWith(
+      "project-a",
+      "file-audio",
+      "rehearsal-audio",
+      "volume-10000-12500.wav",
+      expect.any(Function),
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      new URL("http://localhost:8000/audio/clip"),
+      expect.objectContaining({ method: "POST", body: expect.any(FormData) }),
+    );
+  });
   it("creates a bounded playback URL without logging it", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-16T00:00:00.000Z"));
@@ -847,14 +962,14 @@ describe("RehearsalsService", () => {
     const enqueueSemanticEvaluationJob = vi.fn(async () => undefined);
     const jobsService = {
       create: vi.fn(async () => semanticRetryJob),
-      update: vi.fn()
+      update: vi.fn(),
     } as unknown as JobsService;
     const service = createService({
       jobsService,
       enqueueSemanticEvaluationJob,
       transcriptCache: {
-        hasSemanticEvidence: vi.fn(async () => true)
-      }
+        hasSemanticEvidence: vi.fn(async () => true),
+      },
     });
     const run = await createRun(service);
     await saveRunPatch(service, run.runId, {
@@ -865,10 +980,10 @@ describe("RehearsalsService", () => {
           state: "partial",
           measurementMode: "none",
           reasons: ["timeout"],
-          retryable: true
+          retryable: true,
         },
-        semanticCueOutcomes: []
-      }
+        semanticCueOutcomes: [],
+        },
     });
 
     const result = await service.retrySemanticEvaluation(run.runId);
@@ -877,37 +992,39 @@ describe("RehearsalsService", () => {
     expect(jobsService.create).toHaveBeenCalledWith({
       projectId: "project-a",
       type: "rehearsal-semantic-evaluation",
-      payload: { runId: run.runId }
+      payload: { runId: run.runId },
     });
     expect(enqueueSemanticEvaluationJob).toHaveBeenCalledWith({
       driver: "bullmq",
       redisUrl: "redis://localhost:6379",
       jobId: "job-semantic-retry",
       projectId: "project-a",
-      runId: run.runId
+      runId: run.runId,
     });
-    expect(JSON.stringify(enqueueSemanticEvaluationJob.mock.calls)).not.toContain(
-      "transcript"
-    );
+    expect(
+      JSON.stringify(enqueueSemanticEvaluationJob.mock.calls),
+    ).not.toContain("transcript");
   });
 
   it("returns non-retryable evidence expired conflict without creating a job", async () => {
     const jobsService = {
       create: vi.fn(async () => semanticRetryJob),
-      update: vi.fn()
+      update: vi.fn(),
     } as unknown as JobsService;
     const service = createService({ jobsService });
     const run = await createRun(service);
     await saveRunPatch(service, run.runId, {
       status: "succeeded",
-      rehearsalReport: retryableReport()
+      rehearsalReport: retryableReport(),
     });
 
-    await expect(service.retrySemanticEvaluation(run.runId)).rejects.toMatchObject({
+    await expect(
+      service.retrySemanticEvaluation(run.runId),
+    ).rejects.toMatchObject({
       response: {
         code: "REHEARSAL_SEMANTIC_EVIDENCE_EXPIRED",
-        retryable: false
-      }
+        retryable: false,
+      },
     });
     expect(jobsService.create).not.toHaveBeenCalled();
   });
@@ -915,30 +1032,32 @@ describe("RehearsalsService", () => {
   it("does not retry a delivery-only run without an evaluation snapshot", async () => {
     const jobsService = {
       create: vi.fn(async () => semanticRetryJob),
-      update: vi.fn()
+      update: vi.fn(),
     } as unknown as JobsService;
     const service = createService({
       jobsService,
       transcriptCache: {
-        hasSemanticEvidence: vi.fn(async () => true)
-      }
+        hasSemanticEvidence: vi.fn(async () => true),
+      },
     });
     const run = (
       await service.createRun("project-a", {
         deckId: "deck-a",
-        semanticEvaluationMode: "delivery-only"
+        semanticEvaluationMode: "delivery-only",
       })
     ).run;
     await saveRunPatch(service, run.runId, {
       status: "succeeded",
-      rehearsalReport
+      rehearsalReport,
     });
 
-    await expect(service.retrySemanticEvaluation(run.runId)).rejects.toMatchObject({
+    await expect(
+      service.retrySemanticEvaluation(run.runId),
+    ).rejects.toMatchObject({
       response: {
         code: "REHEARSAL_SEMANTIC_EVALUATION_NOT_READY",
-        retryable: false
-      }
+        retryable: false,
+      },
     });
     expect(jobsService.create).not.toHaveBeenCalled();
   });
@@ -946,7 +1065,7 @@ describe("RehearsalsService", () => {
   it("marks the retry job failed and logs a safe event when enqueue fails", async () => {
     const jobsService = {
       create: vi.fn(async () => semanticRetryJob),
-      update: vi.fn(async () => ({ ...semanticRetryJob, status: "failed" }))
+      update: vi.fn(async () => ({ ...semanticRetryJob, status: "failed" })),
     } as unknown as JobsService;
     const service = createService({
       jobsService,
@@ -954,17 +1073,17 @@ describe("RehearsalsService", () => {
         throw new Error("redis down");
       }),
       transcriptCache: {
-        hasSemanticEvidence: vi.fn(async () => true)
-      }
+        hasSemanticEvidence: vi.fn(async () => true),
+      },
     });
     const run = await createRun(service);
     await saveRunPatch(service, run.runId, {
       status: "succeeded",
-      rehearsalReport: retryableReport()
+      rehearsalReport: retryableReport(),
     });
 
     await expect(service.retrySemanticEvaluation(run.runId)).rejects.toThrow(
-      "redis down"
+      "redis down",
     );
 
     expect(jobsService.update).toHaveBeenCalledWith("job-semantic-retry", {
@@ -973,8 +1092,8 @@ describe("RehearsalsService", () => {
       message: "Rehearsal semantic evaluation retry enqueue failed.",
       error: {
         code: "REHEARSAL_SEMANTIC_EVALUATION_ENQUEUE_FAILED",
-        message: "redis down"
-      }
+        message: "redis down",
+      },
     });
     expect(service.testLogger.error).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -982,13 +1101,13 @@ describe("RehearsalsService", () => {
         projectId: "project-a",
         runId: run.runId,
         jobId: "job-semantic-retry",
-        reason: "REHEARSAL_SEMANTIC_EVALUATION_ENQUEUE_FAILED"
+        reason: "REHEARSAL_SEMANTIC_EVALUATION_ENQUEUE_FAILED",
       }),
-      "Rehearsal semantic evaluation retry enqueue failed."
+      "Rehearsal semantic evaluation retry enqueue failed.",
     );
-    expect(JSON.stringify(vi.mocked(service.testLogger.error).mock.calls)).not.toContain(
-      "민감한"
-    );
+    expect(
+      JSON.stringify(vi.mocked(service.testLogger.error).mock.calls),
+    ).not.toContain("민감한");
   });
 });
 
@@ -1003,15 +1122,15 @@ function retryableReport() {
       state: "partial",
       measurementMode: "none",
       reasons: ["timeout"],
-      retryable: true
+      retryable: true,
     },
-    semanticCueOutcomes: []
+    semanticCueOutcomes: [],
   };
 }
 
 function comparisonReport(
   runId: string,
-  status: "covered" | "partial" | "missed"
+  status: "covered" | "partial" | "missed",
 ) {
   return {
     ...rehearsalReport,
@@ -1020,7 +1139,7 @@ function comparisonReport(
       state: "succeeded",
       measurementMode: "full",
       reasons: [],
-      retryable: false
+      retryable: false,
     },
     semanticCueOutcomes: [
       {
@@ -1034,16 +1153,16 @@ function comparisonReport(
         measurementMode: "full",
         fallbackUsed: false,
         coveredConcepts: status === "covered" ? ["고객 가치"] : [],
-        missingConcepts: status === "covered" ? [] : ["고객 가치"]
-      }
-    ]
+        missingConcepts: status === "covered" ? [] : ["고객 가치"],
+      },
+    ],
   };
 }
 
 async function saveRunPatch(
   service: ReturnType<typeof createService>,
   runId: string,
-  patch: Partial<RehearsalRunEntity>
+  patch: Partial<RehearsalRunEntity>,
 ) {
   const run = await service.testRehearsalRuns.findOne({ where: { runId } });
   if (!run) {
@@ -1063,12 +1182,12 @@ function createService(
     deck?: Deck;
     presentationBrief?: PresentationBrief | null;
     focusProfile?: RehearsalFocusProfile | null;
-  } = {}
+  } = {},
 ) {
   const logger = createLogger();
   const repository = createRunRepository(options.focusProfile ?? null);
   const transcriptCache = options.transcriptCache ?? {
-    hasSemanticEvidence: vi.fn(async () => false)
+    hasSemanticEvidence: vi.fn(async () => false),
   };
   const filesService = {
     createUploadUrl: vi.fn(async () => upload),
@@ -1081,19 +1200,20 @@ function createService(
       size: 1024,
       url: "http://localhost:9000/rehearsal.webm",
       purpose: "rehearsal-audio",
-      createdAt: createdAt.toISOString()
+      createdAt: createdAt.toISOString(),
     })),
     getUploadedAsset: vi.fn(async () => ({
       fileId: "file-audio",
       projectId: "project-a",
       purpose: "rehearsal-audio",
-      status: "uploaded"
+      status: "uploaded",
     })),
     deleteUploadedAsset: vi.fn(async () => rawAudioDeletedAt),
     createPrivateAudioReadUrl: vi.fn(
       async () => "https://storage.example.com/audio?signature=short-lived",
     ),
-    ...options.filesServicePatch
+    isPrivateAudioAvailable: vi.fn(async () => true),
+    ...options.filesServicePatch,
   } as unknown as FilesService;
   const projectsService = {
     getAccessibleProject: vi.fn(async (projectId: string) => ({
@@ -1101,34 +1221,36 @@ function createService(
       workspaceId: "workspace-a",
       title: "Project A",
       createdBy: "user-a",
-      createdAt: createdAt.toISOString()
-    }))
+      createdAt: createdAt.toISOString(),
+    })),
   } as unknown as ProjectsService;
   const deck = options.deck ?? createDeck();
   const service = new RehearsalsService(
     repository,
-    { findOne: vi.fn(async () => null) } as unknown as Repository<ProjectEntity>,
+    {
+      findOne: vi.fn(async () => null),
+    } as unknown as Repository<ProjectEntity>,
     {
       getDeck: vi.fn(async () => ({
         projectId: "project-a",
         deck,
-        updatedAt: createdAt.toISOString()
-      }))
+        updatedAt: createdAt.toISOString(),
+      })),
     } as unknown as DecksService,
     projectsService,
     {
-      getCurrent: vi.fn(async () => options.presentationBrief ?? null)
+      getCurrent: vi.fn(async () => options.presentationBrief ?? null),
     } as unknown as PresentationBriefsService,
     filesService,
     options.jobsService ??
       ({
         create: vi.fn(async () => job),
-        update: vi.fn()
+        update: vi.fn(),
       } as unknown as JobsService),
     options.enqueueJob ?? vi.fn(async () => undefined),
     options.enqueueSemanticEvaluationJob ?? vi.fn(async () => undefined),
     transcriptCache as unknown as RedisRehearsalTranscriptCache,
-    logger
+    logger,
   );
   return Object.assign(service, {
     testRehearsalRuns: repository,
@@ -1140,11 +1262,13 @@ function createService(
       createRehearsalAudioUploadUrl: ReturnType<typeof vi.fn>;
     },
     testLogger: logger,
-    testTranscriptCache: transcriptCache
+    testTranscriptCache: transcriptCache,
   });
 }
 
-function createRunRepository(focusProfile: RehearsalFocusProfile | null = null) {
+function createRunRepository(
+  focusProfile: RehearsalFocusProfile | null = null,
+) {
   const runs = new Map<string, RehearsalRunEntity>();
 
   return {
@@ -1171,10 +1295,11 @@ function createRunRepository(focusProfile: RehearsalFocusProfile | null = null) 
       const matching = [...runs.values()]
         .filter(
           (run) =>
-            !options.where.projectId || run.projectId === options.where.projectId
+            !options.where.projectId ||
+            run.projectId === options.where.projectId,
         )
         .filter(
-          (run) => !options.where.status || run.status === options.where.status
+          (run) => !options.where.status || run.status === options.where.status,
         )
         .filter((run) => {
           const createdAt = options.where.createdAt;
@@ -1185,16 +1310,20 @@ function createRunRepository(focusProfile: RehearsalFocusProfile | null = null) 
         .sort((left, right) =>
           options.order?.createdAt === "ASC"
             ? left.createdAt.getTime() - right.createdAt.getTime()
-            : right.createdAt.getTime() - left.createdAt.getTime()
+            : right.createdAt.getTime() - left.createdAt.getTime(),
         );
 
       return matching[0] ?? null;
     },
-    async update(criteria: Partial<RehearsalRunEntity>, patch: Partial<RehearsalRunEntity>) {
+    async update(
+      criteria: Partial<RehearsalRunEntity>,
+      patch: Partial<RehearsalRunEntity>,
+    ) {
       const run = [...runs.values()].find((candidate) =>
         Object.entries(criteria).every(
-          ([key, value]) => candidate[key as keyof RehearsalRunEntity] === value
-        )
+          ([key, value]) =>
+            candidate[key as keyof RehearsalRunEntity] === value,
+        ),
       );
 
       if (!run) {
@@ -1225,15 +1354,21 @@ function createRunRepository(focusProfile: RehearsalFocusProfile | null = null) 
           }
           return true;
         })
-        .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+        .sort(
+          (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+        );
 
-      return [matching.slice(options.skip, options.skip + options.take), matching.length];
+      return [
+        matching.slice(options.skip, options.skip + options.take),
+        matching.length,
+      ];
     },
     async query(sql: string) {
       if (!sql.includes("FROM rehearsal_focus_profiles") || !focusProfile) {
         return [];
       }
-      return [{
+      return [
+        {
         profile_id: focusProfile.profileId,
         project_id: focusProfile.projectId,
         revision: focusProfile.revision,
@@ -1241,9 +1376,10 @@ function createRunRepository(focusProfile: RehearsalFocusProfile | null = null) 
         created_by: focusProfile.createdBy,
         updated_by: focusProfile.updatedBy,
         created_at: focusProfile.createdAt,
-        updated_at: focusProfile.updatedAt
-      }];
-    }
+          updated_at: focusProfile.updatedAt,
+        },
+      ];
+    },
   } as unknown as Repository<RehearsalRunEntity>;
 }
 
@@ -1258,7 +1394,7 @@ function createDeck(): Deck {
       preset: "wide-16-9",
       width: 1920,
       height: 1080,
-      aspectRatio: "16:9"
+      aspectRatio: "16:9",
     },
     slides: [
       {
@@ -1272,17 +1408,17 @@ function createDeck(): Deck {
             text: "ORBIT",
             synonyms: ["발표 도우미"],
             abbreviations: [],
-            required: true
-          }
+            required: true,
+          },
         ],
         elements: [],
         semanticCues: [
           semanticCue("scue_approved", "approved", 2, "승인된 원래 의미"),
           semanticCue("scue_excluded", "excluded", 1, "제외된 의미"),
-          semanticCue("scue_suggested", "suggested", 1, "검토 전 의미")
-        ]
-      }
-    ]
+          semanticCue("scue_suggested", "suggested", 1, "검토 전 의미"),
+        ],
+      },
+    ],
   });
   deck.deckId = "deck-a";
   return deck;
@@ -1292,7 +1428,7 @@ function semanticCue(
   cueId: string,
   reviewStatus: "suggested" | "approved" | "excluded",
   revision: number,
-  meaning: string
+  meaning: string,
 ) {
   return {
     cueId,
@@ -1311,7 +1447,7 @@ function semanticCue(
     nliHypotheses: ["발표자는 ORBIT이 발표를 돕는다고 설명했다"],
     negativeHints: [],
     targetElementIds: [],
-    triggerActionIds: []
+    triggerActionIds: [],
   };
 }
 
@@ -1319,6 +1455,6 @@ function createLogger() {
   return {
     info: vi.fn(),
     error: vi.fn(),
-    warn: vi.fn()
+    warn: vi.fn(),
   } as unknown as PinoLogger;
 }

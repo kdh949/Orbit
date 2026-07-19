@@ -60,6 +60,81 @@ final result: passed
 
 ---
 
+# Style loading spinner design QA
+
+- Source visual truth: `.tmp/design-qa/style-loading-final.png`의 기존 로딩 화면 레이아웃과 사용자 지정 스피너 요구.
+- Implementation screenshot: `.tmp/design-qa/style-loading-spinner.png`.
+- Route: `/createdeck?preview=style-loading`.
+- Viewport/state: 1453×874 CSS px, Style & Color 시작 로딩 상태.
+
+## Comparison evidence
+
+- Full view: 단계 표시, 상태 문구 너비·위치, 화면 여백은 기존 로딩 레이아웃과 동일하게 유지했다.
+- Focused region: 폐기된 블록 영역만 기존 AI PPT 로딩 화면에서 사용 중인 Tabler `IconLoader2` 기반 스피너로 교체했다.
+- Typography, spacing, color tokens, copy는 기존 상태를 유지했다. 추가 이미지 자산은 없다.
+- 300ms 간격의 computed transform 값이 달라 회전 동작을 확인했다.
+- 브라우저 콘솔 warning/error 없음. P0/P1/P2 시각 차이 없음.
+
+## Verification
+
+- AI PPT UI Vitest 4개 통과.
+- `tsc -p tsconfig.json --noEmit` 통과.
+
+final result: passed
+
+---
+
+# Style loading block animation design QA
+
+> 2026-07-19: 사용자 요청으로 블록 애니메이션 렌더링과 CSS를 삭제하지 않고 주석 처리했다. 상태 문구의 중앙 정렬만 유지한다.
+
+- Source visual truth: `C:/Users/Runner/Desktop/Frame 3.png`.
+- Implementation captures: `.tmp/design-qa/style-loading-a.png`, `.tmp/design-qa/style-loading-b.png`, `.tmp/design-qa/style-loading-final.png`.
+- Route: `/createdeck?preview=style-loading`.
+- Viewport: 1453×874 CSS px.
+
+## Fidelity and motion checks
+
+- `ai-ppt-status`는 960px 너비로 중앙 정렬하고 단계 표시와 로딩 모션 사이에 기준 이미지와 유사한 수직 여백을 확보했다.
+- Tabler `IconSquareFilled`로 구성한 블록이 위에서 회전하며 낙하하고, 하단의 불규칙한 블록 더미 위로 쌓이는 동작을 확인했다.
+- 700ms 간격의 두 캡처에서 낙하 블록 위치가 달라 실제 애니메이션 재생을 확인했다.
+- `prefers-reduced-motion: reduce` 환경에서는 낙하 애니메이션을 정지하도록 처리했다.
+- 브라우저 콘솔 warning/error 없음. P0/P1/P2 시각 차이 없음.
+
+## Verification
+
+- AI PPT UI Vitest 4개 통과.
+- `tsc -p tsconfig.json --noEmit` 통과.
+- `git diff --check` 통과(CRLF 변환 안내만 존재).
+
+final result: discarded
+
+---
+
+# AI 컬러 팔레트 생성 흐름 design QA
+
+- Source visual truth: `C:/Users/Runner/Desktop/Frame 1.png`, `C:/Users/Runner/Desktop/Frame 2.png`.
+- Implementation captures: `.tmp/design-qa/ai-palette-initial.png`, `.tmp/design-qa/compare-ai-palette-open-normalized.png`, `.tmp/design-qa/compare-ai-palette-result-normalized.png`.
+- Route: `/project/:projectId/style-color/:jobId`.
+- Viewport: 1453×874 CSS px.
+
+## Fidelity and interaction checks
+
+- 초기 상태는 `workspace-home-create` 스타일의 `AI로 컬러 팔레트 만들기` 타일만 표시한다.
+- 타일을 누르면 오른쪽 두 열에 프롬프트 패널이 열리고, 생성 후 선택 가능한 팔레트·LLM 설명·재생성 입력창으로 전환한다.
+- 기존 AI 팔레트 API와 선택 동작을 재사용하며 생성 및 재생성 결과가 즉시 선택 상태로 반영된다.
+- 콘솔 warning/error 없음. P0/P1/P2 시각 차이 없음.
+
+## Verification
+
+- UI 및 design-system boundary Vitest 11개 통과.
+- `tsc -p tsconfig.json --noEmit` 통과.
+- 실제 브라우저에서 초기 → 열기 → 생성 → 프롬프트 변경 → 재생성 흐름 통과.
+
+final result: passed
+
+---
+
 # Project 02 — Style & Color design QA
 
 - Source visual truth: `/var/folders/bz/br99y0bj2395vd1507vwbqmm0000gn/T/codex-clipboard-103a0d56-0330-426e-98a7-81f9a705b4ff.png`.
@@ -81,5 +156,33 @@ final result: passed
 
 - `pnpm --filter @orbit/web typecheck` passed.
 - `pnpm --filter @orbit/web exec vitest run src/features/ai-ppt/AiPptMockupPage.ui.test.ts src/features/ai-ppt/AiPptMockupPage.test.ts` passed: 14 tests.
+
+final result: passed
+
+---
+
+# 총 리허설 리포트 design QA
+
+- Source visual truth: `C:\Users\home\.codex\generated_images\019f7622-57ed-7922-986f-c35f80971944\exec-e600489b-0396-4c86-8752-3b713953d6e9.png`.
+- Implementation screenshots: `C:\Users\home\.codex\visualizations\2026\07\18\019f7622-57ed-7922-986f-c35f80971944\project-summary-final-v2.png`, `C:\Users\home\.codex\visualizations\2026\07\18\019f7622-57ed-7922-986f-c35f80971944\project-summary-final-v2-lower.png`.
+- Responsive screenshot: `C:\Users\home\.codex\visualizations\2026\07\18\019f7622-57ed-7922-986f-c35f80971944\project-summary-mobile-table-v2.png`.
+- Viewports: desktop 870 × 1808, focused region 870 × 900, mobile 390 × 844.
+- State: 23회차 완료, 8개 슬라이드, 최신 회차와 직전 회차 비교 데이터가 있는 프로젝트.
+
+## Comparison history
+
+1. P1 — 721~980px 구간의 내비게이션과 사이드 레일이 세로로 쌓이고 KPI가 분리 카드 2열로 노출됐다. 프로젝트 리포트 전용 반응형 경계와 단일 4열 KPI 카드로 수정했다.
+2. P1/P2 — 회차별 변화가 전체 폭 차트와 3열 미니 차트로 배치되고 슬라이드 표의 열 밀도와 썸네일 비율이 시안과 달랐다. 큰 총 소요시간 차트와 우측 3단 미니 차트, 7열 썸네일 표로 수정했다.
+3. P2 — 모바일 표가 패널 전체 폭을 밀어냈다. 대시보드와 카드의 최소 폭을 해제하고 표 래퍼만 가로 스크롤되도록 수정했다.
+4. 수정 후 참조 시안과 구현 화면을 동일 입력에서 재비교했으며 데스크톱과 모바일 모두 P0/P1/P2 시각 문제는 남지 않았다.
+
+## Verification
+
+- 헤더, 고정 회차 레일, 프로젝트 히어로, 4개 KPI, 8개 썸네일 행의 순서와 시각 계층을 참조 시안과 대조했다.
+- 총 소요시간 목표 밴드와 기준선, 최댓값과 최신값 라벨, 긴 침묵·핵심 메시지·시간 초과 추이를 대조했다.
+- 최신 리포트, 개선 필요 슬라이드 행, `상세 리포트에서 보기`가 모두 최신 회차 상세 리포트와 해당 슬라이드 앵커를 가리키는 것을 확인했다.
+- 본문 폭 375px에서 가로 오버플로가 없고 슬라이드 표 래퍼만 309px 안에서 633px 콘텐츠를 가로 스크롤한다.
+- 새로고침 시점을 기준으로 새로 발생한 console error/warn 없음.
+- 비로그인 QA 상태는 아바타 대신 기존 `로그인` 버튼을 사용하며 다음 행동 카드는 실제 상세 리포트 이동 CTA를 유지한다.
 
 final result: passed

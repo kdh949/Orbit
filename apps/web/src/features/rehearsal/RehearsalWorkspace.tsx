@@ -6,6 +6,8 @@ import {
   deriveKeywordOccurrences,
   demoIds,
   createRehearsalEvaluationSnapshot,
+  matchPronunciationAliases,
+  normalizePronunciationText,
   type AssetUploadUrlResponse,
   type CompleteRehearsalAudioUploadResponse,
   type CreateRehearsalAudioUploadUrlResponse,
@@ -21,6 +23,7 @@ import {
   type LiveSttPartialTranscriptEvent,
   type LiveSttSlideAdvanceEvent,
   type PutDeckResponse,
+  type PronunciationLexiconSnapshot,
   type RehearsalReport,
   type RehearsalRunComparison,
   type RehearsalEvaluationSnapshot,
@@ -177,6 +180,12 @@ import {
   type AdvanceControllerState,
 } from "./advance/advanceController";
 import { RehearsalPanel } from "./panel/RehearsalPanel";
+import { RehearsalLiveSttStatusNotice } from "./panel/RehearsalLiveSttStatusNotice";
+import {
+  buildRehearsalLiveSttStatusModel,
+  canRetryInitialRecordingLiveStt,
+  createInitialLiveSttRetryCoordinator,
+} from "./panel/rehearsalLiveSttStatus";
 import {
   createSemanticCapabilityStatusItems,
   getNextSemanticCapabilityRecoveryDelay,
@@ -1199,6 +1208,7 @@ export function buildLiveSttBiasContext(
   options: {
     nearbySlides?: Slide[];
     commandConfig?: RehearsalCommandDefinition[];
+    pronunciationLexicon?: PronunciationLexiconSnapshot;
   } = {},
 ): LiveSttBiasContext {
   const terms = new Map<string, LiveSttBiasTerm>();
@@ -1247,6 +1257,13 @@ export function buildLiveSttBiasContext(
         keywordId: keyword.keywordId,
         canonicalText: keyword.text,
       });
+    }
+  }
+
+  addPronunciationBiasTerms(slide.slideId, 0.93, 0.9);
+  for (const nearbySlide of options.nearbySlides ?? []) {
+    if (nearbySlide.slideId !== slide.slideId) {
+      addPronunciationBiasTerms(nearbySlide.slideId, 0.78, 0.74);
     }
   }
 
@@ -1311,6 +1328,40 @@ export function buildLiveSttBiasContext(
     slideId: slide.slideId,
     terms: selectedTerms,
   };
+
+  function addPronunciationBiasTerms(
+    slideId: string,
+    sourceWeight: number,
+    aliasWeight: number,
+  ) {
+    for (const entry of options.pronunciationLexicon?.entries ?? []) {
+      if (
+        entry.status !== "active" ||
+        !entry.scriptOccurrences.some(
+          (occurrence) => occurrence.slideId === slideId,
+        )
+      ) {
+        continue;
+      }
+      addTerm({
+        text: entry.sourceText,
+        source: "pronunciation-source",
+        weight: sourceWeight,
+        canonicalText: entry.canonicalText,
+      });
+      for (const alias of entry.aliases) {
+        if (!alias.enabled || alias.confidence < 0.8) {
+          continue;
+        }
+        addTerm({
+          text: alias.text,
+          source: "pronunciation-alias",
+          weight: aliasWeight * alias.confidence,
+          canonicalText: entry.canonicalText,
+        });
+      }
+    }
+  }
 }
 
 export function applyLiveTranscriptBias(
@@ -1403,16 +1454,31 @@ function normalizeLiveTranscriptDisplayText(value: string) {
 export function evaluateLiveTranscript(
   slide: Slide,
   transcript: string,
+  pronunciationLexicon?: PronunciationLexiconSnapshot,
 ): LiveTranscriptAnalysis {
   const candidates = getLiveKeywordCandidates(slide);
   const normalizedTranscript = normalizeLiveTranscriptText(transcript);
+  const pronunciationEvidence = pronunciationLexicon
+    ? matchPronunciationAliases(transcript, pronunciationLexicon, {
+        slideIds: [slide.slideId],
+      }).evidence
+    : [];
   const detectedKeywords = candidates.flatMap((candidate) => {
     const matchedText = candidate.aliases.find((alias) => {
       const normalizedAlias = normalizeLiveTranscriptText(alias);
       return normalizedAlias && normalizedTranscript.includes(normalizedAlias);
     });
 
-    if (!matchedText) {
+    const canonicalKeys = new Set(
+      candidate.aliases.map(
+        (alias) => normalizePronunciationText(alias).compactText,
+      ),
+    );
+    const matchedEvidence = pronunciationEvidence.find((evidence) =>
+      canonicalKeys.has(evidence.canonicalKey),
+    );
+
+    if (!matchedText && !matchedEvidence) {
       return [];
     }
 
@@ -1422,7 +1488,7 @@ export function evaluateLiveTranscript(
         slideId: slide.slideId,
         keywordId: candidate.keyword.keywordId,
         text: candidate.keyword.text,
-        matchedText,
+        matchedText: matchedText ?? matchedEvidence?.matchedText ?? "",
         coverage: 0,
       },
     ];
@@ -1714,6 +1780,10 @@ function biasSourcePriority(source: LiveSttBiasSource) {
       return 2;
     case "speaker-notes":
       return 1;
+    case "pronunciation-source":
+      return 5;
+    case "pronunciation-alias":
+      return 4;
     case "nearby-slide-text":
       return 0;
     case "control-phrase":
@@ -1955,6 +2025,7 @@ export function RehearsalWorkspace(props: {
   const [pauseDetectorSnapshot, setPauseDetectorSnapshot] =
     useState<PauseDetectorSnapshot | null>(null);
   const [isLiveDemoActive, setIsLiveDemoActive] = useState(false);
+  const [isLiveSttRetrying, setIsLiveSttRetrying] = useState(false);
   const [isLiveStopModalOpen, setIsLiveStopModalOpen] = useState(false);
   const [displayRole, setDisplayRole] = useState<
     "presenter" | "slide-receiver" | "slide-surface"
@@ -1989,6 +2060,9 @@ export function RehearsalWorkspace(props: {
   const liveDemoStreamRef = useRef<MediaStream | null>(null);
   const liveSttPortRef = useRef<LiveSttPort | null>(props.liveSttPort ?? null);
   const liveSttSubscriptionCleanupRef = useRef<(() => void) | null>(null);
+  const liveSttRetryCoordinatorRef = useRef(
+    createInitialLiveSttRetryCoordinator(),
+  );
   const p3SessionRef = useRef<P3RehearsalSession | null>(null);
   const semanticEmbeddingServicePromiseRef =
     useRef<Promise<E5EmbeddingService> | null>(null);
@@ -2643,6 +2717,8 @@ export function RehearsalWorkspace(props: {
       deck && currentSlide
         ? buildLiveSttBiasContext(currentSlide, {
             nearbySlides: getNearbySlides(deck, currentSlideIndex),
+            pronunciationLexicon:
+              activeRunRef.current?.evaluationSnapshot?.pronunciationLexicon,
           })
         : null;
     liveBiasContextRef.current = nextBiasContext;
@@ -2801,6 +2877,40 @@ export function RehearsalWorkspace(props: {
     }
   }
 
+  async function retryInitialRecordingLiveStt() {
+    const stream = streamRef.current;
+    const coordinator = liveSttRetryCoordinatorRef.current;
+    if (
+      !canRetryInitialRecordingLiveStt({
+        hasActiveSession: p3SessionRef.current !== null,
+        hasReusableStream: isReusableRehearsalMediaStream(stream),
+        isRecording: phase === "recording",
+        isRetrying: isLiveSttRetrying || coordinator.isRetrying(),
+        liveStatus,
+      }) ||
+      !stream
+    ) {
+      return false;
+    }
+
+    setIsLiveSttRetrying(true);
+    setLiveError("");
+    try {
+      return await coordinator.retry((isCurrent) =>
+        startP3Tracking(
+          stream,
+          activeRunRef.current?.evaluationSnapshot ?? undefined,
+          () =>
+            isCurrent() &&
+            streamRef.current === stream &&
+            isReusableRehearsalMediaStream(stream),
+        ),
+      );
+    } finally {
+      setIsLiveSttRetrying(false);
+    }
+  }
+
   function stopLiveDemo(options: { showCompletionModal?: boolean } = {}) {
     const wasLiveDemoActive = isLiveDemoActive || isLiveSttActive;
     setRehearsalRuntimeStatus("stopping");
@@ -2843,6 +2953,7 @@ export function RehearsalWorkspace(props: {
   function stopRecording() {
     if (phase !== "recording") return;
 
+    liveSttRetryCoordinatorRef.current.cancel();
     setRehearsalRuntimeStatus("stopping");
     setPhase("uploading");
     setIsTimerRunning(false);
@@ -3265,6 +3376,7 @@ export function RehearsalWorkspace(props: {
   async function startP3Tracking(
     stream: MediaStream,
     evaluationSnapshot?: RehearsalEvaluationSnapshot,
+    shouldContinue: () => boolean = () => true,
   ) {
     const deckSnapshot = deckRef.current ?? deck;
     const startSlideIndex = currentSlideIndexRef.current;
@@ -3275,8 +3387,14 @@ export function RehearsalWorkspace(props: {
     let port: LiveSttPort;
     try {
       const effectiveEngineId = await resolveEffectiveLiveSttEngine();
+      if (!shouldContinue()) {
+        return false;
+      }
       port = getOrCreateLiveSttPort(effectiveEngineId);
     } catch (cause) {
+      if (!shouldContinue()) {
+        return false;
+      }
       const error = toLiveSttError(cause);
       setLiveStatus(isLiveSttUnavailable(error) ? "unavailable" : "failed");
       setLiveError(error.message);
@@ -3351,7 +3469,16 @@ export function RehearsalWorkspace(props: {
         audioSource: stream,
         slideIndex: startSlideIndex,
       });
-      if (p3SessionRef.current !== session) {
+      const isStaleRetry = !shouldContinue();
+      if (p3SessionRef.current !== session || isStaleRetry) {
+        if (isStaleRetry) {
+          await session.stop().catch(() => null);
+        }
+        if (p3SessionRef.current === session) {
+          cleanupLiveSttSubscriptions();
+          p3SessionRef.current = null;
+          pendingP3SlideIndexRef.current = null;
+        }
         return false;
       }
       const latestSlideIndex =
@@ -3371,7 +3498,11 @@ export function RehearsalWorkspace(props: {
       setLiveStatus("listening");
       return true;
     } catch (cause) {
-      if (p3SessionRef.current !== session) {
+      const isStaleRetry = !shouldContinue();
+      if (p3SessionRef.current !== session || isStaleRetry) {
+        if (isStaleRetry) {
+          await session.stop().catch(() => null);
+        }
         return false;
       }
       cleanupLiveSttSubscriptions();
@@ -3624,7 +3755,11 @@ export function RehearsalWorkspace(props: {
     const matchingTranscript = shouldUseLiveSttPostprocessBias(biasMode)
       ? applyLiveTranscriptBias(transcript, biasContext)
       : transcript;
-    const analysis = evaluateLiveTranscript(slide, matchingTranscript);
+    const analysis = evaluateLiveTranscript(
+      slide,
+      matchingTranscript,
+      activeRunRef.current?.evaluationSnapshot?.pronunciationLexicon,
+    );
     const confirmedCommand = confirmRehearsalCommandCandidate(
       liveCommandConfirmationRef.current,
       detectRehearsalCommandCandidate(event),
@@ -3800,6 +3935,8 @@ export function RehearsalWorkspace(props: {
 
     const nextBiasContext = buildLiveSttBiasContext(slide, {
       nearbySlides: getNearbySlides(deckSnapshot, slideIndex),
+      pronunciationLexicon:
+        activeRunRef.current?.evaluationSnapshot?.pronunciationLexicon,
     });
     liveBiasContextRef.current = nextBiasContext;
     return nextBiasContext;
@@ -4292,13 +4429,27 @@ export function RehearsalWorkspace(props: {
         deck?.projectId ?? props.projectId ?? demoIds.projectId,
       )
     : null;
+  const liveSttStatusModel = buildRehearsalLiveSttStatusModel({
+    isRecording: phase === "recording",
+    liveError,
+    liveStatus,
+  });
+  const canRetryRecordingLiveStt = canRetryInitialRecordingLiveStt({
+    hasActiveSession: p3SessionRef.current !== null,
+    hasReusableStream: isReusableRehearsalMediaStream(streamRef.current),
+    isRecording: phase === "recording",
+    isRetrying:
+      isLiveSttRetrying || liveSttRetryCoordinatorRef.current.isRetrying(),
+    liveStatus,
+  });
   const rehearsalRuntimeStatusLabel =
     rehearsalRuntimeStatus === "paused"
       ? "일시정지됨"
-      : phase === "recording"
-      ? "녹음 · 음성 인식 중"
-      : isLiveSttActive
-        ? "음성 인식 중"
+      : phase === "recording" ||
+          isLiveSttActive ||
+          liveStatus === "failed" ||
+          liveStatus === "unavailable"
+        ? liveSttStatusModel.topbarLabel
         : isTimerRunning
           ? "리허설 진행 중"
           : "준비됨";
@@ -4960,10 +5111,20 @@ export function RehearsalWorkspace(props: {
             title="발표 스톱워치"
           />
 
+          {currentSlide?.kind !== "activity" ? (
+            <RehearsalLiveSttStatusNotice
+              canRetry={canRetryRecordingLiveStt}
+              isRetrying={isLiveSttRetrying}
+              model={liveSttStatusModel}
+              onRetry={() => void retryInitialRecordingLiveStt()}
+            />
+          ) : null}
+
           {currentSlide?.kind === "activity" && deck ? (
             <ActivityPresenterPanel
               autoStart
               deckId={deck.deckId}
+              deckVersion={deck.version}
               projectId={deck.projectId}
               slide={currentSlide}
             />
@@ -4994,136 +5155,136 @@ export function RehearsalWorkspace(props: {
                 setComparisonReminderState(dismissComparisonReminder)
               }
               liveSlot={
-              <section className="rehearsal-assist-card checklist-card">
-                <header>
-                  <span>
-                    <Mic size={16} />
-                    Live STT
-                  </span>
-                  <button type="button" aria-label="More checklist options">
-                    <MoreHorizontal size={18} />
-                  </button>
-                </header>
-
-                <div
-                  className={`rehearsal-live-status rehearsal-live-status-${liveStatus}`}
-                >
-                  <strong>{liveStatus}</strong>
-                  <span>
-                    {p3RunMeta
-                      ? `로컬 메타 ${p3RunMeta.slideTimeline.length}개 슬라이드`
-                      : advanceControllerState.status === "countdown"
-                        ? "자동 전환 카운트다운"
-                        : advanceControllerState.status === "blocked-by-builds"
-                          ? "빌드 대기"
-                          : advanceControllerState.status === "finish-suggested"
-                            ? "종료 제안"
-                            : "자동 전환 활성"}
-                  </span>
-                </div>
-
-                <AutoAdvanceStatus
-                  countdownMs={presenterSettings.advancePolicy.countdownMs}
-                  nowMs={autoAdvanceNowMs}
-                  onFinish={finishRehearsal}
-                  state={advanceControllerState}
-                />
-
-                <AutoAdvanceSettings
-                  policy={presenterSettings.advancePolicy}
-                  saveSettings={savePresenterSettings}
-                />
-
-                <div className="rehearsal-live-actions rehearsal-live-actions-legacy">
-                  <button
-                    className="primary-action"
-                    type="button"
-                    onClick={() => void startLiveDemo()}
-                    disabled={!canStartLiveDemo}
-                  >
-                    <Mic size={18} />
-                    Live STT 시작
-                  </button>
-                  <button
-                    className="secondary-action"
-                    type="button"
-                    onClick={() => stopLiveDemo({ showCompletionModal: true })}
-                    disabled={!canStopLiveDemo}
-                  >
-                    <Square size={18} />
-                    Live STT 종료
-                  </button>
-                </div>
-
-                <div
-                  className={`rehearsal-live-audio-meter rehearsal-live-audio-meter-${liveAudioMeterState}`}
-                >
-                  <div className="rehearsal-live-audio-meter-header">
-                    <span>Mic input</span>
-                    <strong>{liveAudioLevelLabel}</strong>
-                  </div>
-                  <div
-                    className="rehearsal-live-audio-meter-track"
-                    role="meter"
-                    aria-label="Mic input level"
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={Math.round(liveAudioLevelPercent)}
-                    aria-valuetext={liveAudioLevelLabel}
-                  >
-                    <span style={{ width: `${liveAudioLevelPercent}%` }} />
-                  </div>
-                  <small>
-                    {liveAudioLevel
-                      ? `${Math.round(liveAudioLevel.rmsDb)} dB RMS`
-                      : "-100 dB RMS"}
-                  </small>
-                </div>
-                {canDownloadLiveSttDebugPcm ? (
-                  <button
-                    className="secondary-action"
-                    type="button"
-                    onClick={() => {
-                      if (liveDebugPcmRecording) {
-                        downloadLiveSttDebugPcm(liveDebugPcmRecording);
-                      }
-                    }}
-                  >
-                    <Download size={16} />
-                    모델 입력 WAV 다운로드
-                  </button>
-                ) : null}
-
-                {liveCue && (
-                  <div className="job-status" aria-live="polite">
-                    <div>
-                      <strong>emphasis</strong>
-                      <span>{liveCue.text}</span>
-                    </div>
-                    <p>현재 슬라이드에서 키워드를 감지했습니다.</p>
-                  </div>
-                )}
-
-                {liveSlideAdvance && (
-                  <div className="project-status-message project-status-success">
-                    <CheckCircle2 size={18} />
+                <section className="rehearsal-assist-card checklist-card">
+                  <header>
                     <span>
-                      키워드 {Math.round(liveSlideAdvance.coverage * 100)}%
-                      감지로 자동 전환
+                      <Mic size={16} />
+                      Live STT
+                    </span>
+                    <button type="button" aria-label="More checklist options">
+                      <MoreHorizontal size={18} />
+                    </button>
+                  </header>
+
+                  <div
+                    className={`rehearsal-live-status rehearsal-live-status-${liveStatus}`}
+                  >
+                    <strong>{liveStatus}</strong>
+                    <span>
+                      {p3RunMeta
+                        ? `로컬 메타 ${p3RunMeta.slideTimeline.length}개 슬라이드`
+                        : advanceControllerState.status === "countdown"
+                          ? "자동 전환 카운트다운"
+                        : advanceControllerState.status === "blocked-by-builds"
+                            ? "빌드 대기"
+                          : advanceControllerState.status === "finish-suggested"
+                              ? "종료 제안"
+                              : "자동 전환 활성"}
                     </span>
                   </div>
-                )}
 
-                {liveError && (
-                  <div
-                    className="project-status-message project-status-danger"
-                    role="status"
-                  >
-                    <AlertCircle size={18} />
-                    <span>{liveError}</span>
+                  <AutoAdvanceStatus
+                    countdownMs={presenterSettings.advancePolicy.countdownMs}
+                    nowMs={autoAdvanceNowMs}
+                    onFinish={finishRehearsal}
+                    state={advanceControllerState}
+                  />
+
+                  <AutoAdvanceSettings
+                    policy={presenterSettings.advancePolicy}
+                    saveSettings={savePresenterSettings}
+                  />
+
+                  <div className="rehearsal-live-actions rehearsal-live-actions-legacy">
+                    <button
+                      className="primary-action"
+                      type="button"
+                      onClick={() => void startLiveDemo()}
+                      disabled={!canStartLiveDemo}
+                    >
+                      <Mic size={18} />
+                      Live STT 시작
+                    </button>
+                    <button
+                      className="secondary-action"
+                      type="button"
+                    onClick={() => stopLiveDemo({ showCompletionModal: true })}
+                      disabled={!canStopLiveDemo}
+                    >
+                      <Square size={18} />
+                      Live STT 종료
+                    </button>
                   </div>
-                )}
-              </section>
+
+                  <div
+                    className={`rehearsal-live-audio-meter rehearsal-live-audio-meter-${liveAudioMeterState}`}
+                  >
+                    <div className="rehearsal-live-audio-meter-header">
+                      <span>Mic input</span>
+                      <strong>{liveAudioLevelLabel}</strong>
+                    </div>
+                    <div
+                      className="rehearsal-live-audio-meter-track"
+                      role="meter"
+                      aria-label="Mic input level"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={Math.round(liveAudioLevelPercent)}
+                      aria-valuetext={liveAudioLevelLabel}
+                    >
+                      <span style={{ width: `${liveAudioLevelPercent}%` }} />
+                    </div>
+                    <small>
+                      {liveAudioLevel
+                        ? `${Math.round(liveAudioLevel.rmsDb)} dB RMS`
+                        : "-100 dB RMS"}
+                    </small>
+                  </div>
+                  {canDownloadLiveSttDebugPcm ? (
+                    <button
+                      className="secondary-action"
+                      type="button"
+                      onClick={() => {
+                        if (liveDebugPcmRecording) {
+                          downloadLiveSttDebugPcm(liveDebugPcmRecording);
+                        }
+                      }}
+                    >
+                      <Download size={16} />
+                      모델 입력 WAV 다운로드
+                    </button>
+                  ) : null}
+
+                  {liveCue && (
+                    <div className="job-status" aria-live="polite">
+                      <div>
+                        <strong>emphasis</strong>
+                        <span>{liveCue.text}</span>
+                      </div>
+                      <p>현재 슬라이드에서 키워드를 감지했습니다.</p>
+                    </div>
+                  )}
+
+                  {liveSlideAdvance && (
+                    <div className="project-status-message project-status-success">
+                      <CheckCircle2 size={18} />
+                      <span>
+                        키워드 {Math.round(liveSlideAdvance.coverage * 100)}%
+                        감지로 자동 전환
+                      </span>
+                    </div>
+                  )}
+
+                  {liveError && (
+                    <div
+                      className="project-status-message project-status-danger"
+                      role="status"
+                    >
+                      <AlertCircle size={18} />
+                      <span>{liveError}</span>
+                    </div>
+                  )}
+                </section>
               }
             />
           )}
@@ -5941,6 +6102,7 @@ export function RehearsalReportPage(props: {
 }) {
   const [deck, setDeck] = useState<Deck | null>(props.initialDeck ?? null);
   const [run, setRun] = useState<RehearsalRun | null>(props.initialRun ?? null);
+  const [audioPlaybackAvailable, setAudioPlaybackAvailable] = useState(true);
   const [report, setReport] = useState<RehearsalReport | null>(
     props.initialReport ?? null,
   );
@@ -5964,6 +6126,7 @@ export function RehearsalReportPage(props: {
 
   useEffect(() => {
     setRun(props.initialRun ?? null);
+    setAudioPlaybackAvailable(true);
     setReport(props.initialReport ?? null);
     setStatus(props.initialReport ? "ready" : "loading");
     setError("");
@@ -6006,6 +6169,9 @@ export function RehearsalReportPage(props: {
           props.projectId,
         );
         setRun(response.run);
+        setAudioPlaybackAvailable(
+          response.audioPlaybackAvailable ?? Boolean(response.run.audioFileId),
+        );
         setReport(nextState.status === "ready" ? response.report : null);
         setStatus(nextState.status);
         setError(nextState.error);
@@ -6021,6 +6187,9 @@ export function RehearsalReportPage(props: {
                 void fetchRehearsalReport(props.runId).then((r) => {
                   if (!isMounted) return;
                   setRun(r.run);
+                  setAudioPlaybackAvailable(
+                    r.audioPlaybackAvailable ?? Boolean(r.run.audioFileId),
+                  );
                   setReport(r.report);
                   setStatus(r.report ? "ready" : "failed");
                 });
@@ -6179,6 +6348,7 @@ export function RehearsalReportPage(props: {
             <RehearsalReportLoadingShell />
           ) : report ? (
             <RehearsalReportDocument
+              audioPlaybackAvailable={audioPlaybackAvailable}
               report={report}
               deck={deck}
               onSemanticRetry={handleSemanticRetry}
@@ -6712,6 +6882,8 @@ export function buildP3SessionSlides(
 ) {
   const deckSlidesById = new Map(deck.slides.map((slide) => [slide.slideId, slide]));
   const evaluationSlides = evaluationSnapshot?.slides ?? deck.slides;
+  const pronunciationEntries =
+    evaluationSnapshot?.pronunciationLexicon?.entries ?? [];
 
   return evaluationSlides.map((evaluationSlide) => {
     const slide = deckSlidesById.get(evaluationSlide.slideId);
@@ -6720,6 +6892,11 @@ export function buildP3SessionSlides(
       speakerNotes: slide?.speakerNotes ?? "",
       keywords: evaluationSlide.keywords ?? [],
       semanticCues: evaluationSlide.semanticCues ?? [],
+      pronunciationEntries: pronunciationEntries.filter((entry) =>
+        entry.scriptOccurrences.some(
+          (occurrence) => occurrence.slideId === evaluationSlide.slideId,
+        ),
+      ),
       controlPhrases: defaultRehearsalCommandConfig.flatMap(
         (command) => command.phrases,
       ),

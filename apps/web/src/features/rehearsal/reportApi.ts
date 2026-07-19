@@ -1,4 +1,8 @@
-import { demoIds, rehearsalRunComparisonSchema } from "@orbit/shared";
+import {
+  demoIds,
+  getRehearsalProjectSummaryResponseSchema,
+  rehearsalRunComparisonSchema,
+} from "@orbit/shared";
 import type {
   Project,
   RehearsalProjectSummary,
@@ -35,8 +39,10 @@ export async function fetchProjectRehearsalSummary(
   if (!response.ok) {
     throw new Error(`리허설 요약을 불러오지 못했습니다. (${response.status})`);
   }
-  const data = (await response.json()) as { summary: RehearsalProjectSummary | null };
-  return data.summary ?? null;
+  const data = getRehearsalProjectSummaryResponseSchema.parse(
+    await response.json(),
+  );
+  return data.summary;
 }
 
 export async function fetchProjectRehearsalReportRuns(

@@ -7,7 +7,10 @@ import type {
   BrowserSpeechRecognitionGlobal
 } from "./browserSpeechRecognition";
 import type { LiveSttResult } from "./liveSttPort";
-import { WebSpeechLiveSttPort } from "./webSpeechLiveSttPort";
+import {
+  WEB_SPEECH_ON_DEVICE_POLICY,
+  WebSpeechLiveSttPort
+} from "./webSpeechLiveSttPort";
 
 runLiveSttPortContractTests("WebSpeech", () => {
   const recognition = new FakeSpeechRecognition({ phrases: [] });
@@ -88,12 +91,30 @@ describe("WebSpeechLiveSttPort", () => {
     expect(FakeSpeechRecognition.installCalls).toEqual([]);
   });
 
-  it("config.audioSource의 live audio track으로 recognition을 시작한다", async () => {
+  it("온디바이스 인식은 Chrome의 기본 마이크 경로로 시작한다", async () => {
     const recognition = new FakeSpeechRecognition();
     const audioTrack = fakeMediaStreamTrack("audio", "live");
     const port = new WebSpeechLiveSttPort({
       createRecognition: () => recognition,
       recognitionConstructor: FakeSpeechRecognition,
+      now: () => 1000
+    });
+
+    await port.start({
+      language: "ko",
+      audioSource: fakeMediaStream([audioTrack])
+    });
+
+    expect(recognition.startCalls).toEqual([undefined]);
+  });
+
+  it("명시적 원격 모드에서는 config.audioSource의 live audio track을 사용한다", async () => {
+    const recognition = new FakeSpeechRecognition();
+    const audioTrack = fakeMediaStreamTrack("audio", "live");
+    const port = new WebSpeechLiveSttPort({
+      consentGranted: true,
+      createRecognition: () => recognition,
+      processLocally: false,
       now: () => 1000
     });
 
@@ -124,7 +145,7 @@ describe("WebSpeechLiveSttPort", () => {
 
     expect(recognition.lang).toBe("ko-KR");
     expect(recognition.processLocally).toBe(true);
-    expect(recognition.startCalls).toEqual([audioTrack, audioTrack]);
+    expect(recognition.startCalls).toEqual([undefined, undefined]);
   });
 
   it("명시적으로 stop하면 Web Speech 세션을 재시작하지 않는다", async () => {
@@ -274,18 +295,12 @@ describe("WebSpeechLiveSttPort", () => {
       biasPhrases: [{ text: "오르빗", weight: 1 }]
     });
 
-    expect(recognition.phrases).toEqual([
-      new FakeSpeechRecognitionPhrase("오르빗", 5)
-    ]);
+    expect(recognition.phrases).toEqual([new FakeSpeechRecognitionPhrase("오르빗", 5)]);
 
     port.updateBiasPhrases([{ text: "결재", weight: 0.45 }]);
 
-    expect(recognition.phrases).toEqual([
-      new FakeSpeechRecognitionPhrase("결재", 2.8)
-    ]);
-    expect(port.readBiasPhrasesForTest()).toEqual([
-      { text: "결재", weight: 0.45 }
-    ]);
+    expect(recognition.phrases).toEqual([new FakeSpeechRecognitionPhrase("결재", 2.8)]);
+    expect(port.readBiasPhrasesForTest()).toEqual([{ text: "결재", weight: 0.45 }]);
   });
 
   it("phrases 미지원 환경에서는 no-op으로 시작한다", async () => {
@@ -323,6 +338,18 @@ describe("WebSpeechLiveSttPort", () => {
     expect(FakeSpeechRecognition.installCalls).toEqual([
       { langs: ["ko-KR"], processLocally: true, quality: "command" }
     ]);
+    expect(FakeSpeechRecognition.availableCalls).toEqual([
+      { langs: ["ko-KR"], processLocally: true, quality: "command" },
+      { langs: ["ko-KR"], processLocally: true, quality: "command" }
+    ]);
+  });
+
+  it("온디바이스 정책을 command로 고정하고 런타임 변경을 막는다", () => {
+    expect(WEB_SPEECH_ON_DEVICE_POLICY).toEqual({
+      processLocally: true,
+      quality: "command"
+    });
+    expect(Object.isFrozen(WEB_SPEECH_ON_DEVICE_POLICY)).toBe(true);
   });
 
   it("processLocally를 지원하지 않으면 unsupported_runtime 오류를 던진다", async () => {
@@ -385,6 +412,9 @@ class FakeSpeechRecognition {
 
   static async install(options: BrowserSpeechRecognitionAvailabilityOptions) {
     FakeSpeechRecognition.installCalls.push(options);
+    if (FakeSpeechRecognition.installResult) {
+      FakeSpeechRecognition.availableResult = "available";
+    }
     return FakeSpeechRecognition.installResult;
   }
 
@@ -485,9 +515,6 @@ function fakeMediaStream(tracks: MediaStreamTrack[] = []) {
   } as unknown as MediaStream;
 }
 
-function fakeMediaStreamTrack(
-  kind: string,
-  readyState: MediaStreamTrackState
-) {
+function fakeMediaStreamTrack(kind: string, readyState: MediaStreamTrackState) {
   return { kind, readyState } as MediaStreamTrack;
 }

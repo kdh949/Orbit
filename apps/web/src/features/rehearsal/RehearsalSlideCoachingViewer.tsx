@@ -1,8 +1,8 @@
 import type { Deck, RehearsalReport } from "@orbit/shared";
-import { ChevronLeft, ChevronRight, FileText, StickyNote } from "lucide-react";
+import { ChevronLeft, ChevronRight, StickyNote } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { resolveEditorAssetUrl } from "../editor/shared/editorAssetUrl";
+import { RehearsalSlideCanvasPreview } from "./RehearsalSlideCanvasPreview";
 import { buildRehearsalSlideAnalysisCards } from "./rehearsalSlideAnalysisModel";
 import "./rehearsal-slide-coaching-viewer.css";
 
@@ -104,11 +104,11 @@ export function RehearsalSlideCoachingViewer({
 
           <div className="rrd-slide-coaching-carousel">
             <div className="rrd-slide-coaching-peek is-previous" aria-hidden="true">
-              {previousSlide ? <SlidePreview slide={previousSlide} variant="peek" /> : null}
+              {previousSlide ? <SlidePreview deck={deck} slide={previousSlide} variant="peek" /> : null}
             </div>
-            <SlidePreview slide={slide} variant="main" />
+            <SlidePreview deck={deck} slide={slide} variant="main" />
             <div className="rrd-slide-coaching-peek is-next" aria-hidden="true">
-              {nextSlide ? <SlidePreview slide={nextSlide} variant="peek" /> : null}
+              {nextSlide ? <SlidePreview deck={deck} slide={nextSlide} variant="peek" /> : null}
             </div>
           </div>
 
@@ -234,27 +234,24 @@ function getPriorityRank(priority: SlidePriority) {
 }
 
 function SlidePreview({
+  deck,
   slide,
   variant,
 }: {
+  deck: Deck;
   slide: Deck["slides"][number];
   variant: "main" | "peek";
 }) {
-  const thumbnailUrl = slide.thumbnailUrl
-    ? resolveEditorAssetUrl(slide.thumbnailUrl)
-    : "";
+  const slideLabel = slide.title || `슬라이드 ${slide.order}`;
 
   return (
     <div className={`rrd-slide-coaching-preview is-${variant}`}>
-      {thumbnailUrl ? (
-        <img src={thumbnailUrl} alt={`${slide.title || `슬라이드 ${slide.order}`} 미리보기`} />
-      ) : (
-        <div className="rrd-slide-coaching-placeholder">
-          <FileText aria-hidden="true" size={28} />
-          <strong>{slide.title || `슬라이드 ${slide.order}`}</strong>
-          <span>저장된 장표 미리보기가 없습니다.</span>
-        </div>
-      )}
+      <RehearsalSlideCanvasPreview
+        ariaHidden={variant === "peek"}
+        deck={deck}
+        label={`${slideLabel} 미리보기`}
+        slide={slide}
+      />
     </div>
   );
 }

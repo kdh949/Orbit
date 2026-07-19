@@ -44,10 +44,6 @@ export function SelectionInspector(props: SelectionInspectorProps) {
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
-      <header className="selection-inspector-header">
-        <span>현재 선택</span>
-        <strong>{summary.heading}</strong>
-      </header>
       {props.canEdit ? (
         controls
       ) : (

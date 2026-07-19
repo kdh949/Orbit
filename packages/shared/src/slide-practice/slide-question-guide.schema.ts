@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { isoDateTimeSchema } from "../common/time.schema";
+import { deckSnapshotIdSchema } from "../deck/deck-api.schema";
+import type { Slide } from "../deck/deck.schema";
 import { jobSchema } from "../jobs/job.schema";
 
 const identifierSchema = z.string().trim().min(1).max(128);
@@ -42,12 +44,38 @@ export const slideQuestionSourceRefSchema = z.discriminatedUnion("kind", [
 ]);
 
 export const slideQuestionGuideSourceSnapshotSchema = z.object({
+  deckSnapshotId: deckSnapshotIdSchema.optional(),
+  contentHashVersion: z.literal("slide-text-v1").optional(),
   slideId: identifierSchema,
   deckVersion: z.number().int().positive(),
   contentHash: z.string().regex(/^[a-f0-9]{64}$/),
   title: z.string().trim().max(500),
   content: z.string().trim().max(8_000),
 }).strict();
+
+export function slideQuestionGuideTextHashInput(slide: Slide) {
+  const textSegments: string[] = [];
+  const visit = (value: unknown, key = "") => {
+    if (typeof value === "string" && ["alt", "text", "title"].includes(key)) {
+      if (value.trim()) textSegments.push(value.trim());
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item) => visit(item, key));
+      return;
+    }
+    if (value && typeof value === "object") {
+      Object.entries(value)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .forEach(([childKey, child]) => visit(child, childKey));
+    }
+  };
+  visit(slide);
+  return {
+    speakerNotes: slide.speakerNotes.trim(),
+    textSegments: Array.from(new Set(textSegments)),
+  };
+}
 
 export const slideQuestionGuideDeckContextSlideSchema = z.object({
   slideId: identifierSchema,
@@ -168,6 +196,13 @@ export const createSlideQuestionGuideRequestSchema = z.object({
   questionCount: z.literal(3),
 }).strict();
 
+export const autoCreateSlideQuestionGuidesRequestSchema = z.object({
+  clientRequestId: identifierSchema,
+  deckId: identifierSchema,
+  expectedDeckVersion: z.number().int().positive(),
+  questionCount: z.literal(3),
+}).strict();
+
 export const slideQuestionGuideJobPayloadSchema = z.object({
   jobId: identifierSchema,
   projectId: identifierSchema,
@@ -219,6 +254,24 @@ export const slideQuestionGuideJobResponseSchema = z.object({
   guideId: identifierSchema,
 }).strict();
 
+export const autoCreateSlideQuestionGuidesResponseSchema = z.object({
+  deckId: identifierSchema,
+  deckVersion: z.number().int().positive(),
+  slides: z.array(z.discriminatedUnion("status", [
+    z.object({
+      status: z.literal("accepted"),
+      slideId: identifierSchema,
+      guideId: identifierSchema,
+      job: jobSchema,
+    }).strict(),
+    z.object({
+      status: z.literal("failed"),
+      slideId: identifierSchema,
+      errorCode: z.string().trim().min(1).max(100),
+    }).strict(),
+  ])).max(500),
+}).strict();
+
 export const slideQuestionGuideListResponseSchema = z.object({
   guides: z.array(slideQuestionGuideSchema).max(50),
 }).strict();
@@ -226,5 +279,7 @@ export const slideQuestionGuideListResponseSchema = z.object({
 export type SlideQuestionGuideItem = z.infer<typeof slideQuestionGuideItemSchema>;
 export type SlideQuestionGuide = z.infer<typeof slideQuestionGuideSchema>;
 export type CreateSlideQuestionGuideRequest = z.infer<typeof createSlideQuestionGuideRequestSchema>;
+export type AutoCreateSlideQuestionGuidesRequest = z.infer<typeof autoCreateSlideQuestionGuidesRequestSchema>;
+export type AutoCreateSlideQuestionGuidesResponse = z.infer<typeof autoCreateSlideQuestionGuidesResponseSchema>;
 export type SlideQuestionGuideJobPayload = z.infer<typeof slideQuestionGuideJobPayloadSchema>;
 export type SlideQuestionGuideJobResult = z.infer<typeof slideQuestionGuideJobResultSchema>;

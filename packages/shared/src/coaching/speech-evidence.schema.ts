@@ -163,7 +163,6 @@ export const rehearsalReportMeasurementsSchema = z
       ["charactersPerMinute", 1],
       ["wordsPerMinute", 1],
       ["fillerWordCount", 1],
-      ["longSilenceCount", 1],
       ["keywordCoverage", 1],
     ] as const;
 
@@ -176,6 +175,18 @@ export const rehearsalReportMeasurementsSchema = z
         });
       }
     });
+
+    if (
+      ![1, 2].includes(
+        measurements.longSilenceCount.metricDefinitionVersion,
+      )
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "long silence measurement must use a supported metric version.",
+        path: ["longSilenceCount", "metricDefinitionVersion"],
+      });
+    }
   });
 
 export const rehearsalReportAnalysisCapabilitiesSchema = z

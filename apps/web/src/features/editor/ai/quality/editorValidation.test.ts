@@ -1,6 +1,9 @@
 import type { Deck } from "@orbit/shared";
 import { describe, expect, it } from "vitest";
-import { getEditorValidationItems } from "./editorValidation";
+import {
+  getEditorValidationItems,
+  getMinimumPresentationFontSize
+} from "./editorValidation";
 
 const designPackDeck: Deck = {
   deckId: "deck_design_pack_quality",
@@ -803,5 +806,84 @@ describe("editor design-pack validation", () => {
     expect(
       getEditorValidationItems(deck, slide).filter((item) => item.issue === "labelWrap")
     ).toEqual([]);
+  });
+
+  it("attaches a slide reference to every element-target validation item", () => {
+    const deck = structuredClone(designPackDeck);
+    const slide = deck.slides[0];
+    const body = slide.elements.find(
+      (element) => element.type === "text" && element.role === "body"
+    );
+    if (!body || body.type !== "text") throw new Error("body fixture missing");
+    body.height = 12;
+
+    const elementItems = getEditorValidationItems(deck, slide).filter(
+      (item) => item.elementId || item.elementIds?.length
+    );
+
+    expect(elementItems.length).toBeGreaterThan(0);
+    expect(elementItems.every((item) => item.slideId === slide.slideId)).toBe(true);
+  });
+
+  it("identifies overlap as a first-class validation issue with every target", () => {
+    const deck = structuredClone(designPackDeck);
+    const slide = deck.slides[0];
+    const title = slide.elements.find(
+      (element) => element.type === "text" && element.role === "title"
+    );
+    const body = slide.elements.find(
+      (element) => element.type === "text" && element.role === "body"
+    );
+    if (!title || title.type !== "text" || !body || body.type !== "text") {
+      throw new Error("text fixtures missing");
+    }
+    Object.assign(body, {
+      x: title.x,
+      y: title.y,
+      width: title.width,
+      height: title.height
+    });
+
+    expect(getEditorValidationItems(deck, slide)).toContainEqual(
+      expect.objectContaining({
+        issue: "textOverlap",
+        elementIds: expect.arrayContaining([title.elementId, body.elementId]),
+        slideId: slide.slideId
+      })
+    );
+  });
+
+  it("keeps identical messages for distinct element targets", () => {
+    const deck = structuredClone(designPackDeck);
+    const slide = deck.slides[0];
+    const textElements = slide.elements.filter(
+      (element) => element.type === "text"
+    );
+    const first = textElements[0];
+    const second = textElements[1];
+    if (!first || !second || first.type !== "text" || second.type !== "text") {
+      throw new Error("text fixtures missing");
+    }
+    first.height = 1;
+    second.height = 1;
+
+    const overflowIds = getEditorValidationItems(deck, slide)
+      .filter((item) => item.issue === "textOverflow")
+      .map((item) => item.elementId);
+
+    expect(overflowIds).toEqual(
+      expect.arrayContaining([first.elementId, second.elementId])
+    );
+  });
+
+  it("shares the role-specific minimum font policy with repair callers", () => {
+    expect(getMinimumPresentationFontSize(0, "title")).toBe(44);
+    expect(getMinimumPresentationFontSize(2, "title")).toBe(32);
+    expect(getMinimumPresentationFontSize(1, "body")).toBe(18);
+    expect(getMinimumPresentationFontSize(1, "highlight")).toBe(18);
+    expect(getMinimumPresentationFontSize(1, "subtitle")).toBe(18);
+    expect(getMinimumPresentationFontSize(1, "caption")).toBe(14);
+    expect(getMinimumPresentationFontSize(1, "footer")).toBe(12);
+    expect(getMinimumPresentationFontSize(1, undefined)).toBe(12);
   });
 });

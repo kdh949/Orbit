@@ -1,10 +1,11 @@
 import type {
   EnqueueRehearsalSemanticEvaluationJobInput,
-  EnqueueRehearsalSttJobInput
+  EnqueueRehearsalSttJobInput,
 } from "@orbit/job-queue";
 import { loadOrbitConfig } from "@orbit/config";
 import {
   completeRehearsalAudioUploadRequestSchema,
+  createRehearsalAudioClipRequestSchema,
   completeRehearsalAudioUploadResponseSchema,
   cancelRehearsalRunResponseSchema,
   createRehearsalEvaluationSnapshot,
@@ -25,7 +26,7 @@ import {
   updateRehearsalRunMetaResponseSchema,
   type RehearsalEvaluationSnapshot,
   type RehearsalFocusProfile,
-  type RehearsalRun
+  type RehearsalRun,
 } from "@orbit/shared";
 import {
   BadRequestException,
@@ -34,10 +35,10 @@ import {
   Inject,
   Injectable,
   NotFoundException,
-  UnprocessableEntityException
+  UnprocessableEntityException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { InjectPinoLogger, PinoLogger } from "nestjs-pino";
 import { LessThan, Not, Repository } from "typeorm";
 import { ZodError } from "zod";
@@ -56,12 +57,15 @@ import {
   deckContentHash,
 } from "../practice-goals/evaluation-plan";
 import { RehearsalRunEntity } from "./rehearsal-run.entity";
+import { buildRehearsalProjectSummary } from "./rehearsal-project-summary";
 import { RedisRehearsalTranscriptCache } from "./rehearsal-transcript-cache";
 import { buildRehearsalRunComparison } from "./rehearsal-run-comparison";
 
-export type RehearsalSttEnqueueJob = (input: EnqueueRehearsalSttJobInput) => Promise<void>;
+export type RehearsalSttEnqueueJob = (
+  input: EnqueueRehearsalSttJobInput,
+) => Promise<void>;
 export type RehearsalSemanticEvaluationEnqueueJob = (
-  input: EnqueueRehearsalSemanticEvaluationJobInput
+  input: EnqueueRehearsalSemanticEvaluationJobInput,
 ) => Promise<void>;
 
 export const REHEARSAL_STT_ENQUEUE_JOB = "REHEARSAL_STT_ENQUEUE_JOB";
@@ -74,9 +78,10 @@ const playbackUrlMaximumExpiresInSeconds = 15 * 60;
 @Injectable()
 export class RehearsalsService {
   private readonly config = loadOrbitConfig(process.env, { service: "api" });
-  private readonly rehearsalAudioUploadRequestSchema = createAssetUploadUrlRequestSchema({
+  private readonly rehearsalAudioUploadRequestSchema =
+    createAssetUploadUrlRequestSchema({
     maxRehearsalAudioUploadSizeBytes: this.config.REHEARSAL_AUDIO_MAX_BYTES,
-    allowedPrivatePurpose: "rehearsal-audio"
+      allowedPrivatePurpose: "rehearsal-audio",
   });
 
   constructor(
@@ -95,7 +100,7 @@ export class RehearsalsService {
     private readonly enqueueSemanticEvaluationJob: RehearsalSemanticEvaluationEnqueueJob,
     private readonly transcriptCache: RedisRehearsalTranscriptCache,
     @InjectPinoLogger(RehearsalsService.name)
-    private readonly logger: PinoLogger
+    private readonly logger: PinoLogger,
   ) {}
 
   async createRun(projectId: string, body: unknown) {
@@ -112,33 +117,41 @@ export class RehearsalsService {
     ) {
       throw new ConflictException({
         code: "REHEARSAL_DECK_VERSION_MISMATCH",
-        message: "The expected deck version does not match the server deck version.",
+        message:
+          "The expected deck version does not match the server deck version.",
         expectedDeckVersion: request.expectedDeckVersion,
-        actualDeckVersion: deckResponse.deck.version
+        actualDeckVersion: deckResponse.deck.version,
       });
     }
 
     const now = new Date();
     const adaptiveBrief = request.briefRef
-      ? await this.resolveAdaptiveBrief(projectId, request.briefRef, request.evaluatorLensRef)
+      ? await this.resolveAdaptiveBrief(
+          projectId,
+          request.briefRef,
+          request.evaluatorLensRef,
+        )
       : undefined;
     const focusProfile = request.briefRef
       ? await this.resolveFocusProfile(projectId)
       : null;
     const sourceGoalSetRef = request.briefRef
-      ? await this.resolveSourceGoalSetRef(projectId, request.sourceGoalSetId ?? null)
+      ? await this.resolveSourceGoalSetRef(
+          projectId,
+          request.sourceGoalSetId ?? null,
+        )
       : null;
     const evaluationPlan = request.briefRef
       ? buildRehearsalEvaluationPlan({
           deck: deckResponse.deck,
           brief: adaptiveBrief ?? null,
-          sourceGoalSetRef
+          sourceGoalSetRef,
         })
       : null;
     const slideThumbnailUrls = await this.resolveSlideSnapshotUrls(
       projectId,
       deckResponse.deck.slides.map((slide) => slide.slideId),
-      request.slideSnapshots
+      request.slideSnapshots,
     );
     let evaluationSnapshot: RehearsalEvaluationSnapshot | null = null;
     if (request.semanticEvaluationMode === "full") {
@@ -147,17 +160,20 @@ export class RehearsalsService {
           deckResponse.deck,
           now.toISOString(),
           {
-            deckContentHash: evaluationPlan ? deckContentHash(deckResponse.deck) : null,
+            deckContentHash: evaluationPlan
+              ? deckContentHash(deckResponse.deck)
+              : null,
             evaluationPlan,
-            focusProfileSnapshot: createRehearsalFocusProfileSnapshot(focusProfile),
-            slideThumbnailUrls
-          }
+            focusProfileSnapshot:
+              createRehearsalFocusProfileSnapshot(focusProfile),
+            slideThumbnailUrls,
+          },
         );
         if (evaluationPlan) {
           assertFrozenRehearsalEvaluationSources({
             snapshot: evaluationSnapshot,
             brief: adaptiveBrief ?? null,
-            focusProfile
+            focusProfile,
           });
         }
       } catch (error) {
@@ -172,14 +188,14 @@ export class RehearsalsService {
             deckId: request.deckId,
             issues: error.issues.map((issue) => ({
               code: issue.code,
-              path: issue.path
-            }))
+              path: issue.path,
+            })),
           },
-          "Rehearsal evaluation snapshot validation failed."
+          "Rehearsal evaluation snapshot validation failed.",
         );
         throw new UnprocessableEntityException({
           code: "REHEARSAL_DECK_INVALID",
-          message: "The presentation could not be prepared for rehearsal."
+          message: "The presentation could not be prepared for rehearsal.",
         });
       }
     }
@@ -205,8 +221,8 @@ export class RehearsalsService {
         rawAudioDeletedAt: null,
         rawAudioDeleteDeadlineAt: null,
         createdAt: now,
-        updatedAt: now
-      })
+        updatedAt: now,
+      }),
     );
 
     if (evaluationSnapshot) {
@@ -220,10 +236,10 @@ export class RehearsalsService {
           slideCount: evaluationSnapshot.slides.length,
           cueCount: evaluationSnapshot.slides.reduce(
             (count, slide) => count + slide.semanticCues.length,
-            0
-          )
+            0,
+          ),
         },
-        "Rehearsal evaluation snapshot created."
+        "Rehearsal evaluation snapshot created.",
       );
     }
 
@@ -231,7 +247,7 @@ export class RehearsalsService {
   }
 
   private async resolveFocusProfile(
-    projectId: string
+    projectId: string,
   ): Promise<RehearsalFocusProfile | null> {
     const rows = await this.rehearsalRuns.query(
       `SELECT profile_id, project_id, revision, items_json,
@@ -239,7 +255,7 @@ export class RehearsalsService {
        FROM rehearsal_focus_profiles
        WHERE project_id = $1
        LIMIT 1`,
-      [projectId]
+      [projectId],
     );
     const row = Array.isArray(rows) ? rows[0] : null;
     if (!row || typeof row !== "object") return null;
@@ -252,14 +268,14 @@ export class RehearsalsService {
       createdBy: value.created_by,
       updatedBy: value.updated_by,
       createdAt: databaseDateToIso(value.created_at),
-      updatedAt: databaseDateToIso(value.updated_at)
+      updatedAt: databaseDateToIso(value.updated_at),
     });
   }
 
   private async resolveSlideSnapshotUrls(
     projectId: string,
     deckSlideIds: readonly string[],
-    snapshots: readonly { slideId: string; fileId: string }[] | undefined
+    snapshots: readonly { slideId: string; fileId: string }[] | undefined,
   ) {
     const urls = new Map<string, string>();
     if (!snapshots?.length) {
@@ -270,22 +286,24 @@ export class RehearsalsService {
     for (const snapshot of snapshots) {
       if (!validSlideIds.has(snapshot.slideId)) {
         throw new BadRequestException(
-          `slideSnapshots references an unknown slideId: ${snapshot.slideId}`
+          `slideSnapshots references an unknown slideId: ${snapshot.slideId}`,
         );
       }
 
       const asset = await this.filesService.getUploadedAsset(
         projectId,
         snapshot.fileId,
-        "rehearsal-slide-snapshot"
+        "rehearsal-slide-snapshot",
       );
       if (!asset.mimeType.startsWith("image/")) {
-        throw new BadRequestException("Rehearsal slide snapshots must be image assets.");
+        throw new BadRequestException(
+          "Rehearsal slide snapshots must be image assets.",
+        );
       }
 
       urls.set(
         snapshot.slideId,
-        `/api/v1/projects/${encodeURIComponent(projectId)}/assets/${encodeURIComponent(snapshot.fileId)}/content`
+        `/api/v1/projects/${encodeURIComponent(projectId)}/assets/${encodeURIComponent(snapshot.fileId)}/content`,
       );
     }
 
@@ -294,19 +312,27 @@ export class RehearsalsService {
 
   private async resolveAdaptiveBrief(
     projectId: string,
-    briefRef: { mode: "generic" } | { mode: "briefed"; briefId: string; expectedRevision: number },
+    briefRef:
+      | { mode: "generic" }
+      | { mode: "briefed"; briefId: string; expectedRevision: number },
     evaluatorLensRef:
-      | { lensId: "general-novice" | "decision-maker" | "strict-reviewer"; revision: 1 }
-      | undefined
+      | {
+          lensId: "general-novice" | "decision-maker" | "strict-reviewer";
+          revision: 1;
+        }
+      | undefined,
   ) {
     if (!evaluatorLensRef) {
-      throw new BadRequestException("Evaluator Lens is required for adaptive rehearsal.");
+      throw new BadRequestException(
+        "Evaluator Lens is required for adaptive rehearsal.",
+      );
     }
     if (briefRef.mode === "generic") {
       if (evaluatorLensRef.lensId !== "general-novice") {
         throw new ConflictException({
           code: "SOURCE_INCOMPATIBLE",
-          message: "Generic rehearsal must use the general novice evaluator lens."
+          message:
+            "Generic rehearsal must use the general novice evaluator lens.",
         });
       }
       return null;
@@ -322,13 +348,16 @@ export class RehearsalsService {
     ) {
       throw new ConflictException({
         code: "SOURCE_INCOMPATIBLE",
-        message: "Brief or evaluator lens revision is no longer current."
+        message: "Brief or evaluator lens revision is no longer current.",
       });
     }
     return brief;
   }
 
-  private async resolveSourceGoalSetRef(projectId: string, goalSetId: string | null) {
+  private async resolveSourceGoalSetRef(
+    projectId: string,
+    goalSetId: string | null,
+  ) {
     if (!goalSetId) return null;
     const rows = await this.rehearsalRuns.manager.query(
       `
@@ -341,20 +370,28 @@ export class RehearsalsService {
           AND sets.goal_set_id = $2
           AND sets.analysis_state = 'final'
       `,
-      [projectId, goalSetId]
+      [projectId, goalSetId],
     );
     const row = Array.isArray(rows) ? rows[0] : undefined;
-    if (!row || typeof row.goal_set_id !== "string" || typeof row.revision !== "number") {
+    if (
+      !row ||
+      typeof row.goal_set_id !== "string" ||
+      typeof row.revision !== "number"
+    ) {
       throw new ConflictException({
         code: "SOURCE_INCOMPATIBLE",
-        message: "The selected practice goal set is no longer current and final."
+        message:
+          "The selected practice goal set is no longer current and final.",
       });
     }
     return { goalSetId: row.goal_set_id, revision: row.revision };
   }
 
   async createAudioUploadUrl(runId: string, body: unknown) {
-    const request = parseRequest(createRehearsalAudioUploadUrlRequestSchema, body);
+    const request = parseRequest(
+      createRehearsalAudioUploadUrlRequestSchema,
+      body,
+    );
     const run = await this.getRunEntity(runId);
 
     if (!["created", "uploading"].includes(run.status)) {
@@ -365,9 +402,9 @@ export class RehearsalsService {
       run.projectId,
       parseRequest(this.rehearsalAudioUploadRequestSchema, {
         ...request,
-        purpose: "rehearsal-audio"
+        purpose: "rehearsal-audio",
       }),
-      { runId: run.runId, createdAt: run.createdAt }
+      { runId: run.runId, createdAt: run.createdAt },
     );
 
     run.audioFileId = upload.fileId;
@@ -378,26 +415,39 @@ export class RehearsalsService {
 
     return createRehearsalAudioUploadUrlResponseSchema.parse({
       run: toRehearsalRun(savedRun),
-      upload
+      upload,
     });
   }
 
   async completeAudioUpload(runId: string, body: unknown) {
-    const request = parseRequest(completeRehearsalAudioUploadRequestSchema, body);
+    const request = parseRequest(
+      completeRehearsalAudioUploadRequestSchema,
+      body,
+    );
     const run = await this.getRunEntity(runId);
 
     if (run.status !== "uploading") {
-      throw new BadRequestException("Rehearsal run has no pending audio upload.");
+      throw new BadRequestException(
+        "Rehearsal run has no pending audio upload.",
+      );
     }
 
     if (run.audioFileId !== request.fileId) {
       throw new BadRequestException("fileId does not match the rehearsal run.");
     }
 
-    await this.filesService.completeUpload(run.projectId, {
-      fileId: request.fileId
-    }, "rehearsal-audio");
-    await this.filesService.getUploadedAsset(run.projectId, request.fileId, "rehearsal-audio");
+    await this.filesService.completeUpload(
+      run.projectId,
+      {
+        fileId: request.fileId,
+      },
+      "rehearsal-audio",
+    );
+    await this.filesService.getUploadedAsset(
+      run.projectId,
+      request.fileId,
+      "rehearsal-audio",
+    );
 
     const rawAudioDeleteDeadlineAt = new Date(
       Date.now() + rehearsalAudioRetentionMs,
@@ -408,7 +458,9 @@ export class RehearsalsService {
       rawAudioDeleteDeadlineAt,
     );
     if (!claimedRun) {
-      throw new BadRequestException("Rehearsal run has no pending audio upload.");
+      throw new BadRequestException(
+        "Rehearsal run has no pending audio upload.",
+      );
     }
 
     const queuedJob = await this.jobsService.create({
@@ -417,8 +469,8 @@ export class RehearsalsService {
       payload: {
         audioFileId: request.fileId,
         deckId: run.deckId,
-        runId: run.runId
-      }
+        runId: run.runId,
+      },
     });
 
     claimedRun.jobId = queuedJob.jobId;
@@ -433,7 +485,7 @@ export class RehearsalsService {
         projectId: run.projectId,
         runId: run.runId,
         deckId: run.deckId,
-        audioFileId: request.fileId
+        audioFileId: request.fileId,
       });
 
       this.logger.info(
@@ -445,22 +497,26 @@ export class RehearsalsService {
           runId: claimedRun.runId,
           deckId: claimedRun.deckId,
           audioFileId: request.fileId,
-          driver: this.config.JOB_QUEUE_DRIVER
+          driver: this.config.JOB_QUEUE_DRIVER,
         },
-        "Rehearsal STT job enqueued."
+        "Rehearsal STT job enqueued.",
       );
 
       return completeRehearsalAudioUploadResponseSchema.parse({
         run: toRehearsalRun(claimedRun),
-        job: queuedJob
+        job: queuedJob,
       });
     } catch (error) {
-      const failure = await this.cleanupAfterEnqueueFailure(claimedRun, request.fileId, error);
+      const failure = await this.cleanupAfterEnqueueFailure(
+        claimedRun,
+        request.fileId,
+        error,
+      );
       await this.jobsService.update(queuedJob.jobId, {
         status: "failed",
         progress: 0,
         message: failure.jobMessage,
-        error: failure.error
+        error: failure.error,
       });
       claimedRun.status = "failed";
       claimedRun.error = failure.error;
@@ -477,10 +533,12 @@ export class RehearsalsService {
           deckId: claimedRun.deckId,
           audioFileId: request.fileId,
           driver: this.config.JOB_QUEUE_DRIVER,
-          cleanupError: failure.cleanupError ? serializeLogError(failure.cleanupError) : undefined,
-          error: serializeLogError(error)
+          cleanupError: failure.cleanupError
+            ? serializeLogError(failure.cleanupError)
+            : undefined,
+          error: serializeLogError(error),
         },
-        "Rehearsal STT enqueue failed."
+        "Rehearsal STT enqueue failed.",
       );
       throw error;
     }
@@ -491,25 +549,31 @@ export class RehearsalsService {
     const run = await this.getRunEntity(runId);
 
     if (!["created", "uploading"].includes(run.status)) {
-      throw new BadRequestException("Rehearsal run is not accepting meta updates.");
+      throw new BadRequestException(
+        "Rehearsal run is not accepting meta updates.",
+      );
     }
 
     run.metaJson = request;
     run.updatedAt = new Date();
     const savedRun = await this.rehearsalRuns.save(run);
 
-    return updateRehearsalRunMetaResponseSchema.parse({ run: toRehearsalRun(savedRun) });
+    return updateRehearsalRunMetaResponseSchema.parse({
+      run: toRehearsalRun(savedRun),
+    });
   }
 
   async cancelRun(runId: string) {
     const run = await this.getRunEntity(runId);
     if (run.status === "cancelled") {
-      return cancelRehearsalRunResponseSchema.parse({ run: toRehearsalRun(run) });
+      return cancelRehearsalRunResponseSchema.parse({
+        run: toRehearsalRun(run),
+      });
     }
 
     if (!["created", "uploading"].includes(run.status) || run.jobId !== null) {
       throw new BadRequestException(
-        "Rehearsal run cannot be cancelled after audio processing starts."
+        "Rehearsal run cannot be cancelled after audio processing starts.",
       );
     }
 
@@ -517,30 +581,35 @@ export class RehearsalsService {
       {
         runId: run.runId,
         projectId: run.projectId,
-        status: run.status
+        status: run.status,
       },
       {
         status: "cancelled",
         error: null,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     );
 
     if (!result.affected) {
       throw new BadRequestException(
-        "Rehearsal run cannot be cancelled after audio processing starts."
+        "Rehearsal run cannot be cancelled after audio processing starts.",
       );
     }
 
     const cancelled = await this.getRunEntity(run.runId);
-    return cancelRehearsalRunResponseSchema.parse({ run: toRehearsalRun(cancelled) });
+    return cancelRehearsalRunResponseSchema.parse({
+      run: toRehearsalRun(cancelled),
+    });
   }
 
   async listRuns(projectId: string, query: Record<string, string> = {}) {
     await this.projectsService.getAccessibleProject(projectId);
     const pageSize = Math.min(Math.max(Number(query.pageSize) || 50, 1), 100);
     const page = Math.max(Number(query.page) || 1, 1);
-    const where: Record<string, unknown> = { projectId, status: Not("cancelled") };
+    const where: Record<string, unknown> = {
+      projectId,
+      status: Not("cancelled"),
+    };
     if (query.status) {
       where["status"] = query.status;
     }
@@ -548,7 +617,7 @@ export class RehearsalsService {
       where,
       order: { createdAt: "DESC" },
       take: pageSize,
-      skip: (page - 1) * pageSize
+      skip: (page - 1) * pageSize,
     });
     return { runs: runs.map(toRehearsalRun), total, page, pageSize };
   }
@@ -566,27 +635,178 @@ export class RehearsalsService {
   async getReport(runId: string) {
     const run = await this.getRunEntity(runId);
     const report =
-      run.status === "succeeded" && run.rehearsalReport ? run.rehearsalReport : null;
+      run.status === "succeeded" && run.rehearsalReport
+        ? run.rehearsalReport
+        : null;
     const responseReport = report
       ? {
           ...report,
           transcriptRetained: false,
-          transcript: null
+          transcript: null,
         }
       : null;
+    const audioPlaybackAvailable = await this.isAudioPlaybackAvailable(run);
 
     return getRehearsalReportResponseSchema.parse({
       run: toRehearsalRun(run),
-      report: responseReport
+      report: responseReport,
+      audioPlaybackAvailable,
     });
   }
 
+  private async isAudioPlaybackAvailable(
+    run: RehearsalRunEntity,
+  ): Promise<boolean> {
+    const retentionExpiresAt = run.rawAudioDeleteDeadlineAt;
+    if (
+      run.status !== "succeeded" ||
+      !run.audioFileId ||
+      run.rawAudioDeletedAt ||
+      !retentionExpiresAt ||
+      retentionExpiresAt.getTime() <= Date.now()
+    ) {
+      return false;
+    }
+
+    return this.filesService.isPrivateAudioAvailable(
+      run.projectId,
+      run.audioFileId,
+      "rehearsal-audio",
+    );
+  }
+
+  async getAudioClip(runId: string, body: unknown) {
+    const request = parseRequest(createRehearsalAudioClipRequestSchema, body);
+    const run = await this.getRunEntity(runId);
+    const retentionExpiresAt = run.rawAudioDeleteDeadlineAt;
+    if (
+      run.status !== "succeeded" ||
+      !run.audioFileId ||
+      run.rawAudioDeletedAt ||
+      !retentionExpiresAt ||
+      retentionExpiresAt.getTime() <= Date.now()
+    ) {
+      throw new GoneException({
+        code: "REHEARSAL_AUDIO_EXPIRED",
+        message: "Rehearsal audio is no longer available.",
+      });
+    }
+
+    const parsedReport = run.rehearsalReport
+      ? rehearsalReportSchema.safeParse(run.rehearsalReport)
+      : null;
+    const reportDurationSeconds = parsedReport?.success
+      ? parsedReport.data.metrics.durationSeconds
+      : undefined;
+    if (
+      reportDurationSeconds !== undefined &&
+      request.endSeconds > reportDurationSeconds + 1
+    ) {
+      throw new BadRequestException(
+        "Audio clip range exceeds the recording duration.",
+      );
+    }
+
+    const startMs = Math.round(request.startSeconds * 1000);
+    const endMs = Math.round(request.endSeconds * 1000);
+    const derivativeFileName = `volume-${startMs}-${endMs}.wav`;
+    const clip = await this.filesService.getOrCreatePrivateAudioDerivative(
+      run.projectId,
+      run.audioFileId,
+      "rehearsal-audio",
+      derivativeFileName,
+      async (source) => {
+        const form = new FormData();
+        form.append(
+          "file",
+          new Blob([source.body], { type: source.contentType }),
+          "rehearsal-audio",
+        );
+        form.append("startSeconds", String(startMs / 1000));
+        form.append("endSeconds", String(endMs / 1000));
+
+        let response: Response;
+        try {
+          response = await fetch(
+            new URL("/audio/clip", this.config.PYTHON_WORKER_URL),
+            {
+              method: "POST",
+              body: form,
+              signal: AbortSignal.timeout(60_000),
+            },
+          );
+        } catch (error) {
+          this.logger.error(
+            {
+              event: "rehearsal.audio_clip.generation_failed",
+              projectId: run.projectId,
+              runId: run.runId,
+              error: serializeLogError(error),
+            },
+            "Rehearsal audio clip generation request failed.",
+          );
+          throw new UnprocessableEntityException(
+            "Audio clip generation failed.",
+          );
+        }
+        if (!response.ok) {
+          this.logger.warn(
+            {
+              event: "rehearsal.audio_clip.generation_rejected",
+              projectId: run.projectId,
+              runId: run.runId,
+              statusCode: response.status,
+            },
+            "Rehearsal audio clip generation was rejected.",
+          );
+          throw new UnprocessableEntityException(
+            "Audio clip generation failed.",
+          );
+        }
+        return new Uint8Array(await response.arrayBuffer());
+      },
+    );
+
+    const storageKeyHash = createHash("sha256")
+      .update(clip.storageKey)
+      .digest("hex");
+    await this.rehearsalRuns.query(
+      `INSERT INTO storage_deletion_outbox (
+        deletion_id, project_id, file_id, storage_key, storage_key_hash,
+        purpose, status, attempt_count, next_attempt_at, created_at
+      ) VALUES ($1,$2,$3,$4,$5,'rehearsal-audio-clip','pending',0,$6,now())
+      ON CONFLICT (storage_key_hash) DO NOTHING`,
+      [
+        `deletion_${storageKeyHash.slice(0, 32)}`,
+        run.projectId,
+        `clip_${storageKeyHash.slice(0, 32)}`,
+        clip.storageKey,
+        storageKeyHash,
+        retentionExpiresAt.toISOString(),
+      ],
+    );
+
+    this.logger.info(
+      {
+        event: clip.created
+          ? "rehearsal.audio_clip.created"
+          : "rehearsal.audio_clip.cache_hit",
+        projectId: run.projectId,
+        runId: run.runId,
+        startMs,
+        endMs,
+      },
+      "Rehearsal audio clip is ready.",
+    );
+    return { body: Buffer.from(clip.body), contentType: clip.contentType };
+  }
   async getAudioPlaybackUrl(runId: string) {
     const run = await this.getRunEntity(runId);
     if (run.status !== "succeeded") {
       throw new ConflictException({
         code: "REHEARSAL_AUDIO_NOT_READY",
-        message: "Rehearsal audio playback is available after processing succeeds.",
+        message:
+          "Rehearsal audio playback is available after processing succeeds.",
       });
     }
 
@@ -657,20 +877,23 @@ export class RehearsalsService {
     if (!currentRun || currentRun.projectId !== projectId) {
       throw new NotFoundException(`Rehearsal run not found: ${runId}`);
     }
-    if (currentRun.status !== "succeeded" || currentRun.rehearsalReport === null) {
+    if (
+      currentRun.status !== "succeeded" ||
+      currentRun.rehearsalReport === null
+    ) {
       throw new ConflictException({
         code: "REHEARSAL_COMPARISON_NOT_READY",
-        message: "Rehearsal comparison is available after the report succeeds."
+        message: "Rehearsal comparison is available after the report succeeds.",
       });
     }
 
     const currentReport = rehearsalReportSchema.safeParse(
-      currentRun.rehearsalReport
+      currentRun.rehearsalReport,
     );
     if (!currentReport.success) {
       throw new ConflictException({
         code: "REHEARSAL_COMPARISON_REPORT_INVALID",
-        message: "The current rehearsal report cannot be compared."
+        message: "The current rehearsal report cannot be compared.",
       });
     }
 
@@ -678,9 +901,9 @@ export class RehearsalsService {
       where: {
         projectId,
         status: "succeeded",
-        createdAt: LessThan(currentRun.createdAt)
+        createdAt: LessThan(currentRun.createdAt),
       },
-      order: { createdAt: "DESC" }
+      order: { createdAt: "DESC" },
     });
     const previousReport = previousRun?.rehearsalReport
       ? rehearsalReportSchema.safeParse(previousRun.rehearsalReport)
@@ -689,7 +912,9 @@ export class RehearsalsService {
       currentReport: currentReport.data,
       currentRunId: currentRun.runId,
       previousReport: previousReport?.success ? previousReport.data : null,
-      previousRunId: previousReport?.success ? previousRun?.runId ?? null : null
+      previousRunId: previousReport?.success
+        ? (previousRun?.runId ?? null)
+        : null,
     });
 
     return getRehearsalRunComparisonResponseSchema.parse(comparison);
@@ -706,16 +931,18 @@ export class RehearsalsService {
       throw new ConflictException({
         code: "REHEARSAL_SEMANTIC_EVALUATION_NOT_READY",
         message: "Rehearsal semantic evaluation is not ready for retry.",
-        retryable: false
+        retryable: false,
       });
     }
 
-    const hasEvidence = await this.transcriptCache.hasSemanticEvidence(run.runId);
+    const hasEvidence = await this.transcriptCache.hasSemanticEvidence(
+      run.runId,
+    );
     if (!hasEvidence) {
       throw new ConflictException({
         code: "REHEARSAL_SEMANTIC_EVIDENCE_EXPIRED",
         message: "Rehearsal semantic evidence has expired.",
-        retryable: false
+        retryable: false,
       });
     }
 
@@ -724,14 +951,14 @@ export class RehearsalsService {
       throw new ConflictException({
         code: "REHEARSAL_SEMANTIC_EVALUATION_NOT_READY",
         message: "Rehearsal semantic evaluation is not retryable.",
-        retryable: false
+        retryable: false,
       });
     }
 
     const queuedJob = await this.jobsService.create({
       projectId: run.projectId,
       type: "rehearsal-semantic-evaluation",
-      payload: { runId: run.runId }
+      payload: { runId: run.runId },
     });
 
     try {
@@ -740,7 +967,7 @@ export class RehearsalsService {
         redisUrl: this.config.REDIS_URL,
         jobId: queuedJob.jobId,
         projectId: run.projectId,
-        runId: run.runId
+        runId: run.runId,
       });
       this.logger.info(
         {
@@ -750,9 +977,9 @@ export class RehearsalsService {
           projectId: run.projectId,
           runId: run.runId,
           deckId: run.deckId,
-          driver: this.config.JOB_QUEUE_DRIVER
+          driver: this.config.JOB_QUEUE_DRIVER,
         },
-        "Rehearsal semantic evaluation retry enqueued."
+        "Rehearsal semantic evaluation retry enqueued.",
       );
     } catch (error) {
       const failure = {
@@ -760,13 +987,13 @@ export class RehearsalsService {
         message:
           error instanceof Error
             ? error.message
-            : "Rehearsal semantic evaluation retry enqueue failed."
+            : "Rehearsal semantic evaluation retry enqueue failed.",
       };
       await this.jobsService.update(queuedJob.jobId, {
         status: "failed",
         progress: 0,
         message: "Rehearsal semantic evaluation retry enqueue failed.",
-        error: failure
+        error: failure,
       });
       this.logger.error(
         {
@@ -776,15 +1003,15 @@ export class RehearsalsService {
           deckVersion: run.deckVersion ?? undefined,
           runId: run.runId,
           jobId: queuedJob.jobId,
-          reason: failure.code
+          reason: failure.code,
         },
-        "Rehearsal semantic evaluation retry enqueue failed."
+        "Rehearsal semantic evaluation retry enqueue failed.",
       );
       throw error;
     }
 
     return retryRehearsalSemanticEvaluationResponseSchema.parse({
-      job: queuedJob
+      job: queuedJob,
     });
   }
 
@@ -805,44 +1032,21 @@ export class RehearsalsService {
     const [runs, project] = await Promise.all([
       this.rehearsalRuns.find({
         where: { projectId, status: "succeeded" },
-        order: { createdAt: "ASC" }
+        order: { createdAt: "ASC" },
       }),
-      this.projects.findOne({ where: { projectId } })
+      this.projects.findOne({ where: { projectId } }),
     ]);
 
     if (runs.length === 0) {
       return getRehearsalProjectSummaryResponseSchema.parse({ summary: null });
     }
 
-    const runDurationSeries = runs.map((run) => ({
-      runId: run.runId,
-      createdAt: run.createdAt.toISOString(),
-      durationSeconds: extractReportDurationSeconds(run.rehearsalReport)
-    }));
-
-    const slideAccum = new Map<string, { total: number; count: number }>();
-    for (const run of runs) {
-      for (const t of extractReportSlideTimings(run.rehearsalReport)) {
-        const entry = slideAccum.get(t.slideId) ?? { total: 0, count: 0 };
-        entry.total += t.actualSeconds;
-        entry.count += 1;
-        slideAccum.set(t.slideId, entry);
-      }
-    }
-    const slideAvgTimings = Array.from(slideAccum.entries()).map(([slideId, { total, count }]) => ({
-      slideId,
-      avgSeconds: Math.round(total / count),
-      sampleCount: count
-    }));
-
     return getRehearsalProjectSummaryResponseSchema.parse({
-      summary: {
+      summary: buildRehearsalProjectSummary({
         projectId,
-        runCount: runs.length,
-        runDurationSeries,
-        slideAvgTimings,
-        progressComment: project?.progressComment ?? null
-      }
+        runs,
+        progressComment: project?.progressComment ?? null,
+      }),
     });
   }
 
@@ -856,14 +1060,14 @@ export class RehearsalsService {
         runId: run.runId,
         projectId: run.projectId,
         audioFileId: fileId,
-        status: "uploading"
+        status: "uploading",
       },
       {
         status: "processing",
         error: null,
         rawAudioDeleteDeadlineAt,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     );
 
     if (!result.affected) {
@@ -876,7 +1080,7 @@ export class RehearsalsService {
   private async cleanupAfterEnqueueFailure(
     run: RehearsalRunEntity,
     fileId: string,
-    enqueueError: unknown
+    enqueueError: unknown,
   ): Promise<{
     error: { code: string; message: string };
     jobMessage: string;
@@ -887,28 +1091,32 @@ export class RehearsalsService {
       const rawAudioDeletedAt = await this.filesService.deleteUploadedAsset(
         run.projectId,
         fileId,
-        "rehearsal-audio"
+        "rehearsal-audio",
       );
 
       return {
         error: {
           code: "REHEARSAL_STT_ENQUEUE_FAILED",
           message:
-            enqueueError instanceof Error ? enqueueError.message : "Rehearsal STT enqueue failed."
+            enqueueError instanceof Error
+              ? enqueueError.message
+              : "Rehearsal STT enqueue failed.",
         },
         jobMessage: "Rehearsal STT enqueue failed.",
-        rawAudioDeletedAt: new Date(rawAudioDeletedAt)
+        rawAudioDeletedAt: new Date(rawAudioDeletedAt),
       };
     } catch (cleanupError) {
       return {
         error: {
           code: "RAW_AUDIO_DELETE_FAILED",
           message:
-            cleanupError instanceof Error ? cleanupError.message : "Raw audio deletion failed."
+            cleanupError instanceof Error
+              ? cleanupError.message
+              : "Raw audio deletion failed.",
         },
         jobMessage: "Rehearsal raw audio cleanup failed.",
         rawAudioDeletedAt: run.rawAudioDeletedAt,
-        cleanupError
+        cleanupError,
       };
     }
   }
@@ -932,7 +1140,7 @@ function toRehearsalRun(run: RehearsalRunEntity): RehearsalRun {
     rawAudioDeleteDeadlineAt:
       run.rawAudioDeleteDeadlineAt?.toISOString() ?? null,
     createdAt: run.createdAt.toISOString(),
-    updatedAt: run.updatedAt.toISOString()
+    updatedAt: run.updatedAt.toISOString(),
   };
 }
 
@@ -940,18 +1148,4 @@ function databaseDateToIso(value: unknown): string {
   if (value instanceof Date) return value.toISOString();
   if (typeof value === "string") return new Date(value).toISOString();
   throw new Error("Rehearsal focus profile date is invalid.");
-}
-
-type ReportJsonShape = {
-  metrics?: { durationSeconds?: number };
-  slideTimings?: { slideId: string; actualSeconds: number }[];
-};
-
-function extractReportDurationSeconds(report: Record<string, unknown> | null): number {
-  const metrics = (report as ReportJsonShape | null)?.metrics;
-  return typeof metrics?.durationSeconds === "number" ? metrics.durationSeconds : 0;
-}
-
-function extractReportSlideTimings(report: Record<string, unknown> | null): { slideId: string; actualSeconds: number }[] {
-  return (report as ReportJsonShape | null)?.slideTimings ?? [];
 }

@@ -115,6 +115,9 @@ describe("processPptxOoxmlGenerationJob", () => {
       };
       slides: Array<{
         elements: Array<Record<string, unknown>>;
+        transition?: { type: string; durationMs: number };
+        animations: Array<Record<string, unknown>>;
+        ooxmlMotionCapabilities?: Record<string, unknown>;
         thumbnailUrl: string;
         style: { backgroundImage?: { src?: string; fit?: string; opacity?: number } };
       }>;
@@ -128,6 +131,21 @@ describe("processPptxOoxmlGenerationJob", () => {
       /\/api\/v1\/projects\/project-a\/assets\/file_.*\/content/
     );
     expect(deck.slides[0].style.backgroundImage).toBeUndefined();
+    expect(deck.slides[0].transition).toEqual({
+      type: "fade",
+      durationMs: 700
+    });
+    expect(deck.slides[0].animations).toEqual([
+      expect.objectContaining({
+        animationId: "anim_imported_title",
+        elementId: "el_slot_title",
+        startMode: "on-click"
+      })
+    ]);
+    expect(deck.slides[0].ooxmlMotionCapabilities).toEqual({
+      transitionWritable: true,
+      importedMainSequenceCoverage: "complete"
+    });
     expect(deck.slides[0].elements).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -201,6 +219,7 @@ describe("processPptxOoxmlGenerationJob", () => {
 
   it("uses the rendered slide background when fallback image assets are unresolved", async () => {
     const insertedDecks: unknown[] = [];
+    const insertedBlueprints: unknown[] = [];
     const query = vi.fn(async (sql: string, params: unknown[]) => {
       if (sql.includes("UPDATE jobs")) {
         return [
@@ -229,6 +248,9 @@ describe("processPptxOoxmlGenerationJob", () => {
       if (sql.includes("INSERT INTO decks")) {
         insertedDecks.push(params[2]);
       }
+      if (sql.includes("INSERT INTO template_blueprints")) {
+        insertedBlueprints.push(params[4]);
+      }
       return [];
     });
     const fetchMock = vi.fn(async (input: string | URL) => {
@@ -254,6 +276,10 @@ describe("processPptxOoxmlGenerationJob", () => {
     const deck = insertedDecks[0] as {
       slides: Array<{
         elements: Array<Record<string, unknown>>;
+        animations: Array<Record<string, unknown>>;
+        ooxmlMotionCapabilities: {
+          importedMainSequenceCoverage: string;
+        };
         style: { backgroundImage?: { src?: string; fit?: string; opacity?: number } };
       }>;
     };
@@ -273,6 +299,19 @@ describe("processPptxOoxmlGenerationJob", () => {
       ])
     );
     expect(deck.slides[0].elements).toEqual([]);
+    expect(deck.slides[0].animations).toEqual([]);
+    expect(
+      deck.slides[0].ooxmlMotionCapabilities.importedMainSequenceCoverage
+    ).toBe("partial");
+    expect(insertedBlueprints[0]).toMatchObject({
+      slides: [
+        expect.objectContaining({
+          ooxmlMotionCapabilities: expect.objectContaining({
+            importedMainSequenceCoverage: "partial"
+          })
+        })
+      ]
+    });
     expect(job.result).toMatchObject({
       warnings: [
         expect.stringContaining(
@@ -446,6 +485,12 @@ function workerResponse() {
         {
           slideIndex: 1,
           sourceSlideIndex: 1,
+          sourceSlidePart: "ppt/slides/slide1.xml",
+          ooxmlOrigin: "imported",
+          ooxmlMotionCapabilities: {
+            transitionWritable: true,
+            importedMainSequenceCoverage: "complete"
+          },
           renderAssetFileId: "asset:slide_render_1",
           slots: [
             {
@@ -507,6 +552,19 @@ function workerResponse() {
       slides: [
         {
           sourceSlideIndex: 1,
+          transition: { type: "fade", durationMs: 700 },
+          animations: [
+            {
+              animationId: "anim_imported_title",
+              elementId: "el_slot_title",
+              type: "fade-in",
+              order: 1,
+              durationMs: 500,
+              delayMs: 0,
+              easing: "ease-out",
+              startMode: "on-click"
+            }
+          ],
           style: {
             layout: "title-content",
             backgroundColor: "#ffffff",

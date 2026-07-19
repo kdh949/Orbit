@@ -5,6 +5,7 @@ import { ElementSummary, InfoCard, KeywordSummary } from "./EditorDebugCards";
 export function EditorDebugPanels(props: {
   currentSlide: Slide | null;
   currentSlideAnimations: DeckAnimation[];
+  currentSlideId: string | null;
   deck: Deck;
   isDataViewOpen: boolean;
   isDev: boolean;
@@ -12,12 +13,15 @@ export function EditorDebugPanels(props: {
   onCloseDataView: () => void;
   redoCount: number;
   saveStatusLabel: string;
+  selectedElementIds: string[];
   undoCount: number;
+  validationHighlightElementIds: string[];
   visibleElements: DeckElement[];
 }) {
   const {
     currentSlide,
     currentSlideAnimations,
+    currentSlideId,
     deck,
     isDataViewOpen,
     isDev,
@@ -25,7 +29,9 @@ export function EditorDebugPanels(props: {
     onCloseDataView,
     redoCount,
     saveStatusLabel,
+    selectedElementIds,
     undoCount,
+    validationHighlightElementIds,
     visibleElements
   } = props;
 
@@ -36,6 +42,13 @@ export function EditorDebugPanels(props: {
           visibleElements.map((element) => ({
             elementId: element.elementId,
             type: element.type,
+            role: element.role,
+            ...(element.type === "text"
+              ? {
+                  fontSize: element.props.fontSize,
+                  lineHeight: element.props.lineHeight
+                }
+              : {}),
             x: Math.round(element.x),
             y: Math.round(element.y),
             width: Math.round(element.width),
@@ -43,6 +56,13 @@ export function EditorDebugPanels(props: {
             rotation: Math.round(element.rotation)
           }))
         )}
+      </div>
+      <div data-testid="editor-quality-debug" hidden>
+        {JSON.stringify({
+          currentSlideId,
+          selectedElementIds,
+          validationHighlightElementIds
+        })}
       </div>
       <div data-testid="editor-slide-style-debug" hidden>
         {JSON.stringify(

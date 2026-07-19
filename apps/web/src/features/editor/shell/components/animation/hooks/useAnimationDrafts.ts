@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { DeckAnimationStartMode } from "@orbit/shared";
 
 import type { SupportedAnimationType } from "../types";
 
@@ -7,17 +8,20 @@ type AnimationDraftState = Record<
   {
     delayMs: number;
     durationMs: number;
+    startMode: DeckAnimationStartMode;
   }
 >;
 
 const initialDraftState: AnimationDraftState = {
   "fade-in": {
     delayMs: 0,
-    durationMs: 400
+    durationMs: 400,
+    startMode: "on-click"
   },
   "fade-out": {
     delayMs: 0,
-    durationMs: 400
+    durationMs: 400,
+    startMode: "on-click"
   }
 };
 

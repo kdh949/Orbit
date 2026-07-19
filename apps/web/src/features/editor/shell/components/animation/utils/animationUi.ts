@@ -4,12 +4,14 @@ export const supportedAnimationCards = [
   {
     value: "fade-in",
     label: "페이드 인",
-    description: "요소가 부드럽게 나타나는 효과"
+    description: "요소가 부드럽게 나타나는 효과",
+    authoringSupported: true
   },
   {
     value: "fade-out",
     label: "페이드 아웃",
-    description: "요소가 부드럽게 사라지는 효과"
+    description: "요소가 부드럽게 사라지는 효과",
+    authoringSupported: false
   }
 ] as const;
 
@@ -105,19 +107,47 @@ export function buildSlideAnimationOrdinalLabelMap(
   animations: DeckAnimation[]
 ) {
   return Object.fromEntries(
-    [...animations]
-      .sort((left, right) => {
-        if (left.order === right.order) {
-          return left.animationId.localeCompare(right.animationId);
-        }
-
-        return left.order - right.order;
-      })
-      .map((animation, index) => [
+    sortAnimationsByLogicalOrder(animations).map(({ animation }, index) => [
         animation.animationId,
         `${index + 1}번째`
       ])
   );
+}
+
+export function getPreviousSlideAnimation(
+  animations: DeckAnimation[],
+  animationId: string
+) {
+  const sorted = sortAnimationsByLogicalOrder(animations);
+  const animationIndex = sorted.findIndex(
+    ({ animation }) => animation.animationId === animationId
+  );
+  return animationIndex > 0
+    ? sorted[animationIndex - 1]?.animation ?? null
+    : null;
+}
+
+function sortAnimationsByLogicalOrder(animations: DeckAnimation[]) {
+  return animations
+    .map((animation, sourceIndex) => ({ animation, sourceIndex }))
+    .sort((left, right) => {
+      if (left.animation.order !== right.animation.order) {
+        return left.animation.order - right.animation.order;
+      }
+      if (left.sourceIndex !== right.sourceIndex) {
+        return left.sourceIndex - right.sourceIndex;
+      }
+      return left.animation.animationId.localeCompare(
+        right.animation.animationId
+      );
+    });
+}
+
+export function formatPreviousAnimationSummary(
+  animation: DeckAnimation,
+  ordinalLabelByAnimationId: Record<string, string>
+) {
+  return `선행 효과: ${getAnimationTypeLabel(animation.type)} · ${ordinalLabelByAnimationId[animation.animationId] ?? "순서 미정"}`;
 }
 
 export function isSupportedAnimationType(

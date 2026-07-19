@@ -1099,7 +1099,7 @@ function nextAction(criterion: EvaluationCriterion) {
   }
   return criterion.measurement.metric === "filler-word-count"
     ? "문장을 시작하기 전에 짧게 호흡하고 불필요한 추임새를 빼세요."
-    : "문장 사이 호흡 위치를 정하고 1초 이상 침묵하지 않도록 연습하세요.";
+    : "문장 사이 호흡 위치를 정하고 5초 이상 발화가 끊기지 않도록 연습하세요.";
 }
 
 function successCondition(criterion: EvaluationCriterion) {

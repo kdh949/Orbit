@@ -8,6 +8,7 @@ import { isoDateTimeSchema } from "../common/time.schema";
 import {
   animationEasingSchema,
   animationSchema,
+  animationStartModeSchema,
   animationTypeSchema
 } from "./animation.schema";
 import {
@@ -16,7 +17,8 @@ import {
   slideKeywordsSchema,
   slideLayoutSchema,
   slideOrderSchema,
-  slideSchema
+  slideSchema,
+  slideTransitionSchema
 } from "./deck.schema";
 import {
   deckAnimationIdSchema,
@@ -47,6 +49,7 @@ export const deckPatchOperationTypeSchema = z.enum([
   "update_deck",
   "add_slide",
   "update_slide",
+  "update_slide_transition",
   "delete_slide",
   "reorder_slides",
   "update_theme",
@@ -150,6 +153,7 @@ export const animationPatchSchema = z.object({
   elementId: deckElementIdSchema.optional(),
   type: animationTypeSchema.optional(),
   order: z.number().int().positive().optional(),
+  startMode: animationStartModeSchema.optional(),
   durationMs: z.number().int().positive().optional(),
   delayMs: z.number().int().nonnegative().optional(),
   easing: animationEasingSchema.optional()
@@ -171,6 +175,12 @@ export const updateSlideOperationSchema = z.object({
   slideId: deckSlideIdSchema,
   title: z.string().optional(),
   thumbnailUrl: z.string().optional()
+});
+
+export const updateSlideTransitionOperationSchema = z.object({
+  type: z.literal("update_slide_transition"),
+  slideId: deckSlideIdSchema,
+  transition: slideTransitionSchema.nullable()
 });
 
 export const deleteSlideOperationSchema = z.object({
@@ -303,6 +313,7 @@ const deckPatchOperationSchemaInternal = z.discriminatedUnion("type", [
   updateDeckOperationSchema,
   addSlideOperationSchema,
   updateSlideOperationSchema,
+  updateSlideTransitionOperationSchema,
   deleteSlideOperationSchema,
   reorderSlidesOperationSchema,
   updateThemeOperationSchema,

@@ -184,7 +184,7 @@ describeIntegration("PPTX OOXML PostgreSQL round-trip", () => {
     expect(reimportedText.height).toBeCloseTo(expectedFrame.height, 0);
   }, 120_000);
 
-  it("persists a large-blueprint slide reorder through sync, export, and re-import", async () => {
+  it("replays add, duplicate, delete, reorder, and undo before export and re-import", async () => {
     const projectId = integrationId("project");
     const sourceFileId = integrationId("file");
     const sourceStorageKey = `integration/${projectId}/source.pptx`;
@@ -264,12 +264,80 @@ describeIntegration("PPTX OOXML PostgreSQL round-trip", () => {
       imported.slides[0]!.slideId,
       imported.slides[1]!.slideId,
     ];
-    const saved = await harness.decks.appendPatch(projectId, {
+    const duplicateSlideId = integrationId("slide");
+    const duplicateSlide = deckSchema.parse({
+      ...imported,
+      slides: [
+        {
+          ...imported.slides[1]!,
+          slideId: duplicateSlideId,
+          order: 3,
+          title: "Duplicate",
+          elements: [],
+          ooxmlOrigin: "authored",
+        },
+      ],
+    }).slides[0]!;
+    const afterDuplicate = await harness.decks.appendPatch(projectId, {
       patch: {
         deckId: imported.deckId,
         baseVersion: imported.version,
         source: "user",
         operations: [
+          { type: "add_slide", slide: duplicateSlide },
+          {
+            type: "reorder_slides",
+            slideOrders: [
+              imported.slides[0]!.slideId,
+              imported.slides[1]!.slideId,
+              duplicateSlideId,
+              imported.slides[2]!.slideId,
+            ].map((slideId, index) => ({ slideId, order: index + 1 })),
+          },
+        ],
+      },
+    });
+    const afterDelete = await harness.decks.appendPatch(projectId, {
+      patch: {
+        deckId: imported.deckId,
+        baseVersion: afterDuplicate.deck.version,
+        source: "user",
+        operations: [
+          { type: "delete_slide", slideId: imported.slides[1]!.slideId },
+          {
+            type: "reorder_slides",
+            slideOrders: [
+              imported.slides[0]!.slideId,
+              duplicateSlideId,
+              imported.slides[2]!.slideId,
+            ].map((slideId, index) => ({ slideId, order: index + 1 })),
+          },
+        ],
+      },
+    });
+    const afterDeleteUndo = await harness.decks.appendPatch(projectId, {
+      patch: {
+        deckId: imported.deckId,
+        baseVersion: afterDelete.deck.version,
+        source: "user",
+        operations: [
+          { type: "add_slide", slide: imported.slides[1]! },
+          {
+            type: "reorder_slides",
+            slideOrders: [...desiredSlideIds, duplicateSlideId].map(
+              (slideId, index) => ({ slideId, order: index + 1 }),
+            ),
+          },
+        ],
+      },
+    });
+    const saved = await harness.decks.appendPatch(projectId, {
+      patch: {
+        deckId: imported.deckId,
+        baseVersion: afterDeleteUndo.deck.version,
+        source: "user",
+        operations: [
+          { type: "delete_slide", slideId: duplicateSlideId },
           {
             type: "reorder_slides",
             slideOrders: desiredSlideIds.map((slideId, index) => ({
@@ -280,7 +348,7 @@ describeIntegration("PPTX OOXML PostgreSQL round-trip", () => {
         ],
       },
     });
-    expect(saved.changeRecord.operations).toHaveLength(1);
+    expect(saved.deck.version).toBe(imported.version + 4);
     const syncPayload = await enqueueSync(harness, projectId, {
       deckId: imported.deckId,
       changeId: saved.changeRecord.changeId,

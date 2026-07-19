@@ -6,9 +6,13 @@ import { describe, expect, it, vi } from "vitest";
 import {
   App,
   deckRenderPayloadStorageKey,
+  fetchProjectAccess,
+  getProjectAccessFailureBehavior,
   getProjectAccessRoleLabel,
   getAppNavigationItem,
   getRoute,
+  ProjectAccessRequestError,
+  shouldRetryProjectAccess,
   shouldRenderAppFrame,
   shouldWaitForAuthResolution
 } from "./App";
@@ -70,6 +74,13 @@ describe("App shell routing", () => {
     expect(getAppNavigationItem({ name: "project-list" })).toBe("project");
     expect(getAppNavigationItem({ name: "rehearsal-project-list" })).toBe("rehearsal");
     expect(getAppNavigationItem({ name: "report-list" })).toBe("reports");
+    expect(
+      getAppNavigationItem({
+        name: "rehearsal-report",
+        projectId: "project_bcaee91d-3878-4bec-a9b1-9f41fad8bff5",
+        runId: "run_cdfd5478-97dc-4598-b556-3a2e1737e338"
+      })
+    ).toBe("reports");
     expect(getAppNavigationItem({ name: "create-deck" })).toBe("project");
   });
 
@@ -215,8 +226,8 @@ describe("App shell routing", () => {
       expect(html).toContain("대본 톤");
       expect(html).toContain("다음 단계");
       expect(html).toContain("Style &amp; Color");
-      expect(html).toContain("kdh@orbit.com");
-      expect(html).not.toContain("demo@orbit.test");
+      expect(html).toContain("demo@orbit.test");
+      expect(html).toContain('class="orbit-app-header-avatar">D</span>');
     } finally {
       vi.unstubAllGlobals();
       queryClient.clear();
@@ -391,6 +402,60 @@ describe("public and authentication surfaces", () => {
 });
 
 describe("workspace project surfaces", () => {
+  it("classifies an expired authentication session from project access", async () => {
+    await expect(
+      fetchProjectAccess(
+        "project_1",
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ message: "Authentication required" }), {
+            status: 401,
+          }),
+        ),
+      ),
+    ).rejects.toMatchObject({
+      name: "ProjectAccessRequestError",
+      status: 401,
+    });
+  });
+
+  it("retries transient project access failures but not authentication or missing-project responses", () => {
+    expect(shouldRetryProjectAccess(0, new TypeError("Failed to fetch"))).toBe(true);
+    expect(shouldRetryProjectAccess(2, new TypeError("Failed to fetch"))).toBe(false);
+    expect(
+      shouldRetryProjectAccess(
+        0,
+        new ProjectAccessRequestError("Authentication required", 401),
+      ),
+    ).toBe(false);
+    expect(
+      shouldRetryProjectAccess(
+        0,
+        new ProjectAccessRequestError("Project not found", 404),
+      ),
+    ).toBe(false);
+    expect(
+      shouldRetryProjectAccess(
+        0,
+        new ProjectAccessRequestError("Server error", 503),
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps an already-authorized editor open for a transient access failure", () => {
+    expect(
+      getProjectAccessFailureBehavior(new TypeError("Failed to fetch"), true),
+    ).toBe("preserve");
+    expect(
+      getProjectAccessFailureBehavior(
+        new ProjectAccessRequestError("Authentication required", 401),
+        true,
+      ),
+    ).toBe("login");
+    expect(
+      getProjectAccessFailureBehavior(new TypeError("Failed to fetch"), false),
+    ).toBe("blocking");
+  });
+
   it("uses localized project access roles", () => {
     expect(getProjectAccessRoleLabel("owner")).toBe("소유자");
     expect(getProjectAccessRoleLabel("editor")).toBe("편집 가능");
@@ -453,6 +518,8 @@ describe("workspace project surfaces", () => {
     expect(html).not.toContain('aria-label="프로젝트 새로고침"');
     expect(html).toContain("빈 프로젝트");
     expect(html).toContain("PPTX 업로드");
+    expect(html).toContain("orbit-project-commandbar-action orbit-project-commandbar-blank");
+    expect(html).toContain("orbit-project-commandbar-action orbit-project-commandbar-upload");
     expect(html).toContain('class="orbit-project-gallery"');
     expect(html).toContain('aria-label="프로젝트 1 고정"');
     expect(html).toContain('aria-label="프로젝트 1 리허설 시작"');
@@ -487,7 +554,9 @@ describe("workspace project surfaces", () => {
 
     expect(html).toContain('aria-label="리허설 프로젝트 목록"');
     expect(html).toContain("리허설 발표자료");
-    expect(html).toContain("연습하러 가기");
+    expect(html).toContain("연습하기");
+    expect(html).not.toContain("연습하러 가기");
+    expect(html).not.toContain(">작업</span>");
     expect(html).toContain("redesign-button-primary");
     expect(html).not.toContain("project_private_identifier");
     expect(html).toContain('aria-label="프로젝트 새로고침"');

@@ -10,6 +10,7 @@ import {
   aiDeckImageQueueName,
   aiDeckQaFinalizeQueueName,
   designImageGenerationQueueName,
+  slideQuestionGuideGenerationQueueName,
 } from "@orbit/job-queue";
 import type { Job } from "@orbit/shared";
 import type { PinoLogger } from "nestjs-pino";
@@ -22,6 +23,7 @@ import { WorkerService } from "./worker.service";
 const bullMq = vi.hoisted(() => ({
   close: vi.fn(async () => undefined),
   queues: [] as string[],
+  options: new Map<string, Record<string, unknown>>(),
   handlers: new Map<string, (job: FakeBullJob) => Promise<unknown>>(),
   failedHandlers: new Map<
     string,
@@ -105,10 +107,12 @@ vi.mock("bullmq", () => ({
     constructor(
       queueName: string,
       handler: (job: FakeBullJob) => Promise<unknown>,
+      options: Record<string, unknown>,
     ) {
       this.queueName = queueName;
       bullMq.queues.push(queueName);
       bullMq.handlers.set(queueName, handler);
+      bullMq.options.set(queueName, options);
     }
 
     close = bullMq.close;
@@ -201,6 +205,7 @@ beforeEach(() => {
   configState.AI_DECK_USER_CONCURRENCY = 5;
   bullMq.queues.length = 0;
   bullMq.handlers.clear();
+  bullMq.options.clear();
   bullMq.failedHandlers.clear();
   postgresRunner.options.length = 0;
   vi.clearAllMocks();
@@ -255,6 +260,10 @@ describe("WorkerService queue subscriptions", () => {
     expect(bullMq.queues).toContain(aiDeckQaFinalizeQueueName);
     expect(bullMq.queues).not.toContain("pptx-import");
     expect(bullMq.queues).not.toContain("ai-template-deck-generation");
+    expect(bullMq.options.get(slideQuestionGuideGenerationQueueName)).toMatchObject({
+      concurrency: 2,
+    });
+    expect(bullMq.options.get(referenceExtractQueueName)).not.toHaveProperty("concurrency");
 
     await service.onModuleDestroy();
   });

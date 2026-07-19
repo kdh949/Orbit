@@ -551,6 +551,72 @@ main.rehearsal-presenter-shell {
   display: none;
 }
 
+.rehearsal-presenter-shell .rehearsal-live-stt-notice {
+  align-items: start;
+  background: var(--redesign-color-surface-container-low);
+  border: 1px solid var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius);
+  color: var(--redesign-color-on-surface);
+  display: grid;
+  gap: var(--redesign-space-2);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: var(--redesign-space-3);
+}
+
+.rehearsal-presenter-shell .rehearsal-live-stt-notice > svg {
+  margin-top: 2px;
+}
+
+.rehearsal-presenter-shell .rehearsal-live-stt-notice > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rehearsal-presenter-shell .rehearsal-live-stt-notice strong,
+.rehearsal-presenter-shell .rehearsal-live-stt-notice span,
+.rehearsal-presenter-shell .rehearsal-live-stt-notice small {
+  overflow-wrap: anywhere;
+}
+
+.rehearsal-presenter-shell .rehearsal-live-stt-notice span,
+.rehearsal-presenter-shell .rehearsal-live-stt-notice small {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  line-height: 1.45;
+}
+
+.rehearsal-presenter-shell .rehearsal-live-stt-notice button {
+  align-self: center;
+  background: var(--redesign-color-surface-container-lowest);
+  border: 1px solid var(--redesign-color-outline);
+  border-radius: var(--redesign-radius-full);
+  color: var(--redesign-color-on-surface);
+  grid-column: 2;
+  justify-self: start;
+  min-height: 36px;
+  padding: 0 var(--redesign-space-3);
+  white-space: nowrap;
+}
+
+.rehearsal-presenter-shell .rehearsal-live-stt-notice button:disabled {
+  cursor: progress;
+  opacity: 0.65;
+}
+
+.rehearsal-presenter-shell .rehearsal-live-stt-notice-success > svg {
+  color: var(--redesign-color-success);
+}
+
+.rehearsal-presenter-shell .rehearsal-live-stt-notice-warning > svg {
+  color: var(--redesign-color-warning);
+}
+
+.rehearsal-presenter-shell .rehearsal-live-stt-notice-danger > svg,
+.rehearsal-presenter-shell .rehearsal-live-stt-notice-danger small {
+  color: var(--redesign-color-error);
+}
+
 .rehearsal-presenter-shell
   .rehearsal-panel-top-grid:has(.rehearsal-panel-live-slot) {
   gap: var(--redesign-space-3);

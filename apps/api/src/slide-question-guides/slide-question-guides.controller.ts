@@ -13,6 +13,17 @@ export class SlideQuestionGuidesController {
     private readonly guidesService: SlideQuestionGuidesService,
   ) {}
 
+  @Post("api/v1/projects/:projectId/slide-question-guides/auto")
+  async autoCreate(
+    @Param("projectId") projectId: string,
+    @Body() body: unknown,
+    @Req() request: SignedCookieRequest,
+  ) {
+    const user = await getCurrentUser(this.authService, request);
+    await this.projectsService.assertCanWriteProject(projectId, user.userId);
+    return this.guidesService.autoCreate(projectId, user.userId, body);
+  }
+
   @Post("api/v1/projects/:projectId/slide-question-guides")
   async create(
     @Param("projectId") projectId: string,

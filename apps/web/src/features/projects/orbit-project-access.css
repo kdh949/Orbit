@@ -24,6 +24,7 @@
 .orbit-access-error { background: var(--redesign-color-error-container); color: var(--redesign-color-error); font-size: var(--redesign-type-body-sm-size); margin: 0; padding: var(--redesign-space-2) var(--redesign-space-3); text-align: left; }
 .orbit-access-back { background: transparent; border: 0; color: var(--redesign-color-on-surface-variant); font-size: var(--redesign-type-body-sm-size); justify-self: center; }
 .orbit-project-access .project-request-meta { background: var(--redesign-color-surface-container-low); border-color: var(--redesign-color-outline-variant); text-align: left; }
+.orbit-project-access-recovery { align-items: center; background: var(--redesign-color-secondary-container); border: 1px solid var(--redesign-color-secondary); border-radius: var(--redesign-radius-lg); box-shadow: var(--redesign-shadow-raised); color: var(--redesign-color-on-secondary-container); display: flex; font-size: var(--redesign-type-label-sm-size); gap: var(--redesign-space-3); justify-content: space-between; left: 50%; max-width: min(560px, calc(100vw - var(--redesign-space-8))); padding: var(--redesign-space-3) var(--redesign-space-4); position: fixed; top: var(--redesign-space-4); transform: translateX(-50%); z-index: 20; }
 
 @media (max-width: 760px) {
   .orbit-project-access { grid-template-columns: 1fr; padding: var(--redesign-space-7) var(--redesign-space-4) var(--redesign-space-13); }
@@ -34,4 +35,5 @@
   .orbit-access-context dl { margin-top: var(--redesign-space-7); }
   .orbit-access-card { padding: var(--redesign-space-7) var(--redesign-space-5); }
   .orbit-access-message h1 { font-size: var(--redesign-type-headline-lg-mobile-size); }
+  .orbit-project-access-recovery { align-items: flex-start; flex-direction: column; left: var(--redesign-space-4); max-width: none; right: var(--redesign-space-4); transform: none; }
 }

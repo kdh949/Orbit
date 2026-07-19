@@ -9,13 +9,13 @@ const FILLER_CHART_COLORS = [
   "#CC79A7",
 ] as const;
 
-const FILLER_DONUT_WIDTH = 680;
-const FILLER_DONUT_HEIGHT = 300;
-const FILLER_DONUT_CENTER_X = FILLER_DONUT_WIDTH / 2;
-const FILLER_DONUT_CENTER_Y = FILLER_DONUT_HEIGHT / 2;
-const FILLER_DONUT_RADIUS = 92;
-const FILLER_DONUT_STROKE_WIDTH = 42;
-const FILLER_DONUT_CIRCUMFERENCE = 2 * Math.PI * FILLER_DONUT_RADIUS;
+export const FILLER_DONUT_WIDTH = 680;
+export const FILLER_DONUT_HEIGHT = 300;
+export const FILLER_DONUT_CENTER_X = FILLER_DONUT_WIDTH / 2;
+export const FILLER_DONUT_CENTER_Y = FILLER_DONUT_HEIGHT / 2;
+export const FILLER_DONUT_RADIUS = 92;
+export const FILLER_DONUT_STROKE_WIDTH = 42;
+export const FILLER_DONUT_CIRCUMFERENCE = 2 * Math.PI * FILLER_DONUT_RADIUS;
 
 type FillerDistributionItem = {
   color: string;
@@ -24,11 +24,11 @@ type FillerDistributionItem = {
   word: string;
 };
 
-function fmtPercent(value: number) {
+export function fmtPercent(value: number) {
   return `${Math.round(value)}%`;
 }
 
-function buildFillerDistribution(
+export function buildFillerDistribution(
   fillerWordDetails: RehearsalReport["fillerWordDetails"],
   fillerWordCount: number,
 ): FillerDistributionItem[] {
@@ -57,7 +57,7 @@ type FillerDonutSegment = FillerDistributionItem & {
   startY: number;
 };
 
-function buildFillerDonutSegments(
+export function buildFillerDonutSegments(
   distribution: FillerDistributionItem[],
 ): FillerDonutSegment[] {
   let cumulativePercent = 0;

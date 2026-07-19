@@ -1,4 +1,5 @@
 import {
+  deckExportEnqueueErrorSchema,
   deckExportJobResultSchema,
   getOoxmlSyncStateResponseSchema,
   pptxOoxmlGenerationJobResultSchema,
@@ -136,7 +137,9 @@ export async function createDeckExportJob(
   );
 
   if (!response.ok) {
-    throw new Error(await readPlainError(response, "Deck export job creation failed"));
+    throw new Error(
+      await readDeckExportError(response, "Deck export job creation failed")
+    );
   }
 
   const payload = (await response.json()) as { job?: unknown };
@@ -340,6 +343,20 @@ export async function importPptxIntoEditor(
 
 async function readPlainError(response: Response, fallbackMessage: string) {
   const text = await response.text();
+  return text || fallbackMessage;
+}
+
+async function readDeckExportError(
+  response: Response,
+  fallbackMessage: string
+) {
+  const text = await response.text();
+  try {
+    const parsed = deckExportEnqueueErrorSchema.safeParse(JSON.parse(text));
+    if (parsed.success) return parsed.data.message;
+  } catch {
+    // Plain-text and empty error bodies are handled by the existing fallback.
+  }
   return text || fallbackMessage;
 }
 

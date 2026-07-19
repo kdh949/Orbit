@@ -1,10 +1,54 @@
 import {
+  autoCreateSlideQuestionGuidesResponseSchema,
+  canonicalJson,
   jobSchema,
   slideQuestionGuideJobResponseSchema,
   slideQuestionGuideListResponseSchema,
   slideQuestionGuideSchema,
   type SlideQuestionGuide,
 } from "@orbit/shared";
+
+export async function autoCreateSlideQuestionGuides(input: {
+  projectId: string;
+  clientRequestId: string;
+  deckId: string;
+  expectedDeckVersion: number;
+}) {
+  const response = await fetch(
+    `/api/v1/projects/${encodeURIComponent(input.projectId)}/slide-question-guides/auto`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        clientRequestId: input.clientRequestId,
+        deckId: input.deckId,
+        expectedDeckVersion: input.expectedDeckVersion,
+        questionCount: 3,
+      }),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(await responseMessage(response, "예상 질문 자동 생성을 시작하지 못했습니다."));
+  }
+  return autoCreateSlideQuestionGuidesResponseSchema.parse(await response.json());
+}
+
+export async function sha256Canonical(value: unknown) {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(canonicalJson(value)),
+  );
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export async function createAutoSlideQuestionGuidesClientRequestId(input: {
+  projectId: string;
+  deckId: string;
+  deckVersion: number;
+}) {
+  return `slide-guide-auto-batch_${await sha256Canonical(input)}`;
+}
 
 export async function createSlideQuestionGuide(input: {
   projectId: string;

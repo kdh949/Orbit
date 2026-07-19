@@ -48,6 +48,25 @@ export const projectMemberSchema = z.object({
   status: projectMemberStatusSchema,
   createdAt: isoDateTimeSchema,
 });
+export const projectAccessResponseSchema = z.object({
+  project: projectSchema,
+  membership: z
+    .object({
+      role: projectMemberRoleSchema,
+      status: projectMemberStatusSchema,
+    })
+    .nullable(),
+});
+export const projectApiErrorCodeSchema = z.enum([
+  "PROJECT_ACCESS_UNAVAILABLE",
+  "PROJECT_MEMBERS_UNAVAILABLE",
+  "PROJECT_SCHEMA_NOT_READY",
+]);
+export const projectApiErrorSchema = z.object({
+  code: projectApiErrorCodeSchema,
+  message: z.string().min(1),
+  details: z.array(z.string()).default([]),
+});
 export const projectMembersResponseSchema = z.object({
   members: z.array(projectMemberSchema),
   requests: z.array(projectMemberSchema),
@@ -78,6 +97,9 @@ export type UpdateProjectPinResponse = z.infer<typeof updateProjectPinResponseSc
 export type ProjectMemberRole = z.infer<typeof projectMemberRoleSchema>;
 export type ProjectMemberStatus = z.infer<typeof projectMemberStatusSchema>;
 export type ProjectMember = z.infer<typeof projectMemberSchema>;
+export type ProjectAccessResponse = z.infer<typeof projectAccessResponseSchema>;
+export type ProjectApiErrorCode = z.infer<typeof projectApiErrorCodeSchema>;
+export type ProjectApiError = z.infer<typeof projectApiErrorSchema>;
 export type ProjectMembersResponse = z.infer<typeof projectMembersResponseSchema>;
 export type UpsertProjectMemberRequest = z.infer<typeof upsertProjectMemberRequestSchema>;
 export type CreateProjectAccessRequest = z.infer<typeof createProjectAccessRequestSchema>;

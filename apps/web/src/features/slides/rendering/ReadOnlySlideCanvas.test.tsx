@@ -24,6 +24,10 @@ vi.mock("react-konva", () => {
           : undefined,
       "data-opacity":
         typeof props.opacity === "number" ? String(props.opacity) : undefined,
+      "data-clip-height":
+        typeof props.clipHeight === "number" ? String(props.clipHeight) : undefined,
+      "data-clip-width":
+        typeof props.clipWidth === "number" ? String(props.clipWidth) : undefined,
       "data-testid":
         typeof props["data-testid"] === "string" ? props["data-testid"] : undefined
     };
@@ -301,6 +305,8 @@ describe("ReadOnlySlideCanvas", () => {
     expect(html).toContain("data-fill=\"#2563eb\"");
     expect(html).toContain("data-font-size=\"36\"");
     expect(html).toContain("data-text-decoration=\"underline\"");
+    expect(html).toContain("data-clip-height=\"120\"");
+    expect(html).toContain("data-clip-width=\"600\"");
   });
 
   it("renders PPT text paragraphs from paragraph props", () => {

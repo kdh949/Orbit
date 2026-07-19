@@ -58,9 +58,15 @@
   background: var(--redesign-color-primary-emphasis);
 }
 
-.orbit-project-commandbar-upload {
+.orbit-project-commandbar-action {
   border: var(--redesign-border-subtle);
-  background: var(--redesign-color-light-surface);
+  background: var(--redesign-color-surface-container-lowest);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-project-commandbar-action:hover:not(:disabled) {
+  border-color: var(--redesign-color-outline);
+  background: var(--redesign-color-surface-container-low);
 }
 
 .orbit-project-sort-menu {
@@ -104,6 +110,7 @@
   border: var(--redesign-border-subtle);
   border-radius: var(--redesign-radius-lg);
   background: var(--redesign-color-light-surface);
+  padding-bottom: var(--redesign-space-5);
 }
 
 .orbit-rehearsal-section-heading {
@@ -443,8 +450,16 @@
 }
 
 .orbit-project-practice-cta.redesign-button {
+  border-color: var(--redesign-color-primary);
+  background: var(--redesign-color-primary);
+  color: var(--redesign-color-on-primary);
   flex: 0 0 auto;
   white-space: nowrap;
+}
+
+.orbit-project-practice-cta.redesign-button:hover:not(:disabled) {
+  border-color: var(--redesign-color-primary-emphasis);
+  background: var(--redesign-color-primary-emphasis);
 }
 
 /* Pagination */

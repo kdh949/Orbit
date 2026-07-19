@@ -101,6 +101,48 @@ def test_reorders_opaque_slide_ids_from_explicit_source_mapping(
     ]
 
 
+def test_deletes_one_slide_then_reorders_remaining_relationships(
+    tmp_path: Path,
+) -> None:
+    source_path = three_slide_pptx(tmp_path)
+    generated = generate_pptx_ooxml(source_path, "file_delete", render=False)
+    blueprint = generated.template_blueprint
+    deleted = blueprint["slides"][1]
+    result = sync_pptx_ooxml(
+        source_path,
+        template_blueprint=blueprint,
+        operations=[
+            {
+                "type": "delete_slide",
+                "slideId": deleted["slideId"],
+                "sourceSlidePart": deleted["sourceSlidePart"],
+            },
+            reorder_operation_from_blueprint(blueprint, [2, 0]),
+        ],
+        deck_canvas=generated.canvas,
+        synced_deck_version=2,
+        render=False,
+    )
+    package_bytes = current_package_bytes(result)
+
+    assert [item.operation_type for item in result.applied_operations] == [
+        "delete_slide",
+        "reorder_slides",
+    ]
+    assert result.unsupported_operations == []
+    assert presentation_slide_texts(package_bytes) == ["Slide 3", "Slide 1"]
+    assert len(slide_id_signatures(package_bytes)) == 2
+
+    round_trip_path = tmp_path / "delete-round-trip.pptx"
+    round_trip_path.write_bytes(package_bytes)
+    reimported = generate_pptx_ooxml(
+        round_trip_path,
+        "file_delete_round_trip",
+        render=False,
+    )
+    assert imported_slide_texts(reimported.blueprint) == ["Slide 3", "Slide 1"]
+
+
 @pytest.mark.parametrize(
     ("mutation", "expected_reason"),
     [

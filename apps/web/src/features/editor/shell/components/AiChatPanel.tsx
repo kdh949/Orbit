@@ -383,12 +383,20 @@ export function AiChatPanel(props: AiChatPanelProps) {
       <div className="ai-chat-history" aria-live="polite">
         {props.chatState.messages.map((message) => (
           <div className={`ai-chat-message ${message.role}`} key={message.id}>
-            {message.role === "assistant" ? (
-              <span className="ai-chat-avatar" aria-hidden="true">AI</span>
-            ) : null}
-            <p className={message.tone === "error" ? "error" : undefined}>
-              {message.content}
-            </p>
+            <span className="ai-chat-avatar" aria-hidden="true">
+              {message.role === "assistant" ? "AI" : "Y"}
+            </span>
+            <div className="ai-chat-message-stack">
+              {message.role === "user" ? (
+                <div className="ai-chat-message-meta" aria-hidden="true">
+                  <strong>You</strong>
+                  <span>now</span>
+                </div>
+              ) : null}
+              <p className={message.tone === "error" ? "error" : undefined}>
+                {message.content}
+              </p>
+            </div>
             {message.imagePreview ? (
               <div className="ai-generated-image-card">
                 <img
@@ -422,7 +430,9 @@ export function AiChatPanel(props: AiChatPanelProps) {
         {isSending ? (
           <div className="ai-chat-message assistant">
             <span className="ai-chat-avatar" aria-hidden="true">AI</span>
-            <p>{mode === "image" ? "이미지를 생성하고 있습니다..." : "디자인을 검토하고 있습니다..."}</p>
+            <div className="ai-chat-message-stack">
+              <p>{mode === "image" ? "이미지를 생성하고 있습니다..." : "디자인을 검토하고 있습니다..."}</p>
+            </div>
           </div>
         ) : null}
       </div>
@@ -529,26 +539,28 @@ export function AiChatPanel(props: AiChatPanelProps) {
             />
           </>
         ) : null}
-        <textarea
-          aria-label="AI에게 메시지 보내기"
-          placeholder={designEditingEnabled
-            ? mode === "image"
-              ? "만들고 싶은 이미지를 설명해 주세요"
-              : "바꾸고 싶은 디자인을 말씀해 주세요"
-            : "장표 설정에서 내용을 관리해 주세요"}
-          rows={1}
-          value={draft}
-          disabled={isSending || !props.currentSlide || !designEditingEnabled}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
-            event.preventDefault();
-            event.currentTarget.form?.requestSubmit();
-          }}
-        />
-        <button aria-label="메시지 보내기" disabled={!canSend} type="submit">
-          <ArrowUp size={17} strokeWidth={2.4} />
-        </button>
+        <div className="ai-chat-input-shell">
+          <textarea
+            aria-label="AI에게 메시지 보내기"
+            placeholder={designEditingEnabled
+              ? mode === "image"
+                ? "만들고 싶은 이미지를 설명해 주세요"
+                : "바꾸고 싶은 디자인을 말씀해 주세요"
+              : "장표 설정에서 내용을 관리해 주세요"}
+            rows={1}
+            value={draft}
+            disabled={isSending || !props.currentSlide || !designEditingEnabled}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }}
+          />
+          <button aria-label="메시지 보내기" disabled={!canSend} type="submit">
+            <ArrowUp size={17} strokeWidth={2.4} />
+          </button>
+        </div>
       </form>
 
       {pendingPreview ? (

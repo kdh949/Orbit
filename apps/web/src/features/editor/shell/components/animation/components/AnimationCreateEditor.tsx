@@ -37,6 +37,8 @@ export function AnimationCreateEditor(props: {
   } = props;
   const canSubmit =
     canCreateAnimation && !keywordTriggerRestrictionMessage;
+  const hasKeywordTrigger = Boolean(selectedKeywordId);
+  const startMode = hasKeywordTrigger ? "on-click" : draft.startMode;
 
   return (
     <AnimationPanelSection
@@ -66,8 +68,17 @@ export function AnimationCreateEditor(props: {
       <AnimationTimingFields
         delayMs={draft.delayMs}
         durationMs={draft.durationMs}
+        startMode={startMode}
+        startModeChangeDisabledReason={
+          hasKeywordTrigger
+            ? "키워드 action과 연결된 효과는 클릭할 때 시작합니다."
+            : null
+        }
         onDelayChange={(delayMs) => onDraftChange({ delayMs })}
         onDurationChange={(durationMs) => onDraftChange({ durationMs })}
+        onStartModeChange={(nextStartMode) =>
+          onDraftChange({ startMode: nextStartMode })
+        }
       />
       <div className="animation-panel-timing-actions">
         <button
@@ -78,6 +89,7 @@ export function AnimationCreateEditor(props: {
             onAddAnimation({
               delayMs: draft.delayMs,
               durationMs: draft.durationMs,
+              startMode,
               type
             }, selectedKeywordId, selectedKeywordOccurrenceId)
           }

@@ -1,11 +1,23 @@
 import { createKeywordOccurrenceId, type Keyword } from "@orbit/shared";
+import { useState } from "react";
 
+import { DropdownMenu, DropdownMenuItem } from "../../../../components/ui";
 import { IdBadge } from "./EditorIdBadge";
 
 export interface KeywordUsageSummary {
   advancesSlide: boolean;
   animationIds: string[];
 }
+
+export type KeywordActionMode =
+  | "advance-slide"
+  | "animation-trigger"
+  | "required-keyword";
+
+export type KeywordSelectionContext = {
+  keywordId: string;
+  occurrenceKey: string | null;
+};
 
 interface SpeakerNotesWordPart {
   keyword: Keyword | null;
@@ -33,8 +45,16 @@ export function KeywordHighlightedNotes(props: {
   selectedKeywordId: string | null;
   showIds: boolean;
   slideId: string;
+  usageByKeywordId?: Record<string, KeywordUsageSummary>;
   onSelectKeyword: (keywordId: string, occurrenceKey?: string | null) => void;
-  onSelectKeywordText: (value: string, start: number) => void;
+  onSelectKeywordActionMode?: (
+    mode: KeywordActionMode,
+    selection?: KeywordSelectionContext | null
+  ) => void;
+  onSelectKeywordText: (
+    value: string,
+    start: number
+  ) => KeywordSelectionContext | null;
 }) {
   const {
     keywords,
@@ -42,9 +62,12 @@ export function KeywordHighlightedNotes(props: {
     selectedKeywordOccurrenceKey = null,
     showIds,
     slideId,
+    usageByKeywordId,
     onSelectKeyword,
+    onSelectKeywordActionMode,
     onSelectKeywordText
   } = props;
+  const [openTokenKey, setOpenTokenKey] = useState<string | null>(null);
 
   if (!notes) {
     return <p className="script-copy">발표 메모가 아직 없습니다.</p>;
@@ -52,8 +75,29 @@ export function KeywordHighlightedNotes(props: {
 
   const parts = tokenizeSpeakerNotes(notes, keywords);
 
+  function selectTokenAction(
+    part: SpeakerNotesWordPart,
+    mode: KeywordActionMode,
+    keyword: Keyword | null,
+    occurrenceKey: string | null
+  ) {
+    const selection = keyword
+      ? {
+          keywordId: keyword.keywordId,
+          occurrenceKey
+        }
+      : onSelectKeywordText(part.value, part.start);
+
+    if (keyword) {
+      onSelectKeyword(keyword.keywordId, occurrenceKey);
+    }
+
+    onSelectKeywordActionMode?.(mode, selection);
+    setOpenTokenKey(null);
+  }
+
   return (
-    <p className="script-copy">
+    <div className="script-copy">
       {parts.map((part, index) => {
         if (part.kind === "text") {
           return part.value;
@@ -71,31 +115,103 @@ export function KeywordHighlightedNotes(props: {
         const isSelected = Boolean(
           occurrenceKey && occurrenceKey === selectedKeywordOccurrenceKey
         );
+        const tokenTone = getKeywordTokenTone(keyword, occurrenceKey, usageByKeywordId);
+        const tokenKey = `${part.start}-${part.value}-${index}`;
         const shouldShowKeywordMark = Boolean(
           keyword && (!selectedKeywordOccurrenceKey || isSelected)
         );
+        const tokenClassName = [
+          shouldShowKeywordMark ? "keyword-mark" : "keyword-note-token",
+          `keyword-tone-${tokenTone}`,
+          isSelected ? "selected" : ""
+        ].filter(Boolean).join(" ");
 
         return (
-          <button
-            className={`${shouldShowKeywordMark ? "keyword-mark" : "keyword-note-token"} ${
-              isSelected ? "selected" : ""
-            }`}
-            data-keyword-id={keyword?.keywordId}
-            data-occurrence-id={occurrenceKey ?? undefined}
-            key={`${part.value}-${index}`}
-            type="button"
-            onClick={() =>
-              keyword
-                ? onSelectKeyword(keyword.keywordId, occurrenceKey)
-                : onSelectKeywordText(part.value, part.start)
-            }
+          <span
+            className="keyword-token-menu-anchor"
+            key={tokenKey}
+            onBlur={(event) => {
+              if (
+                event.relatedTarget &&
+                event.currentTarget.contains(event.relatedTarget as Node)
+              ) {
+                return;
+              }
+              setOpenTokenKey(null);
+            }}
           >
-            <strong>{part.value}</strong>
-            {showIds && keyword ? <IdBadge id={keyword.keywordId} /> : null}
-          </button>
+            <button
+              aria-expanded={openTokenKey === tokenKey}
+              aria-haspopup="menu"
+              className={tokenClassName}
+              data-keyword-id={keyword?.keywordId}
+              data-occurrence-id={occurrenceKey ?? undefined}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setOpenTokenKey((current) =>
+                  current === tokenKey ? null : tokenKey
+                );
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setOpenTokenKey(null);
+                }
+              }}
+            >
+              <strong>{part.value}</strong>
+              {showIds && keyword ? <IdBadge id={keyword.keywordId} /> : null}
+            </button>
+            {openTokenKey === tokenKey ? (
+              <DropdownMenu
+                align="start"
+                aria-label={`${part.value} 키워드 동작`}
+                className="keyword-token-dropdown"
+                variant="black"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <DropdownMenuItem
+                  onClick={() =>
+                    selectTokenAction(
+                      part,
+                      "animation-trigger",
+                      keyword,
+                      occurrenceKey
+                    )
+                  }
+                >
+                  애니메이션 트리거
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    selectTokenAction(
+                      part,
+                      "required-keyword",
+                      keyword,
+                      occurrenceKey
+                    )
+                  }
+                >
+                  필수 키워드
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    selectTokenAction(
+                      part,
+                      "advance-slide",
+                      keyword,
+                      occurrenceKey
+                    )
+                  }
+                >
+                  페이지 넘김
+                </DropdownMenuItem>
+              </DropdownMenu>
+            ) : null}
+          </span>
         );
       })}
-    </p>
+    </div>
   );
 }
 
@@ -149,19 +265,25 @@ export function KeywordDetail(props: {
   usage?: KeywordUsageSummary | null;
   onClearSelection?: () => void;
   onDeleteKeyword?: () => void;
-  onToggleAdvanceSlide?: () => void;
-  onToggleRequired?: () => void;
+  onSelectActionMode?: (mode: KeywordActionMode) => void;
 }) {
   const {
     keyword,
     onClearSelection,
     onDeleteKeyword,
-    onToggleAdvanceSlide,
-    onToggleRequired,
+    onSelectActionMode,
     requiredActive = keyword.required,
     showIds,
     usage
   } = props;
+  const selectedActionMode: KeywordActionMode | "" =
+    (usage?.animationIds.length ?? 0) > 0
+      ? "animation-trigger"
+      : usage?.advancesSlide
+        ? "advance-slide"
+        : requiredActive
+          ? "required-keyword"
+          : "";
 
   return (
     <section className="keyword-detail-card">
@@ -199,20 +321,25 @@ export function KeywordDetail(props: {
         ) : null}
       </div>
       <div className="keyword-control-row">
-        <button
-          className={`keyword-control-button ${requiredActive ? "active" : ""}`}
-          type="button"
-          onClick={onToggleRequired}
-        >
-          필수 발화
-        </button>
-        <button
-          className={`keyword-control-button ${usage?.advancesSlide ? "active" : ""}`}
-          type="button"
-          onClick={onToggleAdvanceSlide}
-        >
-          다음 슬라이드
-        </button>
+        <label className="keyword-mode-select-label">
+          <span>키워드 동작</span>
+          <select
+            className="keyword-mode-select"
+            value={selectedActionMode}
+            onChange={(event) => {
+              const mode = event.target.value as KeywordActionMode | "";
+              if (!mode) return;
+              onSelectActionMode?.(mode);
+            }}
+          >
+            <option value="" disabled>
+              유형 선택
+            </option>
+            <option value="required-keyword">필수 키워드</option>
+            <option value="advance-slide">다음 슬라이드 넘김</option>
+            <option value="animation-trigger">애니메이션 트리거</option>
+          </select>
+        </label>
       </div>
       <KeywordAliases label="유의어" values={keyword.synonyms} />
       <KeywordAliases label="약어" values={keyword.abbreviations} />
@@ -252,6 +379,27 @@ function KeywordAliases(props: { label: string; values: string[] }) {
       </div>
     </div>
   );
+}
+
+function getKeywordTokenTone(
+  keyword: Keyword | null,
+  occurrenceKey: string | null,
+  usageByKeywordId?: Record<string, KeywordUsageSummary>
+): "default" | "next-slide" | "required" {
+  if (!keyword) {
+    return "default";
+  }
+
+  const usage = usageByKeywordId?.[keyword.keywordId];
+  if (usage?.advancesSlide) {
+    return "next-slide";
+  }
+
+  const isRequiredOccurrence = occurrenceKey
+    ? (keyword.requiredOccurrenceIds ?? []).includes(occurrenceKey)
+    : false;
+
+  return keyword.required || isRequiredOccurrence ? "required" : "default";
 }
 
 function tokenizeSpeakerNotes(notes: string, keywords: Keyword[]): SpeakerNotesPart[] {

@@ -60,6 +60,7 @@ function createSlide(): Slide {
         elementId: "el_1",
         type: "appear",
         order: 1,
+        startMode: "on-click",
         durationMs: 400,
         delayMs: 0,
         easing: "ease-out"
@@ -69,6 +70,17 @@ function createSlide(): Slide {
         elementId: "el_1",
         type: "disappear",
         order: 2,
+        startMode: "with-previous",
+        durationMs: 400,
+        delayMs: 0,
+        easing: "ease-out"
+      },
+      {
+        animationId: "anim_3",
+        elementId: "el_1",
+        type: "appear",
+        order: 3,
+        startMode: "on-click",
         durationMs: 400,
         delayMs: 0,
         easing: "ease-out"
@@ -101,7 +113,7 @@ function createSlide(): Slide {
 }
 
 describe("slidePlayback", () => {
-  it("returns click animations in order", () => {
+  it("returns click root chains in order", () => {
     const slide = createSlide();
     const initialState = createSlidePlaybackState();
     const nextAnimation = getNextClickAnimation(slide, initialState);
@@ -112,7 +124,12 @@ describe("slidePlayback", () => {
     const secondPlay = playNextClickAnimation(slide, firstPlay!.state);
 
     expect(firstPlay?.animation.animationId).toBe("anim_1");
-    expect(secondPlay?.animation.animationId).toBe("anim_2");
+    expect(firstPlay?.animations.map((animation) => animation.animationId)).toEqual([
+      "anim_1",
+      "anim_2"
+    ]);
+    expect(firstPlay?.state.playedAnimationIds).toEqual(["anim_1", "anim_2"]);
+    expect(secondPlay?.animation.animationId).toBe("anim_3");
   });
 
   it("resolves cue actions case-insensitively", () => {
@@ -199,7 +216,7 @@ describe("slidePlayback", () => {
     ).toEqual(["act_3"]);
   });
 
-  it("executes cue-driven animation actions once", () => {
+  it("executes a cue targeting a follower as its whole root chain once", () => {
     const slide = createSlide();
     const action = slide.actions[0];
     const initialState = createSlidePlaybackState();
@@ -209,6 +226,13 @@ describe("slidePlayback", () => {
       kind: "play-animation",
       animation: {
         animationId: "anim_2"
+      },
+      animations: [
+        { animationId: "anim_1" },
+        { animationId: "anim_2" }
+      ],
+      state: {
+        playedAnimationIds: ["anim_1", "anim_2"]
       }
     });
 

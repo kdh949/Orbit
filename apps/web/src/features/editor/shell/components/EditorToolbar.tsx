@@ -6,8 +6,9 @@ import {
   IconChartBar as BarChart3,
   IconChevronDown as ChevronDown,
   IconFilePlus as FilePlus,
-  IconIcons,
+  IconChevronLeft as ChevronLeft,
   IconPhotoPlus as ImagePlus,
+  IconIcons,
   IconPointer as MousePointer2,
   IconPrinter as Printer,
   IconSearch as Search,
@@ -54,6 +55,7 @@ type EditorToolbarProps = {
   onOpenImagePicker: () => void;
   onOpenProperties: () => void;
   onPrint: () => void;
+  onOpenRightPanel?: () => void;
   onRedo: () => void;
   onSelectTool: () => void;
   onToggleChartMenu: () => void;
@@ -62,7 +64,6 @@ type EditorToolbarProps = {
   onUndo: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
-  onZoomToActualSize: () => void;
   redoDisabled: boolean;
   selectedElement: DeckElement | null;
   selectedElementAnimationCount: number;
@@ -119,7 +120,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
       ) : null}
       <ToolbarSelectionContext {...props} />
       <div className="editor-command-context" id="editor-command-context" />
-      <EditorZoomControls canZoomIn={props.canZoomIn} canZoomOut={props.canZoomOut} isFitToViewport={props.isStageFitToViewport} onFitToViewport={props.onFitStageToViewport} onZoomIn={props.onZoomIn} onZoomOut={props.onZoomOut} onZoomToActualSize={props.onZoomToActualSize} scale={props.stageScale} />
+      <EditorZoomControls canZoomIn={props.canZoomIn} canZoomOut={props.canZoomOut} isFitToViewport={props.isStageFitToViewport} onFitToViewport={props.onFitStageToViewport} onZoomIn={props.onZoomIn} onZoomOut={props.onZoomOut} scale={props.stageScale} />
       {isCommandSearchOpen ? (
         <EditorCommandSearch
           query={commandQuery}
@@ -138,6 +139,17 @@ export function EditorToolbar(props: EditorToolbarProps) {
             { label: "화면에 맞춤", run: props.onFitStageToViewport },
           ]}
         />
+      ) : null}
+      {props.onOpenRightPanel ? (
+        <button
+          aria-label="오른쪽 패널 열기"
+          className="open-right-pane-floating-button"
+          title="오른쪽 패널 열기"
+          type="button"
+          onClick={props.onOpenRightPanel}
+        >
+          <ChevronLeft aria-hidden="true" size={18} />
+        </button>
       ) : null}
     </div>
   );

@@ -22,6 +22,8 @@ export type LiveSttBiasPhraseSource =
   | "abbreviation"
   | "semantic-cue-term"
   | "semantic-cue-alias"
+  | "pronunciation-source"
+  | "pronunciation-alias"
   | "representative-phrase"
   | "legacy"
   | "title"

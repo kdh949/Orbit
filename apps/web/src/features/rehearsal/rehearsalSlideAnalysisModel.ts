@@ -123,7 +123,7 @@ function buildFeedbackItems({
 
   if (slideInsight && (slideInsight.longSilenceCount ?? 0) >= 1) {
     feedback.push(
-      `1초 이상 말하지 않은 구간이 ${slideInsight.longSilenceCount}회 있었습니다. 다음 문장 연결어를 미리 준비해 두는 편이 좋습니다.`,
+      `5초 이상 발화가 없었던 구간이 ${slideInsight.longSilenceCount}회 있었습니다. 다음 문장 연결어를 미리 준비해 두는 편이 좋습니다.`,
     );
   }
 
@@ -176,6 +176,43 @@ function buildSignalTags({
   return signalTags;
 }
 
+export function buildFiveSecondLongSilenceCountBySlide(
+  report: RehearsalReport,
+): ReadonlyMap<string, number> | null {
+  if (report.silenceAnalysis.measurementState !== "measured") return null;
+
+  const counts = new Map<string, number>();
+  const longSilences = report.silenceAnalysis.segments.filter(
+    (segment) => segment.durationSeconds >= 5,
+  );
+  let windowStart = 0;
+
+  report.slideTimings.forEach((timing, index) => {
+    const nominalEnd = windowStart + Math.max(0, timing.actualSeconds);
+    const windowEnd =
+      index === report.slideTimings.length - 1
+        ? Math.max(nominalEnd, report.metrics.durationSeconds)
+        : nominalEnd;
+    const silenceCount = longSilences.filter((silence) => {
+      const midpoint = (silence.startSeconds + silence.endSeconds) / 2;
+      return (
+        midpoint >= windowStart &&
+        (index === report.slideTimings.length - 1
+          ? midpoint <= windowEnd
+          : midpoint < windowEnd)
+      );
+    }).length;
+
+    counts.set(
+      timing.slideId,
+      (counts.get(timing.slideId) ?? 0) + silenceCount,
+    );
+    windowStart = windowEnd;
+  });
+
+  return counts;
+}
+
 export function buildRehearsalSlideAnalysisCards(
   deck: Deck | null,
   prevReports: RehearsalReport[],
@@ -190,6 +227,8 @@ export function buildRehearsalSlideAnalysisCards(
   const slideInsightMap = new Map(
     report.slideInsights.map((insight) => [insight.slideId, insight]),
   );
+  const fiveSecondSilenceCounts =
+    buildFiveSecondLongSilenceCountBySlide(report);
 
   return report.slideTimings
     .map((timing) => {
@@ -197,7 +236,14 @@ export function buildRehearsalSlideAnalysisCards(
       const missedKeywords = report.missedKeywords
         .filter((keyword) => keyword.slideId === timing.slideId)
         .map((keyword) => keyword.text);
-      const slideInsight = slideInsightMap.get(timing.slideId);
+      const storedSlideInsight = slideInsightMap.get(timing.slideId);
+      const slideInsight = storedSlideInsight
+        ? {
+            ...storedSlideInsight,
+            longSilenceCount:
+              fiveSecondSilenceCounts?.get(timing.slideId) ?? null,
+          }
+        : undefined;
       const recurring = recurringIssueMap.get(timing.slideId);
       const averageSeconds = slideAverageMap.get(timing.slideId) ?? null;
       const diffSeconds =

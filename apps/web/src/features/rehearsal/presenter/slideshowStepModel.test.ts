@@ -156,4 +156,59 @@ describe("slideshowStepModel", () => {
     expect(clampSlideshowStepIndex(9, 2)).toBe(2);
     expect(clampSlideshowStepIndex(Number.NaN, 2)).toBe(0);
   });
+
+  it("passes the destination transition base into the shared planner", () => {
+    const slideWithOrphanAfter = {
+      ...slide,
+      transition: { type: "fade" as const, durationMs: 700 },
+      animations: [
+        {
+          animationId: "anim_after_transition",
+          elementId: "el_title",
+          type: "fade-in" as const,
+          order: 1,
+          startMode: "after-previous" as const,
+          durationMs: 300,
+          delayMs: 50,
+          easing: "ease-out" as const
+        }
+      ]
+    };
+
+    const plan = createSlideshowAnimationPlan({ slide: slideWithOrphanAfter });
+
+    expect(plan.entryAnimations[0]?.timelineStartMs).toBe(750);
+    expect(plan.entryDurationMs).toBe(1050);
+    expect(plan.diagnostics).toContainEqual({
+      animationId: "anim_after_transition",
+      code: "orphan-after-previous"
+    });
+  });
+
+  it("omits the transition base when planning the initial slide", () => {
+    const slideWithOrphanAfter = {
+      ...slide,
+      transition: { type: "fade" as const, durationMs: 700 },
+      animations: [
+        {
+          animationId: "anim_initial_after",
+          elementId: "el_title",
+          type: "fade-in" as const,
+          order: 1,
+          startMode: "after-previous" as const,
+          durationMs: 300,
+          delayMs: 50,
+          easing: "ease-out" as const
+        }
+      ]
+    };
+
+    const plan = createSlideshowAnimationPlan({
+      slide: slideWithOrphanAfter,
+      transitionDurationMs: 0
+    });
+
+    expect(plan.entryAnimations[0]?.timelineStartMs).toBe(50);
+    expect(plan.entryDurationMs).toBe(350);
+  });
 });

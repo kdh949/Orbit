@@ -19,6 +19,7 @@ from app.audio.transcribe import (
     AudioTranscriptionError,
     AudioContent,
     OpenAISpeechToTextProvider,
+    PronunciationContextTerm,
     ProviderTranscription,
     SpeechToTextProvider,
     TranscriptSegment,
@@ -40,7 +41,11 @@ class FakeSpeechToTextProvider:
         self.transcript = transcript
         self.last_audio: AudioContent | None = None
 
-    def transcribe(self, audio: AudioContent) -> ProviderTranscription:
+    def transcribe(
+        self,
+        audio: AudioContent,
+        pronunciation_context: list[PronunciationContextTerm] | None = None,
+    ) -> ProviderTranscription:
         self.last_audio = audio
         return ProviderTranscription(
             transcript=self.transcript,
@@ -62,7 +67,11 @@ class FailingSpeechToTextProvider:
     name = "fake"
     model = "failing-transcriber"
 
-    def transcribe(self, audio: AudioContent) -> ProviderTranscription:
+    def transcribe(
+        self,
+        audio: AudioContent,
+        pronunciation_context: list[PronunciationContextTerm] | None = None,
+    ) -> ProviderTranscription:
         raise RuntimeError(f"failed for {audio.file_name}")
 
 
@@ -257,6 +266,47 @@ def test_gpt4o_transcribe_uses_json_response_format(
     assert calls[0]["response_format"] == "json"
 
 
+def test_openai_stt_uses_bounded_pronunciation_context_as_prompt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    class FakeTranscriptions:
+        def create(self, **kwargs: object) -> dict[str, str]:
+            calls.append(kwargs)
+            return {"text": "오픈에이아이 에이피아이"}
+
+    class FakeOpenAI:
+        def __init__(self, *, api_key: str) -> None:
+            self.audio = SimpleNamespace(transcriptions=FakeTranscriptions())
+
+    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=FakeOpenAI))
+    provider = OpenAISpeechToTextProvider(
+        api_key="test-key",
+        model="whisper-1",
+        language="ko-KR",
+    )
+
+    provider.transcribe(
+        AudioContent(
+            data=b"fake webm bytes",
+            file_name="rehearsal.webm",
+            mime_type="audio/webm",
+        ),
+        [
+            PronunciationContextTerm(
+                source="OpenAI",
+                aliases=["오픈에이아이", "오픈 AI"],
+            ),
+            PronunciationContextTerm(source="API", aliases=["에이피아이"]),
+        ],
+    )
+
+    assert calls[0]["prompt"] == (
+        "발표 용어 표기와 발음: OpenAI(오픈에이아이, 오픈 AI), API(에이피아이)."
+    )
+
+
 def test_whisper1_uses_verbose_json_and_parses_segments(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -267,6 +317,7 @@ def test_whisper1_uses_verbose_json_and_parses_segments(
             calls.append(kwargs)
             return {
                 "text": "첫 문장 다음 문장",
+                "language": "korean",
                 "duration": 12.5,
                 "segments": [
                     {"text": "첫 문장", "start": 0.0, "end": 2.0},
@@ -297,6 +348,7 @@ def test_whisper1_uses_verbose_json_and_parses_segments(
     # whisper-1은 verbose_json 응답을 써야 세그먼트/duration이 채워진다.
     assert calls[0]["response_format"] == "verbose_json"
     assert result.transcript == "첫 문장 다음 문장"
+    assert result.language == "ko"
     assert result.duration_seconds == 12.5
     assert len(result.segments) == 2
     assert result.segments[0].start_seconds == 0.0
@@ -642,7 +694,7 @@ def test_audio_transcribe_endpoint_uses_injected_provider(
     assert response.status_code == 200
     assert response.json()["transcript"] == "발표 키워드를 확인했습니다"
     assert response.json()["volumeAnalysis"] == {
-        "metricDefinitionVersion": 1,
+        "metricDefinitionVersion": 2,
         "measurementState": "unmeasured",
         "reasonCode": "AUDIO_DECODE_FAILED",
         "averageDbfs": None,
@@ -653,14 +705,14 @@ def test_audio_transcribe_endpoint_uses_injected_provider(
     }
     silence_analysis = response.json()["silenceAnalysis"]
     assert silence_analysis == {
-        "metricDefinitionVersion": 1,
+        "metricDefinitionVersion": 2,
         "measurementState": "unmeasured",
         "reasonCode": "AUDIO_DECODE_FAILED",
         "detector": "silero-vad",
         "detectorVersion": silence_analysis["detectorVersion"],
         "speechThreshold": 0.5,
         "minimumSilenceMs": 250,
-        "longSilenceMs": 1000,
+        "longSilenceMs": 5000,
         "analysisWindowStartSeconds": None,
         "analysisWindowEndSeconds": None,
         "totalSilenceSeconds": None,

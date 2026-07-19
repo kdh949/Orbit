@@ -16,6 +16,7 @@ export function AnimationCreateFlow(props: {
   keywordTriggerRestrictionMessage?: string | null;
   keywordTriggerWarningMessage?: string | null;
   linkedTypes: SupportedAnimationType[];
+  mutationDisabledReason?: string | null;
   selectedKeywordId: string | null;
   selectedKeywordLabel: string | null;
   selectedKeywordOccurrenceId?: string | null;
@@ -36,6 +37,7 @@ export function AnimationCreateFlow(props: {
     keywordTriggerRestrictionMessage = null,
     keywordTriggerWarningMessage = null,
     linkedTypes,
+    mutationDisabledReason = null,
     selectedKeywordId,
     selectedKeywordLabel,
     selectedKeywordOccurrenceId = null,
@@ -50,6 +52,7 @@ export function AnimationCreateFlow(props: {
       <AnimationCreatePicker
         creationType={creationType}
         linkedTypes={linkedTypes}
+        mutationDisabledReason={mutationDisabledReason}
         onStartCreating={onStartCreating}
       />
 

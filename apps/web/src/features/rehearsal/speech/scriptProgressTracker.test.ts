@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createScriptProgressTracker } from "./scriptProgressTracker";
+import type { PronunciationLexiconEntry } from "@orbit/shared";
 
 describe("scriptProgressTracker", () => {
   it("partial 결과로 원문 위치를 단조 증가시킨다", () => {
@@ -32,7 +33,7 @@ describe("scriptProgressTracker", () => {
 
     const first = tracker.acceptResult({
       text: "생성형 AI 초안를 안정적으러 추적합니다",
-      isFinal: false,
+      isFinal: false
     });
     const confirmed = tracker.acceptResult({
       text: "생성형 AI 초안를 안정적으러 추적합니다",
@@ -70,7 +71,7 @@ describe("scriptProgressTracker", () => {
     tracker.acceptResult({ text: "두 번째 결과를 확인합니다", isFinal: false });
     const secondFinal = tracker.acceptResult({
       text: "두 번째 결과를 확인합니다",
-      isFinal: true,
+      isFinal: true
     });
 
     expect(secondFinal.charOffset).toBeGreaterThan(firstFinal.charOffset);
@@ -85,7 +86,7 @@ describe("scriptProgressTracker", () => {
     const tracker = createScriptProgressTracker("오르빗 리허설을 시작합니다.");
     tracker.acceptResult({
       text: "오르빗 리허설을 시작합니다",
-      isFinal: false,
+      isFinal: false
     });
     tracker.acceptResult({ text: "오르빗 리허설을 시작합니다", isFinal: true });
 
@@ -120,7 +121,7 @@ describe("scriptProgressTracker", () => {
     tracker.acceptResult({ text: "두 번째 문장을", isFinal: false });
     const second = tracker.acceptResult({
       text: "두 번째 문장을",
-      isFinal: false
+      isFinal: false,
     });
 
     expect(second.sentenceId).toBe("sentence_2");
@@ -136,12 +137,12 @@ describe("scriptProgressTracker", () => {
     tracker.acceptResult({ text: "😀 첫 문장을 설명합니다", isFinal: false });
     const first = tracker.acceptResult({
       text: "😀 첫 문장을 설명합니다",
-      isFinal: true
+      isFinal: true,
     });
     tracker.acceptResult({ text: "둘째 🚀 문장을", isFinal: false });
     const second = tracker.acceptResult({
       text: "둘째 🚀 문장을",
-      isFinal: false
+      isFinal: false,
     });
 
     expect(first).toMatchObject({
@@ -154,4 +155,56 @@ describe("scriptProgressTracker", () => {
     expect(second.sentenceCharOffset).toBeGreaterThan(0);
     expect(second.sentenceRatio).toBeLessThan(1);
   });
+
+  it("영문 대본과 한국어식 발음을 canonical term으로 정렬한다", () => {
+    const tracker = createScriptProgressTracker("OpenAI API를 활용했습니다.", {
+      pronunciationEntries: [
+        pronunciationEntry("openai", "OpenAI", "오픈에이아이", 0),
+        pronunciationEntry("api", "API", "에이피아이", 7),
+      ],
+      slideId: "slide_1",
+    });
+
+    tracker.acceptResult({
+      text: "오픈 에이아이 에이피아이를 활용했습니다",
+      isFinal: false,
+    });
+    const result = tracker.acceptResult({
+      text: "오픈 에이아이 에이피아이를 활용했습니다",
+      isFinal: true,
+    });
+
+    expect(result.confidence).toBe("confirmed");
+    expect(result.ratio).toBeGreaterThan(0.9);
+  });
 });
+
+function pronunciationEntry(
+  canonicalKey: string,
+  sourceText: string,
+  alias: string,
+  start: number,
+): PronunciationLexiconEntry {
+  return {
+    id: `pron_${canonicalKey}`,
+    sourceText,
+    normalizedSource: sourceText.toLocaleLowerCase("en-US"),
+    canonicalText: sourceText,
+    canonicalKey,
+    category: canonicalKey === "api" ? "acronym" : "product",
+    aliases: [
+      {
+        text: alias,
+        normalizedText: alias,
+        origin: "static",
+        confidence: 1,
+        enabled: true,
+      },
+    ],
+    confidence: 1,
+    status: "active",
+    scriptOccurrences: [
+      { slideId: "slide_1", start, end: start + sourceText.length },
+    ],
+  };
+}

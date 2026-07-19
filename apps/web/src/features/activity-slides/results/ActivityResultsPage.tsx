@@ -4,8 +4,6 @@ import {
   IconArrowLeft,
   IconChartBar,
   IconClock,
-  IconPresentation,
-  IconRefresh,
   IconTrash
 } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
@@ -14,6 +12,7 @@ import {
   OrbitButton,
   OrbitDialog,
   OrbitEmptyState,
+  OrbitFailureState,
   OrbitField,
   OrbitInput,
   OrbitStatus
@@ -93,14 +92,9 @@ export function ActivityResultsPage(props: {
   if (archive.isError || !archive.data) {
     return (
       <main className="activity-results-state-page">
-        <OrbitEmptyState
-          action={
-            <OrbitButton icon={<IconRefresh aria-hidden="true" size={17} />} onClick={() => void archive.refetch()}>
-              다시 시도
-            </OrbitButton>
-          }
+        <OrbitFailureState
           description="잠시 후 다시 시도하거나 프로젝트 권한과 세션 주소를 확인해 주세요."
-          icon={<IconPresentation aria-hidden="true" size={32} />}
+          onRetry={() => void archive.refetch()}
           title="발표 세션 결과를 불러오지 못했습니다."
         />
       </main>

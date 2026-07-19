@@ -34,8 +34,19 @@ class FakeGrader:
         return self.decisions
 
 
-def test_exact_alias_evidence_produces_basic_covered_without_grader() -> None:
-    grader = FakeGrader()
+def test_exact_alias_evidence_still_requires_full_semantic_grader() -> None:
+    grader = FakeGrader(
+        [
+            SemanticGraderDecision(
+                cue_id="scue_alias",
+                status="covered",
+                confidence=0.95,
+                covered_concepts=["ORBIT"],
+                missing_concepts=[],
+                evidence_segment_index=0,
+            )
+        ]
+    )
     request = semantic_request(
         slides=[
             snapshot_slide(
@@ -56,17 +67,62 @@ def test_exact_alias_evidence_produces_basic_covered_without_grader() -> None:
 
     response = analyze_semantic_cues(request, grader=grader)
 
-    assert grader.inputs == []
+    assert len(grader.inputs) == 1
     assert response.semantic_evaluation.state == "succeeded"
-    assert response.semantic_evaluation.measurement_mode == "basic"
+    assert response.semantic_evaluation.measurement_mode == "full"
     outcome = response.semantic_cue_outcomes[0]
     assert outcome.status == "covered"
-    assert outcome.matched_by == "alias"
-    assert outcome.measurement_mode == "basic"
+    assert outcome.matched_by == "post_run_semantic"
+    assert outcome.measurement_mode == "full"
     assert outcome.covered_concepts == ["ORBIT"]
     assert outcome.missing_concepts == []
     assert outcome.evidence is not None
     assert outcome.evidence.excerpt == "오르빗을 소개합니다"
+
+
+def test_alias_match_does_not_hide_contradicting_meaning() -> None:
+    grader = FakeGrader(
+        [
+            SemanticGraderDecision(
+                cue_id="scue_api_improvement",
+                status="missed",
+                confidence=0.97,
+                covered_concepts=["API"],
+                missing_concepts=["응답 시간 개선"],
+                evidence_segment_index=None,
+            )
+        ]
+    )
+    request = semantic_request(
+        slides=[
+            snapshot_slide(
+                "slide_1",
+                cues=[
+                    snapshot_cue(
+                        "scue_api_improvement",
+                        "slide_1",
+                        required_concepts=["API", "응답 시간 개선"],
+                        aliases={"API": ["에이피아이"]},
+                        negative_hints=["API 응답 시간이 악화되었다"],
+                    )
+                ],
+            )
+        ],
+        segments=[
+            {
+                "startMs": 0,
+                "endMs": 2_000,
+                "text": "에이피아이 응답 시간을 악화시켰습니다",
+            }
+        ],
+        timeline=[{"slideId": "slide_1", "enteredAtMs": 0, "exitedAtMs": 3_000}],
+    )
+
+    response = analyze_semantic_cues(request, grader=grader)
+
+    assert len(grader.inputs) == 1
+    assert response.semantic_cue_outcomes[0].status == "missed"
+    assert response.semantic_cue_outcomes[0].measurement_mode == "full"
 
 
 def test_semantic_grader_produces_full_canonical_outcome() -> None:
@@ -123,7 +179,7 @@ def test_semantic_grader_produces_full_canonical_outcome() -> None:
     assert response.semantic_evaluation.measurement_mode == "full"
 
 
-def test_provider_timeout_keeps_deterministic_result_and_marks_partial() -> None:
+def test_provider_timeout_does_not_promote_term_evidence_to_meaning_coverage() -> None:
     grader = FakeGrader(error=SemanticGraderError("timeout"))
     request = semantic_request(
         slides=[
@@ -150,14 +206,15 @@ def test_provider_timeout_keeps_deterministic_result_and_marks_partial() -> None
     response = analyze_semantic_cues(request, grader=grader)
 
     outcomes = {outcome.cue_id: outcome for outcome in response.semantic_cue_outcomes}
-    assert outcomes["scue_exact"].status == "covered"
+    assert outcomes["scue_exact"].status == "unmeasured"
+    assert outcomes["scue_exact"].unmeasured_reason == "timeout"
     failed = outcomes["scue_ambiguous"]
     assert failed.status == "unmeasured"
     assert failed.unmeasured_reason == "timeout"
     assert failed.fallback_used is True
     assert failed.fallback_reason == "timeout"
-    assert response.semantic_evaluation.state == "partial"
-    assert response.semantic_evaluation.measurement_mode == "basic"
+    assert response.semantic_evaluation.state == "unavailable"
+    assert response.semantic_evaluation.measurement_mode == "none"
     assert response.semantic_evaluation.reasons == ["timeout"]
     assert response.semantic_evaluation.retryable is True
 
@@ -167,7 +224,9 @@ def test_outcome_priority_never_promotes_provisional_or_unmeasured_cues() -> Non
         slides=[
             snapshot_slide(
                 "slide_1",
-                cues=[snapshot_cue("scue_excluded", "slide_1", review_status="excluded")],
+                cues=[
+                    snapshot_cue("scue_excluded", "slide_1", review_status="excluded")
+                ],
             ),
             snapshot_slide(
                 "slide_2",
@@ -221,7 +280,21 @@ def test_outcome_priority_never_promotes_provisional_or_unmeasured_cues() -> Non
         ],
     )
 
-    response = analyze_semantic_cues(request, grader=FakeGrader())
+    response = analyze_semantic_cues(
+        request,
+        grader=FakeGrader(
+            [
+                SemanticGraderDecision(
+                    cue_id="scue_bounded",
+                    status="covered",
+                    confidence=0.9,
+                    covered_concepts=["ORBIT"],
+                    missing_concepts=[],
+                    evidence_segment_index=0,
+                )
+            ]
+        ),
+    )
 
     outcomes = {outcome.cue_id: outcome for outcome in response.semantic_cue_outcomes}
     assert outcomes["scue_excluded"].status == "excluded"
@@ -279,7 +352,21 @@ def test_evidence_excerpt_is_normalized_and_bounded() -> None:
         timeline=[{"slideId": "slide_1", "enteredAtMs": 0, "exitedAtMs": 2_000}],
     )
 
-    response = analyze_semantic_cues(request, grader=FakeGrader())
+    response = analyze_semantic_cues(
+        request,
+        grader=FakeGrader(
+            [
+                SemanticGraderDecision(
+                    cue_id="scue_bounded",
+                    status="covered",
+                    confidence=0.9,
+                    covered_concepts=["ORBIT"],
+                    missing_concepts=[],
+                    evidence_segment_index=0,
+                )
+            ]
+        ),
+    )
 
     evidence = response.semantic_cue_outcomes[0].evidence
     assert evidence is not None
@@ -355,7 +442,9 @@ def test_empty_provider_output_is_provider_unavailable() -> None:
         raise AssertionError("empty provider output must not become a runtime success")
 
 
-def test_semantic_endpoint_uses_camel_case_contract_and_rejects_unknown_fields() -> None:
+def test_semantic_endpoint_uses_camel_case_contract_and_rejects_unknown_fields() -> (
+    None
+):
     api_module.app.state.config = load_config(VALID_ENV)
     client = TestClient(api_module.app)
     payload = semantic_payload(
@@ -379,10 +468,10 @@ def test_semantic_endpoint_uses_camel_case_contract_and_rejects_unknown_fields()
 
     assert response.status_code == 200
     assert response.json()["semanticEvaluation"] == {
-        "state": "succeeded",
-        "measurementMode": "basic",
-        "reasons": [],
-        "retryable": False,
+        "state": "unavailable",
+        "measurementMode": "none",
+        "reasons": ["provider_unavailable"],
+        "retryable": True,
     }
     assert response.json()["semanticCueOutcomes"][0]["cueId"] == "scue_endpoint"
 

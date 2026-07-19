@@ -282,6 +282,92 @@ describe("processDeckExportJob", () => {
     },
   );
 
+  it("fails before persistence when the generic exporter reports motion loss", async () => {
+    const deck = createDeck("ai");
+    const { dataSource } = createExportDataSource({
+      deckVersion: 1,
+      blueprint: null,
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              contentBase64:
+                Buffer.from("lossy-generic-pptx").toString("base64"),
+              warnings: [],
+              motionDiagnostics: [
+                {
+                  code: "PPTX_MOTION_EFFECT_UNSUPPORTED",
+                  slideIndex: 1,
+                  elementId: "el_1",
+                },
+              ],
+            }),
+          ),
+      ),
+    );
+
+    const job = await processDeckExportJob(
+      dataSource,
+      storage,
+      "http://localhost:8000",
+      exportPayload(deck),
+      { ooxmlReadyAttempts: 1, ooxmlReadyDelayMs: 0 },
+    );
+
+    expect(job.status).toBe("failed");
+    expect(job.error).toMatchObject({
+      code: "DECK_EXPORT_MOTION_PRESERVATION_FAILED",
+      message: expect.stringContaining("PPTX_MOTION_EFFECT_UNSUPPORTED"),
+    });
+    expect(storage.putObject).not.toHaveBeenCalled();
+  });
+
+  it("exports flattened group motion through the supported fallback with a bounded warning", async () => {
+    const deck = createDeck("ai");
+    const { dataSource } = createExportDataSource({
+      deckVersion: 1,
+      blueprint: null,
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              contentBase64: Buffer.from("flattened-group-pptx").toString(
+                "base64",
+              ),
+              warnings: [],
+              motionDiagnostics: [
+                {
+                  code: "PPTX_MOTION_TARGET_FLATTENED",
+                  slideIndex: 1,
+                  count: 2,
+                },
+              ],
+            }),
+          ),
+      ),
+    );
+
+    const job = await processDeckExportJob(
+      dataSource,
+      storage,
+      "http://localhost:8000",
+      exportPayload(deck),
+      { ooxmlReadyAttempts: 1, ooxmlReadyDelayMs: 0 },
+    );
+
+    expect(job.status, JSON.stringify(job.error)).toBe("succeeded");
+    expect(job.result).toMatchObject({
+      warnings: [expect.stringContaining("PPTX_MOTION_TARGET_FLATTENED: 2")],
+    });
+    expect(storage.putObject).toHaveBeenCalledOnce();
+  });
+
   it("fails explicitly after bounded waits instead of exporting a stale package", async () => {
     const deck = createDeck("import");
     const { dataSource } = createExportDataSource({

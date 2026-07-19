@@ -94,13 +94,17 @@ export function createContentEditableEditSession(args: {
   onFinish: () => void;
 }): ContentEditableEditSession {
   let draft = normalizeRichTextProps(args.initialProps);
+  const initialDraftJson = JSON.stringify(draft);
   let composing = false;
+  let dirty = false;
   let terminalAction: "cancel" | "commit" | null = null;
 
   function commit() {
     if (terminalAction) return;
     terminalAction = "commit";
-    args.onCommit(structuredClone(draft));
+    if (dirty) {
+      args.onCommit(structuredClone(draft));
+    }
     args.onFinish();
   }
 
@@ -135,6 +139,7 @@ export function createContentEditableEditSession(args: {
     },
     replaceDraft: (props) => {
       draft = normalizeRichTextProps(props);
+      dirty = JSON.stringify(draft) !== initialDraftJson;
       return structuredClone(draft);
     },
   };

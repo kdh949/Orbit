@@ -1,12 +1,16 @@
 import type { ActivityTemplate, Deck } from "@orbit/shared";
 import {
-  IconChevronUp as ChevronUp,
+  IconChevronLeft as ChevronLeft,
   IconLayoutGrid as Grid,
-  IconLayoutSidebarLeftCollapse as PanelLeftClose,
   IconList as List,
   IconPlus as Plus
 } from "@tabler/icons-react";
-import { useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 
 import { ActivitySpecialSlideThumbnail } from "../../../activity-slides";
 import type { SlidePanelView } from "../editorShellUiStore";
@@ -37,10 +41,32 @@ export function SlideNavigatorPane(props: {
 }) {
   const hasSlides = props.deck.slides.length > 0;
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+  const addMenuRef = useRef<HTMLDivElement | null>(null);
   const canAddActivity = canAddActivitySlide(props.deck);
   const hasActivitySource = props.deck.slides.some(
     (slide) => slide.kind === "activity"
   );
+
+  useEffect(() => {
+    if (!isAddMenuOpen) return;
+
+    function closeMenu(event: globalThis.PointerEvent) {
+      if (!addMenuRef.current?.contains(event.target as Node)) {
+        setIsAddMenuOpen(false);
+      }
+    }
+
+    function closeMenuOnEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") setIsAddMenuOpen(false);
+    }
+
+    document.addEventListener("pointerdown", closeMenu);
+    document.addEventListener("keydown", closeMenuOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeMenu);
+      document.removeEventListener("keydown", closeMenuOnEscape);
+    };
+  }, [isAddMenuOpen]);
 
   return (
     <aside className={`slides-pane ${props.isCollapsed ? "collapsed" : ""}`}>
@@ -60,7 +86,11 @@ export function SlideNavigatorPane(props: {
           title={props.isCollapsed ? "슬라이드 목록 열기" : "슬라이드 패널 접기"}
           onClick={props.onToggleCollapsed}
         >
-          {props.isCollapsed ? <List aria-hidden="true" size={16} /> : <PanelLeftClose size={16} />}
+          {props.isCollapsed ? (
+            <List aria-hidden="true" size={16} />
+          ) : (
+            <ChevronLeft aria-hidden="true" size={16} />
+          )}
         </button>
       </div>
 
@@ -137,28 +167,33 @@ export function SlideNavigatorPane(props: {
               <List aria-hidden="true" size={16} />
             </button>
           </div>
-          {props.canMutate ? <div className="add-slide-split">
-            <button
-              aria-label="슬라이드 추가"
-              className="add-slide-button"
-              title="슬라이드 추가"
-              type="button"
-              onClick={props.onAddSlide}
-            >
-              <Plus aria-hidden="true" size={17} />
-            </button>
+          {props.canMutate ? <div className="add-slide-split" ref={addMenuRef}>
             <button
               aria-expanded={isAddMenuOpen}
+              aria-controls="editor-add-slide-menu"
               aria-haspopup="menu"
               aria-label="추가할 슬라이드 유형 선택"
               className="add-slide-menu-button"
+              title="슬라이드 추가"
               type="button"
               onClick={() => setIsAddMenuOpen((current) => !current)}
             >
-              <ChevronUp aria-hidden="true" size={16} />
+              <Plus aria-hidden="true" size={17} />
             </button>
             {isAddMenuOpen ? (
-              <div className="add-slide-menu" role="menu">
+              <div className="add-slide-menu" id="editor-add-slide-menu" role="menu">
+                <button
+                  role="menuitem"
+                  title="빈 슬라이드 추가"
+                  type="button"
+                  onClick={() => {
+                    props.onAddSlide();
+                    setIsAddMenuOpen(false);
+                  }}
+                >
+                  <strong>빈 슬라이드</strong>
+                  <span>기본 빈 장표 추가</span>
+                </button>
                 {([
                   ["pre-question", "사전 질문", "발표 전 질문 받기"],
                   ["poll", "실시간 투표", "단일 선택 투표"],

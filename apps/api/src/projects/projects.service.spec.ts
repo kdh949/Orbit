@@ -1,10 +1,13 @@
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  ForbiddenException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import { demoIds } from "@orbit/shared";
-import { DataSource, Repository } from "typeorm";
-import { describe, expect, it } from "vitest";
+import { DataSource, QueryFailedError, Repository } from "typeorm";
+import { describe, expect, it, vi } from "vitest";
 import { ProjectEntity } from "./project.entity";
 import { ProjectMemberEntity } from "./project-member.entity";
-import { getKdhHomeProjectSeeds } from "./kdh-home-project-seed";
 import { ProjectsService } from "./projects.service";
 
 type ProjectFindOptions = {
@@ -240,6 +243,70 @@ function createService(args?: {
 }
 
 describe("ProjectsService", () => {
+  it("returns a structured service unavailable error when access membership lookup fails", async () => {
+    const project = new ProjectEntity();
+    project.projectId = "project_schema_drift";
+    project.workspaceId = demoIds.workspaceId;
+    project.title = "Schema drift";
+    project.createdBy = "user_owner";
+    project.createdAt = new Date("2026-07-18T00:00:00.000Z");
+    const memberRepository = createProjectMemberRepository();
+    vi.spyOn(memberRepository, "findOne").mockRejectedValue(
+      new QueryFailedError("SELECT", [], new Error("missing column")),
+    );
+    const service = new ProjectsService(
+      { query: vi.fn() } as unknown as DataSource,
+      createProjectRepository([project]),
+      memberRepository,
+    );
+
+    const failure = await service
+      .getProjectAccess(project.projectId, "user_owner")
+      .catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(ServiceUnavailableException);
+    expect(failure).toMatchObject({
+      response: {
+        code: "PROJECT_ACCESS_UNAVAILABLE",
+        message: "프로젝트 권한 정보를 불러오지 못했습니다.",
+        details: [],
+      },
+      status: 503,
+    });
+  });
+
+  it("returns a structured service unavailable error when member listing fails", async () => {
+    const project = new ProjectEntity();
+    project.projectId = "project_members_schema_drift";
+    project.workspaceId = demoIds.workspaceId;
+    project.title = "Members schema drift";
+    project.createdBy = "user_owner";
+    project.createdAt = new Date("2026-07-18T00:00:00.000Z");
+    const memberRepository = createProjectMemberRepository();
+    vi.spyOn(memberRepository, "findOne").mockRejectedValue(
+      new QueryFailedError("SELECT", [], new Error("missing column")),
+    );
+    const service = new ProjectsService(
+      { query: vi.fn() } as unknown as DataSource,
+      createProjectRepository([project]),
+      memberRepository,
+    );
+
+    const failure = await service
+      .listMembers(demoIds.workspaceId, project.projectId, "user_owner")
+      .catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(ServiceUnavailableException);
+    expect(failure).toMatchObject({
+      response: {
+        code: "PROJECT_MEMBERS_UNAVAILABLE",
+        message: "프로젝트 구성원 정보를 불러오지 못했습니다.",
+        details: [],
+      },
+      status: 503,
+    });
+  });
+
   it("creates and lists projects inside the demo workspace", async () => {
     const service = createService();
 
@@ -349,63 +416,6 @@ describe("ProjectsService", () => {
     await expect(service.list(demoIds.workspaceId, "user_1")).resolves.toEqual([
       expect.objectContaining({ projectId: "project_accepted" }),
     ]);
-  });
-
-  it("seeds ten idempotent home projects only for the kdh owner", async () => {
-    const transactionQueries: string[] = [];
-    const service = createService({
-      transactionQueries,
-      users: [{ user_id: "user_kdh", email: "kdh@orbit.com" }],
-    });
-
-    await service.list(demoIds.workspaceId, "user_kdh");
-
-    expect(
-      transactionQueries.filter((query) => query.includes("INSERT INTO projects")),
-    ).toHaveLength(10);
-    expect(
-      transactionQueries.filter((query) => query.includes("INSERT INTO project_members")),
-    ).toHaveLength(10);
-    expect(
-      transactionQueries.filter((query) => query.includes("INSERT INTO decks")),
-    ).toHaveLength(10);
-    expect(transactionQueries.every((query) => query.includes("ON CONFLICT"))).toBe(true);
-  });
-
-  it("does not seed kdh home projects for a different account", async () => {
-    const transactionQueries: string[] = [];
-    const service = createService({
-      transactionQueries,
-      users: [{ user_id: "user_kdh", email: "kdh@orbit.com" }],
-    });
-
-    await service.list(demoIds.workspaceId, "user_other");
-
-    expect(transactionQueries).toEqual([]);
-  });
-
-  it("hides seeded kdh projects from non-members, even with a known project ID", async () => {
-    const seed = getKdhHomeProjectSeeds()[0];
-    const project = new ProjectEntity();
-    project.projectId = seed.projectId;
-    project.workspaceId = demoIds.workspaceId;
-    project.title = seed.title;
-    project.createdBy = "user_kdh";
-    project.createdAt = new Date("2026-07-18T00:00:00.000Z");
-    const owner = new ProjectMemberEntity();
-    owner.projectId = project.projectId;
-    owner.userId = "user_kdh";
-    owner.role = "owner";
-    owner.status = "accepted";
-    owner.createdAt = project.createdAt;
-    const service = createService({ projects: [project], members: [owner] });
-
-    await expect(
-      service.getProjectAccess(project.projectId, "user_other"),
-    ).rejects.toBeInstanceOf(NotFoundException);
-    await expect(
-      service.requestAccess(project.projectId, "user_other", "viewer"),
-    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it("stores project pins independently for each accepted member", async () => {

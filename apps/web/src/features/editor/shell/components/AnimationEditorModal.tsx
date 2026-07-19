@@ -9,7 +9,10 @@ import { createPortal } from "react-dom";
 
 import type { SlideAnimationDiagnostics } from "../../../../../../../packages/editor-core/src/index";
 import { IdBadge } from "./EditorIdBadge";
-import { KeywordHighlightedNotes } from "./KeywordInspector";
+import {
+  KeywordHighlightedNotes,
+  type KeywordSelectionContext
+} from "./KeywordInspector";
 import {
   PropertyNumberField,
   QuickBarSelectField
@@ -75,7 +78,10 @@ type AnimationEditorModalProps = {
   onClose: () => void;
   onDeleteAnimation: (animationId: string) => void;
   onSelectKeyword: (keywordId: string, occurrenceKey?: string | null) => void;
-  onSelectKeywordText: (value: string, start: number) => void;
+  onSelectKeywordText: (
+    value: string,
+    start: number
+  ) => KeywordSelectionContext | null;
   onUpdateAnimation: (
     animationId: string,
     patch: Partial<DeckAnimation>

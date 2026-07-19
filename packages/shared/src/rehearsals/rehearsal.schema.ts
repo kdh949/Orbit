@@ -46,6 +46,7 @@ import {
   rehearsalSilenceAnalysisSchema,
   rehearsalVolumeAnalysisSchema,
 } from "./rehearsal-audio-analysis.schema";
+import { pronunciationLexiconSnapshotSchema } from "../pronunciation/pronunciation.schema";
 
 export const rehearsalRunStatusSchema = z.enum([
   "created",
@@ -115,6 +116,7 @@ export const rehearsalEvaluationSnapshotSchema = z
     focusProfileSnapshot: rehearsalFocusProfileSnapshotSchema
       .nullable()
       .default(null),
+    pronunciationLexicon: pronunciationLexiconSnapshotSchema.optional(),
     capturedAt: isoDateTimeSchema,
     slides: z.array(rehearsalEvaluationSnapshotSlideSchema),
   })
@@ -660,6 +662,22 @@ const rehearsalReportObjectSchema = z
     const silenceMeasured =
       report.silenceAnalysis.measurementState === "measured";
     if (
+      report.metrics.measurements.longSilenceCount.metricDefinitionVersion !==
+      report.silenceAnalysis.metricDefinitionVersion
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "long silence measurement version must match silence analysis.",
+        path: [
+          "metrics",
+          "measurements",
+          "longSilenceCount",
+          "metricDefinitionVersion",
+        ],
+      });
+    }
+    if (
       silenceMeasured !==
       (report.metrics.measurements.longSilenceCount.measurementState ===
         "measured")
@@ -933,6 +951,23 @@ export const completeRehearsalAudioUploadResponseSchema = z.object({
   job: jobSchema,
 });
 
+export const createRehearsalAudioClipRequestSchema = z
+  .object({
+    startSeconds: z.number().finite().nonnegative(),
+    endSeconds: z.number().finite().positive(),
+  })
+  .strict()
+  .superRefine((request, context) => {
+    const durationSeconds = request.endSeconds - request.startSeconds;
+    if (durationSeconds <= 0 || durationSeconds > 60) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "audio clip duration must be greater than zero and at most 60 seconds.",
+        path: ["endSeconds"],
+      });
+    }
+  });
 export const rehearsalAudioPlaybackUrlResponseSchema = z
   .object({
     playbackUrl: z.string().url(),
@@ -941,7 +976,9 @@ export const rehearsalAudioPlaybackUrlResponseSchema = z
   })
   .strict()
   .superRefine((response, context) => {
-    if (Date.parse(response.expiresAt) > Date.parse(response.retentionExpiresAt)) {
+    if (
+      Date.parse(response.expiresAt) > Date.parse(response.retentionExpiresAt)
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "playback URL cannot outlive audio retention.",
@@ -1017,6 +1054,7 @@ export const retryRehearsalSemanticEvaluationResponseSchema = z.object({
 export const getRehearsalReportResponseSchema = z.object({
   run: rehearsalRunSchema,
   report: rehearsalReportSchema.nullable(),
+  audioPlaybackAvailable: z.boolean().optional(),
 });
 
 export const rehearsalComparisonIssueSchema = z
@@ -1589,6 +1627,9 @@ export type CompleteRehearsalAudioChunkUploadRequest = z.infer<
 export type CompleteRehearsalAudioUploadResponse = z.infer<
   typeof completeRehearsalAudioUploadResponseSchema
 >;
+export type CreateRehearsalAudioClipRequest = z.infer<
+  typeof createRehearsalAudioClipRequestSchema
+>;
 export type RehearsalAudioPlaybackUrlResponse = z.infer<
   typeof rehearsalAudioPlaybackUrlResponseSchema
 >;
@@ -1645,11 +1686,119 @@ export const slideAvgTimingSchema = z.object({
   sampleCount: z.number().int().nonnegative(),
 });
 
+export const rehearsalProjectMetricReasonCodeSchema = z.enum([
+  "REPORT_UNAVAILABLE",
+  "DURATION_UNMEASURED",
+  "SILENCE_UNMEASURED",
+  "SEMANTIC_EVALUATION_UNAVAILABLE",
+  "NO_MEASURABLE_CORE_CUES",
+  "SLIDE_TIMINGS_UNAVAILABLE",
+]);
+
+const rehearsalProjectMeasuredStateSchema = z.object({
+  measurementState: z.literal("measured"),
+  reasonCode: z.null(),
+});
+
+const rehearsalProjectUnmeasuredStateSchema = z.object({
+  measurementState: z.literal("unmeasured"),
+  reasonCode: rehearsalProjectMetricReasonCodeSchema,
+});
+
+export const rehearsalProjectDurationMetricSchema = z.discriminatedUnion(
+  "measurementState",
+  [
+    rehearsalProjectMeasuredStateSchema.extend({
+      actualSeconds: z.number().nonnegative(),
+      targetSeconds: z.number().nonnegative().nullable(),
+    }),
+    rehearsalProjectUnmeasuredStateSchema.extend({
+      actualSeconds: z.null(),
+      targetSeconds: z.number().nonnegative().nullable(),
+    }),
+  ],
+);
+
+export const rehearsalProjectLongSilenceMetricSchema = z.discriminatedUnion(
+  "measurementState",
+  [
+    rehearsalProjectMeasuredStateSchema.extend({
+      count: z.number().int().nonnegative(),
+      metricDefinitionVersion: z.number().int().positive(),
+    }),
+    rehearsalProjectUnmeasuredStateSchema.extend({
+      count: z.null(),
+      metricDefinitionVersion: z.number().int().positive().nullable(),
+    }),
+  ],
+);
+
+export const rehearsalProjectCoreMessageCoverageSchema = z.discriminatedUnion(
+  "measurementState",
+  [
+    rehearsalProjectMeasuredStateSchema.extend({
+      coveredCount: z.number().int().nonnegative(),
+      partialCount: z.number().int().nonnegative(),
+      missedCount: z.number().int().nonnegative(),
+      measurableCount: z.number().int().positive(),
+      rate: z.number().min(0).max(1),
+    }),
+    rehearsalProjectUnmeasuredStateSchema.extend({
+      coveredCount: z.literal(0),
+      partialCount: z.literal(0),
+      missedCount: z.literal(0),
+      measurableCount: z.literal(0),
+      rate: z.null(),
+    }),
+  ],
+);
+
+export const rehearsalProjectTimingOverrunSchema = z.discriminatedUnion(
+  "measurementState",
+  [
+    rehearsalProjectMeasuredStateSchema.extend({
+      overrunCount: z.number().int().nonnegative(),
+      measurableCount: z.number().int().positive(),
+      rate: z.number().min(0).max(1),
+    }),
+    rehearsalProjectUnmeasuredStateSchema.extend({
+      overrunCount: z.literal(0),
+      measurableCount: z.literal(0),
+      rate: z.null(),
+    }),
+  ],
+);
+
+export const rehearsalProjectRunMetricPointSchema = z.object({
+  runId: z.string().min(1),
+  createdAt: isoDateTimeSchema,
+  duration: rehearsalProjectDurationMetricSchema,
+  longSilence: rehearsalProjectLongSilenceMetricSchema,
+  coreMessageCoverage: rehearsalProjectCoreMessageCoverageSchema,
+  timingOverrun: rehearsalProjectTimingOverrunSchema,
+});
+
+export const rehearsalProjectSlidePerformanceSummarySchema = z.object({
+  slideId: deckSlideIdSchema,
+  order: z.number().int().positive(),
+  title: z.string().trim().min(1).max(240),
+  thumbnailUrl: z.string(),
+  avgActualSeconds: z.number().nonnegative().nullable(),
+  targetSeconds: z.number().nonnegative().nullable(),
+  sampleCount: z.number().int().nonnegative(),
+  timingOverrun: rehearsalProjectTimingOverrunSchema,
+  coreMessageCoverage: rehearsalProjectCoreMessageCoverageSchema,
+});
+
 export const rehearsalProjectSummarySchema = z.object({
   projectId: z.string().min(1),
   runCount: z.number().int().nonnegative(),
   runDurationSeries: z.array(runDurationPointSchema).default([]),
   slideAvgTimings: z.array(slideAvgTimingSchema).default([]),
+  runMetricSeries: z.array(rehearsalProjectRunMetricPointSchema).default([]),
+  slidePerformanceSummaries: z
+    .array(rehearsalProjectSlidePerformanceSummarySchema)
+    .default([]),
   progressComment: z.string().nullable(),
 });
 
@@ -1659,6 +1808,27 @@ export const getRehearsalProjectSummaryResponseSchema = z.object({
 
 export type RunDurationPoint = z.infer<typeof runDurationPointSchema>;
 export type SlideAvgTiming = z.infer<typeof slideAvgTimingSchema>;
+export type RehearsalProjectMetricReasonCode = z.infer<
+  typeof rehearsalProjectMetricReasonCodeSchema
+>;
+export type RehearsalProjectDurationMetric = z.infer<
+  typeof rehearsalProjectDurationMetricSchema
+>;
+export type RehearsalProjectLongSilenceMetric = z.infer<
+  typeof rehearsalProjectLongSilenceMetricSchema
+>;
+export type RehearsalProjectCoreMessageCoverage = z.infer<
+  typeof rehearsalProjectCoreMessageCoverageSchema
+>;
+export type RehearsalProjectTimingOverrun = z.infer<
+  typeof rehearsalProjectTimingOverrunSchema
+>;
+export type RehearsalProjectRunMetricPoint = z.infer<
+  typeof rehearsalProjectRunMetricPointSchema
+>;
+export type RehearsalProjectSlidePerformanceSummary = z.infer<
+  typeof rehearsalProjectSlidePerformanceSummarySchema
+>;
 export type RehearsalProjectSummary = z.infer<
   typeof rehearsalProjectSummarySchema
 >;

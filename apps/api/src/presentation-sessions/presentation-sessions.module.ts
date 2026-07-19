@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
+import { DecksModule } from "../decks/decks.module";
 import { ProjectsModule } from "../projects/projects.module";
 import { AudienceSessionsController } from "./audience-sessions.controller";
 import { PresentationSessionsController } from "./presentation-sessions.controller";
@@ -8,7 +9,7 @@ import { PresentationSessionRepository } from "./presentation-session.repository
 import { AudienceRateLimitService } from "./audience-rate-limit.service";
 
 @Module({
-  imports: [AuthModule, ProjectsModule],
+  imports: [AuthModule, DecksModule, ProjectsModule],
   controllers: [AudienceSessionsController, PresentationSessionsController],
   providers: [
     AudienceRateLimitService,

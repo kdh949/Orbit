@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PronunciationLexiconEntry } from "@orbit/shared";
 
 import { createSpeechTracker } from "./speechTracker";
 
@@ -8,7 +9,7 @@ describe("SpeechTracker", () => {
       slideId: "slide_1",
       speakerNotes:
         "안녕하세요. 이번 발표에서는 ORBIT 출시 목표를 공유하겠습니다. 마지막으로 실행 계획을 정리하겠습니다.",
-      keywords: []
+      keywords: [],
     });
 
     expect(tracker.snapshot()).toMatchObject({
@@ -81,7 +82,7 @@ describe("SpeechTracker", () => {
         currentSentenceId: "sentence_1",
         committedSentenceIds: []
       },
-      finalSentenceCommitted: false
+      finalSentenceCommitted: false,
     });
 
     const events = tracker.acceptResult({
@@ -102,13 +103,54 @@ describe("SpeechTracker", () => {
     });
   });
 
+  it("한국어식 발음을 영문 term evidence로 사용하되 원문 의미 token도 요구한다", () => {
+    const tracker = createSpeechTracker({
+      slideId: "slide_1",
+      speakerNotes: "OpenAI API를 활용했습니다.",
+      keywords: [
+        {
+          keywordId: "kw_openai",
+          text: "OpenAI",
+          synonyms: [],
+          abbreviations: []
+        },
+        {
+          keywordId: "kw_api",
+          text: "API",
+          synonyms: [],
+          abbreviations: []
+        }
+      ],
+      pronunciationEntries: [
+        pronunciationEntry("openai", "OpenAI", "오픈에이아이", 0),
+        pronunciationEntry("api", "API", "에이피아이", 7),
+      ],
+    });
+
+    tracker.acceptResult({
+      text: "오픈 에이아이 에이피아이를 활용했습니다",
+      isFinal: false,
+      timestampMs: [0, 500]
+    });
+    tracker.acceptResult({
+      text: "오픈 에이아이 에이피아이를 활용했습니다",
+      isFinal: true,
+      timestampMs: [0, 1_000]
+    });
+
+    expect(tracker.snapshot()).toMatchObject({
+      hitKeywordIds: ["kw_openai", "kw_api"],
+      sentenceCoverage: 1,
+    });
+  });
+
   it("마지막 문장 발화와 hybrid coverage를 함께 계산한다", () => {
     const tracker = createSpeechTracker({
       slideId: "slide_1",
       threshold: 0.7,
       speakerNotes:
         "첫 내용은 제품 맥락을 설명합니다. 두 번째 내용은 사용 흐름을 보여줍니다. 마지막 결론은 실시간 피드백입니다.",
-      keywords: []
+      keywords: [],
     });
 
     const events = tracker.acceptResult({
@@ -817,7 +859,7 @@ describe("SpeechTracker", () => {
     tracker.acceptResult({
       text: "둘째 결론은 실행 일정과 협업 방향을 명확하게 정리합니다",
       isFinal: true,
-      timestampMs: [0, 1_000]
+      timestampMs: [0, 1_000],
     });
 
     expect(tracker.snapshot().prompterProgress).toMatchObject({
@@ -856,7 +898,7 @@ describe("SpeechTracker", () => {
       currentSentenceId: null,
       committedSentenceIds: ["sentence_1"],
       lastCommitSource: "semantic-assisted",
-      finalSentenceCommitted: true
+      finalSentenceCommitted: true,
     });
   });
 
@@ -887,7 +929,7 @@ describe("SpeechTracker", () => {
       revision: 0,
       currentSentenceId: "sentence_1",
       committedSentenceIds: [],
-      finalSentenceCommitted: false
+      finalSentenceCommitted: false,
     });
   });
 
@@ -916,11 +958,46 @@ describe("SpeechTracker", () => {
   });
 });
 
-const FIRST_PROMPTER_SENTENCE = "첫 번째 문장은 제품 전략과 고객 문제를 명확하게 설명합니다";
-const SECOND_PROMPTER_SENTENCE = "두 번째 문장은 실행 일정과 협업 방향을 구체적으로 정리합니다";
-const THIRD_PROMPTER_SENTENCE = "세 번째 문장은 다음 단계와 책임 범위를 마지막으로 안내합니다";
-const OVERLAPPING_FIRST_SENTENCE = "첫째 발표는 동일한 핵심 내용을 자세히 설명합니다";
-const OVERLAPPING_SECOND_SENTENCE = "둘째 발표는 동일한 핵심 내용을 자세히 설명합니다";
+function pronunciationEntry(
+  canonicalKey: string,
+  sourceText: string,
+  alias: string,
+  start: number,
+): PronunciationLexiconEntry {
+  return {
+    id: `pron_${canonicalKey}`,
+    sourceText,
+    normalizedSource: sourceText.toLocaleLowerCase("en-US"),
+    canonicalText: sourceText,
+    canonicalKey,
+    category: canonicalKey === "api" ? "acronym" : "product",
+    aliases: [
+      {
+        text: alias,
+        normalizedText: alias,
+        origin: "static" as const,
+        confidence: 1,
+        enabled: true,
+      },
+    ],
+    confidence: 1,
+    status: "active" as const,
+    scriptOccurrences: [
+      { slideId: "slide_1", start, end: start + sourceText.length },
+    ],
+  };
+}
+
+const FIRST_PROMPTER_SENTENCE =
+  "첫 번째 문장은 제품 전략과 고객 문제를 명확하게 설명합니다";
+const SECOND_PROMPTER_SENTENCE =
+  "두 번째 문장은 실행 일정과 협업 방향을 구체적으로 정리합니다";
+const THIRD_PROMPTER_SENTENCE =
+  "세 번째 문장은 다음 단계와 책임 범위를 마지막으로 안내합니다";
+const OVERLAPPING_FIRST_SENTENCE =
+  "첫째 발표는 동일한 핵심 내용을 자세히 설명합니다";
+const OVERLAPPING_SECOND_SENTENCE =
+  "둘째 발표는 동일한 핵심 내용을 자세히 설명합니다";
 
 function createOverlappingSentenceTracker() {
   return createSpeechTracker({

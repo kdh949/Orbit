@@ -67,7 +67,7 @@ class VolumeIssueSegment(BaseModel):
 class RehearsalVolumeAnalysis(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
-    metric_definition_version: Literal[1] = Field(alias="metricDefinitionVersion")
+    metric_definition_version: Literal[1, 2] = Field(alias="metricDefinitionVersion")
     measurement_state: Literal["measured", "unmeasured"] = Field(
         alias="measurementState"
     )
@@ -80,6 +80,14 @@ class RehearsalVolumeAnalysis(BaseModel):
 
     @model_validator(mode="after")
     def validate_measurement_state(self) -> RehearsalVolumeAnalysis:
+        if self.metric_definition_version == 2:
+            if len(self.issue_segments) > 5:
+                raise ValueError("volume analysis v2 supports at most 5 issue segments")
+            if any(segment.duration_seconds < 2 for segment in self.issue_segments):
+                raise ValueError(
+                    "volume analysis v2 issue segments must last at least 2 seconds"
+                )
+
         metric_values = (
             self.average_dbfs,
             self.baseline_dbfs,
@@ -118,15 +126,13 @@ class SilenceSegment(BaseModel):
             abs_tol=0.002,
         ):
             raise ValueError("silence duration must match its time range")
-        if (self.duration_seconds >= 1.0) != (self.category == "long"):
-            raise ValueError("silence category must match its duration")
         return self
 
 
 class RehearsalSilenceAnalysis(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
-    metric_definition_version: Literal[1] = Field(alias="metricDefinitionVersion")
+    metric_definition_version: Literal[1, 2] = Field(alias="metricDefinitionVersion")
     measurement_state: Literal["measured", "unmeasured"] = Field(
         alias="measurementState"
     )
@@ -135,7 +141,7 @@ class RehearsalSilenceAnalysis(BaseModel):
     detector_version: str = Field(alias="detectorVersion", min_length=1)
     speech_threshold: float = Field(alias="speechThreshold")
     minimum_silence_ms: Literal[250] = Field(alias="minimumSilenceMs")
-    long_silence_ms: Literal[1000] = Field(alias="longSilenceMs")
+    long_silence_ms: Literal[1000, 5000] = Field(alias="longSilenceMs")
     analysis_window_start_seconds: float | None = Field(
         alias="analysisWindowStartSeconds",
         ge=0,
@@ -155,6 +161,18 @@ class RehearsalSilenceAnalysis(BaseModel):
     def validate_measurement_state(self) -> RehearsalSilenceAnalysis:
         if self.speech_threshold != 0.5:
             raise ValueError("silence analysis speech threshold must be 0.5")
+        expected_long_silence_ms = 1000 if self.metric_definition_version == 1 else 5000
+        if self.long_silence_ms != expected_long_silence_ms:
+            raise ValueError(
+                "silence threshold must match its metric definition version"
+            )
+        long_silence_seconds = self.long_silence_ms / 1000
+        if any(
+            (segment.duration_seconds >= long_silence_seconds)
+            != (segment.category == "long")
+            for segment in self.segments
+        ):
+            raise ValueError("silence category must match its duration")
         metric_values = (
             self.analysis_window_start_seconds,
             self.analysis_window_end_seconds,
@@ -228,7 +246,7 @@ def unmeasured_volume_analysis(
     reason_code: VolumeAnalysisReasonCode,
 ) -> RehearsalVolumeAnalysis:
     return RehearsalVolumeAnalysis(
-        metricDefinitionVersion=1,
+        metricDefinitionVersion=2,
         measurementState="unmeasured",
         reasonCode=reason_code,
         averageDbfs=None,
@@ -245,14 +263,14 @@ def unmeasured_silence_analysis(
     detector_version: str,
 ) -> RehearsalSilenceAnalysis:
     return RehearsalSilenceAnalysis(
-        metricDefinitionVersion=1,
+        metricDefinitionVersion=2,
         measurementState="unmeasured",
         reasonCode=reason_code,
         detector="silero-vad",
         detectorVersion=detector_version,
         speechThreshold=0.5,
         minimumSilenceMs=250,
-        longSilenceMs=1000,
+        longSilenceMs=5000,
         analysisWindowStartSeconds=None,
         analysisWindowEndSeconds=None,
         totalSilenceSeconds=None,

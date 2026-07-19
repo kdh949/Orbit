@@ -2,6 +2,7 @@ import type { ActivityRun, ActivityRuntimeStatus } from "@orbit/shared";
 import { useCallback, useEffect, useState } from "react";
 
 import { activityApi, ActivityApiError } from "../api/activityApi";
+import { startSequentialPolling } from "../model/sequentialPolling";
 import { getActivityPrimaryCommand } from "../presenter/ActivityPresenterPanel";
 
 export type ActivityEditorRuntime = {
@@ -75,9 +76,7 @@ export function useActivityEditorRuntime(input: {
   }, [input.activityId, input.deckId, input.projectId]);
 
   useEffect(() => {
-    void refresh();
-    const timerId = window.setInterval(() => void refresh(), 2_000);
-    return () => window.clearInterval(timerId);
+    return startSequentialPolling(refresh, 2_000);
   }, [refresh]);
 
   const supersede = useCallback(async () => {

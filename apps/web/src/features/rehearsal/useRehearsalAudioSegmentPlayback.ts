@@ -1,12 +1,6 @@
-import { rehearsalAudioPlaybackUrlResponseSchema } from "@orbit/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type PlaybackStatus = "idle" | "loading" | "playing";
-
-type CachedPlaybackUrl = {
-  expiresAtMs: number;
-  playbackUrl: string;
-};
 
 type PlaybackState = {
   error: string | null;
@@ -14,11 +8,9 @@ type PlaybackState = {
   status: PlaybackStatus;
 };
 
-const playbackUrlRefreshMarginMs = 30_000;
-
 export function useRehearsalAudioSegmentPlayback(runId: string) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const cachedUrlRef = useRef<CachedPlaybackUrl | null>(null);
+  const clipUrlsRef = useRef(new Map<string, string>());
   const activeEndSecondsRef = useRef<number | null>(null);
   const requestGenerationRef = useRef(0);
   const [state, setState] = useState<PlaybackState>({
@@ -55,31 +47,22 @@ export function useRehearsalAudioSegmentPlayback(runId: string) {
     setState({ error: null, segmentId: null, status: "idle" });
   }, []);
 
-  const getPlaybackUrl = useCallback(async () => {
-    const cached = cachedUrlRef.current;
-    if (cached && cached.expiresAtMs - playbackUrlRefreshMarginMs > Date.now()) {
-      return cached.playbackUrl;
-    }
+  const getClipUrl = useCallback(
+    async (segmentId: string, startSeconds: number, endSeconds: number) => {
+      const cached = clipUrlsRef.current.get(segmentId);
+      if (cached) return cached;
 
-    const response = await fetch(
-      `/api/v1/rehearsals/${encodeURIComponent(runId)}/audio/playback-url`,
-    );
-    if (response.status === 410) {
-      throw new Error("보관 기간이 지나 음성을 재생할 수 없어요.");
-    }
-    if (!response.ok) {
-      throw new Error("음성을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
-    }
-
-    const playback = rehearsalAudioPlaybackUrlResponseSchema.parse(
-      await response.json(),
-    );
-    cachedUrlRef.current = {
-      expiresAtMs: Date.parse(playback.expiresAt),
-      playbackUrl: playback.playbackUrl,
-    };
-    return playback.playbackUrl;
-  }, [runId]);
+      const clip = await fetchRehearsalAudioClip(
+        runId,
+        startSeconds,
+        endSeconds,
+      );
+      const clipUrl = URL.createObjectURL(clip);
+      clipUrlsRef.current.set(segmentId, clipUrl);
+      return clipUrl;
+    },
+    [runId],
+  );
 
   const playSegment = useCallback(
     async (segmentId: string, startSeconds: number, endSeconds: number) => {
@@ -91,18 +74,20 @@ export function useRehearsalAudioSegmentPlayback(runId: string) {
       setState({ error: null, segmentId, status: "loading" });
 
       try {
-        const playbackUrl = await getPlaybackUrl();
+        const clipUrl = await getClipUrl(segmentId, startSeconds, endSeconds);
         if (requestGenerationRef.current !== generation) return;
 
-        if (audio.src !== playbackUrl) {
-          audio.src = playbackUrl;
+        if (audio.src !== clipUrl) {
+          audio.src = clipUrl;
           audio.load();
           await waitForAudioMetadata(audio);
         }
         if (requestGenerationRef.current !== generation) return;
 
-        audio.currentTime = Math.max(0, startSeconds);
-        activeEndSecondsRef.current = Math.max(startSeconds, endSeconds);
+        audio.currentTime = 0;
+        activeEndSecondsRef.current = Number.isFinite(audio.duration)
+          ? audio.duration
+          : Math.max(0, endSeconds - startSeconds);
         await audio.play();
         if (requestGenerationRef.current !== generation) {
           audio.pause();
@@ -117,13 +102,13 @@ export function useRehearsalAudioSegmentPlayback(runId: string) {
           error:
             error instanceof Error
               ? error.message
-              : "음성을 재생하지 못했어요.",
+              : "음성 파일을 재생하지 못했어요.",
           segmentId: null,
           status: "idle",
         });
       }
     },
-    [getAudio, getPlaybackUrl],
+    [getAudio, getClipUrl],
   );
 
   useEffect(
@@ -136,6 +121,10 @@ export function useRehearsalAudioSegmentPlayback(runId: string) {
         audio.removeAttribute("src");
         audio.load();
       }
+      for (const clipUrl of clipUrlsRef.current.values()) {
+        URL.revokeObjectURL(clipUrl);
+      }
+      clipUrlsRef.current.clear();
     },
     [],
   );
@@ -143,6 +132,35 @@ export function useRehearsalAudioSegmentPlayback(runId: string) {
   return { ...state, playSegment, stop };
 }
 
+export async function fetchRehearsalAudioClip(
+  runId: string,
+  startSeconds: number,
+  endSeconds: number,
+  fetcher: typeof fetch = fetch,
+) {
+  const response = await fetcher(
+    `/api/v1/rehearsals/${encodeURIComponent(runId)}/audio/clip`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ startSeconds, endSeconds }),
+    },
+  );
+  if (response.status === 410) {
+    throw new Error("보관 기간이 지나 음성 파일을 재생할 수 없어요.");
+  }
+  if (!response.ok) {
+    throw new Error(
+      "음성 구간을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
+    );
+  }
+
+  const clip = await response.blob();
+  if (!clip.type.startsWith("audio/") || clip.size === 0) {
+    throw new Error("생성된 음성 구간을 재생할 수 없어요.");
+  }
+  return clip;
+}
 function waitForAudioMetadata(audio: HTMLAudioElement) {
   if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) {
     return Promise.resolve();

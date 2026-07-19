@@ -135,8 +135,8 @@ describe("AnimationEditorModal", () => {
       />
     );
 
-    expect(html.match(/class="keyword-mark selected"/g)).toHaveLength(1);
-    expect(html.match(/class="keyword-mark "/g)).toBeNull();
+    expect(html.match(/class="keyword-mark keyword-tone-required selected"/g)).toHaveLength(1);
+    expect(html.match(/class="keyword-note-token keyword-tone-required"/g)).toHaveLength(1);
     expect(html).toContain('data-occurrence-id="kwo_slide_1_kw_1_0_5"');
   });
 });

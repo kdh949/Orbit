@@ -26,23 +26,35 @@ function renderRail(canMutate: boolean, viewMode: "list" | "thumbnail" = "thumbn
 }
 
 describe("SlideRail", () => {
-  it("renders separate selection and menu buttons with roving selection ARIA", () => {
+  it("renders draggable slide cards with roving selection ARIA", () => {
     const html = renderRail(true);
-    const selectionEnd = html.indexOf("</button>", html.indexOf('data-slide-id="slide_1"'));
-    const menuStart = html.indexOf('aria-label="시작 메뉴"');
 
     expect(html).toContain('aria-label="슬라이드 목록"');
     expect(html).toContain('data-slide-id="slide_1"');
     expect(html).toContain('aria-current="true"');
     expect(html).toContain('aria-selected="true"');
     expect(html.match(/tabindex="0"/g)).toHaveLength(1);
-    expect(selectionEnd).toBeLessThan(menuStart);
-    expect(html).toContain('aria-label="시작 드래그하여 이동"');
+    expect(html).toContain("is-draggable");
+    expect(html).not.toContain("드래그하여 이동");
+    expect(html).not.toContain("시작 메뉴");
+    expect(html).toContain('role="menu"');
     expect(html).toContain("슬라이드 2");
   });
 
-  it.each(["thumbnail", "list"] as const)("keeps visible titles in %s mode", (mode) => {
-    const html = renderRail(true, mode);
+  it("omits titles from thumbnails while keeping accessible labels", () => {
+    const html = renderRail(true, "thumbnail");
+    const thumbnailStart = html.indexOf('class="slide-thumb orbit-thumb"');
+    const thumbnailEnd = html.indexOf("</span>", thumbnailStart);
+
+    expect(html).not.toContain("slide-title-text");
+    expect(html.slice(thumbnailStart, thumbnailEnd)).toContain("slide-number");
+    expect(html).toContain('aria-label="1. 시작"');
+  });
+
+  it("keeps titles in list mode", () => {
+    const html = renderRail(true, "list");
+
+    expect(html).toContain("slide-title-text");
     expect(html).toContain("시작");
     expect(html).toContain("슬라이드 2");
   });
@@ -72,7 +84,7 @@ describe("SlideRail", () => {
       />,
     );
 
-    expect(boundaryHtml).toMatch(/<button disabled="" type="button">위로 이동/);
-    expect(singleHtml).toMatch(/<button disabled="" type="button">삭제/);
+    expect(boundaryHtml).toMatch(/<button disabled="" role="menuitem" type="button">위로 이동/);
+    expect(singleHtml).toMatch(/<button disabled="" role="menuitem" type="button">삭제/);
   });
 });

@@ -4,6 +4,7 @@ import {
   generateDeckValidationSchema,
   slideSchema,
   type AiDeckGenerationStage,
+  type GenerateDeckJobResult,
 } from "@orbit/shared";
 import { z } from "zod";
 
@@ -80,7 +81,7 @@ export const publicationArtifactPayloadSchema = z
   .object({
     result: generateDeckJobResultSchema,
   })
-  .strict();
+  .strict() as z.ZodType<{ result: GenerateDeckJobResult }>;
 
 export const executionArtifactPayloadSchemas: Record<
   AiDeckExecutionStage,

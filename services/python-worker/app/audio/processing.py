@@ -32,7 +32,11 @@ def process_rehearsal_audio(
 ) -> RehearsalAudioProcessingResponse:
     """원본 음성을 한 번 로드해 STT와 독립 음향 분석에 공유한다."""
     audio_content = load_audio_content(payload.audio)
-    provider_transcription = transcribe_audio_content(audio_content, provider)
+    provider_transcription = transcribe_audio_content(
+        audio_content,
+        provider,
+        payload.pronunciation_context,
+    )
     volume_analysis, silence_analysis = analyze_audio_safely(
         audio_content,
         detector,

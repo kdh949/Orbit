@@ -15,6 +15,7 @@ describe("EditorFileMenu", () => {
 
     expect(html).toContain("redesign-dropdown-menu-white");
     expect(html).toContain("editor-file-menu--white");
+    expect(html).not.toContain("테스트 발표");
   });
 
   it.each<EditorFileMenuVariant>(["dark", "soft-gray", "white"])(

@@ -156,7 +156,7 @@ export function SemanticCueReviewPanel(props: {
       ) : (
         <div className="semantic-cue-review-empty" role="status">
           <strong>아직 제안된 발표 메시지가 없습니다.</strong>
-          <p>직접 추가하거나 Semantic Cue 추출을 먼저 실행하세요.</p>
+          <p>직접 추가하거나 AI 발표 메시지 분석을 먼저 실행하세요.</p>
         </div>
       )}
 

@@ -1,7 +1,10 @@
 import type { StoragePort } from "@orbit/storage";
 import type { DataSource } from "typeorm";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { processRehearsalSttJob } from "./rehearsal-stt.processor";
+import {
+  buildTranscriptionPronunciationContext,
+  processRehearsalSttJob,
+} from "./rehearsal-stt.processor";
 
 const payload = {
   jobId: "job-1",
@@ -20,6 +23,51 @@ const assetRow = {
   purpose: "rehearsal-audio",
   status: "uploaded",
 };
+
+describe("buildTranscriptionPronunciationContext", () => {
+  it("selects active high-confidence aliases within the provider budget", () => {
+    const context = buildTranscriptionPronunciationContext({
+      pronunciationLexicon: {
+        schemaVersion: 1,
+        generatorVersion: "test",
+        deckId: "deck-a",
+        deckVersion: 1,
+        sourceHash: "0123456789abcdef",
+        entries: [
+          {
+            id: "pron_openai",
+            sourceText: "OpenAI",
+            normalizedSource: "openai",
+            canonicalText: "OpenAI",
+            canonicalKey: "openai",
+            category: "product",
+            aliases: [
+              {
+                text: "오픈에이아이",
+                normalizedText: "오픈에이아이",
+                origin: "static",
+                confidence: 1,
+                enabled: true,
+              },
+              {
+                text: "낮은신뢰도",
+                normalizedText: "낮은신뢰도",
+                origin: "llm",
+                confidence: 0.4,
+                enabled: true,
+              },
+            ],
+            confidence: 1,
+            status: "active",
+            scriptOccurrences: [{ slideId: "slide_1", start: 0, end: 6 }],
+          },
+        ],
+      },
+    });
+
+    expect(context).toEqual([{ source: "OpenAI", aliases: ["오픈에이아이"] }]);
+  });
+});
 
 const deckRow = {
   version: 1,
@@ -652,7 +700,16 @@ describe("processRehearsalSttJob", () => {
       events,
     );
 
+    const transcribeBody = JSON.parse(
+      String(fetchMock.mock.calls[0]?.[1]?.body),
+    );
+    expect(transcribeBody.pronunciationContext).toEqual([
+      { source: "SNAPSHOT", aliases: ["스냅샷"] },
+    ]);
     const analyzeBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+    expect(analyzeBody.pronunciationContext).toEqual([
+      { source: "SNAPSHOT", aliases: ["스냅샷"] },
+    ]);
     expect(analyzeBody.deckKeywords).toEqual([
       {
         slideId: "slide_1",
@@ -1571,6 +1628,35 @@ function evaluationSnapshot() {
     deckId: "deck-a",
     deckVersion: 3,
     capturedAt: "2026-06-27T00:00:00.000Z",
+    pronunciationLexicon: {
+      schemaVersion: 1 as const,
+      generatorVersion: "test-v1",
+      deckId: "deck-a",
+      deckVersion: 3,
+      sourceHash: "0123456789abcdef",
+      entries: [
+        {
+          id: "pron_snapshot",
+          sourceText: "SNAPSHOT",
+          normalizedSource: "snapshot",
+          canonicalText: "SNAPSHOT",
+          canonicalKey: "snapshot",
+          category: "word" as const,
+          aliases: [
+            {
+              text: "스냅샷",
+              normalizedText: "스냅샷",
+              origin: "domain" as const,
+              confidence: 1,
+              enabled: true,
+            },
+          ],
+          confidence: 1,
+          status: "active" as const,
+          scriptOccurrences: [{ slideId: "slide_1", start: 0, end: 8 }],
+        },
+      ],
+    },
     slides: [
       {
         slideId: "slide_1",

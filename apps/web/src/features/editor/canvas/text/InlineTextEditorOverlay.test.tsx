@@ -111,4 +111,45 @@ describe("InlineTextEditorOverlay", () => {
     expect(html).not.toContain("<textarea");
     expect(html).not.toMatch(/\svalue=/i);
   });
+
+  it("renders explicit blank lines and intentional line-leading indentation", () => {
+    const { deck, element, slide } = getRichTextFixture();
+    if (element.type !== "text") throw new Error("text fixture is required");
+    element.props = normalizeRichTextProps({
+      ...element.props,
+      paragraphs: [
+        {
+          align: "left",
+          indent: 0,
+          lineHeight: 1.15,
+          runs: [
+            {
+              baseline: "normal",
+              fontWeight: "bold",
+              text: "발표의 모든 순간을  \n \n                  하나의  궤도로   ",
+            },
+          ],
+          spaceAfter: 0,
+          spaceBefore: 0,
+          text: "stale",
+        },
+      ],
+      text: "stale",
+    });
+
+    const html = renderToStaticMarkup(
+      <InlineTextEditorOverlay
+        deck={deck}
+        element={element}
+        slide={slide}
+        stageScale={1}
+        onCommitProps={vi.fn()}
+        onFinishEditing={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain(
+      ">발표의 모든 순간을  \n \n                  하나의  궤도로   </span>",
+    );
+  });
 });

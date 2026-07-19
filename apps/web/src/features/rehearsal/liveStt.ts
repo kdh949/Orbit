@@ -25,6 +25,8 @@ export type LiveSttBiasSource =
   | "slide-text"
   | "speaker-notes"
   | "nearby-slide-text"
+  | "pronunciation-source"
+  | "pronunciation-alias"
   | "control-phrase";
 
 export type LiveSttBiasTerm = {

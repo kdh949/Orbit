@@ -6,7 +6,8 @@ import {
   createSlideshowEntryTransitionTimeline,
   createSlideshowTransitionStartStates,
   getSlideshowTransitionDurationMs,
-  interpolateSlideshowTransitionStates
+  interpolateSlideshowTransitionStates,
+  resolveSlideshowDisplayStates
 } from "./useSlideshowTransitions";
 
 const fadeOutAnimation: DeckAnimation = {
@@ -20,8 +21,8 @@ const fadeOutAnimation: DeckAnimation = {
 };
 
 describe("useSlideshowTransitions helpers", () => {
-  it("caps individual animation duration at 500ms while preserving delay", () => {
-    expect(getSlideshowTransitionDurationMs([fadeOutAnimation])).toBe(700);
+  it("preserves individual animation duration and delay", () => {
+    expect(getSlideshowTransitionDurationMs([fadeOutAnimation])).toBe(1000);
   });
 
   it("creates visible start states for exit animations", () => {
@@ -158,12 +159,65 @@ describe("useSlideshowTransitions helpers", () => {
     expect(states.el_delayed).toMatchObject({ opacity: 1, visible: true });
   });
 
+  it("composes sequential effects on the same element from each prior keyframe", () => {
+    const animations = [
+      {
+        animationId: "anim_enter",
+        elementId: "el_target",
+        type: "fade-in" as const,
+        order: 1,
+        startMode: "on-click" as const,
+        durationMs: 100,
+        delayMs: 0,
+        easing: "linear" as const,
+        transitionDelayMs: 0
+      },
+      {
+        animationId: "anim_exit",
+        elementId: "el_target",
+        type: "fade-out" as const,
+        order: 2,
+        startMode: "after-previous" as const,
+        durationMs: 100,
+        delayMs: 0,
+        easing: "linear" as const,
+        transitionDelayMs: 100
+      }
+    ];
+    const baseStates = {
+      el_target: { opacity: 1, visible: true }
+    };
+    const targetStates = {
+      el_target: { opacity: 0, visible: false }
+    };
+    const startStates = createSlideshowTransitionStartStates(
+      targetStates,
+      animations,
+      baseStates
+    );
+    const opacityAt = (progress: number) =>
+      interpolateSlideshowTransitionStates({
+        animations,
+        baseStates,
+        progress,
+        startStates,
+        targetStates,
+        transitionDurationMs: 200
+      }).el_target?.opacity;
+
+    expect(opacityAt(0.25)).toBe(0.5);
+    expect(opacityAt(0.5)).toBe(1);
+    expect(opacityAt(0.75)).toBe(0.5);
+    expect(opacityAt(1)).toBe(0);
+  });
+
   it("builds entry autoplay timeline by order groups", () => {
     const firstOrder: DeckAnimation = {
       animationId: "anim_first",
       elementId: "el_first",
       type: "fade-in",
       order: 1,
+      startMode: "on-slide-enter",
       durationMs: 100,
       delayMs: 0,
       easing: "ease-out"
@@ -173,6 +227,7 @@ describe("useSlideshowTransitions helpers", () => {
       elementId: "el_second",
       type: "fade-in",
       order: 2,
+      startMode: "with-previous",
       durationMs: 100,
       delayMs: 50,
       easing: "ease-out"
@@ -182,6 +237,7 @@ describe("useSlideshowTransitions helpers", () => {
       elementId: "el_same_second",
       type: "fade-in",
       order: 2,
+      startMode: "after-previous",
       durationMs: 200,
       delayMs: 0,
       easing: "ease-out"
@@ -189,8 +245,8 @@ describe("useSlideshowTransitions helpers", () => {
 
     const timeline = createSlideshowEntryTransitionTimeline([
       firstOrder,
-      secondOrder,
-      sameSecondOrder
+      sameSecondOrder,
+      secondOrder
     ]);
 
     expect(timeline.map((animation) => animation.animationId)).toEqual([
@@ -206,19 +262,26 @@ describe("useSlideshowTransitions helpers", () => {
     expect(getSlideshowTransitionDurationMs(timeline)).toBe(300);
   });
 
-  it("uses settled state on the first reduced-motion render", () => {
-    const source = fs.readFileSync(
-      path.join(
-        process.cwd(),
-        "src/features/rehearsal/presenter/useSlideshowTransitions.ts"
-      ),
-      "utf8"
-    );
-    const initialStateStart = source.indexOf("const [displayStates, setDisplayStates]");
-    const initialStateEnd = source.indexOf("const previousAddressRef");
-    const initialStateBlock = source.slice(initialStateStart, initialStateEnd);
+  it("uses the new slide's settled state on the first reduced-motion commit", () => {
+    const oldDisplayStates = {
+      el_old: { opacity: 1, visible: true }
+    };
+    const newTargetStates = {
+      el_new: { opacity: 0, visible: false }
+    };
 
-    expect(initialStateBlock).toContain("!args.reducedMotion");
+    expect(
+      resolveSlideshowDisplayStates({
+        baseStates: { el_new: { opacity: 1, visible: true } },
+        displaySlideId: "slide_old",
+        displayStates: oldDisplayStates,
+        entryAnimations: [fadeOutAnimation],
+        reducedMotion: true,
+        slideId: "slide_new",
+        stepIndex: 0,
+        targetStates: newTargetStates
+      })
+    ).toBe(newTargetStates);
   });
 
   it("does not replay entry transitions when restoring a later slide step", () => {

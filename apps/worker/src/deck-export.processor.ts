@@ -25,6 +25,30 @@ const deckExportPayloadSchema = z
 const pythonExportResponseSchema = z.object({
   contentBase64: z.string().min(1),
   warnings: z.array(z.string()).default([]),
+  motionDiagnostics: z
+    .array(
+      z.object({
+        code: z.enum([
+          "PPTX_MOTION_EFFECT_UNSUPPORTED",
+          "PPTX_MOTION_INTERACTIVE_EXCLUDED",
+          "PPTX_MOTION_MEDIA_EXCLUDED",
+          "PPTX_MOTION_PARAGRAPH_BUILD_DOWNGRADED",
+          "PPTX_MOTION_PAYLOAD_INVALID",
+          "PPTX_MOTION_PRESET_UNSUPPORTED",
+          "PPTX_MOTION_SERIALIZATION_FAILED",
+          "PPTX_MOTION_SOURCE_UNAVAILABLE",
+          "PPTX_MOTION_START_MODE_UNSUPPORTED",
+          "PPTX_MOTION_STRUCTURE_UNSUPPORTED",
+          "PPTX_MOTION_TARGET_FLATTENED",
+          "PPTX_MOTION_TARGET_UNRESOLVED",
+        ]),
+        slideIndex: z.number().int().positive(),
+        elementId: z.string().min(1).max(200).optional(),
+        count: z.number().int().positive().optional(),
+      }),
+    )
+    .max(500)
+    .default([]),
 });
 
 type DeckExportPayload = z.infer<typeof deckExportPayloadSchema>;
@@ -217,13 +241,41 @@ export async function processDeckExportJob(
     const workerPayload = pythonExportResponseSchema.parse(
       await response.json(),
     );
+    const fatalMotionDiagnostics = workerPayload.motionDiagnostics.filter(
+      (diagnostic) => diagnostic.code !== "PPTX_MOTION_TARGET_FLATTENED",
+    );
+    if (fatalMotionDiagnostics.length > 0) {
+      const diagnosticCodes = Array.from(
+        new Set(fatalMotionDiagnostics.map((diagnostic) => diagnostic.code)),
+      )
+        .slice(0, 5)
+        .join(", ");
+      return failJob(
+        dataSource,
+        payload.jobId,
+        75,
+        "DECK_EXPORT_MOTION_PRESERVATION_FAILED",
+        `Generic PPTX export reported ${fatalMotionDiagnostics.length} fatal motion preservation diagnostic(s): ${diagnosticCodes}.`,
+      );
+    }
+    const flattenedTargetCount = workerPayload.motionDiagnostics
+      .filter(
+        (diagnostic) => diagnostic.code === "PPTX_MOTION_TARGET_FLATTENED",
+      )
+      .reduce((total, diagnostic) => total + (diagnostic.count ?? 1), 0);
+    const warnings = [...workerPayload.warnings];
+    if (flattenedTargetCount > 0) {
+      warnings.push(
+        `PPTX_MOTION_TARGET_FLATTENED: ${flattenedTargetCount} animation target(s) were exported through the supported flattened group fallback.`,
+      );
+    }
     return finishMaterializedExport(
       dataSource,
       storage,
       pythonWorkerUrl,
       payload,
       Buffer.from(workerPayload.contentBase64, "base64"),
-      workerPayload.warnings,
+      warnings,
     );
   } catch (error) {
     return failJob(

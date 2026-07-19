@@ -9,7 +9,6 @@ type EditorZoomControlsProps = {
   canZoomOut: boolean;
   isFitToViewport: boolean;
   onFitToViewport: () => void;
-  onZoomToActualSize: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   scale: number;
@@ -36,14 +35,6 @@ export function EditorZoomControls(props: EditorZoomControlsProps) {
       </button>
       <button aria-label="캔버스 확대" disabled={!props.canZoomIn} title="확대" type="button" onClick={props.onZoomIn}>
         <IconZoomIn size={16} />
-      </button>
-      <button
-        aria-label="100%로 보기"
-        aria-pressed={!props.isFitToViewport && Math.round(props.scale * 100) === 100}
-        type="button"
-        onClick={props.onZoomToActualSize}
-      >
-        100%
       </button>
     </div>
   );

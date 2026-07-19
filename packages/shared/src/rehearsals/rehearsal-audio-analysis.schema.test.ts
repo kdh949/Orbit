@@ -8,7 +8,7 @@ import {
 import { rehearsalReportSchema } from "./rehearsal.schema";
 
 const measuredVolumeAnalysis = {
-  metricDefinitionVersion: 1,
+  metricDefinitionVersion: 2,
   measurementState: "measured",
   reasonCode: null,
   averageDbfs: -22.4,
@@ -27,18 +27,18 @@ const measuredVolumeAnalysis = {
 } as const;
 
 const measuredSilenceAnalysis = {
-  metricDefinitionVersion: 1,
+  metricDefinitionVersion: 2,
   measurementState: "measured",
   reasonCode: null,
   detector: "silero-vad",
   detectorVersion: "6.2.1",
   speechThreshold: 0.5,
   minimumSilenceMs: 250,
-  longSilenceMs: 1000,
+  longSilenceMs: 5000,
   analysisWindowStartSeconds: 0.42,
   analysisWindowEndSeconds: 28.31,
-  totalSilenceSeconds: 1.34,
-  silenceRatio: 0.0481,
+  totalSilenceSeconds: 5.34,
+  silenceRatio: 0.1915,
   longSilenceCount: 1,
   detectedSegmentCount: 1,
   segmentsTruncated: false,
@@ -46,8 +46,8 @@ const measuredSilenceAnalysis = {
     {
       category: "long",
       startSeconds: 8.12,
-      endSeconds: 9.46,
-      durationSeconds: 1.34,
+      endSeconds: 13.46,
+      durationSeconds: 5.34,
     },
   ],
 } as const;
@@ -82,12 +82,18 @@ describe("rehearsal volume analysis contract", () => {
     expect(
       rehearsalSilenceAnalysisSchema.safeParse({
         ...measuredSilenceAnalysis,
+        longSilenceMs: 1000,
+      }).success,
+    ).toBe(false);
+    expect(
+      rehearsalSilenceAnalysisSchema.safeParse({
+        ...measuredSilenceAnalysis,
         segments: [
           {
             category: "brief",
             startSeconds: 8.12,
-            endSeconds: 9.46,
-            durationSeconds: 1.34,
+            endSeconds: 13.46,
+            durationSeconds: 5.34,
           },
         ],
       }).success,
@@ -112,6 +118,32 @@ describe("rehearsal volume analysis contract", () => {
       rehearsalVolumeAnalysisSchema.safeParse({
         ...measuredVolumeAnalysis,
         averageDbfs: Number.NaN,
+      }).success,
+    ).toBe(false);
+    expect(
+      rehearsalVolumeAnalysisSchema.safeParse({
+        ...measuredVolumeAnalysis,
+        issueSegments: [
+          {
+            kind: "quiet",
+            startSeconds: 8.1,
+            endSeconds: 9.6,
+            durationSeconds: 1.5,
+            meanDeviationDb: -7.4,
+          },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      rehearsalVolumeAnalysisSchema.safeParse({
+        ...measuredVolumeAnalysis,
+        issueSegments: Array.from({ length: 6 }, (_, index) => ({
+          kind: "quiet" as const,
+          startSeconds: index * 3,
+          endSeconds: index * 3 + 2,
+          durationSeconds: 2,
+          meanDeviationDb: -7.4,
+        })),
       }).success,
     ).toBe(false);
   });

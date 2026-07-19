@@ -34,11 +34,11 @@ class FailingVoiceActivityDetector:
     [
         (3_999, None),
         (4_000, "brief"),
-        (15_984, "brief"),
-        (16_000, "long"),
+        (79_999, "brief"),
+        (80_000, "long"),
     ],
 )
-def test_analyze_silence_applies_250ms_and_1000ms_boundaries(
+def test_analyze_silence_applies_250ms_and_5000ms_boundaries(
     silence_samples: int,
     expected_category: str | None,
 ) -> None:

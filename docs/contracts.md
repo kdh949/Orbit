@@ -129,6 +129,10 @@ API:
       "title": "Opening",
       "thumbnailUrl": "/files/thumbnails/slide_1.png",
       "estimatedSeconds": 60,
+      "transition": {
+        "type": "fade",
+        "durationMs": 700
+      },
       "style": {
         "layout": "title-content",
         "backgroundColor": "#ffffff"
@@ -165,6 +169,7 @@ API:
           "elementId": "el_1",
           "type": "fade-in",
           "order": 1,
+          "startMode": "on-click",
           "durationMs": 400,
           "delayMs": 0,
           "easing": "ease-out"
@@ -226,7 +231,8 @@ API:
 - PPTX import와 기존 Deck 호환을 위해 이미 존재하는 full-canvas `background` element는 보존할 수 있으며, 이 경우 배경 변경 동작은 `slide.style.backgroundColor`와 element fill을 함께 동기화한다.
 - `theme` 변경은 기존 `slide.style`이나 object props를 자동으로 덮어쓰지 않는다. 전체 테마 적용은 별도의 apply theme 동작으로 처리한다.
 - `slides`는 최소 1개 이상이어야 한다. 새 덱 생성 시에는 빈 덱 대신 기본 슬라이드 1장을 생성한다.
-- SlideSchema 필드는 `slideId`, `order`, `title`, `thumbnailUrl`, `estimatedSeconds`, `style`, `speakerNotes`, `elements`, `keywords`, `animations`, `actions`를 유지한다. `thumbnailUrl`은 imported/image-only slide처럼 `elements`가 비어 있는 발표자 렌더링 fallback에만 사용하고, 일반 편집 썸네일 캐시는 Deck에 저장하지 않는다.
+- SlideSchema 필드는 `slideId`, `order`, `title`, `thumbnailUrl`, `estimatedSeconds`, `transition`, `style`, `speakerNotes`, `elements`, `keywords`, `animations`, `actions`를 유지한다. `thumbnailUrl`은 imported/image-only slide처럼 `elements`가 비어 있는 발표자 렌더링 fallback에만 사용하고, 일반 편집 썸네일 캐시는 Deck에 저장하지 않는다.
+- `slide.transition`은 destination slide가 소유하는 optional `{ type: "fade", durationMs }` 상태다. field가 없으면 transition 없음이며, 첫 slide와 transition이 없는 slide는 즉시 표시한다. `durationMs`는 양의 정수다.
 - `estimatedSeconds`는 슬라이드별 목표 발표 시간(초)이며 선택 필드다. 생략된 경우 presenter UI는 `targetDurationMinutes / slides.length` 기반 균등 분배로 폴백한다.
 - AI 생성 slide는 선택적 `aiNotes`를 포함할 수 있다. `aiNotes`는 `emphasisPoints`와 검토용 `sourceEvidence`만 담고, 디자인 전용 배열은 만들지 않는다.
 - design-pack slide의 `aiNotes.timingPlan`은 선택적으로 `speakingTimeRatio`와 `targetSpokenSeconds`를 포함할 수 있다. `targetSeconds`는 전환을 포함한 장표 점유 시간이고 `targetSpokenSeconds`는 해당 장표의 발화 목표 시간이다. 기존 Deck은 두 필드를 생략할 수 있다.
@@ -247,7 +253,7 @@ API:
 - `role`은 렌더링 필수값이 아니라 AI 생성, 편집 UI, export, 접근성 보조를 위한 의미 정보다.
 - `background`, `decoration` 역할의 element는 `role`과 낮은 `zIndex`로 의미를 표현한다. 기존 Deck 호환을 위해 `locked` 필드는 유지하지만 현재 에디터와 AI는 해당 값으로 편집을 차단하지 않는다.
 - 객체 `props`는 object type별 schema로 검증한다. 전체 객체에 대해 `z.record(z.unknown())`를 열어두지 않는다.
-- `text.props`는 `text`, `runs`, `paragraphs`, `bodyInset`, `fontFamily`, `fontSize`, `fontWeight`, `italic`, `underline`, `color`, `align`, `verticalAlign`, `lineHeight`, `bullet`을 사용한다. paragraph와 run도 `italic`, `underline`을 optional boolean으로 보존한다. run의 `highlightColor`, `hyperlink`는 각각 강조색과 절대 URL 링크를 보존하는 optional field다. 세 계층의 기존 boolean field와 새 run field에는 schema default를 두지 않으므로 생략된 기존 Deck을 parse할 때 값을 materialize하거나 Deck version을 증가시키지 않는다. `runs`는 기존 단일 paragraph 호환 field이고, `paragraphs`는 PPTX OOXML import에서 paragraph별 run/font/color/spacing/indent/bullet을 보존하기 위한 optional field다. `bodyInset`은 PPT text box 내부 여백을 px 단위로 보존한다.
+- `text.props`는 `text`, `runs`, `paragraphs`, `bodyInset`, `fontFamily`, `fontSize`, `fontWeight`, `italic`, `underline`, `color`, `align`, `verticalAlign`, `lineHeight`, `bullet`을 사용한다. paragraph와 run도 `italic`, `underline`을 optional boolean으로 보존한다. run의 `highlightColor`, `hyperlink`는 각각 강조색과 절대 URL 링크를 보존하는 optional field다. 세 계층의 기존 boolean field와 새 run field에는 schema default를 두지 않으므로 생략된 기존 Deck을 parse할 때 값을 materialize하거나 Deck version을 증가시키지 않는다. `runs`는 기존 단일 paragraph 호환 field이고, `paragraphs`는 PPTX OOXML import에서 paragraph별 run/font/color/spacing/indent/bullet을 보존하기 위한 optional field다. `bodyInset`은 PPT text box 내부 여백을 px 단위로 보존한다. 텍스트 element는 고정 frame을 사용하며 캔버스와 PPTX export는 frame 밖 내용을 clip한다. inline 편집기는 같은 frame 안에서 overflow 내용을 scroll한다. 품질 검사는 plain/rich/`vertical-270` 텍스트의 전체 측정 높이가 frame을 넘으면 `TEXT_OVERFLOW`로 보고한다.
 - `bullet`은 기존 `enabled`, `character`, `indent` 외에 optional `kind`, `numberStyle`, `startAt`을 사용한다. `kind`가 생략되거나 `"bullet"`이면 `character` 기반 글머리 기호이며, `"number"`이면 `numberStyle`(`decimal | lower-alpha | upper-alpha`)과 양의 정수 `startAt`을 사용한다. 새 field를 생략한 기존 Deck은 글머리 기호로 해석한다.
 - rich text의 canonical source는 `paragraphs` field가 존재할 때의 `paragraphs[]`다. paragraph에 `runs`가 하나 이상 있으면 해당 paragraph의 plain text는 run 순서대로 `run.text`를 이어 만든 값이고, 그렇지 않으면 `paragraph.text`다. 저장 전 각 `paragraph.text`를 이 값으로 동기화하고, top-level `text`는 모든 paragraph plain text를 순서대로 newline(`\n`) 하나로 이어 만든 projection으로 동기화한다.
 - canonical paragraph가 하나이면 top-level `runs`는 그 paragraph의 `runs`와 내용·순서·style이 같은 compatibility mirror로 유지할 수 있다. paragraph가 둘 이상이면 newline 경계를 중복 표현하지 않도록 top-level `runs`를 제거한다. canonical source를 읽는 renderer, editor, exporter는 top-level `text`나 `runs`의 불일치 값을 우선하지 않는다.
@@ -255,7 +261,7 @@ API:
 - `text.props.fontFamily`, `text.props.color`가 생략되면 renderer/export/AI normalize 단계에서 각각 `slide.style.fontFamily` > `deck.theme.fontFamily`, `slide.style.textColor` > `deck.theme.textColor` 순서로 기본값을 사용한다.
 - `image.props`는 `src`, `alt`, `fit`, `focusX`, `focusY`, `crop`을 사용하고, `fit`은 `contain`, `cover`, `stretch`만 허용한다. `focusX`, `focusY`는 `cover` crop 기준점이며 0부터 1 사이 값이다. `crop`은 OOXML `srcRect`를 left/top/right/bottom 0..1 비율로 보존한다.
 - `chart.props`는 `chart.schema.ts`의 chart schema를 그대로 사용한다.
-- `table.props`는 `rows`, `columnWidths`, `rowHeights`, `borderColor`, `borderWidth`를 사용한다. 각 cell은 `text`, `fill`, `textColor`, `fontFamily`, `fontSize`, `fontWeight`, `align`, `verticalAlign`, `borderColor`, `borderWidth`, `colSpan`, `rowSpan`을 보존한다.
+- `table.props`는 `rows`, `columnWidths`, `rowHeights`, `borderColor`, `borderWidth`를 사용한다. 각 cell은 `text`, `fill`, `textColor`, `fontFamily`, `fontSize`, `fontWeight`, `align`, `verticalAlign`, `borderColor`, `borderWidth`, `colSpan`, `rowSpan`을 보존한다. 병합은 직사각형 범위의 좌상단 cell에 실제 `colSpan`·`rowSpan`을 기록하고 범위 안의 나머지 raw cell은 `colSpan=1`, `rowSpan=1` 상태로 보존한다. renderer와 exporter는 좌상단 anchor만 표시하며 병합 해제 시 보존된 raw cell의 내용과 style을 복원한다. 범위를 벗어나거나 서로 겹치는 span은 편집·내보내기에서 fail-closed한다.
 - `rect`, `ellipse`, `line`, `arrow`, `polygon`, `star`, `ring`은 공통 shape props인 `fill`, `stroke`, `strokeWidth`, `borderRadius`, `dash`, `lineCap`, `lineJoin`, `shadow`를 사용한다. `fill`/`stroke`는 `#RRGGBB`, `transparent`, linear gradient paint를 허용한다.
 - `customShape.props`만 MVP 확장 지점으로 `record unknown`을 허용한다.
 - `group.props`는 `childElementIds`만 가진다.
@@ -284,6 +290,8 @@ API:
 - `element.animations`에는 저장하지 않는다.
 - 각 animation은 `anim_` prefix를 따르는 `animationId`와 `el_` prefix를 따르는 `elementId`를 필수로 가지고 대상 객체를 참조한다. slide 단위 animation은 1차 스프린트 MVP에서 제외한다.
 - animation `order`는 `1`부터 시작하는 양의 정수로 관리한다.
+- animation `startMode`는 `on-slide-enter | on-click | with-previous | after-previous` 중 하나다. `order`는 stable logical sequence만 나타내며 같은 `order` 자체는 동시 실행 의미를 갖지 않는다. `on-slide-enter`와 `on-click`은 root를 만들고, `with-previous`는 직전 logical effect와 같은 base reference, `after-previous`는 직전 effect 종료를 base reference로 사용한다. root 앞의 첫 `with-previous`는 slide entry, 첫 `after-previous`는 destination slide transition end를 기준으로 한다.
+- 새 animation authoring의 기본 `startMode`는 `on-click`이다. 기존 raw Deck에서 `startMode`가 생략된 animation은 editor-core가 schema parse 전에 같은 legacy `order`별로 묶어 one-time 정규화한다. group 안에 `play-animation` action 참조가 하나라도 있으면 누락된 root는 `on-click`, 없으면 `on-slide-enter`, 나머지 누락 follower는 `with-previous`가 된다. 이미 명시된 `startMode`와 legacy `order` 값은 변경하지 않으며 다음 저장 시 정규화된 mode가 Deck JSON에 영속화된다.
 - `durationMs`, `delayMs`, `easing`은 입력에서 생략할 수 있지만, schema parse 후 normalized Deck JSON에는 각각 `400`, `0`, `"ease-out"` 기본값으로 포함한다.
 - `easing`은 `linear`, `ease-in`, `ease-out`, `ease-in-out`만 허용한다.
 - `slide.keywords[]`는 `required` boolean을 포함한다. 이 값은 발표 중 반드시 언급해야 하는 keyword 여부를 나타내며 기본값은 `true`다.
@@ -293,6 +301,7 @@ API:
 - 각 action은 `act_` prefix를 따르는 `actionId`와 `cue`, legacy `keyword`, 또는 `keyword-occurrence` 기반 trigger를 가진다.
 - action effect는 `play-animation`, `go-to-next-slide`만 허용한다.
 - `play-animation` effect는 같은 slide 안에 있는 `animationId`만 참조할 수 있다.
+- `play-animation` action은 `on-click` root chain만 가리킬 수 있다. follower를 가리켜도 해당 root chain 전체를 실행하며, action trigger는 main timeline을 대체하지 않고 이미 계획된 root를 실행하는 overlay로 동작한다.
 - `keyword` trigger는 같은 slide 안에 있는 `keywordId`만 참조할 수 있다.
 - `keyword-occurrence` trigger는 같은 slide 안에 있는 `keywordId`와 현재 `speakerNotes`에서 재계산 가능한 `occurrenceId`를 함께 참조해야 한다.
 - `keyword-occurrence.occurrenceId`는 `kwo_` prefix를 따르고, opaque string으로 취급한다. 현재 권장 형식은 `kwo_<slideId>_<keywordId>_<start>_<end>`이며 `start`, `end`는 `speakerNotes` UTF-16 index 기준이다.
@@ -416,6 +425,7 @@ DeckPatch 결정 사항:
 - `update_deck`: deck 제목 수정
 - `add_slide`: slide 전체 추가
 - `update_slide`: slide 제목 또는 thumbnail URL 수정
+- `update_slide_transition`: destination slide의 fade transition 전체 설정 또는 `null`로 제거
 - `delete_slide`: slide 삭제
 - `reorder_slides`: slide order 재정렬
 - `update_theme`: deck theme token 부분 수정
@@ -455,7 +465,8 @@ Semantic Cue extraction 동시성 계약:
 
 patch 적용 규칙:
 
-- `update_theme`, `update_slide_style`, `update_element_frame`, `update_animation`은 전달된 필드만 기존 값에 병합한다.
+- `update_theme`, `update_slide_style`, `update_element_frame`, `update_animation`은 전달된 필드만 기존 값에 병합한다. `animationPatch.startMode`는 네 가지 explicit mode 중 하나만 허용한다.
+- `update_slide_transition`은 transition full-state를 교체하고 `null`이면 field를 제거한다.
 - `update_slide_style`에서 `layout`, `fontFamily`, `backgroundColor`, `textColor`, `accentColor`, `backgroundImage`에 `null`을 전달하면 해당 slide override를 제거한다.
 - `update_theme.effects.shadow`에 `null`을 전달하면 theme shadow override를 제거한다.
 - `update_element_frame.role`에 `null`을 전달하면 element role을 제거한다.
@@ -602,6 +613,22 @@ MVP 실패 코드:
 구현 위치:
 
 - `packages/shared/src/deck/deck-api.schema.ts`
+
+## Project access 오류 계약
+
+프로젝트 권한과 구성원 조회는 `projectAccessResponseSchema`를 사용한다. 데이터베이스
+schema drift 또는 일시적인 저장소 장애는 빈 500 대신 `projectApiErrorSchema`의
+`code`, `message`, `details` 구조와 HTTP 503으로 응답한다.
+
+지원하는 실패 코드는 다음과 같다.
+
+- `PROJECT_ACCESS_UNAVAILABLE`
+- `PROJECT_MEMBERS_UNAVAILABLE`
+- `PROJECT_SCHEMA_NOT_READY`
+
+API는 pending migration 또는 필수 `project_members.is_pinned` 컬럼 누락을 확인한 뒤
+schema가 준비되지 않았으면 listen 전에 기동을 중단한다. `/health/readiness`도 동일한
+검사를 사용한다.
 
 ## AI 덱 생성 계약
 
@@ -903,6 +930,7 @@ TemplateBlueprint:
 - `ORBIT_PPTX_OOXML_VECTOR_IMPORT` 기본값은 `true`이며, Python worker는 OOXML XML 직접 파서 기반 visual tree를 먼저 사용한다. 지원하지 않는 OOXML 효과는 임의 변환하지 않고 `warnings`에 남기며, 파서 실패 시 기존 `python-pptx` importer로 fallback한다. `false`로 설정하면 기존 `python-pptx` importer를 사용한다.
 - Worker는 imported image asset을 기존 `design-asset` 저장 흐름으로 저장하고 asset ref를 API asset content URL로 교체한 뒤 `DeckSchema`로 검증해 `decks`에 저장한다.
 - `templateBlueprint`와 `qualityReport`는 `template_blueprints` 테이블에 저장한다.
+- 편집기 재접속 시 `GET /api/v1/projects/:projectId/deck/import-quality`가 현재 Deck과 연결된 최신 `quality_report_json`을 `{ importQuality: { qualityReport } | null }`로 반환한다. 이 read-only sidecar는 Deck JSON이나 Deck version을 변경하지 않으며, 누락되었거나 schema가 유효하지 않으면 `null`을 반환한다.
 - placeholder `p:ph`에서 온 텍스트/미디어는 `content-slot` 또는 `media-slot`과 `replace`로 분류한다.
 - master/layout 유래 요소, 반복 텍스트, 직접 그린 애매한 텍스트 박스는 기본적으로 `decoration` 또는 `fixed-text`이며 `preserve`/`ignore`와 낮은 confidence를 사용한다.
 - Quality composite score는 geometry 25, text 15, color 10, layer 10, editability 10, pixel similarity 30 가중치를 사용한다.
@@ -955,6 +983,7 @@ TemplateBlueprint optional OOXML tracking fields:
 - `slides[].elementSources[]`
 - `slides[].sourceSlidePart`, `slides[].ooxmlOrigin`
 - `slides[].slideId`: Deck의 opaque slide ID와 `sourceSlidePart`를 직접 연결한다. 신규 import는 반드시 기록하며 숫자 suffix로 slide part를 추론하지 않는다. legacy blueprint는 OOXML 변경을 적용하기 전 현재 Deck의 유일한 slide order와 `slideIndex`를 대응해 복구한 뒤 저장한다.
+- `slides[].ooxmlMotionCapabilities`: `{ transitionWritable, importedMainSequenceCoverage }`를 사용한다. `importedMainSequenceCoverage`는 `unknown | absent | partial | complete`이며, writable motion capability는 유일한 `sourceSlidePart`가 있을 때만 유효하다. 여러 slide가 같은 locator를 공유하면 motion authoring을 활성화하지 않는다.
 - `slides[].elementSources[]`: `{ elementId, elementType?, ooxmlOrigin?, ooxmlEditCapabilities?, slidePart, shapeId, relationshipId?, sourceType, writable, tableCellLocators?, fallbackReason? }`. 신규 importer/sync 결과는 `elementType`을 기록하며, 이 값이 없거나 실제 patch 대상 type과 다르면 property sync를 fail-closed한다.
 - table source의 optional `tableCellLocators[]`는 `{ rowIndex, columnIndex, fingerprint }`이며 0-based `(0, 0)`에서 시작하는 완전한 직사각형 grid를 row-major 순서로 모두 기록한다. 각 index는 `0..999`, locator는 `1..10,000`개이고 `fingerprint`는 lowercase SHA-256 64자리다. fingerprint는 canonical `a:tc`에서 DrawingML `a:t`의 text와 그 `xml:space`만 제외해 셀 문구 변경에는 안정적이되 formatting·extension·구조 drift는 탐지한다. locator 존재만으로 `tableCellText` capability를 부여하지 않으며 direct table, unmerged rectangular grid, track 정합성, writable source mapping을 함께 증명한 경우에만 targeted sync gate가 활성화된다.
 - `slots[].source.slidePart`
@@ -974,7 +1003,9 @@ OOXML provenance와 요소 편집 capability는 다음 계약을 사용한다.
 - 새 요소·새 슬라이드·복제본은 `authored`로 전환하며 원본 imported capability를 승계하지 않는다.
 - Crop capability는 relationship이 일치하는 direct `p:pic`을 `picture`, direct picture-filled `p:sp`를 `picture-fill`로 판정한다. capability와 실제 shape locator가 일치할 때만 normalized crop을 OOXML `srcRect`에 기록하고 `null`은 기존 `srcRect`를 제거한다. 새로 작성한 image는 `picture` capability를 갖는다.
 - generic exporter와 OOXML sync는 동일한 normalized crop edge와 최소 가시 영역 규칙을 사용한다. imported image의 locator 또는 capability가 불완전하면 원본 package를 유지하고 fail-closed 처리한다.
-- Rich text, Table, Motion capability는 각 보존 serializer가 병합되기 전까지 보수적으로 비활성화한다.
+- Rich text와 Table capability는 각 보존 serializer 계약을 따른다. Motion은 transition과 imported main sequence coverage를 import 시 판정하고, 불완전 locator 또는 `partial`/`unknown` coverage에서는 보수적으로 비활성화한다.
+
+OOXML importer는 지원되는 fade transition과 main-sequence entrance effect를 Deck `transition`/`animations`로 변환하고 bounded `qualityReport.motionDiagnostics`에 unsupported, downgraded, unresolved, excluded 집계를 기록한다. detail은 정해진 `PPTX_MOTION_*` code, slide index, count만 포함하고 최대 500개다. Generic exporter는 같은 canonical motion을 직렬화하며, group animation은 지원되는 flattened target fallback을 warning으로 반환한다. 그 외 motion 손실 진단이 있으면 export Worker는 결과 asset을 저장하기 전에 fail-closed한다.
 
 구현 위치:
 
@@ -1024,13 +1055,14 @@ Job result:
 }
 ```
 
-Worker에서 Python Worker로 보내는 `/ai/pptx-ooxml-sync` multipart 요청은 PPTX package를 `file` file part로, `TemplateBlueprint`, operation 배열, Deck canvas를 각각 `template_blueprint_file`, `operations_file`, `deck_canvas_file`의 `application/json` file part로 전송한다. JSON을 일반 multipart text field로 보내지 않는다. 배포 중 rolling compatibility를 위해 Python Worker는 기존 `template_blueprint`, `operations`, `deck_canvas` text field도 소형 요청에 한해 읽지만, 신규 Worker는 file part만 사용한다.
+Worker에서 Python Worker로 보내는 `/ai/pptx-ooxml-sync` multipart 요청은 PPTX package를 `file` file part로, `TemplateBlueprint`, operation 배열, slide motion full-state 배열, Deck canvas를 각각 `template_blueprint_file`, `operations_file`, `slide_motion_file`, `deck_canvas_file`의 `application/json` file part로 전송한다. JSON을 일반 multipart text field로 보내지 않는다. 배포 중 rolling compatibility를 위해 Python Worker는 기존 `template_blueprint`, `operations`, `slide_motion`, `deck_canvas` text field도 소형 요청에 한해 읽지만, 신규 Worker는 file part만 사용한다.
 
 전송 경계는 저장소의 50 MiB asset upload 제한과 image data URL의 base64 증가분, bounded OOXML metadata 규모를 기준으로 다음과 같이 제한한다.
 
 - `file`: 50 MiB
 - `template_blueprint_file`: 16 MiB
 - `operations_file`: 72 MiB
+- `slide_motion_file`: 16 MiB
 - `deck_canvas_file`: 4 KiB
 - operation 배열: 최대 500개
 
@@ -1045,24 +1077,29 @@ Supported first-pass patch operations:
 - `add_slide`
 - `reorder_slides`
 
+Motion operation은 `update_slide_transition`, `add_animation`, `update_animation`, `delete_animation`을 지원한다. Worker는 해당 patch들을 최신 Deck의 slide별 full-state로 coalesce하여 `slide_motion_file`에 보낸다. transition은 `transitionWritable=true`인 경우만 허용하고, imported animation full-state 교체는 `importedMainSequenceCoverage`가 `absent` 또는 `complete`이며 Deck과 TemplateBlueprint capability가 일치할 때만 허용한다. `partial`, `unknown`, interactive sequence, media timing은 원본 OOXML subtree를 보존하고 authoring을 fail-closed한다. 이 mutation-disabled 상태에서는 애니메이션 inspector의 기존 효과 편집뿐 아니라 새 효과 picker와 최종 추가 동작도 같은 사유로 비활성화한다.
+
+Python serializer는 transition 변경 시 기존 timing subtree bytes를 유지하고, main sequence 변경 시 지원되는 root chain만 교체하면서 interactive/media timing subtree를 보존한다. target은 `sourceSlidePart`와 authoritative element source의 shape identity로 해석하며, locator·coverage·target이 불완전하면 package 원본 bytes를 반환한다. element 삭제가 complete main sequence의 target을 제거하면 element operation과 최종 animation full-state를 같은 요청에서 원자적으로 적용한다.
+
 ORBIT editor의 `group` element는 PPTX shape group이 아니라 interaction 전용 논리 그룹이다. `TemplateBlueprint.logicalGroupElementIds`는 이전 sync에서 존재했던 논리 group ID를 보존하며, Worker는 현재 Deck의 group ID와 합쳐 group 자체의 `add_element`, `update_element_frame`, `update_element_props`, `delete_element`를 package-neutral operation으로 제외한다. group 이동으로 함께 생성된 실제 자식 element frame operation은 기존 OOXML source에 정상 반영한다. sync 성공 후 sidecar는 현재 Deck의 논리 group ID로 갱신한다.
 
-`reorder_slides`는 기존 DeckPatch의 `slideOrders` 계약을 재사용하며 현재 Deck slide ID 전체와 `1..N` order를 각각 정확히 한 번씩 포함해야 한다. imported PPTX sync에서 Worker는 `TemplateBlueprint.slides[].slideId`로 각 opaque Deck slide ID를 유일한 `sourceSlidePart`에 대응시킨다. Python serializer는 전달된 `slideId ↔ sourceSlidePart`를 다시 검증하고 `ppt/presentation.xml`의 `p:sldIdLst` 자식 순서만 바꾸며 각 `p:sldId@id`, `r:id`, `ppt/_rels/presentation.xml.rels`, slide part 이름과 slide별 package entry를 유지한다. slide ID의 숫자 suffix 또는 `slideIndex`로 package part를 추론하지 않는다.
+`reorder_slides`는 기존 DeckPatch의 `slideOrders` 계약을 재사용하며 operation이 실행되는 시점의 Deck slide ID 전체와 `1..N` order를 각각 정확히 한 번씩 포함해야 한다. Worker는 `ooxmlSyncedDeckVersion`의 `TemplateBlueprint.slides`를 시작 상태로 삼아 pending `add_slide`, `delete_slide`, `reorder_slides`를 저장 순서대로 replay하고 각 시점의 permutation을 검증한다. replay 결과가 stored Deck의 최종 순서와 정확히 일치해야 하며, 검증 후 transient add/delete와 과거 reorder는 최종 package mutation으로 compact한다. imported PPTX sync에서 Worker는 `TemplateBlueprint.slides[].slideId`로 각 opaque Deck slide ID를 유일한 `sourceSlidePart`에 대응시킨다. Python serializer는 전달된 `slideId ↔ sourceSlidePart`를 다시 검증하고 `ppt/presentation.xml`의 `p:sldIdLst` 자식 순서만 바꾸며 각 `p:sldId@id`, `r:id`, slide part 이름과 slide별 package entry를 유지한다. slide ID의 숫자 suffix 또는 `slideIndex`로 package part를 추론하지 않는다.
 
 `add_slide`는 imported Deck에서 생성된 `ooxmlOrigin: authored` 슬라이드에 새 `ppt/slides/slideN.xml`, presentation relationship, content type override, 기존 slide layout relationship을 원자적으로 연결한다. 같은 sync batch의 `text`, `rect`, `image`, `table` authored element를 새 slide part에 추가하고 `elementSources`를 반환한다. Worker는 생성한 opaque `slideId ↔ sourceSlidePart`를 TemplateBlueprint에 저장하므로 이후 이미지 추가와 재정렬도 동일한 locator를 사용한다.
 
-locator 누락, 두 Deck slide가 같은 source part를 가리키는 경우, 끊어진 presentation relationship, 중복·누락·unknown slide 또는 불완전 permutation은 bounded slide reorder reason으로 package 원본 bytes를 반환하고 freshness를 올리지 않는다. `delete_slide`의 OOXML part 제거는 아직 미지원이며 Worker preflight에서 fail-closed한다.
+`delete_slide`는 안정적인 `slideId ↔ sourceSlidePart` locator를 요구하고 `ppt/presentation.xml`의 slide ID 및 presentation relationship과 해당 content type override를 함께 제거한다. 마지막 슬라이드는 삭제하지 않는다. sync 성공 후 TemplateBlueprint는 최종 Deck에 남은 slide만 현재 order로 재구성한다. locator 누락, 두 Deck slide가 같은 source part를 가리키는 경우, 끊어진 presentation relationship, 중복·누락·unknown slide 또는 불완전 permutation은 bounded slide lifecycle reason으로 package 원본 bytes를 반환하고 freshness를 올리지 않는다.
 
 `update_element_props`의 text serializer는 `text`, `runs`, `paragraphs`, `bodyInset`, `fontFamily`, `fontSize`, `fontWeight`, `italic`, `underline`, `color`, `highlightColor`, `align`, `verticalAlign`, `writingMode`, `lineHeight`, `bullet`만 지원한다. `bullet.kind = "number"`는 `numberStyle`과 `startAt`을 `a:buAutoNum`으로 왕복 보존한다. targeted sync의 `fontWeight`는 lossless round-trip이 가능한 `normal | bold`만 허용하며, hyperlink relationship을 포함한 미지원 field나 canonical projection 불일치는 fail-closed 대상이다.
 
 table의 imported targeted sync는 authoritative source mapping의 `tableCellText=true`, complete row-major `tableCellLocators`, live fingerprint, direct unmerged rectangular `p:graphicFrame/a:tbl`을 모두 다시 검증한다. 정확히 한 cell의 `text`만 달라지고 기존 paragraph 수를 유지하는 `{ rows }` patch만 허용한다. Python은 target text node와 필요한 `xml:space`만 바꿔 기존 `a:tcPr`, paragraph/run property, 다른 cell, `a:tblPr`, `a:tblGrid`, frame transform을 보존한다. 빈 paragraph에 처음 문구를 넣을 때는 existing `a:endParaRPr`를 `a:rPr` template으로 복제한다. 두 cell 이상 변경, newline에 의한 paragraph 수 변경, style/span/track/row/column 변경, locator·fingerprint drift는 `TABLE_CELL_CAPABILITY_UNSAFE` 또는 `TABLE_STRUCTURE_UNSUPPORTED`로 package 전체를 fail-closed한다.
 
-imported Deck에서 ORBIT가 새로 만든 `ooxmlOrigin=authored` table은 rectangular unmerged modeled table만 지원한다. add 시 `p:graphicFrame/a:tbl`과 authored source mapping을 만들고, 후속 cell 또는 row/column 변경은 owned `a:tbl` subtree만 재생성한 뒤 모든 `tableCellLocators`를 갱신한다. imported table의 row/column 구조 변경은 비활성화한다.
+imported Deck에서 ORBIT가 새로 만든 `ooxmlOrigin=authored` table은 rectangular unmerged modeled table만 지원한다. add 시 `p:graphicFrame/a:tbl`과 authored source mapping을 만들고, 후속 cell 또는 row/column 변경은 owned `a:tbl` subtree만 재생성한 뒤 모든 `tableCellLocators`를 갱신한다. imported Deck의 table 병합·병합 해제와 imported table의 row/column 구조 변경은 원본 OOXML 보존을 위해 비활성화한다. native Deck의 generic PPTX export는 유효한 직사각형 `colSpan`·`rowSpan`을 DrawingML 병합 셀로 직렬화한다.
 
 Python Worker의 sync 응답은 bounded array인 `appliedOperations`와 `unsupportedOperations`를 함께 반환한다. 각 항목은 `operationType`, optional `slideId`/`elementId`를 사용하고 unsupported 항목은 다음 bounded `reasonCode` 중 하나를 포함한다.
 
 - `ADD_ELEMENT_FAILED`, `ADD_ELEMENT_TYPE_UNSUPPORTED`
 - `CROP_CAPABILITY_UNSAFE`
+- `DELETE_SLIDE_FAILED`, `DELETE_SLIDE_LOCATOR_UNSAFE`, `DELETE_SLIDE_RELATIONSHIP_UNSAFE`, `LAST_SLIDE_DELETE_FORBIDDEN`
 - `RICH_TEXT_CAPABILITY_UNSAFE`
 - `ELEMENT_TYPE_MISMATCH`, `FRAME_FIELDS_UNSUPPORTED`, `GROUPED_FRAME_UNSUPPORTED`
 - `OPERATION_TYPE_UNSUPPORTED`, `PROPS_FIELDS_UNSUPPORTED`, `PROPS_UPDATE_FAILED`
@@ -1072,9 +1109,13 @@ Python Worker의 sync 응답은 bounded array인 `appliedOperations`와 `unsuppo
 - `SYNC_RESPONSE_INCOMPLETE`
 - `TABLE_CELL_CAPABILITY_UNSAFE`, `TABLE_STRUCTURE_UNSUPPORTED`
 
+Motion 응답은 별도의 bounded `appliedSlideMotion`과 `unsupportedSlideMotion` 배열을 사용한다. applied 항목은 요청 순서대로 `{ slideId, transition, animations }` scope 승인을 반환하며, unsupported 항목은 `slideId`, `transition | animations` scope와 bounded `SLIDE_MOTION_*`, `SLIDE_TRANSITION_*`, `SLIDE_ANIMATION_*` reason을 반환한다.
+
 Worker는 전송한 operation과 `appliedOperations`의 순서·type·slide·element identity가 정확히 일치하는지 검증한다. 하나라도 unsupported이거나 응답 승인이 누락·추가·재정렬되면 non-retryable `PPTX_OOXML_SYNC_UNSUPPORTED_OPERATION`으로 실패한다. 이때 새 asset을 저장하지 않고 `currentPackageFileId`, `ooxmlSyncedDeckVersion`, patch compaction을 변경하지 않는다. Python도 요청 안의 operation 하나라도 적용할 수 없으면 원본 package bytes를 반환하고 해당 요청의 applied 목록을 비운다.
 
-speaker notes, keywords, semantic cues, slide action처럼 package visual tree를 바꾸지 않는 operation은 package-neutral로 취급한다. 그 외 아직 지원하지 않는 slide/theme/animation operation은 Python 호출 전에 같은 fail-closed 오류로 거부한다. 단순 fidelity warning은 사용자 변경이 실제로 적용된 경우에만 성공 응답과 함께 반환할 수 있다.
+Worker는 `slide_motion_file`과 `appliedSlideMotion`의 순서·slide ID·scope boolean도 정확히 비교한다. motion 거부 또는 승인 누락·추가·재정렬 역시 같은 freshness fail-closed 계약을 적용한다.
+
+speaker notes, keywords, semantic cues, slide action처럼 package visual tree를 바꾸지 않는 operation은 package-neutral로 취급한다. 그 외 아직 지원하지 않는 slide/theme operation은 Python 호출 전에 같은 fail-closed 오류로 거부한다. 단순 fidelity warning은 사용자 변경이 실제로 적용된 경우에만 성공 응답과 함께 반환할 수 있다.
 
 동시성·최신성 규칙:
 
@@ -1093,6 +1134,7 @@ Imported Deck export 규칙:
 - export에 사용하는 `currentPackageFileId`는 같은 project의 uploaded PPTX `design-asset`이어야 하며, package 복사 transaction 동안 asset row를 shared lock으로 보호한다.
 - 사용자에게 제공하는 결과는 current package 원본 asset을 직접 노출하지 않고 별도 `export-result` asset으로 복사한다.
 - TemplateBlueprint가 없는 일반 Deck은 기존 `/ai/export-deck-pptx` 경로를 유지한다.
+- `POST /api/v1/projects/:projectId/deck/exports` enqueue가 실패하면 생성한 Job을 `failed`, `error.code=DECK_EXPORT_ENQUEUE_FAILED`, `retryable=true`로 먼저 저장하고 HTTP 503 `{ code, message, job }`을 반환한다. 응답과 Job의 code/message는 같으며 provider/Redis 원문 오류는 안전한 업무 로그에만 남긴다.
 
 Implementation locations:
 
@@ -1239,6 +1281,14 @@ Run 응답 구조:
     "deckId": "deck_demo_1",
     "deckVersion": 7,
     "capturedAt": "2026-07-10T08:00:00.000Z",
+    "pronunciationLexicon": {
+      "schemaVersion": 1,
+      "generatorVersion": "deterministic-v1",
+      "deckId": "deck_demo_1",
+      "deckVersion": 7,
+      "sourceHash": "0123456789abcdef",
+      "entries": []
+    },
     "slides": []
   },
   "semanticEvaluationMode": "full",
@@ -1276,7 +1326,17 @@ API:
 - `GET /api/v1/rehearsals/:runId/report`
   - response: `{ "run": RehearsalRun, "report": RehearsalReport | null }`
   - run이 아직 `processing`이거나 과거 run에 `report_json`이 없으면 `report`는 `null`이다.
-- `GET /api/v1/rehearsals/:runId/audio/playback-url`
+- `GET /api/v1/projects/:projectId/rehearsal-summary`
+  - response: `{ "summary": RehearsalProjectSummary | null }`
+  - 성공한 리허설이 없으면 `summary=null`을 반환한다.
+  - `runMetricSeries`는 성공 회차별 총 소요시간, 긴 침묵, 핵심 메시지 전달률, 시간 초과 슬라이드 비율과 각 항목의 `measurementState`를 제공한다.
+  - `slidePerformanceSummaries`는 최신 성공 회차의 immutable `evaluationSnapshot`을 기준으로 슬라이드 순서·제목·썸네일·권장 시간을 제공하고, 같은 slide ID의 측정 가능한 과거 결과만 평균·비율에 집계한다.
+- `POST /api/v1/rehearsals/:runId/audio/clip`
+  - request: `{ "startSeconds": 10, "endSeconds": 12.5 }`; 0초보다 길고 최대 60초인 구간만 허용한다.
+  - 프로젝트 read 권한, `succeeded` run, 원본 보관기한과 녹음 길이를 확인한다.
+  - 최초 요청은 Python worker가 원본을 mono 16kHz PCM WAV로 자르고, 원본과 같은 `rehearsals/{date}/{projectId}/{runId}/` 폴더에 `volume-{startMs}-{endMs}.wav`로 저장한다. 같은 구간의 후속 요청은 저장된 파일을 재사용한다.
+  - response는 `audio/wav` binary이며 Web origin의 API proxy를 통해 전달한다. 파생 파일 삭제는 원본 `rawAudioDeleteDeadlineAt`에 맞춰 `storage_deletion_outbox`로 처리한다.
+  - 만료·삭제된 원본은 HTTP 410 `REHEARSAL_AUDIO_EXPIRED`, 잘못된 구간은 HTTP 400/422로 응답한다.- `GET /api/v1/rehearsals/:runId/audio/playback-url`
   - 프로젝트 read 권한, `succeeded` run, `rehearsal-audio` purpose, uploaded·미삭제 상태를 확인한다.
   - response: `{ "playbackUrl": "short-lived-signed-url", "expiresAt": "2026-07-11T00:15:00.000Z", "retentionExpiresAt": "2026-07-25T00:00:00.000Z" }`
   - signed URL은 최대 15분이며 `rawAudioDeleteDeadlineAt` 이후까지 유효하게 발급하지 않는다.
@@ -1331,7 +1391,7 @@ Report 응답 구조:
   "transcriptRetained": false,
   "transcript": null,
   "volumeAnalysis": {
-    "metricDefinitionVersion": 1,
+    "metricDefinitionVersion": 2,
     "measurementState": "measured",
     "reasonCode": null,
     "averageDbfs": -22.4,
@@ -1349,18 +1409,18 @@ Report 응답 구조:
     ]
   },
   "silenceAnalysis": {
-    "metricDefinitionVersion": 1,
+    "metricDefinitionVersion": 2,
     "measurementState": "measured",
     "reasonCode": null,
     "detector": "silero-vad",
     "detectorVersion": "6.2.1",
     "speechThreshold": 0.5,
     "minimumSilenceMs": 250,
-    "longSilenceMs": 1000,
+    "longSilenceMs": 5000,
     "analysisWindowStartSeconds": 0.42,
     "analysisWindowEndSeconds": 89.31,
-    "totalSilenceSeconds": 2.74,
-    "silenceRatio": 0.0308,
+    "totalSilenceSeconds": 6.74,
+    "silenceRatio": 0.0758,
     "longSilenceCount": 1,
     "detectedSegmentCount": 3,
     "segmentsTruncated": false,
@@ -1368,8 +1428,8 @@ Report 응답 구조:
       {
         "category": "long",
         "startSeconds": 8.12,
-        "endSeconds": 9.46,
-        "durationSeconds": 1.34
+        "endSeconds": 13.46,
+        "durationSeconds": 5.34
       }
     ]
   },
@@ -1403,7 +1463,7 @@ Report 응답 구조:
       },
       "longSilenceCount": {
         "measurementState": "measured",
-        "metricDefinitionVersion": 1,
+        "metricDefinitionVersion": 2,
         "reasonCode": null
       },
       "keywordCoverage": {
@@ -1512,7 +1572,11 @@ Report 응답 구조:
 - raw audio 삭제 성공은 `rawAudioDeletedAt`과 `project_assets.status=deleted`, `deleted_at`으로 남긴다.
 - 삭제 실패는 `RAW_AUDIO_DELETE_FAILED` error로 run/job 양쪽에 남긴다.
 - 공식 보고서 원본은 `jobs.result`가 아니라 `rehearsal_runs.report_json`이다.
-- `full` run은 생성 시점의 materialized deck으로 owner-only `evaluationSnapshot`을 저장한다. snapshot에는 slide identity/order/title/estimatedSeconds, run-scoped `thumbnailUrl`, keyword 요약, `approved/excluded` Semantic Cue만 포함하고 `speakerNotes`, elements, transcript, raw audio는 포함하지 않는다.
+- `full` run은 생성 시점의 materialized deck으로 owner-only `evaluationSnapshot`을 저장한다. snapshot에는 slide identity/order/title/estimatedSeconds, run-scoped `thumbnailUrl`, keyword 요약, `approved/excluded` Semantic Cue, 그리고 대본에서 추출한 `pronunciationLexicon`만 포함한다. `speakerNotes` 원문, elements, transcript, raw audio는 포함하지 않는다.
+- `pronunciationLexicon`은 `schemaVersion=1`, generator/source version, 전체 Deck source hash, canonical entry와 원본 `speakerNotes` UTF-16 occurrence를 가진 immutable run 계약이다. deterministic generator는 원문을 한국어 발음으로 치환하지 않으며 source/alias는 canonical term evidence를 만들기 위한 비교용 값이다.
+- live 처리는 전체 사전 중 현재·다음 장표의 active high-confidence entry만 사용한다. Report Worker는 같은 snapshot에서 최대 32개 source/대표 alias를 `pronunciationContext`로 만들며, 지원하는 STT provider에만 prompt 또는 phrase hint로 전달한다. 지원 여부가 확인되지 않은 provider에는 no-op으로 처리한다.
+- transcript 원문은 저장·표시·evidence excerpt와 timestamp의 기준으로 유지한다. alias matcher는 별도의 canonical evidence만 생성하며, 동일 alias가 여러 canonical source와 충돌하면 자동 귀속하지 않는다.
+- alias evidence는 term/keyword 언급 증거다. 문장 관계, 방향, 부정까지 전달했다는 의미 증거가 아니므로 full Semantic Cue 평가는 alias match가 있어도 semantic grader를 통과해야 한다. grader가 unavailable이면 alias만으로 `covered`를 확정하지 않는다.
 - 에디터 썸네일은 현재 Deck JSON을 렌더링한 browser-memory Blob URL이며 Deck patch/version 또는 `project_assets`를 생성하지 않는다. 영속 이미지는 리허설 시작 준비 시에만 `rehearsal-slide-snapshot`으로 업로드하고 리포트는 현재 Deck의 `thumbnailUrl`보다 run snapshot URL을 우선한다.
 - `freshness=stale`인 reviewed cue도 snapshot에 유지해 최종 결과를 `unmeasured(stale_cue)`로 설명할 수 있게 한다.
 - snapshot은 생성 후 수정하지 않는다. `deckVersion`과 cue `revision`은 해당 run의 immutable 평가 기준이다.
@@ -1523,19 +1587,31 @@ Report 응답 구조:
 - ORBIT-37의 고급 0-100 점수 산식은 이 계약에 포함하지 않으며, 실제 산식이 확정되기 전까지 UI에서도 점수를 표시하지 않는다.
 - `score`, `deliveryScore`, `speedScore`처럼 산식이 확정되지 않은 점수 필드는 `RehearsalReport`에 저장하지 않는다.
 - `/audio/transcribe`는 원본 음성을 한 번만 읽고 PyAV 디코딩도 한 번만 수행한다. 같은 `AudioContent`는 STT에, 같은 mono float32 16kHz `DecodedAudio`는 음량 분석과 Silero VAD 침묵 분석에 전달한다. `/audio/transcribe-private`는 STT 전용 계약을 유지한다.
-- `volumeAnalysis`는 현재 녹음 내부의 상대 음량 변화만 나타내며 절대적인 `적정·작음·큼` 판정으로 사용하지 않는다. 음량 분석 실패는 STT를 실패시키지 않고 `unmeasured`와 제한된 `reasonCode`로 기록한다.
-- 리포트 음량 카드는 `quiet/loud` 문제 구간의 상대적인 개수·위치·시간만 표시하고 dBFS·RMS 수치를 노출하지 않는다. 사용자가 구간 재생을 요청하면 원본 음성의 짧은 signed URL을 받아 브라우저에서 `startSeconds`부터 `endSeconds`까지만 재생하며 별도 Clip은 생성하지 않는다.
-- `silenceAnalysis`는 Silero VAD가 찾은 발화 사이의 비발화 구간만 나타낸다. 앞뒤 무음은 제외하고 250ms 이상을 원천 구간으로 저장하며, 정확히 1초 이상을 `long`으로 분류한다. 의도한 멈춤, 말막힘, 긴장 여부는 추정하지 않는다.
+- `volumeAnalysis`는 현재 녹음 내부의 상대 음량 변화만 나타내며 절대적인 `적정·작음·큼` 판정으로 사용하지 않는다. 신규 `metricDefinitionVersion=2`는 2초 이상 구간만 사용하고, 같은 종류의 1초 이하 간격을 병합한 뒤 `durationSeconds * abs(meanDeviationDb)`가 큰 최대 5개를 시작 시간순으로 저장한다. `metricDefinitionVersion=1`은 과거 리포트 읽기 호환을 유지하며, 음량 분석 실패는 STT를 실패시키지 않고 `unmeasured`와 제한된 `reasonCode`로 기록한다.
+- 리포트 음량 카드는 `quiet/loud` 문제 구간의 상대적인 개수·위치·시간만 표시하고 dBFS·RMS 수치를 노출하지 않는다. 사용자가 구간 재생을 요청하면 `POST /api/v1/rehearsals/:runId/audio/clip`이 동일 회차 폴더에 WAV 구간 파일을 생성·재사용하고, Web은 same-origin binary 응답을 Blob URL로 재생한다.
+- `silenceAnalysis`는 Silero VAD가 찾은 발화 사이의 비발화 구간만 나타낸다. 앞뒤 무음은 제외하고 250ms 이상을 원천 구간으로 저장하며, 정확히 5초 이상을 `long`으로 분류한다. 의도한 멈춤, 말막힘, 긴장 여부는 추정하지 않는다.
 - public report는 `metrics.longSilenceCount`, `silenceAnalysis`, `measurements.longSilenceCount`, `slideInsights[].longSilenceCount`를 사용한다. `pauseCount`, `pauseDetails`, `pauseV2Details`, `measurements.pauseV1`, `measurements.pauseV2`는 신규 계약에 저장하지 않는다.
 - legacy report는 읽기 경계에서 과거 pause 필드를 제거하고 `silenceAnalysis=unmeasured/LEGACY_REPORT`, `metrics.longSilenceCount=null`, `measurements.longSilenceCount=unmeasured/LEGACY_MEASUREMENT_STATE_UNKNOWN`으로 정규화한다. 과거 pause 결과는 새 침묵 결과와 비교하거나 PracticeGoal 평가에 사용하지 않는다.
-- measurement version은 duration·CPM·WPM·filler·긴 침묵·keyword coverage가 모두 1이다. `longSilenceCount`는 `silenceAnalysis.measurementState=measured`인 새 회차에서만 사용한다.
+- measurement version은 긴 침묵이 2이고, duration·CPM·WPM·filler·keyword coverage는 1이다. `longSilenceCount`는 `silenceAnalysis.measurementState=measured`인 새 회차에서만 사용한다.
 - `sttQualityGate.state=failed`이어도 VAD 침묵 분석은 독립적으로 성공할 수 있다. Gate 실패는 CPM·WPM·filler·keyword coverage와 해당 STT 상세만 차단하며 `silenceAnalysis`와 `longSilenceCount`를 차단하지 않는다.
-- 말 속도 변화는 `speedSamples`, 습관어 상세는 `fillerWordDetails`, 비발화 상세는 `silenceAnalysis.segments`, 누락 키워드 상세는 `missedKeywords`를 공식 필드로 사용한다. UI는 `long` 구간만 문제 구간으로 표시하고 `brief`는 원천 통계에만 사용한다.
+- 말 속도 변화는 `speedSamples`, 습관어 상세는 `fillerWordDetails`, 비발화 상세는 `silenceAnalysis.segments`, 누락 필수 키워드 상세는 `missedKeywords`를 공식 필드로 사용한다. UI는 `long` 구간만 문제 구간으로 표시하고 `brief`는 원천 통계에만 사용한다.
+- 필수 키워드 평가는 Deck의 `slide.keywords[].required=true` 항목만 대상으로 한다. 각 STT segment의 midpoint를 canonical slide timeline에 배정한 뒤 해당 슬라이드 발화에서 키워드 원문·유의어·약어를 NFKC/casefold 정규화해 부분 문자열로 비교한다. 다른 슬라이드에서의 언급은 충족으로 인정하지 않으며, slide timeline 또는 timestamped segment가 없으면 `keywordCoverageMeasurement=unmeasured/transcript-incomplete`로 표시한다.
 - 장표별 상대 말하기 속도는 `slideInsights[].speakingRate`를 사용한다. NFKC 정규화 후 Unicode Letter·Number 수를 STT segment timestamp 합집합 시간으로 나누고, segment midpoint가 속한 canonical slide timeline에 배정한다. 같은 장표 재방문은 하나로 합산한다.
-- 장표별 속도는 한국어(`ko`, `ko-*`)에서만 측정한다. 유효 발화 3초 이상·10자 이상일 때 현재 발표 전체 평균 대비 비율을 계산하며 `0.85` 미만은 `slower`, `0.85~1.15`는 `similar`, `1.15` 초과는 `faster`다. 리포트 UI는 수치나 WPM·CPM·CPS 단위를 표시하지 않는다.
+- 장표별 속도는 한국어(`ko`, `ko-*`)에서만 측정한다. 유효 발화 5초 이상·20자 이상인 장표가 3개 이상일 때 해당 장표들의 CPM 중앙값 대비 비율을 계산하며 `0.85` 미만은 `slower`, `0.85~1.15`는 `similar`, `1.15` 초과는 `faster`다. 리포트 UI는 장표 CPM과 이번 발표 기준 대비 차이를 표시한다.
 - 장표별 속도 측정 불가 reason code는 `UNSUPPORTED_LANGUAGE`, `SEGMENT_TIMESTAMPS_UNAVAILABLE`, `INSUFFICIENT_SLIDE_SPEECH`, `BASELINE_UNAVAILABLE`, `LEGACY_REPORT`로 제한한다. 기존 리포트는 `unmeasured/LEGACY_REPORT`로 정규화하며 회차 비교·PracticeGoal·Top 3 평가에는 사용하지 않는다.
 - 슬라이드별 목표/실제 시간은 `slideTimings`를 공식 필드로 사용한다. `targetSeconds`는 deck의 `estimatedSeconds` 또는 `targetDurationMinutes` 기반 목표값이고, `actualSeconds`는 `PATCH /api/v1/rehearsals/:runId/meta`의 `slideTimeline`에서 연속된 slide 진입 시각 차이로 계산한다. 종료 시각이 없는 마지막 slide는 실제 시간을 추정하지 않는다.
 - 청중 QnA 기반 피드백은 질문 원문을 저장하지 않고 `qnaSummary.questionCount`, `qnaSummary.questionSummary`, `qnaSummary.unclearTopics[].topic`, optional `slideId`만 report에 저장한다. 현재 audience 질문 저장 API가 없으면 기본값은 질문 수 0과 빈 요약이다.
+
+### 프로젝트 리허설 요약 집계 계약
+
+`RehearsalProjectSummary`는 성공 회차의 공식 `rehearsal_runs.report_json`과 각 run의 immutable `evaluationSnapshot`에서 계산하는 owner-only 파생 응답이며 별도 DB 원본이나 종합 점수로 저장하지 않는다.
+
+- 총 소요시간은 `metrics.measurements.duration.measurementState=measured`인 회차의 `metrics.durationSeconds`만 사용한다. 미측정·유효하지 않은 report는 `0`으로 대체하지 않고 `unmeasured`로 반환한다.
+- 긴 침묵은 `silenceAnalysis.measurementState=measured`인 회차의 `longSilenceCount`와 `metricDefinitionVersion`을 사용한다. UI는 서로 다른 버전을 같은 추세로 직접 비교하지 않는다.
+- 핵심 메시지 전달률은 `semanticEvaluation.state=succeeded`, `measurementMode=full`인 report에서 `importance=core`이고 상태가 `covered | partial | missed`인 outcome만 대상으로 `covered / (covered + partial + missed)`로 계산한다. `partial`은 측정 분모에는 포함하지만 완전 전달로 계산하지 않으며 `excluded | unmeasured`는 분모에서 제외한다.
+- 시간 초과 슬라이드는 `targetSeconds > 0`인 `slideTimings` 중 `actualSeconds > targetSeconds * 1.2`인 항목이다. 실제 시간이 없는 마지막 슬라이드와 측정 불가 항목은 분모에서 제외한다.
+- 슬라이드별 평균 소요시간은 같은 slide ID의 측정 가능한 `actualSeconds` 산술평균이며 `sampleCount`를 함께 반환한다. 최신 snapshot에 없는 과거 슬라이드는 현재 표에서 제외한다.
+- 최신 snapshot이 없는 legacy/delivery-only 회차는 슬라이드 메타데이터의 기준으로 사용하지 않는다. 측정 가능한 report가 없으면 해당 수치는 `N/A`로 표시한다.
 
 ### 리허설 회차 비교와 브리핑 계약
 
@@ -2085,6 +2161,7 @@ P0 담당자는 아래 계약과 `p0-core-contract.fixtures.json`을 단일 원�
 
 - `POST /rehearsal/analyze`의 canonical request와 response는 숫자 literal `contractVersion: 2`를 사용한다.
 - request는 `language`, `provider`, `model`, `sttConfidence`, `recordingDurationSeconds`, `providerDurationSeconds`를 분리한다. 두 duration은 `null` 또는 양수 finite number이며 `0`을 자료 없음 sentinel로 사용하지 않는다.
+- request의 optional `pronunciationContext`는 최대 32개 `{ source, aliases }` term이며 alias는 term당 최대 8개다. 이는 immutable run snapshot에서 생성한 STT/keyword 보조 컨텍스트이고 transcript를 canonical source로 치환하는 계약이 아니다.
 - request의 `sttConfidence`와 segment confidence는 `value`, `source`, `normalizationProfileId`를 가진 normalized 값이다. 승인되지 않은 profile은 거부하고 confidence object 전체를 `null`로 보내야 한다.
 - segment의 `startSeconds`와 `endSeconds`는 둘 다 `null`이거나 둘 다 finite number여야 한다. timed segment와 `slideTimeline`은 시간 비감소 순서이며 연속 중복 slide entry는 sender가 제거한다.
 - response는 nullable metric value와 `measurements`를 함께 보낸다. `measured`는 non-null value와 `reasonCode=null`, `unmeasured`는 null value와 bounded reason code를 요구한다.
@@ -2097,7 +2174,7 @@ P0 담당자는 아래 계약과 `p0-core-contract.fixtures.json`을 단일 원�
 
 #### Evidence Clip과 Presenter Aid
 
-- Evidence Clip은 raw audio 원본이 아니라 분석 완료 직전에 파생하는 별도 문제 구간 최대 12초 음성 계약이다. 현재 음량 구간 재생은 Evidence Clip을 생성하지 않고, 14일 보관 중인 원본 음성을 브라우저에서 구간 seek하는 방식이다.
+- Evidence Clip은 raw audio 원본이 아니라 분석 완료 직전에 파생하는 별도 문제 구간 최대 12초 음성 계약이다. 리포트의 음량 구간 재생 파일은 Evidence Clip 계약과 분리되며, 사용자 요청 시 동일 회차 MinIO 폴더에 최대 60초 WAV로 생성하고 원본 보관 만료 시 함께 삭제한다.
 - clip은 `retentionPolicyVersion=1`, `retentionDays=7`을 저장하고 생성 후 정확히 7일에 만료한다. P0에서는 연장하지 않는다. project Owner만 매 요청 권한 재검사 후 짧게 만료되는 signed URL을 받을 수 있다.
 - Evidence 재생은 `GET /api/v1/projects/:projectId/rehearsals/:runId/evidence-clips/:clipId/playback`을 사용한다. API는 로그인 사용자, project Owner 역할, project·run·clip 소속을 매 요청 확인한다. Editor·Viewer는 HTTP 403, 소속이 다른 run·clip은 HTTP 404로 거부한다.
 - 성공 응답은 `evidenceClipPlaybackResponseSchema`를 따른다. `available`만 최대 15분의 `signedUrl`과 URL 만료 시각 `expiresAt`을 포함하고, `failed`, `expired`, `deleted`, `not-found`는 상태와 `clipId`만 반환한다. 이 `expiresAt`은 clip의 7일 보관 만료 시각과 다른 임시 URL 만료 시각이다.
@@ -2120,6 +2197,7 @@ P0 담당자는 아래 계약과 `p0-core-contract.fixtures.json`을 단일 원�
 
 - `CreateP0CoachingContracts`는 `rehearsal_focus_profiles`, `rehearsal_evidence_clips`, expiry/observation index를 추가한다.
 - migration은 `down()`에서 clip index/table을 먼저 제거한 뒤 focus profile table을 제거한다.
+
 ## Editor slide practice and question guide contract
 
 ### Privacy and ownership boundary
@@ -2178,23 +2256,29 @@ P0 담당자는 아래 계약과 `p0-core-contract.fixtures.json`을 단일 원�
 
 - `POST /api/v1/projects/:projectId/slide-question-guides`
   - body: `{ clientRequestId, deckId, slideId, expectedDeckVersion, questionCount: 3 }`
-  - 현재 server deck의 `deckId`, version, slideId를 다시 확인하고 slide canonical hash를 생성 시점에 고정한다.
+  - 현재 server deck의 `deckId`, version, slideId를 다시 확인하고 질문 입력에 쓰는 title·text·alt·speaker notes만 포함한 canonical text hash를 생성 시점에 고정한다.
+- `POST /api/v1/projects/:projectId/slide-question-guides/auto`
+  - body: `{ clientRequestId, deckId, expectedDeckVersion, questionCount: 3 }`
+  - response: `{ deckId, deckVersion, slides }`. `slides[]`는 `{ status: "accepted", slideId, guideId, job }` 또는 `{ status: "failed", slideId, errorCode }`다.
+  - project write 권한과 `SLIDE_QUESTION_GUIDES_ENABLED`가 모두 유효할 때만 현재 server deck을 한 번 검증한다. 같은 target slide canonical text hash와 `promptVersion`의 `queued | running | succeeded` guide는 재사용하고 나머지만 기존 `slide-question-guide-generation` Job으로 예약한다.
+  - Web의 `clientRequestId`는 `{ projectId, deckId, deckVersion }` canonical JSON의 SHA-256으로 고정한다. 각 slide의 내부 request ID도 batch request ID와 `slideId`의 canonical SHA-256으로 고정해 effect 재실행과 새로고침이 실패 Job을 자동 재시도하거나 중복 Job을 만들지 않게 한다.
 - `slide-question-guide-generation` Job payload는 `{ jobId, projectId, guideId }`만 허용한다.
 - Job result는 `{ guideId, projectId, deckId, deckVersion, slideId, itemCount, generatedAt }`만 허용한다.
 - `questionText`, `keyConcepts`, `suggestedAnswer`, remediation, slide/reference 원문은 generic Job payload/result에 넣지 않는다.
 - 질문과 추천 답변의 canonical 원문은 project-private `slide_question_guides`와 `slide_question_guide_items`에만 저장한다.
-- API가 검증한 최소 slide source snapshot은 `slide_question_guides.source_snapshot_json`에 project-private으로 고정하며 Job payload/result에는 복제하지 않는다.
+- API가 검증한 최소 slide source snapshot은 `slide_question_guides.source_snapshot_json`에 project-private으로 고정하며 Job payload/result에는 복제하지 않는다. 신규 guide는 optional `deckSnapshotId`로 같은 deck version의 `deck_snapshots` row를 참조한다. 해당 version snapshot은 재사용하고 없을 때 `auto-save` 하나를 생성한다.
 - 저장된 guide `schemaVersion: 1`은 `slide | reference` source ref만 가진 과거 계약으로 계속 읽고, 신규 `schemaVersion: 2`는 `slide | reference | web` source ref와 `research` summary를 가진다. `web` source ref는 `{ kind, sourceId, url, title, authority: "official", contentHash, retrievedAt }` 메타데이터만 저장하며 웹 원문과 검색 질의는 저장하지 않는다.
 - `research`는 `{ status: succeeded | unavailable, attempts, officialSourceCount, issueCodes, researchedAt }`만 반환한다. 과거 v2 record 호환을 위해 schema는 `attempts` 최대 2를 읽지만 신규 생성은 1회만 시도하며, 공식 source는 최대 5개로 제한한다.
 - `GET /api/v1/projects/:projectId/slide-question-guides/:guideId`는 project read 권한을 다시 검사한 뒤 succeeded guide만 반환한다.
 - worker는 Presentation Brief에 승인된 reference snapshot과 일치하는 chunk만 AI 입력으로 사용하고, 반환된 모든 source ref의 ID·version·hash를 allowlist로 재검증한다.
-- worker는 생성 대상인 현재 slide를 `targetSlideId`로 고정한다. 대상 slide는 화면 텍스트 최대 4,000자와 `speakerNotes` 최대 6,000자, 나머지 slide는 각각 최대 600자로 축약해 같은 deck version의 bounded transient context를 구성한다. 승인 참고자료는 표시 순서 기준 최대 4개 chunk, chunk당 1,200자만 전달한다. 이 context는 Python worker 생성 입력에만 사용하며 generic Job payload/result, 로그, 별도 DB snapshot에 복제하지 않는다.
-- 예상 질문은 `targetSlideId`에 대해서만 생성하되, 전체 deck의 흐름과 대본을 답변 근거로 사용할 수 있다. 다른 slide를 인용하면 해당 slide의 ID·deck version·canonical content hash가 frozen deck context allowlist와 일치해야 한다.
+- worker는 생성 대상인 현재 slide를 `targetSlideId`로 고정한다. `deckSnapshotId`가 있으면 snapshot ID·project·deck·version과 target slide canonical text hash를 검증한 frozen Deck을 사용하고, 없는 과거 guide만 기존 checkpoint와 patch tail 재구성 경로를 사용한다. `contentHashVersion`이 없는 과거 guide는 전체 slide canonical hash 검증을 유지한다. 대상 slide는 화면 텍스트 최대 4,000자와 `speakerNotes` 최대 6,000자, 나머지 slide는 각각 최대 600자로 축약해 같은 deck version의 bounded transient context를 구성한다. 승인 참고자료는 표시 순서 기준 최대 4개 chunk, chunk당 1,200자만 전달한다. 이 context는 Python worker 생성 입력에만 사용하며 generic Job payload/result와 로그에 복제하지 않는다.
+- 예상 질문은 `targetSlideId`에 대해서만 생성하되, 전체 deck의 흐름과 대본을 답변 근거로 사용할 수 있다. 다른 slide를 인용하면 해당 slide의 ID·deck version·canonical text hash가 frozen deck context allowlist와 일치해야 한다.
 - Python worker는 slide title과 Presentation Brief의 bounded `challengeTopics`·terminology만 OpenAI Responses `web_search` 질의에 사용한다. slide 본문, 승인 참고자료 원문, 파일명, speaker notes는 검색 질의에 포함하지 않는다.
 - web citation은 검색 응답의 cited excerpt를 질문 생성 strict Structured Output 안에서 함께 판정한다. 모델은 공급된 candidate ID 중 해당 주제를 책임지는 정부·학교·회사·표준기관·프로그램 운영 주체의 source ID만 `officialSourceIds`로 반환할 수 있고, Python worker는 candidate allowlist와 item source ref를 다시 대조한다. cited excerpt는 생성 중 메모리에서만 사용하고 저장하거나 로그로 출력하지 않는다.
 - web search·citation·vetting이 실패하거나 official source가 없으면 `research.status: unavailable`과 제한된 issue code를 기록하고, 기존 slide와 승인 참고자료만으로 질문 생성을 계속한다. UI는 이 fallback 상태를 알리고, 채택한 official web source는 제목과 클릭 가능한 URL로 표시한다.
 - 응답 지연을 제한하기 위해 official web search는 한 번만 시도하고 `search_context_size: low`, 호출 제한 12초를 사용한다. 검색 실패 시 추가 검색 재시도 없이 slide·대본·승인 참고자료로 생성을 계속하며 질문 생성 호출은 45초, Worker의 Python 요청은 70초로 제한한다. provider 응답의 `webSearchMs`, `generationMs`, `totalProviderMs`는 업무 이벤트 로그에만 사용하고 Job·guide·DB에는 저장하지 않는다.
-- guide의 `deckVersion` 또는 `slideContentHash`가 현재 source와 다르면 worker는 생성 실패로 확정하며, 이미 생성된 과거 guide 원문은 UI에서 숨기고 재생성 안내만 표시한다.
+- `slide-question-guide-generation` BullMQ Worker는 한 인스턴스에서 최대 2개 Job을 병렬 처리한다. 별도 Queue·provider 동시성 설정은 추가하지 않으며 완료 순서는 slide 순서와 다를 수 있다.
+- worker는 frozen source의 `deckVersion`과 target `slideContentHash`가 일치하지 않으면 생성 실패로 확정한다. UI freshness는 전체 `deckVersion`이 아니라 현재 target slide canonical text hash로 판정한다. title·text·alt·speaker notes 변경만 기존 질문을 숨기며 색상·위치·크기·도형 style 같은 시각 변경과 다른 slide 편집은 질문을 숨기지 않는다. `deckVersion`은 provenance로 유지한다.
 - 근거가 부족할 때는 내용을 추측하지 않고 `supportState: insufficient`, `suggestedAnswer: null`, remediation action을 반환한다.
 
 ### Runtime rollout

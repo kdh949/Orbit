@@ -167,6 +167,15 @@ def test_sync_pptx_ooxml_applies_text_and_frame_patch(tmp_path: Path) -> None:
     assert b"Placeholder Title" not in slide_xml
     assert b'x="609600"' in slide_xml
     assert b'cx="4064000"' in slide_xml
+    slide_root = ET.fromstring(slide_xml)
+    assert any(
+        body_pr.get("horzOverflow") == "clip"
+        and body_pr.get("vertOverflow") == "clip"
+        and body_pr.get("wrap") == "square"
+        for body_pr in slide_root.findall(
+            ".//{http://schemas.openxmlformats.org/drawingml/2006/main}bodyPr"
+        )
+    )
 
 
 def test_sync_pptx_ooxml_skips_grouped_child_frame_patch(tmp_path: Path) -> None:

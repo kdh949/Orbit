@@ -7,6 +7,7 @@ import {
   createAddSlidePatch,
   createDuplicateSlidePatch,
   createSlideId,
+  createUpdateSlideTransitionPatch,
 } from "./slideOperations";
 
 describe("slide operation helpers", () => {
@@ -34,6 +35,36 @@ describe("slide operation helpers", () => {
     const result = applyDeckPatch(deck, patch);
 
     expect(result.ok).toBe(true);
+  });
+
+  it("creates set and clear slide transition patches", () => {
+    const deck = createDemoDeck();
+
+    expect(
+      createUpdateSlideTransitionPatch(deck, "slide_1", {
+        type: "fade",
+        durationMs: 700
+      })
+    ).toMatchObject({
+      operations: [
+        {
+          type: "update_slide_transition",
+          slideId: "slide_1",
+          transition: { type: "fade", durationMs: 700 }
+        }
+      ]
+    });
+    expect(
+      createUpdateSlideTransitionPatch(deck, "slide_1", null)
+    ).toMatchObject({
+      operations: [
+        {
+          type: "update_slide_transition",
+          slideId: "slide_1",
+          transition: null
+        }
+      ]
+    });
   });
 
   it("adds a twenty-first slide to an editor-managed deck", () => {

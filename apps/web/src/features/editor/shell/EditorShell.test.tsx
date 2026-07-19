@@ -10,8 +10,8 @@ import type {
   Deck,
   DeckPatch,
   DeckElement,
-  SemanticCue,
-  TableElementProps
+  Job,
+  SemanticCue
 } from "@orbit/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
@@ -20,7 +20,9 @@ import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   EditorShell,
+  getEditorStatusLabel
 } from "./EditorShell";
+import { useEditorShellUiStore } from "./editorShellUiStore";
 import { EditorStateNotice } from "./components/EditorStateNotice";
 import {
   appendAppliedDesignProposalHistory,
@@ -30,12 +32,15 @@ import {
   applyDeckPatchAcknowledgement,
   buildPatchBatch,
   consumeScheduledUndoRedoPersistLabel,
+  DeckRequestError,
   flushEditorPersistenceBeforeManualAction,
   parseDeckPatchPersistenceResponse,
-  putProjectDeck
+  putProjectDeck,
+  putProjectDeckWithConflictRecovery
 } from "./api/deckPersistenceApi";
 import {
   createSemanticCueExtractionJob,
+  createDeckExportJob,
   exportDeck,
   exportDeckToPptx,
   importPptxIntoEditor,
@@ -64,11 +69,8 @@ import { createDistributeSelectionPatch } from "./utils/selectionDistribution";
 import {
   createExpandTextWidthToFitFrame,
   createShrinkToFitTextProps,
-  createSingleLineTextFit,
-  parseTableDataDraft,
-  tableDataDraft
+  createSingleLineTextFit
 } from "./components/SelectionQuickBar";
-import { ValidationPanel } from "../ai/quality/ValidationPanel";
 import { getEditorValidationItems } from "../ai/quality/editorValidation";
 import { measureTextContentBounds } from "../canvas/text/textLayout";
 import { resolveEditorAssetUrl } from "../shared/editorAssetUrl";
@@ -154,8 +156,20 @@ function setDeckData(queryClient: QueryClient, deck: Deck) {
 }
 
 describe("editor shell", () => {
+  it("keeps a save failure visible when the deck refetch is also offline", () => {
+    expect(
+      getEditorStatusLabel({
+        isDeckError: true,
+        isDeckLoading: false,
+        isUsingFallbackDeck: false,
+        saveState: "error"
+      })
+    ).toBe("저장 실패");
+  });
+
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+    useEditorShellUiStore.setState({ isRightPanelOpen: false });
   });
 
   it("fits the editor canvas inside compact viewports", () => {
@@ -247,6 +261,48 @@ describe("editor shell", () => {
     ).toBe("redo");
     expect(clearTimer).not.toHaveBeenCalled();
     expect(labelRef.current).toBeNull();
+  });
+
+  it("retries an undo redo snapshot against the latest server version", async () => {
+    const snapshotDeck = { ...createDemoDeck(), version: 2 } as Deck;
+    const latestDeck = { ...snapshotDeck, version: 1 } as Deck;
+    const put = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new DeckRequestError(
+          "Deck baseVersion does not match current deck version",
+          409,
+          "STALE_BASE_VERSION"
+        )
+      )
+      .mockResolvedValueOnce(snapshotDeck);
+    const fetchLatest = vi.fn().mockResolvedValue(latestDeck);
+
+    await expect(
+      putProjectDeckWithConflictRecovery({
+        baseVersion: 2,
+        deck: snapshotDeck,
+        fetchLatest,
+        projectId: snapshotDeck.projectId,
+        put
+      })
+    ).resolves.toEqual({ deck: snapshotDeck, recoveredConflict: true });
+    expect(put).toHaveBeenNthCalledWith(
+      1,
+      snapshotDeck.projectId,
+      snapshotDeck,
+      {
+        baseVersion: 2
+      }
+    );
+    expect(put).toHaveBeenNthCalledWith(
+      2,
+      snapshotDeck.projectId,
+      snapshotDeck,
+      {
+        baseVersion: 1
+      }
+    );
   });
 
   it("resolves undo redo history navigation without state updater side effects", () => {
@@ -514,19 +570,13 @@ describe("editor shell", () => {
     expect(html).not.toContain("줄바꿈은 발표자 화면에도 반영됩니다.");
     expect(html).toContain("발표 체크포인트");
     expect(html).not.toContain("필수 발화와 화면 전환에 연결된 키워드입니다.");
-    expect(html.indexOf("speaker-notes-length-meter")).toBeLessThan(
-      html.indexOf("script-keyword-section"),
-    );
+    expect(html).not.toContain("speaker-notes-length-meter");
     expect(html).toContain('aria-labelledby="speaker-notes-title"');
     expect(html).toContain("저장됨");
-    expect(html).toContain('aria-label="AI 어시스턴트 보기"');
     expect(html).not.toContain('aria-label="AI 어시스턴트 사용 가능"');
-    expect(html).toContain('aria-label="오른쪽 패널 보기"');
     expect(html).toContain('class="editor-right-panel-content"');
-    expect(html).toContain('class="editor-right-panel-rail"');
+    expect(html).not.toContain('class="editor-right-panel-rail"');
     expect(html).not.toContain('class="collapsed-right-rail"');
-    expect(html).toContain('aria-label="속성"');
-    expect(html).toContain('aria-label="애니메이션"');
     expect(html).not.toContain('aria-label="애니메이션 속성"');
     expect(html).not.toContain('aria-label="애니메이션 패널"');
     expect(html).not.toContain('id="editor-notes-tab"');
@@ -557,10 +607,17 @@ describe("editor shell", () => {
     expect(html).toContain('aria-label="다시 실행"');
     expect(html).toContain('aria-label="선택 도구"');
     expect(html).toContain('aria-label="AI 어시스턴트 패널 닫기"');
+    expect(html).toContain('aria-label="오른쪽 패널 탭"');
+    expect(html).toContain('aria-label="속성 탭"');
+    expect(html).toContain('aria-label="애니메이션 탭"');
+    expect(html).not.toContain('aria-label="아이콘 탭"');
+    expect(html).toContain('aria-label="AI 어시스턴트 탭"');
     expect(html).not.toContain('aria-label="AI 어시스턴트 접기"');
     expect(html).not.toContain('aria-label="AI 어시스턴트 사용 가능"');
     expect(html).toContain('id="editor-ai-panel"');
-    expect(html).toContain('hidden="" id="editor-ai-tools-panel"');
+    expect(html).not.toContain('id="editor-ai-chat-tab"');
+    expect(html).not.toContain('id="editor-ai-tools-tab"');
+    expect(html).toContain('id="editor-ai-tools-panel"');
     expect(html).not.toContain('id="editor-design-panel"');
     expect(html).not.toContain('id="editor-notes-panel"');
     expect(html).toContain("stage-speaker-notes-panel");
@@ -571,7 +628,7 @@ describe("editor shell", () => {
     expect(html).not.toContain("speaker-notes-restore-handle");
   });
 
-  it("keeps imported Semantic Cue review in the persistent AI coach panel", () => {
+  it("opens the AI inspection panel by default", () => {
     const queryClient = createTestQueryClient();
     const deck = createDemoDeck();
     deck.metadata.sourceType = "import";
@@ -608,14 +665,13 @@ describe("editor shell", () => {
       }
     ];
     setDeckData(queryClient, deck);
-
     const html = renderApp(queryClient);
 
-    expect(html).toContain('aria-label="AI 어시스턴트 보기"');
     expect(html).not.toContain('id="editor-design-panel"');
-    expect(html).toContain('aria-label="오른쪽 패널 보기"');
-    expect(html).toContain('hidden="" id="editor-ai-tools-panel"');
-    expect(html).toContain("도입 효과");
+    expect(html).toContain('id="editor-selection-inspector-pane"');
+    expect(html).toContain('id="editor-ai-panel"');
+    expect(html).toContain('aria-label="오른쪽 패널 탭"');
+    expect(html).toContain('id="editor-ai-tools-panel"');
   });
 
   it("returns a warning for unreadable text overlap", () => {
@@ -906,6 +962,36 @@ describe("editor shell", () => {
     expect(jobPollCount).toBe(2);
   });
 
+  it("shows the structured export enqueue failure without serializing the response body", async () => {
+    const failedJob = jobPayload("failed", null, "deck-export");
+    failedJob.error = {
+      code: "DECK_EXPORT_ENQUEUE_FAILED",
+      message: "Deck export queue is unavailable.",
+      retryable: true
+    };
+    failedJob.message = "Deck export queue is unavailable.";
+
+    await expect(
+      createDeckExportJob(
+        "project-a",
+        { format: "png" },
+        vi.fn(async () =>
+          new Response(
+            JSON.stringify({
+              code: "DECK_EXPORT_ENQUEUE_FAILED",
+              message: "Deck export queue is unavailable.",
+              job: failedJob
+            }),
+            {
+              status: 503,
+              headers: { "content-type": "application/json" }
+            }
+          )
+        )
+      )
+    ).rejects.toThrow("Deck export queue is unavailable.");
+  });
+
   it("retries a stale OOXML package and waits before PPTX export", async () => {
     let stateRequestCount = 0;
     const requestedPaths: string[] = [];
@@ -1176,56 +1262,6 @@ describe("editor shell", () => {
     expect(getDeckThumbnailRefreshSlideIds(previousDeck, themeDeck)).toEqual(
       themeDeck.slides.map((slide) => slide.slideId),
     );
-  });
-
-  it("keeps table quickbar edits in editable table props", () => {
-    const table: TableElementProps = {
-      borderColor: "#CBD5E1",
-      borderWidth: 1,
-      columnWidths: [120, 120],
-      rowHeights: [40, 40],
-      rows: [
-        [
-          {
-            align: "center",
-            borderColor: "#CBD5E1",
-            borderWidth: 1,
-            colSpan: 1,
-            fill: "#EFF6FF",
-            fontSize: 18,
-            fontWeight: "bold",
-            rowSpan: 1,
-            text: "A",
-            verticalAlign: "middle"
-          },
-          {
-            align: "center",
-            borderColor: "#CBD5E1",
-            borderWidth: 1,
-            colSpan: 1,
-            fill: "#EFF6FF",
-            fontSize: 18,
-            fontWeight: "bold",
-            rowSpan: 1,
-            text: "B",
-            verticalAlign: "middle"
-          }
-        ]
-      ]
-    };
-
-    expect(tableDataDraft(table)).toBe("A\tB");
-
-    const patch = parseTableDataDraft("Name\tScore\nAda\t95", table, 240, 120);
-
-    expect(patch).toMatchObject({
-      columnWidths: [120, 120],
-      rowHeights: [40, 40],
-      rows: [
-        [{ text: "Name" }, { text: "Score" }],
-        [{ text: "Ada" }, { text: "95" }]
-      ]
-    });
   });
 
   it("applies manual save results only while the saved snapshot is still current", () => {
@@ -1738,23 +1774,6 @@ describe("editor shell", () => {
     expect(riskElementIds).toContain("el_manual_customShape");
   });
 
-  it("renders a bulk apply button for text overflow warnings", () => {
-    const html = renderToString(
-      <ValidationPanel
-        items={[
-          {
-            elementId: "el_overflow",
-            issue: "textOverflow",
-            message: "텍스트가 상자 높이를 넘을 수 있습니다.",
-            severity: "warning"
-          }
-        ]}
-      />
-    );
-
-    expect(html).toContain("모두 반영하기");
-  });
-
   it("keeps a warning when title text still wraps", () => {
     const deck = createDemoDeck();
     const slide = deck.slides[0];
@@ -1925,40 +1944,6 @@ describe("editor shell", () => {
         issue: "labelWrap"
       })
     );
-  });
-
-  it("renders a bulk apply button for title wrap warnings", () => {
-    const html = renderToString(
-      <ValidationPanel
-        items={[
-          {
-            elementId: "el_wrapped_title",
-            issue: "titleWrap",
-            message: "제목이 여러 줄로 줄바꿈되었습니다.",
-            severity: "warning"
-          }
-        ]}
-      />
-    );
-
-    expect(html).toContain("모두 반영하기");
-  });
-
-  it("renders a bulk apply button for label wrap warnings", () => {
-    const html = renderToString(
-      <ValidationPanel
-        items={[
-          {
-            elementId: "el_wrapped_label",
-            issue: "labelWrap",
-            message: "짧은 라벨이 여러 줄로 줄바꿈되었습니다.",
-            severity: "warning"
-          }
-        ]}
-      />
-    );
-
-    expect(html).toContain("모두 반영하기");
   });
 
   it("measures wrapped text line count", () => {
@@ -2542,10 +2527,10 @@ describe("editor shell", () => {
     const html = renderApp(queryClient);
 
     expect(html).toContain(
-      "&quot;elementId&quot;:&quot;el_invalid&quot;,&quot;type&quot;:&quot;text&quot;,&quot;x&quot;:0,&quot;y&quot;:0,&quot;width&quot;:1,&quot;height&quot;:1,&quot;rotation&quot;:0",
+      "&quot;elementId&quot;:&quot;el_invalid&quot;,&quot;type&quot;:&quot;text&quot;,&quot;role&quot;:&quot;body&quot;,&quot;fontSize&quot;:28,&quot;lineHeight&quot;:1.2,&quot;x&quot;:0,&quot;y&quot;:0,&quot;width&quot;:1,&quot;height&quot;:1,&quot;rotation&quot;:0",
     );
     expect(html).not.toContain(
-      "&quot;elementId&quot;:&quot;el_invalid&quot;,&quot;type&quot;:&quot;text&quot;,&quot;x&quot;:null",
+      "&quot;elementId&quot;:&quot;el_invalid&quot;,&quot;type&quot;:&quot;text&quot;,&quot;role&quot;:&quot;body&quot;,&quot;fontSize&quot;:28,&quot;lineHeight&quot;:1.2,&quot;x&quot;:null",
     );
   });
 
@@ -2557,6 +2542,22 @@ describe("editor shell", () => {
     expect(html).toContain("ORBIT Demo Deck");
     expect(html).toContain("불러오는 중");
     expect(html).not.toContain("덱을 불러오는 중");
+  });
+
+  it("shows persisted PPTX import quality after an editor reload", () => {
+    const queryClient = createTestQueryClient();
+    const deck = createDemoDeck();
+    deck.metadata.sourceType = "import";
+    setDeckData(queryClient, deck);
+    queryClient.setQueryData(["deck-import-quality", demoIds.projectId], {
+      qualityReport: qualityReport()
+    });
+
+    const html = renderApp(queryClient);
+
+    expect(html).toContain("PPTX 가져오기");
+    expect(html).toContain("저장된 PPTX 가져오기 품질");
+    expect(html).toContain("82<!-- -->/100");
   });
 
   it("renders an empty deck state without a selected slide", () => {
@@ -2623,14 +2624,14 @@ function editorTextElement(
 }
 
 function jobPayload(
-  status: "queued" | "running" | "succeeded",
+  status: Job["status"],
   result: Record<string, unknown> | null = null,
   type:
     | "pptx-import"
     | "pptx-ooxml-generation"
     | "pptx-ooxml-sync"
     | "deck-export" = "pptx-import"
-) {
+): Job {
   return {
     jobId: "job-pptx",
     projectId: "project-a",

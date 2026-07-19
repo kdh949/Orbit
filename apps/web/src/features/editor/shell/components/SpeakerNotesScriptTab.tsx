@@ -6,13 +6,16 @@ import {
 } from "@tabler/icons-react";
 
 import type { getSpeakerNotesLengthGuidance } from "../speakerNotesAssistant";
-import type { KeywordUsageSummary } from "./KeywordInspector";
+import type {
+  KeywordActionMode,
+  KeywordSelectionContext,
+  KeywordUsageSummary
+} from "./KeywordInspector";
 import {
-  KeywordDetail,
   KeywordHighlightedNotes,
   KeywordList,
 } from "./KeywordInspector";
-import { SpeakerNotesLengthMeter } from "./SpeakerNotesAssistantDialog";
+// import { SpeakerNotesLengthMeter } from "./SpeakerNotesAssistantDialog";
 
 export type SpeakerNotesScriptTabProps = {
   currentSlide: Slide | null;
@@ -26,10 +29,15 @@ export type SpeakerNotesScriptTabProps = {
   onOpenAssistant: () => void;
   onSaveEdit: () => void;
   onSelectKeyword: (keywordId: string, occurrenceKey?: string | null) => void;
-  onSelectKeywordText: (value: string, start: number) => void;
+  onSelectKeywordText: (
+    value: string,
+    start: number
+  ) => KeywordSelectionContext | null;
+  onSelectKeywordActionMode: (
+    mode: KeywordActionMode,
+    selection?: KeywordSelectionContext | null
+  ) => void;
   onStartEdit: () => void;
-  onToggleAdvanceSlide: () => void;
-  onToggleRequired: () => void;
   selectedKeyword: Keyword | null;
   selectedKeywordId: string | null;
   selectedKeywordOccurrenceKey: string | null;
@@ -78,7 +86,7 @@ export function SpeakerNotesScriptTab(props: SpeakerNotesScriptTabProps) {
               value={props.draft}
               onChange={(event) => props.onDraftChange(event.target.value)}
             />
-            <SpeakerNotesLengthMeter guidance={props.guidance} />
+            {/* <SpeakerNotesLengthMeter guidance={props.guidance} /> */}
           </div>
         </div>
       ) : (
@@ -113,10 +121,12 @@ export function SpeakerNotesScriptTab(props: SpeakerNotesScriptTabProps) {
               selectedKeywordOccurrenceKey={props.selectedKeywordOccurrenceKey}
               showIds={props.showIds}
               slideId={props.currentSlide?.slideId ?? ""}
+              usageByKeywordId={props.usageByKeywordId}
               onSelectKeyword={props.onSelectKeyword}
+              onSelectKeywordActionMode={props.onSelectKeywordActionMode}
               onSelectKeywordText={props.onSelectKeywordText}
             />
-            <SpeakerNotesLengthMeter guidance={props.guidance} />
+            {/* <SpeakerNotesLengthMeter guidance={props.guidance} /> */}
           </div>
           <section aria-labelledby="speaker-notes-keywords-title" className="script-keyword-section">
             <div className="script-keyword-heading"><strong id="speaker-notes-keywords-title">발표 체크포인트</strong></div>
@@ -128,18 +138,6 @@ export function SpeakerNotesScriptTab(props: SpeakerNotesScriptTabProps) {
               onSelectKeyword={props.onSelectKeyword}
             />
           </section>
-          {props.selectedKeyword ? (
-            <KeywordDetail
-              keyword={props.selectedKeyword}
-              requiredActive={props.selectedKeywordRequiredActive}
-              showIds={props.showIds}
-              usage={props.selectedKeywordUsage}
-              onClearSelection={props.onClearKeyword}
-              onDeleteKeyword={props.onDeleteKeyword}
-              onToggleAdvanceSlide={props.onToggleAdvanceSlide}
-              onToggleRequired={props.onToggleRequired}
-            />
-          ) : null}
         </div>
       )}
     </div>

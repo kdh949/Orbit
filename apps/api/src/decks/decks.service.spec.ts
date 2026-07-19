@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus } from "@nestjs/common";
+import { createActivitySlide, createAddSlidePatch } from "@orbit/editor-core";
 import {
   deckApiErrorSchema,
   deckSchema,
@@ -10,7 +11,7 @@ import {
   type DeckPatch,
   type DeckSnapshotReason,
 } from "@orbit/shared";
-import type { DataSource } from "typeorm";
+import type { DataSource, EntityManager } from "typeorm";
 import type { PinoLogger } from "nestjs-pino";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DecksService } from "./decks.service";
@@ -50,6 +51,7 @@ type StoredTemplateBlueprintRow = {
   project_id: string;
   deck_id: string;
   blueprint_json: unknown;
+  quality_report_json?: unknown;
 };
 
 class InMemoryDeckDataSource {
@@ -70,6 +72,12 @@ class InMemoryDeckDataSource {
   async query<T = unknown>(sql: string, params: unknown[] = []): Promise<T> {
     const query = normalizeSql(sql);
     this.executedQueries.push(query);
+
+    if (query.startsWith("SELECT deck_id FROM decks")) {
+      const [projectId, deckId] = params as [string, string];
+      const row = this.decks.get(projectId);
+      return (row?.deck_id === deckId ? [{ deck_id: deckId }] : []) as T;
+    }
 
     if (query.includes("FROM presentation_sessions")) {
       const [projectId, deckId, sessionId] = params as [string, string, string];
@@ -256,6 +264,21 @@ class InMemoryDeckDataSource {
 
     if (
       query.startsWith("SELECT snapshot_id, project_id, deck_id") &&
+      query.includes("WHERE project_id = $1 AND deck_id = $2 AND version = $3")
+    ) {
+      const [projectId, deckId, version] = params as [string, string, number];
+      const row = this.snapshotRows
+        .filter((snapshot) => (
+          snapshot.project_id === projectId &&
+          snapshot.deck_id === deckId &&
+          snapshot.version === version
+        ))
+        .sort(compareSnapshotRows)[0];
+      return (row ? [cloneSnapshotRow(row)] : []) as T;
+    }
+
+    if (
+      query.startsWith("SELECT snapshot_id, project_id, deck_id") &&
       query.includes("WHERE project_id = $1")
     ) {
       const [projectId] = params as [string];
@@ -264,6 +287,21 @@ class InMemoryDeckDataSource {
         .sort(compareSnapshotRows)
         .map(cloneSnapshotRow);
       return rows as T;
+    }
+
+    if (
+      query.startsWith("SELECT quality_report_json") &&
+      query.includes("FROM template_blueprints")
+    ) {
+      const [projectId, deckId] = params as [string, string];
+      return this.templateBlueprintRows
+        .filter((row) => row.project_id === projectId && row.deck_id === deckId)
+        .map((row) => ({
+          quality_report_json:
+            row.quality_report_json === undefined
+              ? undefined
+              : cloneJson(row.quality_report_json),
+        })) as T;
     }
 
     if (
@@ -666,6 +704,128 @@ describe("DecksService", () => {
     expect(snapshotResponse.snapshots[0]?.snapshotId).toBe(
       putResponse.snapshot.snapshotId,
     );
+  });
+
+  it("materializes and locks patch-only activity slides for transactional reads", async () => {
+    const { dataSource, service } = createService();
+    const deck = createDeck();
+    const activitySlide = createActivitySlide(deck, "pre-question");
+    seedStoredDeck(dataSource, deck, deck);
+    dataSource.patchRows.push({
+      change_id: "change_add_activity",
+      project_id: deck.projectId,
+      deck_id: deck.deckId,
+      before_version: 1,
+      after_version: 2,
+      source: "user",
+      actor_user_id: null,
+      operations: createAddSlidePatch(deck, activitySlide).operations,
+      created_at: "2026-07-19T00:00:00.000Z",
+    });
+
+    const materialized = await service.getDeckForUpdate(
+      dataSource as unknown as EntityManager,
+      deck.projectId,
+      deck.deckId,
+    );
+
+    expect(materialized.version).toBe(2);
+    expect(materialized.slides).toContainEqual(
+      expect.objectContaining({
+        kind: "activity",
+        slideId: activitySlide.slideId,
+      }),
+    );
+    expect(
+      dataSource.executedQueries.some(
+        (query) =>
+          query.includes("FROM decks") &&
+          query.includes("WHERE project_id = $1 AND deck_id = $2") &&
+          query.includes("FOR UPDATE"),
+      ),
+    ).toBe(true);
+    expect(
+      dataSource.executedQueries.some(
+        (query) =>
+          query.includes("FROM deck_patches") && query.includes("FOR UPDATE"),
+      ),
+    ).toBe(true);
+  });
+
+  it("creates at most one reusable snapshot for the same current deck version", async () => {
+    const { dataSource, service } = createService();
+    const deck = createDeck();
+    seedStoredDeck(dataSource, deck, deck);
+
+    const first = await service.getOrCreateSnapshot(deck);
+    const second = await service.getOrCreateSnapshot(deck);
+
+    expect(first).toMatchObject({ reason: "auto-save", version: deck.version });
+    expect(second.snapshotId).toBe(first.snapshotId);
+    expect(dataSource.snapshotRows).toHaveLength(1);
+  });
+
+  it("reads persisted PPTX import quality without changing the Deck", async () => {
+    const { dataSource, service } = createService();
+    const deck = createDeck();
+    seedStoredDeck(dataSource, deck, deck);
+    dataSource.templateBlueprintRows.push({
+      template_id: "template_file_1",
+      project_id: deck.projectId,
+      deck_id: deck.deckId,
+      blueprint_json: {},
+      quality_report_json: {
+        compositeScore: 82,
+        metrics: {
+          geometry: 90,
+          text: 80,
+          color: 80,
+          layer: 90,
+          editability: 60,
+          pixelSimilarity: null,
+        },
+        weights: {
+          geometry: 25,
+          text: 15,
+          color: 10,
+          layer: 10,
+          editability: 10,
+          pixelSimilarity: 30,
+        },
+        editabilityCoverage: 0.6,
+        appliedCap: null,
+        slideReports: [],
+        notes: ["pixel renderer unavailable"],
+      },
+    });
+
+    await expect(service.getPptxImportQuality(deck.projectId)).resolves.toEqual({
+      importQuality: {
+        qualityReport: expect.objectContaining({ compositeScore: 82 }),
+      },
+    });
+    expect(dataSource.decks.get(deck.projectId)?.version).toBe(deck.version);
+  });
+
+  it("returns null when an import quality sidecar is absent or invalid", async () => {
+    const { dataSource, service } = createService();
+    const deck = createDeck();
+    seedStoredDeck(dataSource, deck, deck);
+
+    await expect(service.getPptxImportQuality(deck.projectId)).resolves.toEqual({
+      importQuality: null,
+    });
+
+    dataSource.templateBlueprintRows.push({
+      template_id: "template_invalid_quality",
+      project_id: deck.projectId,
+      deck_id: deck.deckId,
+      blueprint_json: {},
+      quality_report_json: { compositeScore: "invalid" },
+    });
+    await expect(service.getPptxImportQuality(deck.projectId)).resolves.toEqual({
+      importQuality: null,
+    });
   });
 
   it("normalizes legacy keyword terms when reading stored deck JSON", async () => {
@@ -1312,6 +1472,75 @@ describe("DecksService", () => {
         }),
         format: "pptx",
       }),
+    );
+  });
+
+  it("marks the export Job failed and returns a structured 503 when enqueue is unavailable", async () => {
+    stubOrbitEnv();
+    const dataSource = new InMemoryDeckDataSource();
+    const deck = createDeck();
+    const exportJob = createJob("job_export_failed", "deck-export");
+    const failedJob = jobSchema.parse({
+      ...exportJob,
+      status: "failed",
+      progress: 0,
+      message: "Deck export queue is unavailable.",
+      error: {
+        code: "DECK_EXPORT_ENQUEUE_FAILED",
+        message: "Deck export queue is unavailable.",
+        retryable: true,
+      },
+    });
+    const jobsService = {
+      create: vi.fn(async () => exportJob),
+      update: vi.fn(async () => failedJob),
+    };
+    const enqueueError = new Error("connect ECONNREFUSED 127.0.0.1:6379");
+    const enqueueExportJob = vi.fn(async () => {
+      throw enqueueError;
+    });
+    const logger = createLogger();
+    const service = new DecksService(
+      dataSource as unknown as DataSource,
+      jobsService as never,
+      vi.fn(async () => undefined),
+      enqueueExportJob,
+      undefined,
+      logger,
+    );
+    await service.putDeck(deck.projectId, { deck });
+
+    await expect(
+      service.createExportJob(deck.projectId, { format: "png" }),
+    ).rejects.toMatchObject({
+      status: HttpStatus.SERVICE_UNAVAILABLE,
+      response: {
+        code: "DECK_EXPORT_ENQUEUE_FAILED",
+        message: "Deck export queue is unavailable.",
+        job: failedJob,
+      },
+    });
+    expect(jobsService.update).toHaveBeenCalledWith(
+      exportJob.jobId,
+      expect.objectContaining({
+        status: "failed",
+        error: {
+          code: "DECK_EXPORT_ENQUEUE_FAILED",
+          message: "Deck export queue is unavailable.",
+          retryable: true,
+        },
+      }),
+    );
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "deck_export.enqueue_failed",
+        jobId: exportJob.jobId,
+        projectId: deck.projectId,
+        deckId: deck.deckId,
+        format: "png",
+        error: expect.objectContaining({ message: enqueueError.message }),
+      }),
+      "Deck export job enqueue failed.",
     );
   });
 

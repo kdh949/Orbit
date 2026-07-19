@@ -172,4 +172,97 @@ describe("AnimationInspectorPanel", () => {
     expect(html).toContain("키워드 선택됨");
     expect(html).toContain("ORBIT");
   });
+
+  it("protects the root of an action-linked follower chain from edit and deletion", () => {
+    const deck = createDemoDeck();
+    const slide = {
+      ...deck.slides[0]!,
+      animations: [
+        {
+          animationId: "anim_root",
+          elementId: "el_1",
+          type: "fade-in" as const,
+          order: 1,
+          startMode: "on-click" as const,
+          durationMs: 400,
+          delayMs: 0,
+          easing: "ease-out" as const
+        },
+        {
+          animationId: "anim_action_follower",
+          elementId: "el_2",
+          type: "fade-in" as const,
+          order: 2,
+          startMode: "with-previous" as const,
+          durationMs: 400,
+          delayMs: 0,
+          easing: "ease-out" as const
+        }
+      ]
+    };
+    const element = slide.elements.find(({ elementId }) => elementId === "el_1")!;
+    const html = renderToString(
+      <AnimationInspectorPanel
+        actionAnimationIds={["anim_action_follower"]}
+        animations={getElementAnimations(slide, element.elementId)}
+        canCreateAnimation
+        element={element}
+        keywordOptions={[]}
+        preferredAnimationId="anim_root"
+        selectedKeywordId={null}
+        selectedKeywordLabel={null}
+        slideAnimations={slide.animations}
+        slideElements={slide.elements}
+        onAddAnimation={vi.fn()}
+        onDeleteAnimation={vi.fn()}
+        onSelectKeyword={vi.fn()}
+        onSelectSlideAnimation={vi.fn()}
+        showIds={false}
+        onUpdateAnimation={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("action과 연결된 재생 체인");
+    expect(html).toMatch(/<select[^>]*disabled=""/);
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>애니메이션 제거<\/button>/);
+  });
+
+  it("disables effect selection with the slide mutation reason", () => {
+    const deck = createDemoDeck();
+    const slide = deck.slides[0]!;
+    const element = slide.elements.find(({ elementId }) => elementId === "el_1")!;
+    const reason = "원본 OOXML을 안전하게 수정할 수 없는 장표입니다.";
+    const html = renderToString(
+      <AnimationInspectorPanel
+        animations={[]}
+        canCreateAnimation
+        element={element}
+        keywordOptions={[]}
+        mutationDisabledReason={reason}
+        preferredAnimationId={null}
+        selectedKeywordId={null}
+        selectedKeywordLabel={null}
+        slideAnimations={slide.animations}
+        slideElements={slide.elements}
+        onAddAnimation={vi.fn()}
+        onDeleteAnimation={vi.fn()}
+        onSelectKeyword={vi.fn()}
+        onSelectSlideAnimation={vi.fn()}
+        showIds={false}
+        onUpdateAnimation={vi.fn()}
+      />
+    );
+
+    expect(html).toContain(reason);
+    const effectButtons =
+      html.match(
+        /<button class="animation-panel-effect-button[\s\S]*?<\/button>/g
+      ) ?? [];
+    expect(effectButtons.length).toBeGreaterThan(0);
+    for (const button of effectButtons) {
+      expect(button).toContain('disabled=""');
+      expect(button).toContain(`title="${reason}"`);
+      expect(button).toContain(reason);
+    }
+  });
 });

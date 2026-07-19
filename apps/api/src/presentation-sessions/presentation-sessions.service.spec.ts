@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { DecksService } from "../decks/decks.service";
 import type { PresentationSessionRepository } from "./presentation-session.repository";
 import { PresentationSessionsService } from "./presentation-sessions.service";
 
@@ -28,12 +29,12 @@ const sessionRow = {
 
 function createService(
   overrides: Partial<PresentationSessionRepository> = {},
-  audienceRateLimit?: { consumeJoin: ReturnType<typeof vi.fn> }
+  audienceRateLimit?: { consumeJoin: ReturnType<typeof vi.fn> },
+  deckOverrides: Partial<DecksService> = {}
 ) {
   const manager = {} as never;
   const repository = {
     transaction: vi.fn(async (work) => work(manager)),
-    findStoredDeckForUpdate: vi.fn().mockResolvedValue({ deck_id: "deck_1", version: 7 }),
     closeActive: vi.fn().mockResolvedValue([]),
     insert: vi.fn().mockResolvedValue(sessionRow),
     findCurrent: vi.fn().mockResolvedValue(sessionRow),
@@ -54,11 +55,17 @@ function createService(
     }),
     ...overrides
   } as unknown as PresentationSessionRepository;
+  const decksService = {
+    getDeckForUpdate: vi.fn().mockResolvedValue({ deckId: "deck_1", version: 7 }),
+    ...deckOverrides
+  } as unknown as DecksService;
   const logger = { info: vi.fn() } as never;
   return {
+    decksService,
     repository,
     service: new PresentationSessionsService(
       repository,
+      decksService,
       logger,
       audienceRateLimit as never
     )
@@ -78,8 +85,8 @@ describe("PresentationSessionsService", () => {
     expect(repository.insert).not.toHaveBeenCalled();
   });
 
-  it("closes an active session and reads deckVersion from the locked server row", async () => {
-    const { repository, service } = createService({
+  it("closes an active session and reads deckVersion from the materialized Deck", async () => {
+    const { decksService, repository, service } = createService({
       closeActive: vi.fn().mockResolvedValue(["session_previous"])
     });
 
@@ -90,11 +97,35 @@ describe("PresentationSessionsService", () => {
       })
     ).resolves.toMatchObject({ session: { deckId: "deck_1", deckVersion: 7 } });
 
+    expect(decksService.getDeckForUpdate).toHaveBeenCalledWith(
+      expect.anything(),
+      "project_1",
+      "deck_1"
+    );
     expect(repository.closeActive).toHaveBeenCalledWith(expect.anything(), "project_1", expect.any(Date));
     expect(repository.insert).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ deckId: "deck_1", deckVersion: 7, userId: "user_1" })
     );
+  });
+
+  it("keeps the active session when Deck materialization fails", async () => {
+    const materializationError = new Error("Stored patch chain is invalid");
+    const { repository, service } = createService(
+      {},
+      undefined,
+      { getDeckForUpdate: vi.fn().mockRejectedValue(materializationError) }
+    );
+
+    await expect(
+      service.create("project_1", "user_1", {
+        deckId: "deck_1",
+        accessMode: "public"
+      })
+    ).rejects.toBe(materializationError);
+
+    expect(repository.closeActive).not.toHaveBeenCalled();
+    expect(repository.insert).not.toHaveBeenCalled();
   });
 
   it("returns archived sessions for the requested deck", async () => {

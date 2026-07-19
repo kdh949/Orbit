@@ -50,25 +50,24 @@ export function getSelectionTransformerConfig(args: {
   selectedElements: DeckElement[];
   stageScale: number;
 }) {
-  const safeScale = Math.max(args.stageScale, 0.05);
   const selectedElement =
     args.selectedElements.length === 1 ? args.selectedElements[0] : null;
   const shouldPreserveAspectRatio =
     selectedElement?.type === "image" || selectedElement?.type === "svg";
 
   return {
-    anchorCornerRadius: 2 / safeScale,
-    anchorHitStrokeWidth: 20 / safeScale,
-    anchorSize: 12 / safeScale,
-    anchorStrokeWidth: 1.5 / safeScale,
-    borderStrokeWidth: 1.5 / safeScale,
+    anchorCornerRadius: 2,
+    anchorHitStrokeWidth: 20,
+    anchorSize: 12,
+    anchorStrokeWidth: 1.5,
+    borderStrokeWidth: 1.5,
     enabledAnchors: args.disableInteractions
       ? []
       : shouldPreserveAspectRatio
         ? [...proportionalResizeAnchors]
         : [...allResizeAnchors],
     keepRatio: shouldPreserveAspectRatio,
-    padding: 2 / safeScale,
-    rotateAnchorOffset: 32 / safeScale,
+    padding: 2,
+    rotateAnchorOffset: 32,
   };
 }

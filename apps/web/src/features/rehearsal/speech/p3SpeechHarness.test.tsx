@@ -45,6 +45,49 @@ describe("P3 speech fixture harness", () => {
     );
   });
 
+  it("keeps the current prompter sentence for partial and advances it after final", async () => {
+    const port = createMockLiveSttPort();
+    const session = createP3RehearsalSession({
+      slides: [
+        {
+          slideId: "slide_prompter",
+          speakerNotes:
+            "업무 중 반복 작업은 생산성을 낮춥니다. AI 도구는 반복 업무를 자동화합니다.",
+          keywords: []
+        }
+      ],
+      port,
+      now: () => 1_000
+    });
+
+    await session.start({
+      audioSource: {} as MediaStream,
+      slideIndex: 0
+    });
+    port.emit({
+      text: "업무 중 반복 작업은 생산성을 낮춥니다",
+      isFinal: false,
+      timestampMs: [0, 800]
+    });
+    expect(session.getState().snapshot?.prompterProgress).toMatchObject({
+      currentSentenceId: "sentence_1",
+      committedSentenceIds: []
+    });
+
+    port.emit({
+      text: "업무 중 반복 작업은 생산성을 낮춥니다",
+      isFinal: true,
+      timestampMs: [800, 1_200]
+    });
+    expect(session.getState().snapshot?.prompterProgress).toMatchObject({
+      currentSentenceId: "sentence_2",
+      committedSentenceIds: ["sentence_1"]
+    });
+    expect(session.getState().snapshot?.scriptProgress?.ratio).toBeGreaterThan(
+      0
+    );
+  });
+
   it("keeps common phrases and command-like false positives from completing coverage", () => {
     const tracker = createSpeechTracker({
       slideId: p3SpeechFixtureSlides[0].slideId,

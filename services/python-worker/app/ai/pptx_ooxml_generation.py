@@ -8,6 +8,7 @@ import importlib
 import json
 import math
 import posixpath
+import re
 import shutil
 import subprocess
 import zipfile
@@ -37,6 +38,11 @@ from app.ai.pptx_ooxml_vector_importer import (
     table_row_heights,
     table_rows,
     theme_color_map,
+)
+from app.ai.pptx_motion import (
+    parse_slide_motion,
+    replace_main_sequence,
+    replace_slide_transition,
 )
 
 PML_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
@@ -135,6 +141,7 @@ class PptxOoxmlGenerationResult(BaseModel):
 
 PptxOoxmlSyncOperationType = Literal[
     "add_slide",
+    "delete_slide",
     "add_element",
     "update_element_frame",
     "update_element_props",
@@ -148,24 +155,43 @@ PptxOoxmlUnsupportedReasonCode = Literal[
     "ADD_ELEMENT_FAILED",
     "ADD_ELEMENT_TYPE_UNSUPPORTED",
     "CROP_CAPABILITY_UNSAFE",
+    "DELETE_SLIDE_FAILED",
+    "DELETE_SLIDE_LOCATOR_UNSAFE",
+    "DELETE_SLIDE_RELATIONSHIP_UNSAFE",
     "RICH_TEXT_CAPABILITY_UNSAFE",
     "ELEMENT_TYPE_MISMATCH",
     "FRAME_FIELDS_UNSUPPORTED",
     "GROUPED_FRAME_UNSUPPORTED",
+    "MOTION_REFERENCE_COVERAGE_UNSAFE",
     "OPERATION_TYPE_UNSUPPORTED",
     "PROPS_FIELDS_UNSUPPORTED",
     "PROPS_UPDATE_FAILED",
     "SHAPE_MISSING",
+    "SHARED_SHAPE_COHORT_UNSAFE",
     "SLIDE_PART_MISSING",
     "SLIDE_REORDER_LOCATOR_UNSAFE",
     "SLIDE_REORDER_PERMUTATION_INVALID",
     "SLIDE_REORDER_RELATIONSHIP_UNSAFE",
+    "LAST_SLIDE_DELETE_FORBIDDEN",
     "SOURCE_MISSING",
     "SOURCE_NOT_WRITABLE",
     "SOURCE_PROVENANCE_UNSAFE",
     "SYNC_RESPONSE_INCOMPLETE",
     "TABLE_CELL_CAPABILITY_UNSAFE",
     "TABLE_STRUCTURE_UNSUPPORTED",
+]
+
+PptxOoxmlMotionCoverage = Literal["unknown", "absent", "partial", "complete"]
+PptxOoxmlMotionScope = Literal["transition", "animations"]
+PptxOoxmlMotionReasonCode = Literal[
+    "SLIDE_MOTION_SOURCE_MISSING",
+    "SLIDE_MOTION_PAYLOAD_INVALID",
+    "SLIDE_TRANSITION_CAPABILITY_UNSAFE",
+    "SLIDE_TRANSITION_UNSUPPORTED",
+    "SLIDE_ANIMATION_CAPABILITY_UNSAFE",
+    "SLIDE_ANIMATION_UNSUPPORTED",
+    "SLIDE_ANIMATION_TARGET_UNRESOLVED",
+    "SLIDE_MOTION_STRUCTURE_UNSUPPORTED",
 ]
 
 
@@ -179,6 +205,22 @@ class PptxOoxmlAppliedOperation(BaseModel):
 
 class PptxOoxmlUnsupportedOperation(PptxOoxmlAppliedOperation):
     reason_code: PptxOoxmlUnsupportedReasonCode = Field(alias="reasonCode")
+
+
+class PptxOoxmlAppliedSlideMotion(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    slide_id: str = Field(alias="slideId")
+    transition: bool = False
+    animations: bool = False
+
+
+class PptxOoxmlUnsupportedSlideMotion(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    slide_id: str = Field(alias="slideId")
+    scope: PptxOoxmlMotionScope
+    reason_code: PptxOoxmlMotionReasonCode = Field(alias="reasonCode")
 
 
 class PptxOoxmlSyncResult(BaseModel):
@@ -198,6 +240,14 @@ class PptxOoxmlSyncResult(BaseModel):
         default_factory=list,
         max_length=500,
         alias="unsupportedOperations",
+    )
+    applied_slide_motion: list[PptxOoxmlAppliedSlideMotion] = Field(
+        default_factory=list,
+        alias="appliedSlideMotion",
+    )
+    unsupported_slide_motion: list[PptxOoxmlUnsupportedSlideMotion] = Field(
+        default_factory=list,
+        alias="unsupportedSlideMotion",
     )
     warnings: list[str] = Field(default_factory=list)
 
@@ -339,6 +389,7 @@ def sync_pptx_ooxml(
     operations: list[dict[str, Any]],
     deck_canvas: dict[str, Any],
     synced_deck_version: int,
+    slide_motion: list[dict[str, Any]] | None = None,
     render: bool = True,
 ) -> PptxOoxmlSyncResult:
     del synced_deck_version
@@ -356,11 +407,14 @@ def sync_pptx_ooxml(
         updated_element_sources,
         applied_operations,
         unsupported_operations,
+        applied_slide_motion,
+        unsupported_slide_motion,
     ) = apply_patch_operations_to_package(
         path.read_bytes(),
         template_blueprint,
         operations,
         scale,
+        slide_motion=slide_motion or [],
     )
     assets = [
         package_asset("current_package", package_bytes, f"{safe_file_stem(path)}.pptx")
@@ -378,6 +432,8 @@ def sync_pptx_ooxml(
         elementSources=updated_element_sources,
         appliedOperations=applied_operations,
         unsupportedOperations=unsupported_operations,
+        appliedSlideMotion=applied_slide_motion,
+        unsupportedSlideMotion=unsupported_slide_motion,
         warnings=warnings,
     )
 
@@ -467,8 +523,35 @@ def add_imported_ooxml_capabilities(
             if not slide_part:
                 continue
             slide["ooxmlOrigin"] = "imported"
+            existing_motion_capabilities = dict_value(
+                slide,
+                "ooxmlMotionCapabilities",
+            )
+            existing_coverage = str(
+                existing_motion_capabilities.get(
+                    "importedMainSequenceCoverage",
+                    "",
+                )
+            )
+            motion_coverage = (
+                existing_coverage
+                if existing_coverage in {"unknown", "absent", "partial", "complete"}
+                else imported_main_sequence_coverage(package, slide_part)
+            )
+            slide["ooxmlMotionCapabilities"] = {
+                "transitionWritable": imported_slide_root(package, slide_part)
+                is not None,
+                "importedMainSequenceCoverage": motion_coverage,
+            }
 
             blueprint_slide = blueprint_slides.get(source_slide_index, {})
+            if isinstance(blueprint_slide, dict):
+                blueprint_slide["ooxmlOrigin"] = "imported"
+                blueprint_slide["ooxmlSourceSlidePart"] = slide_part
+                blueprint_slide["ooxmlMotionCapabilities"] = copy.deepcopy(
+                    slide["ooxmlMotionCapabilities"]
+                )
+
             element_types = {
                 str(element.get("elementId", "")): str(element.get("type", ""))
                 for element in blueprint_slide.get("elements", [])
@@ -523,6 +606,19 @@ def imported_slide_root(
         return ET.fromstring(package.read(slide_part))
     except (KeyError, ET.ParseError, OSError):
         return None
+
+
+def imported_main_sequence_coverage(
+    package: zipfile.ZipFile | None,
+    slide_part: str,
+) -> PptxOoxmlMotionCoverage:
+    root = imported_slide_root(package, slide_part)
+    if root is None:
+        return "unknown"
+    motion = parse_slide_motion(root, slide_index=1, shape_targets={})
+    if motion.coverage == "absent":
+        return "absent"
+    return "partial" if motion.coverage == "complete" else motion.coverage
 
 
 def imported_element_capabilities(
@@ -705,18 +801,41 @@ def apply_patch_operations_to_package(
     template_blueprint: dict[str, Any],
     operations: list[dict[str, Any]],
     scale: PackageFrameScale,
+    *,
+    slide_motion: list[dict[str, Any]] | None = None,
 ) -> tuple[
     bytes,
     list[str],
     list[dict[str, Any]],
     list[PptxOoxmlAppliedOperation],
     list[PptxOoxmlUnsupportedOperation],
+    list[PptxOoxmlAppliedSlideMotion],
+    list[PptxOoxmlUnsupportedSlideMotion],
 ]:
+    slide_motion = slide_motion or []
     sources = element_source_map(template_blueprint)
+    operations = route_operations_to_source_parts(template_blueprint, operations)
     warnings: list[str] = []
     updated_sources: dict[tuple[str, str], dict[str, Any]] = {}
     applied_operations: list[PptxOoxmlAppliedOperation] = []
     unsupported_operations: list[PptxOoxmlUnsupportedOperation] = []
+    applied_slide_motion: list[PptxOoxmlAppliedSlideMotion] = []
+    unsupported_slide_motion: list[PptxOoxmlUnsupportedSlideMotion] = []
+
+    motion_failure = motion_reference_failure(
+        operations,
+        template_blueprint,
+        slide_motion,
+    )
+    if motion_failure is not None:
+        return package_bytes, warnings, [], [], [motion_failure], [], []
+
+    redundant_shape_operations, cohort_failure = shared_shape_operation_plan(
+        operations,
+        sources,
+    )
+    if cohort_failure is not None:
+        return package_bytes, warnings, [], [], [cohort_failure], [], []
 
     with zipfile.ZipFile(BytesIO(package_bytes), "r") as source:
         source_names = set(source.namelist())
@@ -729,6 +848,12 @@ def apply_patch_operations_to_package(
             str(item.get("slidePart", ""))
             for item in sources.values()
             if str(item.get("slidePart", ""))
+        )
+        slide_parts.update(
+            str(item.get("sourceSlidePart", ""))
+            for item in slide_motion
+            if isinstance(item, dict)
+            and is_safe_slide_part(str(item.get("sourceSlidePart", "")))
         )
         package_entries = {
             slide_part: source.read(slide_part)
@@ -751,7 +876,10 @@ def apply_patch_operations_to_package(
                 package_entries[presentation_part] = source.read(presentation_part)
         added_entries: dict[str, bytes] = {}
 
-        for operation in operations:
+        for operation_index, operation in enumerate(operations):
+            if operation_index in redundant_shape_operations:
+                applied_operations.append(applied_operation(operation))
+                continue
             reason_code = apply_sync_operation(
                 operation,
                 sources,
@@ -771,7 +899,58 @@ def apply_patch_operations_to_package(
                 )
 
         if unsupported_operations:
-            return package_bytes, warnings, [], [], unsupported_operations
+            return package_bytes, warnings, [], [], unsupported_operations, [], []
+
+        for motion_item in slide_motion:
+            motion_result = apply_slide_motion_item(
+                motion_item,
+                template_blueprint,
+                package_entries,
+                sources,
+            )
+            if isinstance(motion_result, PptxOoxmlUnsupportedSlideMotion):
+                unsupported_slide_motion.append(motion_result)
+            else:
+                applied_slide_motion.append(motion_result)
+
+        if unsupported_slide_motion:
+            return (
+                package_bytes,
+                warnings,
+                [],
+                [],
+                [],
+                [],
+                unsupported_slide_motion,
+            )
+
+        animation_touched_parts = {
+            str(item.get("sourceSlidePart", ""))
+            for item in slide_motion
+            if isinstance(item, dict)
+            and isinstance(item.get("touched"), dict)
+            and item["touched"].get("animations") is True
+        }
+        for part, content in list(package_entries.items()):
+            if (
+                part not in source_names
+                or not is_safe_slide_part(part)
+                or part in animation_touched_parts
+            ):
+                continue
+            preserved_timing = preserve_xml_subtree_bytes(
+                source.read(part),
+                content,
+                "timing",
+            )
+            if preserved_timing is None:
+                first_operation = operations[0] if operations else {}
+                failure = unsupported_operation(
+                    first_operation,
+                    "MOTION_REFERENCE_COVERAGE_UNSAFE",
+                )
+                return package_bytes, warnings, [], [], [failure], [], []
+            package_entries[part] = preserved_timing
 
         changed_entries = {
             part: content
@@ -785,6 +964,8 @@ def apply_patch_operations_to_package(
                 list(updated_sources.values()),
                 applied_operations,
                 unsupported_operations,
+                applied_slide_motion,
+                unsupported_slide_motion,
             )
         return (
             rewrite_zip(source, changed_entries, added_entries),
@@ -792,7 +973,524 @@ def apply_patch_operations_to_package(
             list(updated_sources.values()),
             applied_operations,
             unsupported_operations,
+            applied_slide_motion,
+            unsupported_slide_motion,
         )
+
+
+def apply_slide_motion_item(
+    item: dict[str, Any],
+    template_blueprint: dict[str, Any],
+    package_entries: dict[str, bytes],
+    current_sources: dict[tuple[str, str], dict[str, Any]] | None = None,
+) -> PptxOoxmlAppliedSlideMotion | PptxOoxmlUnsupportedSlideMotion:
+    slide_id = str(item.get("slideId", ""))
+    slide_part = str(item.get("sourceSlidePart", ""))
+    touched = item.get("touched")
+    transition_touched = isinstance(touched, dict) and touched.get("transition") is True
+    animations_touched = isinstance(touched, dict) and touched.get("animations") is True
+    scope: PptxOoxmlMotionScope = (
+        "transition" if transition_touched or not animations_touched else "animations"
+    )
+    matching_template_slides = [
+        slide
+        for slide in template_blueprint.get("slides", [])
+        if isinstance(slide, dict) and source_slide_part(slide) == slide_part
+    ]
+    template_slide = (
+        matching_template_slides[0] if len(matching_template_slides) == 1 else None
+    )
+    if (
+        not slide_id
+        or not is_safe_slide_part(slide_part)
+        or template_slide is None
+        or slide_part not in package_entries
+    ):
+        return unsupported_slide_motion(
+            slide_id,
+            scope,
+            "SLIDE_MOTION_SOURCE_MISSING",
+        )
+    if not isinstance(touched, dict) or not (transition_touched or animations_touched):
+        return unsupported_slide_motion(
+            slide_id,
+            scope,
+            "SLIDE_MOTION_PAYLOAD_INVALID",
+        )
+
+    authoritative_capabilities = dict_value(
+        template_slide,
+        "ooxmlMotionCapabilities",
+    )
+    supplied_capabilities = item.get("capabilities")
+    if not isinstance(supplied_capabilities, dict):
+        return unsupported_slide_motion(
+            slide_id,
+            scope,
+            "SLIDE_MOTION_PAYLOAD_INVALID",
+        )
+    authoritative_coverage = str(
+        authoritative_capabilities.get("importedMainSequenceCoverage", "unknown")
+    )
+    if transition_touched and supplied_capabilities.get(
+        "transitionWritable"
+    ) != authoritative_capabilities.get("transitionWritable"):
+        return unsupported_slide_motion(
+            slide_id,
+            "transition",
+            "SLIDE_TRANSITION_CAPABILITY_UNSAFE",
+        )
+    if (
+        animations_touched
+        and supplied_capabilities.get("importedMainSequenceCoverage")
+        != authoritative_coverage
+    ):
+        return unsupported_slide_motion(
+            slide_id,
+            "animations",
+            "SLIDE_ANIMATION_CAPABILITY_UNSAFE",
+        )
+
+    original_slide_xml = package_entries[slide_part]
+    try:
+        root = ET.fromstring(original_slide_xml)
+    except ET.ParseError:
+        return unsupported_slide_motion(
+            slide_id,
+            scope,
+            "SLIDE_MOTION_STRUCTURE_UNSUPPORTED",
+        )
+
+    if transition_touched:
+        if authoritative_capabilities.get("transitionWritable") is not True:
+            return unsupported_slide_motion(
+                slide_id,
+                "transition",
+                "SLIDE_TRANSITION_CAPABILITY_UNSAFE",
+            )
+        if "transition" not in item or (
+            item.get("transition") is not None
+            and not isinstance(item.get("transition"), dict)
+        ):
+            return unsupported_slide_motion(
+                slide_id,
+                "transition",
+                "SLIDE_MOTION_PAYLOAD_INVALID",
+            )
+        try:
+            replace_slide_transition(root, item.get("transition"))
+        except (TypeError, ValueError):
+            return unsupported_slide_motion(
+                slide_id,
+                "transition",
+                "SLIDE_TRANSITION_UNSUPPORTED",
+            )
+
+    if animations_touched:
+        if authoritative_coverage not in {"absent", "complete"}:
+            return unsupported_slide_motion(
+                slide_id,
+                "animations",
+                "SLIDE_ANIMATION_CAPABILITY_UNSAFE",
+            )
+        animations = item.get("animations")
+        if not isinstance(animations, list) or not all(
+            isinstance(animation, dict) for animation in animations
+        ):
+            return unsupported_slide_motion(
+                slide_id,
+                "animations",
+                "SLIDE_MOTION_PAYLOAD_INVALID",
+            )
+        try:
+            applied, diagnostics = replace_main_sequence(
+                root,
+                cast(list[dict[str, Any]], animations),
+                slide_index=int_value(template_slide.get("slideIndex"), 1),
+                element_targets=slide_motion_element_targets(
+                    template_slide,
+                    current_sources,
+                ),
+            )
+        except (TypeError, ValueError):
+            return unsupported_slide_motion(
+                slide_id,
+                "animations",
+                "SLIDE_MOTION_PAYLOAD_INVALID",
+            )
+        if not applied or diagnostics:
+            codes = {str(diagnostic.get("code", "")) for diagnostic in diagnostics}
+            if "PPTX_MOTION_TARGET_UNRESOLVED" in codes:
+                reason = "SLIDE_ANIMATION_TARGET_UNRESOLVED"
+            elif "PPTX_MOTION_STRUCTURE_UNSUPPORTED" in codes:
+                reason = "SLIDE_MOTION_STRUCTURE_UNSUPPORTED"
+            else:
+                reason = "SLIDE_ANIMATION_UNSUPPORTED"
+            return unsupported_slide_motion(
+                slide_id,
+                "animations",
+                cast(PptxOoxmlMotionReasonCode, reason),
+            )
+
+    rewritten = preserve_root_namespace_declarations(
+        original_slide_xml,
+        xml_bytes(root),
+    )
+    if rewritten is None:
+        return unsupported_slide_motion(
+            slide_id,
+            scope,
+            "SLIDE_MOTION_STRUCTURE_UNSUPPORTED",
+        )
+    if animations_touched:
+        preserved = preserve_excluded_timing_branch_bytes(
+            original_slide_xml,
+            rewritten,
+        )
+        if preserved is None:
+            return unsupported_slide_motion(
+                slide_id,
+                "animations",
+                "SLIDE_MOTION_STRUCTURE_UNSUPPORTED",
+            )
+        rewritten = preserved
+    if transition_touched and not animations_touched:
+        preserved_timing = preserve_xml_subtree_bytes(
+            original_slide_xml,
+            rewritten,
+            "timing",
+        )
+        if preserved_timing is None:
+            return unsupported_slide_motion(
+                slide_id,
+                "transition",
+                "SLIDE_MOTION_STRUCTURE_UNSUPPORTED",
+            )
+        rewritten = preserved_timing
+    package_entries[slide_part] = rewritten
+    return PptxOoxmlAppliedSlideMotion(
+        slideId=slide_id,
+        transition=transition_touched,
+        animations=animations_touched,
+    )
+
+
+def slide_motion_element_targets(
+    template_slide: dict[str, Any],
+    current_sources: dict[tuple[str, str], dict[str, Any]] | None = None,
+) -> dict[str, list[str]]:
+    targets: dict[str, list[str]] = {}
+    slide_part = source_slide_part(template_slide)
+    candidates = (
+        current_sources.values()
+        if current_sources is not None
+        else template_slide.get("elementSources", [])
+    )
+    for source in candidates:
+        if not isinstance(source, dict) or not bool(source.get("writable", False)):
+            continue
+        if (
+            current_sources is not None
+            and str(source.get("slidePart", "")) != slide_part
+        ):
+            continue
+        element_id = str(source.get("elementId", ""))
+        shape_id = str(source.get("shapeId", ""))
+        if not element_id or not shape_id:
+            continue
+        values = targets.setdefault(element_id, [])
+        if shape_id not in values:
+            values.append(shape_id)
+    return targets
+
+
+def unsupported_slide_motion(
+    slide_id: str,
+    scope: PptxOoxmlMotionScope,
+    reason_code: PptxOoxmlMotionReasonCode,
+) -> PptxOoxmlUnsupportedSlideMotion:
+    return PptxOoxmlUnsupportedSlideMotion(
+        slideId=slide_id or "unknown",
+        scope=scope,
+        reasonCode=reason_code,
+    )
+
+
+def preserve_xml_subtree_bytes(
+    original: bytes,
+    rewritten: bytes,
+    local_name_value: str,
+) -> bytes | None:
+    namespaced_rewritten = preserve_root_namespace_declarations(
+        original,
+        rewritten,
+    )
+    if namespaced_rewritten is None:
+        return None
+    original_match = xml_subtree_match(original, local_name_value)
+    rewritten_match = xml_subtree_match(namespaced_rewritten, local_name_value)
+    if original_match is None:
+        return namespaced_rewritten
+    if rewritten_match is None:
+        return None
+    return (
+        namespaced_rewritten[: rewritten_match.start()]
+        + original[original_match.start() : original_match.end()]
+        + namespaced_rewritten[rewritten_match.end() :]
+    )
+
+
+def preserve_root_namespace_declarations(
+    original: bytes,
+    rewritten: bytes,
+) -> bytes | None:
+    original_root = xml_root_opening_tag(original)
+    rewritten_root = xml_root_opening_tag(rewritten)
+    if original_root is None or rewritten_root is None:
+        return None
+    original_namespaces = xml_namespace_declarations(original_root.group(0))
+    rewritten_namespaces = xml_namespace_declarations(rewritten_root.group(0))
+    missing: list[bytes] = []
+    for prefix, (uri, declaration) in original_namespaces.items():
+        current = rewritten_namespaces.get(prefix)
+        if current is not None:
+            if current[0] != uri:
+                return None
+            continue
+        missing.append(declaration)
+    if not missing:
+        return rewritten
+    insertion = b"".join(b" " + declaration.strip() for declaration in missing)
+    insert_at = rewritten_root.end() - 1
+    return rewritten[:insert_at] + insertion + rewritten[insert_at:]
+
+
+def xml_root_opening_tag(content: bytes) -> re.Match[bytes] | None:
+    return re.search(
+        rb"<[A-Za-z_][A-Za-z0-9_.:-]*\b[^>]*>",
+        content,
+    )
+
+
+def xml_namespace_declarations(
+    opening_tag: bytes,
+) -> dict[bytes, tuple[bytes, bytes]]:
+    pattern = re.compile(
+        rb"\s+xmlns(?::(?P<prefix>[A-Za-z_][A-Za-z0-9_.-]*))?"
+        rb"\s*=\s*(?P<quote>['\"])(?P<uri>.*?)(?P=quote)"
+    )
+    return {
+        match.group("prefix") or b"": (match.group("uri"), match.group(0))
+        for match in pattern.finditer(opening_tag)
+    }
+
+
+def preserve_excluded_timing_branch_bytes(
+    original: bytes,
+    rewritten: bytes,
+) -> bytes | None:
+    original_ranges = excluded_timing_branch_ranges(original)
+    rewritten_ranges = excluded_timing_branch_ranges(rewritten)
+    if [item[0] for item in original_ranges] != [item[0] for item in rewritten_ranges]:
+        return None
+    result = rewritten
+    for original_item, rewritten_item in zip(
+        reversed(original_ranges),
+        reversed(rewritten_ranges),
+        strict=True,
+    ):
+        _, original_start, original_end = original_item
+        _, rewritten_start, rewritten_end = rewritten_item
+        result = (
+            result[:rewritten_start]
+            + original[original_start:original_end]
+            + result[rewritten_end:]
+        )
+    return result
+
+
+def excluded_timing_branch_bytes(content: bytes) -> list[bytes]:
+    return [
+        content[start:end] for _, start, end in excluded_timing_branch_ranges(content)
+    ]
+
+
+def excluded_timing_branch_ranges(
+    content: bytes,
+) -> list[tuple[str, int, int]]:
+    tag_pattern = re.compile(
+        rb"<(?P<closing>/)?(?P<name>[A-Za-z_][A-Za-z0-9_.:-]*)"
+        rb"\b(?P<body>[^<>]*?)(?P<self_closing>/)?>",
+        re.DOTALL,
+    )
+    nodes: list[XmlByteNode] = []
+    stack: list[int] = []
+
+    for match in tag_pattern.finditer(content):
+        name = match.group("name")
+        local = name.rsplit(b":", 1)[-1].decode("ascii")
+        if match.group("closing"):
+            if not stack:
+                continue
+            node_index = stack.pop()
+            node = nodes[node_index]
+            if node.name != name:
+                return []
+            node.end = match.end()
+            continue
+
+        body = match.group("body") or b""
+        nodes.append(
+            XmlByteNode(
+                name=name,
+                local=local,
+                body=body,
+                start=match.start(),
+                end=match.end() if match.group("self_closing") else -1,
+                parent=stack[-1] if stack else None,
+            )
+        )
+        if not match.group("self_closing"):
+            stack.append(len(nodes) - 1)
+
+    if stack or any(node.end < 0 for node in nodes):
+        return []
+
+    selected: dict[int, str] = {}
+    for node_index, node in enumerate(nodes):
+        if node.local == "cTn" and xml_attribute_equals(
+            node.body,
+            "nodeType",
+            "interactiveSeq",
+        ):
+            branch_index = nearest_ancestor(nodes, node_index, "seq")
+            selected[branch_index if branch_index is not None else node_index] = (
+                "interactiveSeq"
+            )
+            continue
+        is_media_timeline = node.local == "cTn" and xml_attribute_equals(
+            node.body,
+            "presetClass",
+            "mediacall",
+        )
+        if is_media_timeline:
+            branch_index = nearest_ancestor(nodes, node_index, "par")
+            selected[branch_index if branch_index is not None else node_index] = "media"
+            continue
+        if node.local in {"audio", "video", "cmd"}:
+            media_timeline = nearest_ancestor_with_attribute(
+                nodes,
+                node_index,
+                local="cTn",
+                attribute="presetClass",
+                value="mediacall",
+            )
+            if media_timeline is not None:
+                branch_index = nearest_ancestor(nodes, media_timeline, "par")
+                selected[
+                    branch_index if branch_index is not None else media_timeline
+                ] = "media"
+            else:
+                selected[node_index] = "media"
+
+    selected_indexes = set(selected)
+    outermost_indexes = [
+        node_index
+        for node_index in selected_indexes
+        if not any(
+            ancestor in selected_indexes
+            for ancestor in ancestor_indexes(nodes, node_index)
+        )
+    ]
+    return [
+        (selected[node_index], nodes[node_index].start, nodes[node_index].end)
+        for node_index in sorted(
+            outermost_indexes,
+            key=lambda index: nodes[index].start,
+        )
+    ]
+
+
+@dataclass
+class XmlByteNode:
+    name: bytes
+    local: str
+    body: bytes
+    start: int
+    end: int
+    parent: int | None
+
+
+def xml_attribute_equals(body: bytes, name: str, value: str) -> bool:
+    return (
+        re.search(
+            rb"\b"
+            + re.escape(name.encode("ascii"))
+            + rb"\s*=\s*['\"]"
+            + re.escape(value.encode("ascii"))
+            + rb"['\"]",
+            body,
+        )
+        is not None
+    )
+
+
+def ancestor_indexes(nodes: list[XmlByteNode], node_index: int) -> list[int]:
+    indexes: list[int] = []
+    parent = nodes[node_index].parent
+    while parent is not None:
+        indexes.append(parent)
+        parent = nodes[parent].parent
+    return indexes
+
+
+def nearest_ancestor(
+    nodes: list[XmlByteNode],
+    node_index: int,
+    local: str,
+) -> int | None:
+    return next(
+        (
+            ancestor
+            for ancestor in ancestor_indexes(nodes, node_index)
+            if nodes[ancestor].local == local
+        ),
+        None,
+    )
+
+
+def nearest_ancestor_with_attribute(
+    nodes: list[XmlByteNode],
+    node_index: int,
+    *,
+    local: str,
+    attribute: str,
+    value: str,
+) -> int | None:
+    return next(
+        (
+            ancestor
+            for ancestor in ancestor_indexes(nodes, node_index)
+            if nodes[ancestor].local == local
+            and xml_attribute_equals(nodes[ancestor].body, attribute, value)
+        ),
+        None,
+    )
+
+
+def xml_subtree_match(content: bytes, local_name_value: str) -> re.Match[bytes] | None:
+    escaped = re.escape(local_name_value.encode("ascii"))
+    pattern = re.compile(
+        rb"<(?P<prefix>[A-Za-z_][A-Za-z0-9_.-]*:)?"
+        + escaped
+        + rb"\b(?:[^>]*/\s*>|[^>]*>.*?</(?P=prefix)"
+        + escaped
+        + rb"\s*>)",
+        re.DOTALL,
+    )
+    return pattern.search(content)
+
+
 
 
 def apply_sync_operation(
@@ -830,6 +1528,15 @@ def apply_sync_operation(
     if operation_type == "reorder_slides":
         return reorder_presentation_slides(
             operation,
+            package_entries,
+            source_package,
+            template_blueprint,
+        )
+    if operation_type == "delete_slide":
+        return delete_presentation_slide(
+            operation,
+            sources,
+            updated_sources,
             package_entries,
             source_package,
             template_blueprint,
@@ -1013,36 +1720,38 @@ def apply_sync_operation(
                 return "FRAME_FIELDS_UNSUPPORTED"
             shape_changed = True
     elif operation_type == "delete_element":
-        capabilities = dict_value(source, "ooxmlEditCapabilities")
-        source_shape_cohort_size = sum(
-            1
-            for candidate in sources.values()
-            if str(candidate.get("slidePart", "")) == slide_part
-            and str(candidate.get("shapeId", "")) == str(source.get("shapeId", ""))
-        )
-        safe_legacy_imported_delete = (
-            source.get("ooxmlOrigin") == "imported"
-            and source_shape_cohort_size == 1
-            and source.get("elementType") != "table"
-            and not source.get("fallbackReason")
-            and not has_group_shape_ancestor(root, shape)
-        )
-        if (
-            source.get("ooxmlOrigin") == "imported"
-            and not capabilities.get("delete")
-            and not safe_legacy_imported_delete
-        ):
-            return "PROPS_FIELDS_UNSUPPORTED"
-        if parent is None:
-            return "SHAPE_MISSING"
-        parent.remove(shape)
-        shape_changed = True
+        if parent is not None:
+            parent.remove(shape)
+            remove_shape_sources(
+                sources,
+                updated_sources,
+                slide_part,
+                str(source.get("shapeId", "")),
+            )
+            shape_changed = True
     else:
         return "OPERATION_TYPE_UNSUPPORTED"
 
     if shape_changed:
         package_entries[slide_part] = xml_bytes(root)
     return None
+
+
+def remove_shape_sources(
+    sources: dict[tuple[str, str], dict[str, Any]],
+    updated_sources: dict[tuple[str, str], dict[str, Any]],
+    slide_part: str,
+    shape_id: str,
+) -> None:
+    removed_keys = [
+        source_key
+        for source_key, candidate in sources.items()
+        if str(candidate.get("slidePart", "")) == slide_part
+        and str(candidate.get("shapeId", "")) == shape_id
+    ]
+    for source_key in removed_keys:
+        sources.pop(source_key, None)
+        updated_sources.pop(source_key, None)
 
 
 def reorder_presentation_slides(
@@ -1098,11 +1807,9 @@ def reorder_presentation_slides(
     requested_orders = [item[0] for item in requested]
     requested_ids = [item[1] for item in requested]
     expected_orders = set(range(1, len(requested) + 1))
-    if (
-        len(blueprint_locators) != len(requested)
-        or len(set(requested_ids)) != len(requested_ids)
-        or set(requested_orders) != expected_orders
-    ):
+    if len(set(requested_ids)) != len(requested_ids) or set(
+        requested_orders
+    ) != expected_orders:
         return "SLIDE_REORDER_PERMUTATION_INVALID"
     if any(blueprint_locators.get(item[1]) != item[2] for item in requested):
         return "SLIDE_REORDER_LOCATOR_UNSAFE"
@@ -1157,15 +1864,100 @@ def reorder_presentation_slides(
         slide_nodes_by_part[slide_part] = slide_id_node
 
     requested_parts = [item[2] for item in sorted(requested)]
-    if (
-        len(requested_parts) != len(slide_id_nodes)
-        or len(set(requested_parts)) != len(requested_parts)
-        or set(requested_parts) != set(slide_nodes_by_part)
-    ):
+    if len(requested_parts) != len(slide_id_nodes):
+        return "SLIDE_REORDER_PERMUTATION_INVALID"
+    if len(set(requested_parts)) != len(requested_parts) or set(
+        requested_parts
+    ) != set(slide_nodes_by_part):
         return "SLIDE_REORDER_LOCATOR_UNSAFE"
 
     slide_id_list[:] = [slide_nodes_by_part[part] for part in requested_parts]
     package_entries["ppt/presentation.xml"] = xml_bytes(presentation_root)
+    return None
+
+
+def delete_presentation_slide(
+    operation: dict[str, Any],
+    sources: dict[tuple[str, str], dict[str, Any]],
+    updated_sources: dict[tuple[str, str], dict[str, Any]],
+    package_entries: dict[str, bytes],
+    source_package: zipfile.ZipFile,
+    template_blueprint: dict[str, Any],
+) -> PptxOoxmlUnsupportedReasonCode | None:
+    slide_id = operation_slide_id(operation)
+    slide_part = slide_part_for_operation(operation, template_blueprint)
+    if not slide_id or not is_safe_slide_part(slide_part):
+        return "DELETE_SLIDE_LOCATOR_UNSAFE"
+    matching_blueprint_parts = [
+        str(slide.get("sourceSlidePart", ""))
+        for slide in template_blueprint.get("slides", [])
+        if isinstance(slide, dict) and slide.get("slideId") == slide_id
+    ]
+    if matching_blueprint_parts != [slide_part]:
+        return "DELETE_SLIDE_LOCATOR_UNSAFE"
+
+    presentation_xml = package_entries.get("ppt/presentation.xml")
+    presentation_rels_xml = package_entries.get(
+        "ppt/_rels/presentation.xml.rels"
+    )
+    content_types_xml = package_entries.get("[Content_Types].xml")
+    if presentation_xml is None or presentation_rels_xml is None:
+        return "DELETE_SLIDE_RELATIONSHIP_UNSAFE"
+    try:
+        presentation_root = ET.fromstring(presentation_xml)
+        relationships_root = ET.fromstring(presentation_rels_xml)
+        content_types_root = (
+            ET.fromstring(content_types_xml) if content_types_xml is not None else None
+        )
+    except ET.ParseError:
+        return "DELETE_SLIDE_RELATIONSHIP_UNSAFE"
+
+    slide_id_list = presentation_root.find(f"{{{PML_NS}}}sldIdLst")
+    if slide_id_list is None:
+        return "DELETE_SLIDE_RELATIONSHIP_UNSAFE"
+    slide_id_nodes = list(slide_id_list)
+    if len(slide_id_nodes) <= 1:
+        return "LAST_SLIDE_DELETE_FORBIDDEN"
+    relationships_by_id = {
+        str(relationship.get("Id", "")): relationship
+        for relationship in relationships_root
+        if relationship.get("Id")
+    }
+    matching_nodes: list[tuple[ET.Element[Any], ET.Element[Any]]] = []
+    for slide_id_node in slide_id_nodes:
+        relationship_id = str(slide_id_node.get(f"{{{REL_NS}}}id", ""))
+        relationship = relationships_by_id.get(relationship_id)
+        if relationship is None:
+            return "DELETE_SLIDE_RELATIONSHIP_UNSAFE"
+        target = str(relationship.get("Target", ""))
+        if resolve_relationship_part("ppt/presentation.xml", target) == slide_part:
+            matching_nodes.append((slide_id_node, relationship))
+    if len(matching_nodes) != 1 or slide_part not in source_package.namelist():
+        return "DELETE_SLIDE_RELATIONSHIP_UNSAFE"
+
+    slide_id_node, relationship = matching_nodes[0]
+    slide_id_list.remove(slide_id_node)
+    relationships_root.remove(relationship)
+    if content_types_root is not None:
+        part_name = f"/{slide_part}"
+        for child in list(content_types_root):
+            if child.tag.endswith("Override") and child.get("PartName") == part_name:
+                content_types_root.remove(child)
+
+    removed_source_keys = [
+        key
+        for key, source in sources.items()
+        if str(source.get("slidePart", "")) == slide_part
+    ]
+    for key in removed_source_keys:
+        sources.pop(key, None)
+        updated_sources.pop(key, None)
+    package_entries["ppt/presentation.xml"] = xml_bytes(presentation_root)
+    package_entries["ppt/_rels/presentation.xml.rels"] = xml_bytes(
+        relationships_root
+    )
+    if content_types_root is not None:
+        package_entries["[Content_Types].xml"] = xml_bytes(content_types_root)
     return None
 
 
@@ -1573,18 +2365,44 @@ def valid_text_style_values(value: dict[str, Any]) -> bool:
         return False
     if any(key in value and not isinstance(value.get(key), bool) for key in ("italic", "underline")):
         return False
-    color = value.get("color")
-    return color is None or isinstance(color, str) and valid_hex_color(color)
+    for color_name in ("color", "highlightColor"):
+        color = value.get(color_name)
+        if color is not None and (
+            not isinstance(color, str) or not valid_hex_color(color)
+        ):
+            return False
+    return True
 
 
 def valid_text_bullet(value: Any) -> bool:
-    return (
-        isinstance(value, dict)
-        and not set(value) - {"enabled", "character", "indent"}
-        and isinstance(value.get("enabled", False), bool)
-        and isinstance(value.get("character", "\u2022"), str)
-        and bool(value.get("character", "\u2022"))
-        and valid_nonnegative_number(value.get("indent", 0))
+    if not isinstance(value, dict) or set(value) - {
+        "enabled",
+        "character",
+        "indent",
+        "kind",
+        "numberStyle",
+        "startAt",
+    }:
+        return False
+    if not isinstance(value.get("enabled", False), bool):
+        return False
+    character = value.get("character", "\u2022")
+    if not isinstance(character, str) or not character:
+        return False
+    if not valid_nonnegative_number(value.get("indent", 0)):
+        return False
+    if value.get("kind") not in {None, "bullet", "number"}:
+        return False
+    if value.get("numberStyle") not in {
+        None,
+        "decimal",
+        "lower-alpha",
+        "upper-alpha",
+    }:
+        return False
+    start_at = value.get("startAt")
+    return start_at is None or (
+        isinstance(start_at, int) and not isinstance(start_at, bool) and start_at > 0
     )
 
 
@@ -1777,6 +2595,127 @@ def element_source_map(
         for source in slide.get("elementSources", [])
         if isinstance(source, dict) and source.get("elementId")
     }
+
+
+def shared_shape_operation_plan(
+    operations: list[dict[str, Any]],
+    sources: dict[tuple[str, str], dict[str, Any]],
+) -> tuple[set[int], PptxOoxmlUnsupportedOperation | None]:
+    cohorts: dict[tuple[str, str], dict[str, dict[str, Any]]] = {}
+    for source in sources.values():
+        slide_part = str(source.get("slidePart", ""))
+        shape_id = str(source.get("shapeId", ""))
+        element_id = str(source.get("elementId", ""))
+        if not slide_part or not shape_id or not element_id:
+            continue
+        cohorts.setdefault((slide_part, shape_id), {})[element_id] = source
+
+    shared_cohorts = {
+        cohort_key: members
+        for cohort_key, members in cohorts.items()
+        if len(members) > 1
+    }
+    operations_by_cohort: dict[tuple[str, str], list[tuple[int, dict[str, Any]]]] = {}
+    for operation_index, operation in enumerate(operations):
+        if operation.get("type") not in {"delete_element", "update_element_frame"}:
+            continue
+        source_key = (
+            str(operation.get("sourceSlidePart", "")),
+            operation_element_id(operation),
+        )
+        operation_source = sources.get(source_key)
+        if operation_source is None:
+            continue
+        cohort_key = (
+            str(operation_source.get("slidePart", "")),
+            str(operation_source.get("shapeId", "")),
+        )
+        if cohort_key in shared_cohorts:
+            operations_by_cohort.setdefault(cohort_key, []).append(
+                (operation_index, operation)
+            )
+
+    redundant_indexes: set[int] = set()
+    for cohort_key, indexed_operations in operations_by_cohort.items():
+        member_ids = set(shared_cohorts[cohort_key])
+        representative = indexed_operations[0][1]
+        member_count = len(member_ids)
+        if len(indexed_operations) % member_count != 0:
+            return (
+                set(),
+                unsupported_operation(
+                    representative,
+                    "SHARED_SHAPE_COHORT_UNSAFE",
+                ),
+            )
+        for round_start in range(0, len(indexed_operations), member_count):
+            operation_round = indexed_operations[
+                round_start : round_start + member_count
+            ]
+            round_representative = operation_round[0][1]
+            representative_type = round_representative.get("type")
+            representative_frame = round_representative.get("frame")
+            round_member_ids = {
+                operation_element_id(operation)
+                for _operation_index, operation in operation_round
+            }
+            unsafe = round_member_ids != member_ids or any(
+                operation.get("type") != representative_type
+                or (
+                    representative_type == "update_element_frame"
+                    and operation.get("frame") != representative_frame
+                )
+                for _operation_index, operation in operation_round[1:]
+            )
+            if unsafe:
+                return (
+                    set(),
+                    unsupported_operation(
+                        round_representative,
+                        "SHARED_SHAPE_COHORT_UNSAFE",
+                    ),
+                )
+            redundant_indexes.update(
+                operation_index for operation_index, _operation in operation_round[1:]
+            )
+
+    return redundant_indexes, None
+
+
+def motion_reference_failure(
+    operations: list[dict[str, Any]],
+    template_blueprint: dict[str, Any],
+    slide_motion: list[dict[str, Any]],
+) -> PptxOoxmlUnsupportedOperation | None:
+    coverage_by_slide_part = {
+        source_slide_part(slide): str(
+            dict_value(slide, "ooxmlMotionCapabilities").get(
+                "importedMainSequenceCoverage",
+                "unknown",
+            )
+        )
+        for slide in template_blueprint.get("slides", [])
+        if isinstance(slide, dict) and source_slide_part(slide)
+    }
+    animation_replacement_parts = {
+        str(item.get("sourceSlidePart", ""))
+        for item in slide_motion
+        if isinstance(item, dict)
+        and isinstance(item.get("touched"), dict)
+        and item["touched"].get("animations") is True
+    }
+    for operation in operations:
+        if operation.get("type") != "delete_element":
+            continue
+        slide_part = slide_part_for_operation(operation, template_blueprint)
+        if slide_part in animation_replacement_parts:
+            continue
+        if coverage_by_slide_part.get(slide_part, "unknown") != "absent":
+            return unsupported_operation(
+                operation,
+                "MOTION_REFERENCE_COVERAGE_UNSAFE",
+            )
+    return None
 
 
 def find_shape_by_id(
@@ -2337,16 +3276,13 @@ def apply_text_body_properties(
     props: dict[str, Any],
     scale: PackageFrameScale,
 ) -> None:
-    if (
-        "verticalAlign" not in props
-        and "writingMode" not in props
-        and "bodyInset" not in props
-    ):
-        return
     body_pr = first_local_child(body, "bodyPr")
     if body_pr is None:
         body_pr = ET.Element(f"{{{DML_NS}}}bodyPr")
         body.insert(0, body_pr)
+    body_pr.set("horzOverflow", "clip")
+    body_pr.set("vertOverflow", "clip")
+    body_pr.set("wrap", "square")
     if "verticalAlign" in props:
         body_pr.set(
             "anchor",
@@ -3931,6 +4867,74 @@ def slide_part_for_operation(
         if isinstance(slide, dict) and slide.get("slideId") == operation_slide_id
     ]
     return matches[0] if len(matches) == 1 else ""
+
+
+def source_slide_part(slide: dict[str, Any]) -> str:
+    explicit = str(slide.get("sourceSlidePart", ""))
+    if is_safe_slide_part(explicit):
+        return explicit
+    candidates = {
+        str(source.get("slidePart", ""))
+        for source in slide.get("elementSources", [])
+        if isinstance(source, dict)
+        and bool(source.get("writable", False))
+        and is_safe_slide_part(str(source.get("slidePart", "")))
+    }
+    return next(iter(candidates)) if len(candidates) == 1 else ""
+
+
+def route_operations_to_source_parts(
+    template_blueprint: dict[str, Any],
+    operations: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    slides = [
+        slide
+        for slide in template_blueprint.get("slides", [])
+        if isinstance(slide, dict)
+    ]
+    routed: list[dict[str, Any]] = []
+    for operation in operations:
+        if is_safe_slide_part(str(operation.get("sourceSlidePart", ""))):
+            routed.append(operation)
+            continue
+        operation_slide_index = slide_index_from_id(str(operation.get("slideId", "")))
+        slide = next(
+            (
+                candidate
+                for candidate in slides
+                if int_value(candidate.get("slideIndex"), 0) == operation_slide_index
+            ),
+            None,
+        )
+        if slide is None:
+            slide = next(
+                (
+                    candidate
+                    for candidate in slides
+                    if int_value(candidate.get("sourceSlideIndex"), 0)
+                    == operation_slide_index
+                ),
+                None,
+            )
+        slide_part = source_slide_part(slide) if slide is not None else ""
+        routed.append(
+            {**operation, **({"sourceSlidePart": slide_part} if slide_part else {})}
+        )
+    return routed
+
+
+def is_safe_slide_part(value: str) -> bool:
+    return (
+        value.startswith("ppt/slides/slide")
+        and value.endswith(".xml")
+        and "/" not in value.removeprefix("ppt/slides/")
+        and ".." not in value
+    )
+
+
+def slide_index_from_id(slide_id: str) -> int:
+    suffix = slide_id.rsplit("_", maxsplit=1)[-1]
+    return max(1, int_value(suffix, 1))
 
 
 def text_shape_element(

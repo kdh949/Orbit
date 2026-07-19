@@ -1,4 +1,8 @@
-import type { DeckAnimation, DeckElement } from "@orbit/shared";
+import type {
+  DeckAnimation,
+  DeckAnimationStartMode,
+  DeckElement
+} from "@orbit/shared";
 import type { AnimationKeywordTriggerOption } from "./models";
 
 export type SupportedAnimationType = "fade-in" | "fade-out";
@@ -10,15 +14,18 @@ export type AnimationPanelMode =
 export type AnimationDraftInput = {
   delayMs: number;
   durationMs: number;
+  startMode: DeckAnimationStartMode;
   type: DeckAnimation["type"];
 };
 
 export type AnimationTimingDraft = Omit<AnimationDraftInput, "type">;
 
 export type AnimationEditorPanelProps = {
+  actionAnimationIds?: Iterable<string>;
   animations: DeckAnimation[];
   canCreateAnimation: boolean;
   element: DeckElement | null;
+  mutationDisabledReason?: string | null;
   keywordOptions: AnimationKeywordTriggerOption[];
   keywordTriggerRestrictionMessage?: string | null;
   keywordTriggerWarningMessage?: string | null;

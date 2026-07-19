@@ -34,7 +34,7 @@ export const rehearsalVolumeIssueSegmentSchema = z
 
 export const rehearsalVolumeAnalysisSchema = z
   .object({
-    metricDefinitionVersion: z.literal(1),
+    metricDefinitionVersion: z.union([z.literal(1), z.literal(2)]),
     measurementState: z.enum(["measured", "unmeasured"]),
     reasonCode: rehearsalVolumeAnalysisReasonCodeSchema.nullable(),
     averageDbfs: z.number().finite().nullable(),
@@ -45,6 +45,26 @@ export const rehearsalVolumeAnalysisSchema = z
   })
   .strict()
   .superRefine((analysis, context) => {
+    if (analysis.metricDefinitionVersion === 2) {
+      if (analysis.issueSegments.length > 5) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "volume metric version 2 allows at most five representative segments.",
+          path: ["issueSegments"],
+        });
+      }
+      analysis.issueSegments.forEach((segment, index) => {
+        if (segment.durationSeconds < 2) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "volume metric version 2 requires segments of at least two seconds.",
+            path: ["issueSegments", index, "durationSeconds"],
+          });
+        }
+      });
+    }
     const metricValues = [
       analysis.averageDbfs,
       analysis.baselineDbfs,
@@ -117,25 +137,18 @@ export const rehearsalSilenceSegmentSchema = z
         path: ["durationSeconds"],
       });
     }
-    if (segment.durationSeconds >= 1 !== (segment.category === "long")) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "silence category must match its duration.",
-        path: ["category"],
-      });
-    }
   });
 
 export const rehearsalSilenceAnalysisSchema = z
   .object({
-    metricDefinitionVersion: z.literal(1),
+    metricDefinitionVersion: z.union([z.literal(1), z.literal(2)]),
     measurementState: z.enum(["measured", "unmeasured"]),
     reasonCode: rehearsalSilenceAnalysisReasonCodeSchema.nullable(),
     detector: z.literal("silero-vad"),
     detectorVersion: z.string().min(1),
     speechThreshold: z.literal(0.5),
     minimumSilenceMs: z.literal(250),
-    longSilenceMs: z.literal(1000),
+    longSilenceMs: z.union([z.literal(1000), z.literal(5000)]),
     analysisWindowStartSeconds: z.number().finite().nonnegative().nullable(),
     analysisWindowEndSeconds: z.number().finite().nonnegative().nullable(),
     totalSilenceSeconds: z.number().finite().nonnegative().nullable(),
@@ -147,6 +160,28 @@ export const rehearsalSilenceAnalysisSchema = z
   })
   .strict()
   .superRefine((analysis, context) => {
+    const expectedLongSilenceMs =
+      analysis.metricDefinitionVersion === 1 ? 1000 : 5000;
+    if (analysis.longSilenceMs !== expectedLongSilenceMs) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "silence threshold must match its metric definition version.",
+        path: ["longSilenceMs"],
+      });
+    }
+    const longSilenceSeconds = analysis.longSilenceMs / 1000;
+    analysis.segments.forEach((segment, index) => {
+      if (
+        segment.durationSeconds >= longSilenceSeconds !==
+        (segment.category === "long")
+      ) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "silence category must match its duration.",
+          path: ["segments", index, "category"],
+        });
+      }
+    });
     const metricValues = [
       analysis.analysisWindowStartSeconds,
       analysis.analysisWindowEndSeconds,

@@ -408,7 +408,7 @@ function deliveryReason(
       : `습관어 ${insight.fillerWordCount}회`,
     !includeSilence || insight.longSilenceCount === null
       ? null
-      : `1초 이상 침묵 ${insight.longSilenceCount}회`,
+      : `5초 이상 발화 없음 ${insight.longSilenceCount}회`,
   ].filter((detail): detail is string => detail !== null);
   return `${prefix} ${details.join(", ")}가 기록됐습니다.`;
 }

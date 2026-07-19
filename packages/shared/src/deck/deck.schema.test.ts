@@ -62,6 +62,11 @@ type DeckValidationInput = {
     title: string;
     thumbnailUrl: string;
     estimatedSeconds?: number;
+    transition?: {
+      type: "fade";
+      durationMs: number;
+    };
+    ooxmlSourceSlidePart?: string;
     style: Record<string, unknown>;
     speakerNotes: string;
     aiNotes?: {
@@ -138,6 +143,11 @@ type DeckValidationInput = {
       elementId: string;
       type: string;
       order: number;
+      startMode?:
+        | "on-slide-enter"
+        | "on-click"
+        | "with-previous"
+        | "after-previous";
       durationMs: number;
       delayMs: number;
       easing: string;
@@ -1821,6 +1831,77 @@ describe("deckSchema validation", () => {
     expectInvalidDeck(deck);
   });
 
+  it("accepts an optional fade transition and every animation start mode", () => {
+    const deck = createValidDeck();
+    deck.slides[0].transition = { type: "fade", durationMs: 700 };
+    deck.slides[0].animations = [
+      "on-slide-enter",
+      "on-click",
+      "with-previous",
+      "after-previous"
+    ].map((startMode, index) => ({
+      ...deck.slides[0].animations[0],
+      animationId: `anim_${index + 1}`,
+      order: index + 1,
+      startMode: startMode as
+        | "on-slide-enter"
+        | "on-click"
+        | "with-previous"
+        | "after-previous"
+    }));
+
+    const parsed = deckSchema.parse(deck);
+
+    expect(parsed.slides[0].transition).toEqual({
+      type: "fade",
+      durationMs: 700
+    });
+    expect(
+      parsed.slides[0].animations.map((animation) => animation.startMode)
+    ).toEqual([
+      "on-slide-enter",
+      "on-click",
+      "with-previous",
+      "after-previous"
+    ]);
+  });
+
+  it("keeps legacy animation startMode absent for contextual migration", () => {
+    const parsed = deckSchema.parse(createValidDeck());
+
+    expect(parsed.slides[0].transition).toBeUndefined();
+    expect(parsed.slides[0].animations[0].startMode).toBeUndefined();
+  });
+
+  it("accepts only a stable OOXML source slide part locator", () => {
+    const deck = createValidDeck();
+    deck.slides[0].ooxmlSourceSlidePart = "ppt/slides/slide3.xml";
+
+    expect(deckSchema.parse(deck).slides[0].ooxmlSourceSlidePart).toBe(
+      "ppt/slides/slide3.xml"
+    );
+
+    deck.slides[0].ooxmlSourceSlidePart = "../slide3.xml";
+    expectInvalidDeck(deck);
+  });
+
+  it.each([
+    { transition: { type: "push", durationMs: 700 }, name: "type" },
+    { transition: { type: "fade", durationMs: 0 }, name: "duration" }
+  ])("rejects an invalid slide transition $name", ({ transition }) => {
+    const deck = createValidDeck();
+    deck.slides[0].transition = transition as never;
+
+    expectInvalidDeck(deck);
+  });
+
+  it("rejects an invalid animation start mode", () => {
+    const deck = createValidDeck();
+    deck.slides[0].animations[0].startMode = "same-time" as never;
+
+    expectInvalidDeck(deck);
+  });
+
   it("rejects invalid element opacity", () => {
     const deck = createValidDeck();
 
@@ -1857,6 +1938,68 @@ describe("deckPatchSchema validation", () => {
     };
 
     expect(deckPatchSchema.safeParse(patch).success).toBe(true);
+  });
+
+  it("accepts setting and clearing a transition and updating startMode", () => {
+    const setPatch: unknown = {
+      ...createValidPatch(),
+      operations: [
+        {
+          type: "update_slide_transition",
+          slideId: "slide_1",
+          transition: { type: "fade", durationMs: 700 }
+        },
+        {
+          type: "update_animation",
+          slideId: "slide_1",
+          animationId: "anim_1",
+          animation: { startMode: "after-previous" }
+        }
+      ]
+    };
+    const clearPatch: unknown = {
+      ...createValidPatch(),
+      operations: [
+        {
+          type: "update_slide_transition",
+          slideId: "slide_1",
+          transition: null
+        }
+      ]
+    };
+
+    expect(deckPatchSchema.safeParse(setPatch).success).toBe(true);
+    expect(deckPatchSchema.safeParse(clearPatch).success).toBe(true);
+  });
+
+  it("rejects unsupported transition and animation startMode patches", () => {
+    const patches: unknown[] = [
+      {
+        ...createValidPatch(),
+        operations: [
+          {
+            type: "update_slide_transition",
+            slideId: "slide_1",
+            transition: { type: "push", durationMs: 700 }
+          }
+        ]
+      },
+      {
+        ...createValidPatch(),
+        operations: [
+          {
+            type: "update_animation",
+            slideId: "slide_1",
+            animationId: "anim_1",
+            animation: { startMode: "same-time" }
+          }
+        ]
+      }
+    ];
+
+    expect(
+      patches.every((patch) => !deckPatchSchema.safeParse(patch).success)
+    ).toBe(true);
   });
 
   it("rejects replace keyword patches with duplicate keyword IDs", () => {

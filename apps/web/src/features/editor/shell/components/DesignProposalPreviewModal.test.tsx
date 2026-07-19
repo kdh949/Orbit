@@ -29,5 +29,8 @@ describe("DesignProposalPreviewModal", () => {
     expect(html).toContain("design-proposal-stage-shell");
     expect(html).toContain("background-color:#0000FF");
     expect(html).toContain('data-testid="proposal-canvas"');
+    expect(html).toContain("redesign-icon-button");
+    expect(html).toContain("redesign-button-secondary");
+    expect(html).toContain("redesign-button-primary");
   });
 });

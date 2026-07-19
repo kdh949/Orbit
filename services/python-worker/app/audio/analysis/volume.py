@@ -20,9 +20,9 @@ ABSOLUTE_ACTIVE_THRESHOLD_DBFS = -55.0
 RELATIVE_ACTIVE_RANGE_DB = 35.0
 ISSUE_DEVIATION_DB = 6.0
 MINIMUM_ACTIVE_SECONDS = 1.0
-MINIMUM_ISSUE_SECONDS = 1.0
-MERGE_GAP_SECONDS = 0.3
-MAXIMUM_ISSUE_SEGMENTS = 100
+MINIMUM_ISSUE_SECONDS = 2.0
+MERGE_GAP_SECONDS = 1.0
+MAXIMUM_ISSUE_SEGMENTS = 5
 RMS_FLOOR = 1e-10
 VolumeIssueKind = Literal["quiet", "loud"]
 
@@ -71,7 +71,7 @@ def analyze_volume(decoded_audio: DecodedAudio) -> RehearsalVolumeAnalysis:
     )
 
     return RehearsalVolumeAnalysis(
-        metricDefinitionVersion=1,
+        metricDefinitionVersion=2,
         measurementState="measured",
         reasonCode=None,
         averageDbfs=round(float(_rms_to_dbfs(np.mean(active_frame_rms))), 2),
@@ -100,12 +100,12 @@ def _build_issue_segments(
     baseline_dbfs: float,
 ) -> list[VolumeIssueSegment]:
     issue_kinds = np.full(frame_dbfs.shape, "", dtype=object)
-    issue_kinds[active_frame_mask & (frame_dbfs < baseline_dbfs - ISSUE_DEVIATION_DB)] = (
-        "quiet"
-    )
-    issue_kinds[active_frame_mask & (frame_dbfs > baseline_dbfs + ISSUE_DEVIATION_DB)] = (
-        "loud"
-    )
+    issue_kinds[
+        active_frame_mask & (frame_dbfs < baseline_dbfs - ISSUE_DEVIATION_DB)
+    ] = "quiet"
+    issue_kinds[
+        active_frame_mask & (frame_dbfs > baseline_dbfs + ISSUE_DEVIATION_DB)
+    ] = "loud"
 
     candidates: list[_IssueCandidate] = []
     for frame_index, kind_value in enumerate(issue_kinds):
@@ -114,8 +114,7 @@ def _build_issue_segments(
         kind = cast(VolumeIssueKind, kind_value)
         start_seconds = frame_index * HOP_LENGTH / decoded_audio.sample_rate_hz
         end_seconds = min(
-            (frame_index * HOP_LENGTH + FRAME_LENGTH)
-            / decoded_audio.sample_rate_hz,
+            (frame_index * HOP_LENGTH + FRAME_LENGTH) / decoded_audio.sample_rate_hz,
             decoded_audio.duration_seconds,
         )
         deviation_db = float(frame_dbfs[frame_index] - baseline_dbfs)
@@ -173,7 +172,14 @@ def _finalize_issue_segments(
                 meanDeviationDb=round(float(np.mean(candidate.deviations_db)), 2),
             )
         )
-        if len(issue_segments) >= MAXIMUM_ISSUE_SEGMENTS:
-            break
 
-    return issue_segments
+    representative_segments = sorted(
+        issue_segments,
+        key=lambda segment: (
+            segment.duration_seconds * abs(segment.mean_deviation_db),
+            segment.duration_seconds,
+            abs(segment.mean_deviation_db),
+        ),
+        reverse=True,
+    )[:MAXIMUM_ISSUE_SEGMENTS]
+    return sorted(representative_segments, key=lambda segment: segment.start_seconds)

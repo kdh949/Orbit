@@ -7,6 +7,7 @@ type EditorSaveControlProps = {
   lastSavedAtLabel: string | null;
   onSave: () => void;
   recoveryHint?: string | null;
+  retrying?: boolean;
   statusLabel: string;
 };
 
@@ -18,16 +19,18 @@ export function EditorSaveControl(props: EditorSaveControlProps) {
     lastSavedAtLabel,
     onSave,
     recoveryHint = null,
+    retrying = false,
     statusLabel
   } = props;
+  const actionLabel = isSaving ? "저장 중" : retrying ? "저장 재시도" : "저장";
 
   return (
     <div className="editor-save-control">
       <button
-        aria-label={isSaving ? "저장 중" : "저장"}
+        aria-label={actionLabel}
         className="editor-save-button"
         disabled={disabled || isSaving}
-        title={isSaving ? "저장 중" : "저장"}
+        title={actionLabel}
         type="button"
         onClick={onSave}
       >

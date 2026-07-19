@@ -689,6 +689,9 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       (job) => this.processJob(queueName, job, () => handler(job)),
       {
         connection: redisConnectionOptions(this.config.REDIS_URL),
+        ...(queueName === slideQuestionGuideGenerationQueueName
+          ? { concurrency: 2 }
+          : {}),
       },
     );
 

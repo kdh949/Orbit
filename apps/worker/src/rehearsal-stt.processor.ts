@@ -365,6 +365,11 @@ export async function processRehearsalSttJob(
         body: JSON.stringify({
           runId: payload.runId,
           projectId: payload.projectId,
+          pronunciationContext: deckContext.evaluationSnapshot
+            ? buildTranscriptionPronunciationContext(
+                deckContext.evaluationSnapshot,
+              )
+            : [],
           audio: {
             fileId: payload.audioFileId,
             storageUrl,
@@ -586,6 +591,33 @@ export async function processRehearsalSttJob(
   return completedJob;
 }
 
+export function buildTranscriptionPronunciationContext(
+  snapshot: Pick<RehearsalEvaluationSnapshot, "pronunciationLexicon">,
+  limit: number = 32,
+) {
+  const context: Array<{ source: string; aliases: string[] }> = [];
+  const boundedLimit = Math.max(0, Math.min(limit, 32));
+
+  for (const entry of snapshot.pronunciationLexicon?.entries ?? []) {
+    if (context.length >= boundedLimit) {
+      break;
+    }
+    if (entry.status !== "active") {
+      continue;
+    }
+    const aliases = entry.aliases
+      .filter((alias) => alias.enabled && alias.confidence >= 0.8)
+      .slice(0, 2)
+      .map((alias) => alias.text);
+    if (aliases.length === 0) {
+      continue;
+    }
+    context.push({ source: entry.sourceText, aliases });
+  }
+
+  return context;
+}
+
 function buildRehearsalReport(
   payload: RehearsalSttPayload,
   transcription: RehearsalAudioProcessingResponse,
@@ -595,6 +627,20 @@ function buildRehearsalReport(
   runMeta: RehearsalRunMeta,
   semanticResult: SemanticAnalysisResult,
 ): RehearsalReport {
+  const requiredKeywordCount = deckContext.deckKeywords.filter(
+    (keyword) => keyword.required,
+  ).length;
+  const hasTimestampedTranscriptSegments = transcription.segments.some(
+    (segment) =>
+      segment.startSeconds != null &&
+      segment.endSeconds != null &&
+      segment.endSeconds >= segment.startSeconds,
+  );
+  const canMeasureRequiredKeywords =
+    requiredKeywordCount > 0 &&
+    hasTimestampedTranscriptSegments &&
+    buildAnalyzeSlideTimeline(deckContext, runMeta).length > 0;
+
   return rehearsalReportSchema.parse({
     reportId: `report_${payload.runId}`,
     runId: payload.runId,
@@ -612,12 +658,17 @@ function buildRehearsalReport(
       keywordCoverage: analysis.keywordCoverage,
       measurements: buildReportMeasurements(
         transcription,
-        deckContext.deckKeywords.length > 0,
+        requiredKeywordCount > 0,
       ),
       keywordCoverageMeasurement:
-        deckContext.deckKeywords.length === 0
+        requiredKeywordCount === 0
           ? { state: "unmeasured", reason: "no-keywords" }
-          : { state: "measured" },
+          : canMeasureRequiredKeywords
+            ? { state: "measured" }
+            : {
+                state: "unmeasured",
+                reason: "transcript-incomplete",
+              },
     },
     speedSamples: analysis.speedSamples,
     fillerWordDetails: analysis.fillerWordDetails,
@@ -678,16 +729,21 @@ async function analyzeTranscript(
     language: transcription.language,
     durationSeconds: transcription.durationSeconds ?? 0,
     segments: transcription.segments,
-    deckKeywords: deckContext.deckKeywords.map(
-      ({ keywordId, slideId, text, synonyms, abbreviations, required }) => ({
-        keywordId,
-        slideId,
-        text,
-        synonyms,
-        abbreviations,
-        required,
-      }),
-    ),
+    deckKeywords: deckContext.deckKeywords
+      .filter((keyword) => keyword.required)
+      .map(
+        ({ keywordId, slideId, text, synonyms, abbreviations, required }) => ({
+          keywordId,
+          slideId,
+          text,
+          synonyms,
+          abbreviations,
+          required,
+        }),
+      ),
+    pronunciationContext: deckContext.evaluationSnapshot
+      ? buildTranscriptionPronunciationContext(deckContext.evaluationSnapshot)
+      : [],
     slideTimeline: buildAnalyzeSlideTimeline(deckContext, runMeta),
     silenceAnalysis: transcription.silenceAnalysis,
   });
@@ -746,10 +802,15 @@ function buildReportMeasurements(
     wordsPerMinute: measured,
     fillerWordCount: measured,
     longSilenceCount: silenceMeasured
-      ? measured
+      ? {
+          ...measured,
+          metricDefinitionVersion:
+            transcription.silenceAnalysis.metricDefinitionVersion,
+        }
       : {
           measurementState: "unmeasured" as const,
-          metricDefinitionVersion: 1,
+          metricDefinitionVersion:
+            transcription.silenceAnalysis.metricDefinitionVersion,
           reasonCode: "AUDIO_ANALYSIS_UNAVAILABLE" as const,
         },
     keywordCoverage: hasKeywords

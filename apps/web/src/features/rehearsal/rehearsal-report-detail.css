@@ -19,7 +19,6 @@
 .rrd-report-panel { display: grid; gap: var(--redesign-space-4); }
 .rrd-report-panel[hidden] { display: none; }
 .rrd-root .rrd-card { background: var(--redesign-color-light-surface); border: 1px solid var(--redesign-color-outline-variant); border-radius: var(--redesign-radius-xl); box-shadow: var(--redesign-shadow-none); margin: 0; padding: var(--redesign-space-5); }
-.rrd-root .rrd-ai-card { background: var(--redesign-color-secondary-container); border-color: var(--redesign-color-secondary-container); }
 .rrd-top-overview { align-items: stretch; display: grid; gap: var(--redesign-space-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .rrd-top-overview > .rrd-card,
 .rrd-top-overview > .practice-report-summary { box-sizing: border-box; height: 100%; margin: 0; min-width: 0; }
@@ -32,8 +31,6 @@
 .rrd-top-overview > .practice-report-summary .redesign-status { white-space: nowrap; }
 .rrd-top-overview > .practice-report-summary .practice-pass-marks { flex-wrap: nowrap; }
 .rrd-top-overview > .practice-report-summary .practice-pass-marks > span { flex: 0 0 34px; }
-.rrd-top-overview .rrd-ai-insights { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.rrd-top-overview .rrd-ai-insight { gap: var(--redesign-space-2); padding: var(--redesign-space-3); }
 .rrd-root .rrd-card-head { align-items: center; border-bottom: 1px solid var(--redesign-color-outline-variant); display: flex; gap: var(--redesign-space-2); margin-bottom: var(--redesign-space-4); padding-bottom: var(--redesign-space-3); }
 .rrd-root .rrd-card-head h2 { font-size: var(--redesign-type-title-lg-size); margin: 0; }
 .rrd-root .rrd-summary-block, .rrd-root .rrd-overview-metric, .rrd-root .rrd-utterance-group, .rrd-root .rrd-coaching-focus { border-radius: var(--redesign-radius-xl); }

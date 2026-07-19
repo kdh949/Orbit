@@ -18,6 +18,7 @@ import {
 import { ActivityEditorOperationsPanel } from "./ActivityEditorOperationsPanel";
 import { ActivitySlidePreview } from "./ActivitySlidePreview";
 import { ActivitySpecialSlideThumbnail } from "./ActivitySpecialSlideThumbnail";
+import { startSequentialPolling } from "../model/sequentialPolling";
 import {
   ActivityResultSlideInspector,
   findCurrentActivityResult,
@@ -283,6 +284,30 @@ describe("activity slide editor", () => {
         .activityRunId
     ).toBe("activity_run_current");
     expect(findCurrentActivityResult(runs, "activity_other")).toBeNull();
+  });
+
+  it("waits for a slow refresh before scheduling the next editor poll", async () => {
+    vi.useFakeTimers();
+    let resolveRefresh: (() => void) | undefined;
+    const refresh = vi.fn()
+      .mockImplementationOnce(() => new Promise<void>((resolve) => {
+        resolveRefresh = resolve;
+      }))
+      .mockResolvedValue(undefined);
+    const stopPolling = startSequentialPolling(refresh, 2_000);
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(refresh).toHaveBeenCalledTimes(1);
+
+    resolveRefresh?.();
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(1_999);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(refresh).toHaveBeenCalledTimes(2);
+
+    stopPolling();
+    vi.useRealTimers();
   });
 
   function sessionResultItem(

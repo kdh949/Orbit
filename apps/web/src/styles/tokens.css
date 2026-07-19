@@ -247,6 +247,7 @@
   --redesign-shadow-inset-subtle: inset 0 0 0 1px color-mix(in srgb, var(--redesign-color-primary) 4%, transparent);
   --redesign-shadow-inset-primary: inset 0 0 0 1px var(--redesign-color-primary);
   --redesign-shadow-inset-primary-emphasis: inset 0 0 0 1px var(--redesign-color-primary-emphasis);
+  --redesign-shadow-inset-secondary: inset 0 0 0 1px var(--redesign-color-secondary-fixed-dim);
   --redesign-shadow-inset-primary-start: inset 2px 0 0 var(--redesign-color-primary);
   --redesign-shadow-inset-primary-top: inset 0 3px 0 var(--redesign-color-primary-emphasis);
   --redesign-shadow-inset-primary-bottom: inset 0 -1px var(--redesign-color-primary);

@@ -7,9 +7,7 @@ import {
   createSlideshowAnimationPlan
 } from "./slideshowStepModel";
 import {
-  createSlideshowEntryTransitionTimeline,
   getSlideshowTransitionDurationMs,
-  maxTransitionDurationMs,
   type SlideshowTransitionAnimation
 } from "./slideshowTransitionTiming";
 
@@ -39,6 +37,15 @@ export function useSlideshowTransitions(args: {
       }),
     [args.slide, triggerAnimationIds]
   );
+  const initialEntryPlan = useMemo(
+    () =>
+      createSlideshowAnimationPlan({
+        slide: args.slide,
+        transitionDurationMs: 0,
+        triggerAnimationIds
+      }),
+    [args.slide, triggerAnimationIds]
+  );
   const targetStates = useMemo(
     () =>
       computeSettledElementStates({
@@ -53,18 +60,20 @@ export function useSlideshowTransitions(args: {
     () => createBaseElementStates(args.deck, args.slide),
     [args.deck, args.slide]
   );
-  const [displayStates, setDisplayStates] = useState(() =>
-    !args.reducedMotion &&
-    playInitialEntryAnimations &&
-    args.stepIndex === 0 &&
-    plan.entryAnimations.length > 0
-      ? createSlideshowTransitionStartStates(
-          targetStates,
-          createSlideshowEntryTransitionTimeline(plan.entryAnimations),
-          baseStates
-        )
-      : targetStates
-  );
+  const [displayFrame, setDisplayFrame] = useState(() => ({
+    slideId: args.slide.slideId,
+    states:
+      !args.reducedMotion &&
+      playInitialEntryAnimations &&
+      args.stepIndex === 0 &&
+      initialEntryPlan.entryAnimations.length > 0
+        ? createSlideshowTransitionStartStates(
+            targetStates,
+            initialEntryPlan.entryAnimations,
+            baseStates
+          )
+        : targetStates
+  }));
   const previousAddressRef = useRef<{
     slideId: string;
     stepIndex: number;
@@ -95,8 +104,9 @@ export function useSlideshowTransitions(args: {
     const shouldPlaySlideEntry = isSlideChange && args.stepIndex === 0;
     const stepDelta =
       previousAddress === null ? 0 : args.stepIndex - previousAddress.stepIndex;
+    const activePlan = isInitialEntry ? initialEntryPlan : plan;
     const transitionAnimations = isInitialEntry || shouldPlaySlideEntry
-      ? createSlideshowEntryTransitionTimeline(plan.entryAnimations)
+      ? activePlan.entryAnimations
       : stepDelta === 1
         ? plan.triggerSteps[args.stepIndex - 1]?.animations ?? []
         : [];
@@ -107,7 +117,7 @@ export function useSlideshowTransitions(args: {
       transitionAnimations.length === 0 ||
       !shouldPlayTransition
     ) {
-      setDisplayStates(targetStates);
+      setDisplayFrame({ slideId: args.slide.slideId, states: targetStates });
       return;
     }
 
@@ -119,26 +129,28 @@ export function useSlideshowTransitions(args: {
     const durationMs = getSlideshowTransitionDurationMs(transitionAnimations);
     const startedAt = performance.now();
 
-    setDisplayStates(startStates);
+    setDisplayFrame({ slideId: args.slide.slideId, states: startStates });
 
     const tick = (now: number) => {
       const progress = Math.min(1, (now - startedAt) / durationMs);
 
-      setDisplayStates(
-        interpolateSlideshowTransitionStates({
+      setDisplayFrame({
+        slideId: args.slide.slideId,
+        states: interpolateSlideshowTransitionStates({
           animations: transitionAnimations,
+          baseStates,
           progress,
           startStates,
           targetStates,
           transitionDurationMs: durationMs
         })
-      );
+      });
 
       if (progress < 1) {
         frameRef.current = requestAnimationFrame(tick);
       } else {
         frameRef.current = null;
-        setDisplayStates(targetStates);
+        setDisplayFrame({ slideId: args.slide.slideId, states: targetStates });
       }
     };
 
@@ -155,6 +167,7 @@ export function useSlideshowTransitions(args: {
     args.slide.slideId,
     args.stepIndex,
     baseStates,
+    initialEntryPlan,
     plan,
     playInitialEntryAnimations,
     targetStates
@@ -162,9 +175,45 @@ export function useSlideshowTransitions(args: {
 
   return {
     animationPlan: plan,
-    elementStates: displayStates,
+    elementStates: resolveSlideshowDisplayStates({
+      baseStates,
+      displaySlideId: displayFrame.slideId,
+      displayStates: displayFrame.states,
+      entryAnimations: plan.entryAnimations,
+      reducedMotion: args.reducedMotion,
+      slideId: args.slide.slideId,
+      stepIndex: args.stepIndex,
+      targetStates
+    }),
     settledElementStates: targetStates
   };
+}
+
+export function resolveSlideshowDisplayStates(args: {
+  baseStates: Record<string, ElementPresentationState>;
+  displaySlideId: string;
+  displayStates: Record<string, ElementPresentationState>;
+  entryAnimations: SlideshowTransitionAnimation[];
+  reducedMotion: boolean;
+  slideId: string;
+  stepIndex: number;
+  targetStates: Record<string, ElementPresentationState>;
+}) {
+  if (args.displaySlideId === args.slideId) {
+    return args.displayStates;
+  }
+  if (
+    !args.reducedMotion &&
+    args.stepIndex === 0 &&
+    args.entryAnimations.length > 0
+  ) {
+    return createSlideshowTransitionStartStates(
+      args.targetStates,
+      args.entryAnimations,
+      args.baseStates
+    );
+  }
+  return args.targetStates;
 }
 
 export function createSlideshowTransitionStartStates(
@@ -173,13 +222,18 @@ export function createSlideshowTransitionStartStates(
   referenceStates: Record<string, ElementPresentationState> = targetStates
 ) {
   const states = cloneElementStates(targetStates);
+  const initializedElementIds = new Set<string>();
 
   for (const animation of animations) {
+    if (initializedElementIds.has(animation.elementId)) {
+      continue;
+    }
     const state = states[animation.elementId];
 
     if (!state) {
       continue;
     }
+    initializedElementIds.add(animation.elementId);
     const referenceState = referenceStates[animation.elementId] ?? state;
 
     switch (animation.type) {
@@ -214,51 +268,76 @@ export function createSlideshowTransitionStartStates(
 
 export function interpolateSlideshowTransitionStates(args: {
   animations: SlideshowTransitionAnimation[];
+  baseStates?: Record<string, ElementPresentationState>;
   progress: number;
   startStates: Record<string, ElementPresentationState>;
   targetStates: Record<string, ElementPresentationState>;
   transitionDurationMs?: number;
 }) {
-  const states = cloneElementStates(args.targetStates);
+  if (args.progress >= 1) {
+    return cloneElementStates(args.targetStates);
+  }
+
+  const states = cloneElementStates(args.startStates);
   const transitionDurationMs =
     args.transitionDurationMs ?? getSlideshowTransitionDurationMs(args.animations);
 
   for (const animation of args.animations) {
-    const start = args.startStates[animation.elementId];
-    const target = args.targetStates[animation.elementId];
     const state = states[animation.elementId];
 
-    if (!start || !target || !state) {
+    if (!state) {
       continue;
     }
 
     const progress = applyDelay(animation, args.progress, transitionDurationMs);
+    if (progress <= 0) {
+      continue;
+    }
+    const base =
+      args.baseStates?.[animation.elementId] ??
+      args.targetStates[animation.elementId] ??
+      state;
+    const start = { ...state };
 
     switch (animation.type) {
       case "appear":
       case "fade-in":
+        state.visible = true;
+        state.opacity = lerp(start.opacity ?? 0, base.opacity ?? 1, progress);
+        if (progress >= 1) {
+          state.visible = true;
+        }
+        break;
       case "disappear":
       case "fade-out":
         state.visible = true;
-        state.opacity = lerp(start.opacity ?? 1, target.opacity ?? 1, progress);
+        state.opacity = lerp(start.opacity ?? base.opacity ?? 1, 0, progress);
         if (progress >= 1) {
-          state.visible = target.visible;
+          state.visible = false;
         }
         break;
       case "zoom-in":
+        state.visible = true;
+        state.opacity = lerp(start.opacity ?? 0, base.opacity ?? 1, progress);
+        state.scaleX = lerp(start.scaleX ?? 0, 1, progress);
+        state.scaleY = lerp(start.scaleY ?? 0, 1, progress);
+        if (progress >= 1) {
+          state.visible = true;
+        }
+        break;
       case "zoom-out":
         state.visible = true;
-        state.opacity = lerp(start.opacity ?? 1, target.opacity ?? 1, progress);
-        state.scaleX = lerp(start.scaleX ?? 1, target.scaleX ?? 1, progress);
-        state.scaleY = lerp(start.scaleY ?? 1, target.scaleY ?? 1, progress);
+        state.opacity = lerp(start.opacity ?? base.opacity ?? 1, 0, progress);
+        state.scaleX = lerp(start.scaleX ?? base.scaleX ?? 1, 0, progress);
+        state.scaleY = lerp(start.scaleY ?? base.scaleY ?? 1, 0, progress);
         if (progress >= 1) {
-          state.visible = target.visible;
+          state.visible = false;
         }
         break;
       case "rotate":
-        state.rotation = (target.rotation ?? 0) + 360 * progress;
+        state.rotation = (start.rotation ?? base.rotation ?? 0) + 360 * progress;
         if (progress >= 1) {
-          state.rotation = target.rotation;
+          state.rotation = base.rotation;
         }
         break;
     }
@@ -280,7 +359,7 @@ function applyDelay(
   );
   const effectiveDurationMs = Math.max(
     1,
-    Math.min(animation.durationMs, maxTransitionDurationMs)
+    animation.durationMs
   );
   const delayedProgress =
     (elapsedMs - effectiveDelayMs) / effectiveDurationMs;

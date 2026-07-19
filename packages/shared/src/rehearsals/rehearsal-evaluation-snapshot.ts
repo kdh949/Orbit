@@ -5,6 +5,7 @@ import {
 } from "./rehearsal.schema";
 import type { RehearsalEvaluationPlan } from "../coaching/evaluator-lens.schema";
 import type { RehearsalFocusProfileSnapshot } from "../coaching/rehearsal-focus-profile.schema";
+import { generatePronunciationLexicon } from "../pronunciation/generate-pronunciation-lexicon";
 
 export function createRehearsalEvaluationSnapshot(
   deck: Deck,
@@ -27,6 +28,7 @@ export function createRehearsalEvaluationSnapshot(
     deckContentHash: options.deckContentHash ?? null,
     evaluationPlan: options.evaluationPlan ?? null,
     focusProfileSnapshot: options.focusProfileSnapshot ?? null,
+    pronunciationLexicon: generatePronunciationLexicon(deck),
     capturedAt,
     slides: deck.slides.map((slide) => ({
       slideId: slide.slideId,

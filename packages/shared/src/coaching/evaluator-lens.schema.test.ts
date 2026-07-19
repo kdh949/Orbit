@@ -48,4 +48,24 @@ describe("rehearsalEvaluationPlanSchema", () => {
     expect(JSON.stringify(plan)).not.toContain("speakerNotes");
     expect(JSON.stringify(plan)).not.toContain("transcript");
   });
+
+  it("accepts the five-second silence metric definition", () => {
+    const result = rehearsalEvaluationPlanSchema.safeParse({
+      planVersion: 1,
+      briefRef: { mode: "generic" },
+      evaluatorLensRef: { lensId: "general-novice", revision: 1 },
+      targetDurationSeconds: 600,
+      criteria: [],
+      metricDefinitionVersions: {
+        timing: 1,
+        filler: 1,
+        silence: 2,
+        semantic: 1,
+      },
+      approvedReferences: [],
+      practiceGoalSetRef: null,
+    });
+
+    expect(result.success).toBe(true);
+  });
 });

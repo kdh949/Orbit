@@ -3,6 +3,7 @@ import type Konva from "konva";
 import { IconX as X } from "@tabler/icons-react";
 import { useRef } from "react";
 import { createPortal } from "react-dom";
+import { OrbitButton, OrbitIconButton } from "../../../../components/ui";
 import { buildSlideBackgroundStyle } from "../../../slides/rendering/SlideBackground";
 import {
   EditableCanvas,
@@ -26,7 +27,7 @@ export function DesignProposalPreviewModal(
   const slide = props.deck.slides.find((item) => item.slideId === props.slideId);
   if (!slide) return null;
 
-  const scale = Math.min(0.42, 760 / props.deck.canvas.width);
+  const scale = Math.min(0.36, 680 / props.deck.canvas.width);
   const content = (
     <div
       className="design-proposal-modal-backdrop"
@@ -45,9 +46,14 @@ export function DesignProposalPreviewModal(
             <strong>이렇게 적용해볼까요?</strong>
             <span>{props.summary}</span>
           </div>
-          <button aria-label="미리보기 닫기" type="button" onClick={props.onClose}>
+          <OrbitIconButton
+            aria-label="미리보기 닫기"
+            className="design-proposal-close-button"
+            variant="surface"
+            onClick={props.onClose}
+          >
             <X size={18} />
-          </button>
+          </OrbitIconButton>
         </header>
 
         <div className="design-proposal-canvas-wrap">
@@ -94,15 +100,16 @@ export function DesignProposalPreviewModal(
         ) : null}
 
         <footer className="design-proposal-modal-footer">
-          <button type="button" onClick={props.onClose}>취소</button>
-          <button
-            className="primary"
-            disabled={props.isApplying}
-            type="button"
+          <OrbitButton variant="secondary" onClick={props.onClose}>
+            취소
+          </OrbitButton>
+          <OrbitButton
+            loading={props.isApplying}
+            variant="primary"
             onClick={props.onApply}
           >
             {props.isApplying ? "적용 중..." : "적용"}
-          </button>
+          </OrbitButton>
         </footer>
       </section>
     </div>

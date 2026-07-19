@@ -12,7 +12,7 @@ export function createDistributeSelectionPatch(
   elements: DeckElement[],
   axis: DistributeAxis
 ): DeckPatch | null {
-  if (elements.length < 3) {
+  if (elements.length < 3 || elements.some((element) => element.locked)) {
     return null;
   }
 

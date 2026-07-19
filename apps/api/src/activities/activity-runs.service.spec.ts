@@ -1,6 +1,7 @@
 import { HttpException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 
+import type { DecksService } from "../decks/decks.service";
 import { createActivityDefinitionFingerprint } from "./activity-definition-fingerprint";
 import type { ActivityRunRepository, ActivityRunRow } from "./activity-run.repository";
 import { ActivityRunsService } from "./activity-runs.service";
@@ -61,9 +62,7 @@ const session = {
   deck_version: 7,
   session_status: "live" as const,
   starts_at: "2026-01-01T00:00:00.000Z",
-  expires_at: "2027-07-31T00:00:00.000Z",
-  deck_json: deck,
-  current_deck_version: 7
+  expires_at: "2027-07-31T00:00:00.000Z"
 };
 
 const run: ActivityRunRow = {
@@ -87,11 +86,15 @@ const run: ActivityRunRow = {
   updated_at: "2026-07-17T00:00:00.000Z"
 };
 
-function createService(overrides: Partial<ActivityRunRepository> = {}) {
+function createService(
+  overrides: Partial<ActivityRunRepository> = {},
+  deckOverrides: Partial<DecksService> = {}
+) {
   const manager = {} as never;
   const repository = {
     transaction: vi.fn(async (work) => work(manager)),
-    lockSessionDeck: vi.fn().mockResolvedValue(session),
+    findSessionIdentity: vi.fn().mockResolvedValue({ deck_id: "deck_1" }),
+    lockSession: vi.fn().mockResolvedValue(session),
     findCurrent: vi.fn().mockResolvedValue(run),
     findCurrentForRead: vi.fn().mockResolvedValue(run),
     findById: vi.fn().mockResolvedValue(run),
@@ -109,8 +112,16 @@ function createService(overrides: Partial<ActivityRunRepository> = {}) {
     setActiveRun: vi.fn().mockResolvedValue(undefined),
     ...overrides
   } as unknown as ActivityRunRepository;
+  const decksService = {
+    getDeckForUpdate: vi.fn().mockResolvedValue(deck),
+    ...deckOverrides
+  } as unknown as DecksService;
   const logger = { info: vi.fn() } as never;
-  return { repository, service: new ActivityRunsService(repository, logger) };
+  return {
+    decksService,
+    repository,
+    service: new ActivityRunsService(repository, decksService, logger)
+  };
 }
 
 describe("ActivityRunsService", () => {
@@ -139,13 +150,18 @@ describe("ActivityRunsService", () => {
   });
 
   it("creates the first run from the stored Deck definition", async () => {
-    const { repository, service } = createService({
+    const { decksService, repository, service } = createService({
       findCurrent: vi.fn().mockResolvedValue(null)
     });
 
     await expect(
       service.ensureCurrentRun("project_1", "session_1", "activity_1")
     ).resolves.toMatchObject({ run: { activityId: "activity_1", version: 1 } });
+    expect(decksService.getDeckForUpdate).toHaveBeenCalledWith(
+      expect.anything(),
+      "project_1",
+      "deck_1"
+    );
     expect(repository.insert).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -197,14 +213,14 @@ describe("ActivityRunsService", () => {
     expect(repository.updateSnapshot).not.toHaveBeenCalled();
   });
 
-  it("locks the session before opening a run and closes any other open run", async () => {
+  it("locks the Deck and session before opening a run and closes any other open run", async () => {
     const openRun = {
       ...run,
       status: "closed" as const,
       revision: 3,
       response_count: 7
     };
-    const { repository, service } = createService({
+    const { decksService, repository, service } = createService({
       findById: vi.fn().mockResolvedValue(openRun),
       closeOtherOpenRuns: vi.fn().mockResolvedValue(["activity_run_other"]),
       updateStatus: vi.fn().mockResolvedValue({
@@ -224,7 +240,10 @@ describe("ActivityRunsService", () => {
       run: { status: "open", responseCount: 7 }
     });
 
-    expect(vi.mocked(repository.lockSessionDeck).mock.invocationCallOrder[0]).toBeLessThan(
+    expect(vi.mocked(decksService.getDeckForUpdate).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(repository.lockSession).mock.invocationCallOrder[0] ?? Infinity
+    );
+    expect(vi.mocked(repository.lockSession).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(repository.findById).mock.invocationCallOrder[0] ?? Infinity
     );
     expect(repository.closeOtherOpenRuns).toHaveBeenCalled();

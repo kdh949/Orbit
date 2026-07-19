@@ -4,6 +4,7 @@ import type {
   DeckPatch,
   SemanticCueSourceRef,
   Slide,
+  SlideTransition,
 } from "@orbit/shared";
 
 type LocalIdPrefix = "slide_" | "el_" | "anim_" | "kw_" | "act_" | "scue_";
@@ -37,6 +38,25 @@ export function createAddSlidePatch(
       {
         type: "add_slide",
         slide: nextSlide
+      }
+    ]
+  };
+}
+
+export function createUpdateSlideTransitionPatch(
+  deck: Deck,
+  slideId: string,
+  transition: SlideTransition | null
+): DeckPatch {
+  return {
+    deckId: deck.deckId,
+    baseVersion: deck.version,
+    source: "user",
+    operations: [
+      {
+        type: "update_slide_transition",
+        slideId,
+        transition
       }
     ]
   };

@@ -24,6 +24,7 @@ def captured_sync(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         *,
         template_blueprint: dict[str, Any],
         operations: list[dict[str, Any]],
+        slide_motion: list[dict[str, Any]],
         deck_canvas: dict[str, Any],
         synced_deck_version: int,
         render: bool,
@@ -33,6 +34,7 @@ def captured_sync(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
                 "package": path.read_bytes(),
                 "template_blueprint": template_blueprint,
                 "operations": operations,
+                "slide_motion": slide_motion,
                 "deck_canvas": deck_canvas,
                 "synced_deck_version": synced_deck_version,
                 "render": render,
@@ -81,6 +83,30 @@ def test_small_legacy_text_fields_remain_compatible(
     assert captured_sync["package"] == b"pptx"
     assert captured_sync["synced_deck_version"] == 2
     assert captured_sync["render"] is False
+    assert captured_sync["slide_motion"] == []
+
+
+def test_slide_motion_json_uses_a_bounded_file_part(
+    captured_sync: dict[str, Any],
+) -> None:
+    motion = [
+        {
+            "slideId": "slide_1",
+            "sourceSlidePart": "ppt/slides/slide1.xml",
+            "transition": {"type": "fade", "durationMs": 700},
+            "animations": [],
+            "capabilities": {
+                "transitionWritable": True,
+                "importedMainSequenceCoverage": "absent",
+            },
+            "touched": {"transition": True, "animations": False},
+        }
+    ]
+
+    response = post_sync(slide_motion=motion)
+
+    assert response.status_code == 200
+    assert captured_sync["slide_motion"] == motion
 
 
 def test_reorder_acknowledgment_omits_element_locator_nulls(
@@ -214,6 +240,7 @@ def post_sync(
     *,
     template_blueprint: dict[str, Any] | None = None,
     operations: list[dict[str, Any]] | None = None,
+    slide_motion: list[dict[str, Any]] | None = None,
     files_override: dict[str, tuple[str, bytes, str] | None] | None = None,
 ) -> Any:
     files: dict[str, tuple[str, bytes, str]] = {
@@ -226,6 +253,11 @@ def post_sync(
         "operations_file": (
             "operations.json",
             json.dumps(operations if operations is not None else []).encode(),
+            "application/json",
+        ),
+        "slide_motion_file": (
+            "slide-motion.json",
+            json.dumps(slide_motion if slide_motion is not None else []).encode(),
             "application/json",
         ),
         "deck_canvas_file": (

@@ -102,6 +102,46 @@ def test_generic_table_round_trip_preserves_tracks_cell_styles_and_locators(
     )
 
 
+def test_generic_table_export_preserves_merged_cell_geometry_and_anchor_text(
+    tmp_path: Path,
+) -> None:
+    rows = [
+        [table_cell("Anchor", col_span=2, row_span=2), table_cell("Hidden B")],
+        [table_cell("Hidden C"), table_cell("Hidden D")],
+    ]
+    response = export_deck_pptx(
+        DeckPptxExportRequest(
+            deck=table_deck(
+                rows=rows,
+                column_widths=[450, 450],
+                row_heights=[120, 120],
+            )
+        )
+    )
+
+    assert response.warnings == []
+    pptx_path = tmp_path / "merged-table-export.pptx"
+    pptx_path.write_bytes(base64.b64decode(response.content_base64))
+    presentation = Presentation(pptx_path)
+    table = next(
+        shape.table for shape in presentation.slides[0].shapes if shape.has_table
+    )
+    anchor = table.cell(0, 0)
+    assert anchor.is_merge_origin
+    assert anchor.span_width == 2
+    assert anchor.span_height == 2
+    assert anchor.text == "Anchor"
+
+    imported = import_pptx_ooxml_visual_tree(pptx_path, "file_merged_export")
+    table_element = next(
+        element
+        for element in imported.blueprint["slides"][0]["elements"]
+        if element["type"] == "table"
+    )
+    assert table_element["props"]["rows"][0][0]["colSpan"] == 2
+    assert table_element["props"]["rows"][0][0]["rowSpan"] == 2
+
+
 def test_table_cell_fingerprint_excludes_text(tmp_path: Path) -> None:
     fingerprints: list[list[str]] = []
     for file_index, text in enumerate(("Before", "After"), start=1):
@@ -444,7 +484,7 @@ def test_imported_jagged_and_track_mismatched_tables_omit_locators(
         )
 
 
-def test_generic_export_rejects_jagged_merged_and_track_mismatched_tables() -> None:
+def test_generic_export_rejects_jagged_invalid_span_and_track_mismatched_tables() -> None:
     decks = (
         (
             table_deck(
@@ -466,11 +506,11 @@ def test_generic_export_rejects_jagged_merged_and_track_mismatched_tables() -> N
         ),
         (
             table_deck(
-                rows=[[table_cell("A", col_span=2), table_cell("B")]],
+                rows=[[table_cell("A", col_span=3), table_cell("B")]],
                 column_widths=[450, 450],
                 row_heights=[120],
             ),
-            "PPTX_TABLE_STRUCTURE_UNSUPPORTED: element=el_table; reason=merged-cell",
+            "PPTX_TABLE_STRUCTURE_UNSUPPORTED: element=el_table; reason=invalid-cell-span",
         ),
         (
             table_deck(
