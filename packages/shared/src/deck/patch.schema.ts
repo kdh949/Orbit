@@ -162,6 +162,7 @@ export const animationPatchSchema = z.object({
 export const updateDeckOperationSchema = z.object({
   type: z.literal("update_deck"),
   title: z.string().min(1).optional(),
+  targetDurationMinutes: z.number().int().min(1).max(120).optional(),
   metadata: deckMetadataPatchSchema.optional()
 });
 
@@ -174,7 +175,8 @@ export const updateSlideOperationSchema = z.object({
   type: z.literal("update_slide"),
   slideId: deckSlideIdSchema,
   title: z.string().optional(),
-  thumbnailUrl: z.string().optional()
+  thumbnailUrl: z.string().optional(),
+  estimatedSeconds: z.number().int().positive().nullable().optional()
 });
 
 export const updateSlideTransitionOperationSchema = z.object({

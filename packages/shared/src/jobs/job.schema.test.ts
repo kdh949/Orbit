@@ -131,6 +131,25 @@ describe("jobSchema error metadata", () => {
     });
   });
 
+  it("preserves the OOXML sync capability that produced a failure", () => {
+    expect(
+      jobSchema.parse({
+        ...baseJob,
+        error: {
+          code: "PPTX_OOXML_SYNC_UNSUPPORTED_OPERATION",
+          message: "unsupported operation",
+          retryable: false,
+          syncCapabilityVersion: 2,
+        },
+      }).error,
+    ).toEqual({
+      code: "PPTX_OOXML_SYNC_UNSUPPORTED_OPERATION",
+      message: "unsupported operation",
+      retryable: false,
+      syncCapabilityVersion: 2,
+    });
+  });
+
   it("rejects unknown failed stage values", () => {
     expect(
       jobSchema.safeParse({

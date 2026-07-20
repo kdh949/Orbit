@@ -64,4 +64,28 @@ describe("activity response retention contracts", () => {
       activityRetentionSnapshotSchema.parse({ ...snapshot, textEntries: [] }),
     ).toMatchObject({ textEntries: [] });
   });
+
+  it("normalizes legacy snapshots without rating distributions", () => {
+    const snapshot = activityRetentionSnapshotSchema.parse({
+      activityRunId: "activity_run_1",
+      activityId: "activity_1",
+      status: "results",
+      revision: 4,
+      responseCount: 7,
+      participantCount: 10,
+      responseRate: 70,
+      aggregates: [
+        {
+          questionId: "question_rating",
+          type: "rating",
+          responseCount: 7,
+          average: 4.5,
+          choices: [],
+        },
+      ],
+      textEntries: [],
+    });
+
+    expect(snapshot.aggregates[0]?.ratingDistribution).toEqual([]);
+  });
 });

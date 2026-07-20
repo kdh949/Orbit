@@ -17,6 +17,7 @@ import {
 import { EditorExitConfirmModal } from "./EditorExitConfirmModal";
 import { DeckExportDialog } from "./DeckExportDialog";
 import { ShareAccessModal } from "./ShareAccessModal";
+import { TargetDurationDialog } from "./TargetDurationDialog";
 
 export function EditorModals(props: {
   audienceLink: {
@@ -45,6 +46,10 @@ export function EditorModals(props: {
     isOpen: boolean;
     modalProps: ComponentProps<typeof ShareAccessModal>;
   };
+  targetDuration: {
+    isOpen: boolean;
+    modalProps: ComponentProps<typeof TargetDurationDialog>;
+  };
 }) {
   return (
     <>
@@ -60,6 +65,12 @@ export function EditorModals(props: {
         : null}
       {props.exportDialog.open
         ? createPortal(<DeckExportDialog {...props.exportDialog} />, document.body)
+        : null}
+      {props.targetDuration.isOpen
+        ? createPortal(
+            <TargetDurationDialog {...props.targetDuration.modalProps} />,
+            document.body
+          )
         : null}
       {props.presence.isOpen
         ? createPortal(

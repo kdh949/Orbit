@@ -279,6 +279,19 @@ class InMemoryDeckDataSource {
 
     if (
       query.startsWith("SELECT snapshot_id, project_id, deck_id") &&
+      query.includes("WHERE project_id = $1 AND snapshot_id = $2")
+    ) {
+      const [projectId, snapshotId] = params as [string, string];
+      const row = this.snapshotRows.find(
+        (snapshot) =>
+          snapshot.project_id === projectId &&
+          snapshot.snapshot_id === snapshotId,
+      );
+      return (row ? [cloneSnapshotRow(row)] : []) as T;
+    }
+
+    if (
+      query.startsWith("SELECT snapshot_id, project_id, deck_id") &&
       query.includes("WHERE project_id = $1")
     ) {
       const [projectId] = params as [string];
@@ -706,6 +719,38 @@ describe("DecksService", () => {
     );
   });
 
+  it("reads a snapshot detail with its stored Deck", async () => {
+    const { service } = createService();
+    const deck = createDeck();
+    const putResponse = await service.putDeck(deck.projectId, { deck });
+
+    const detail = await service.getSnapshot(
+      deck.projectId,
+      putResponse.snapshot.snapshotId,
+    );
+
+    expect(detail).toEqual({
+      ...putResponse.snapshot,
+      deck: putResponse.deck,
+    });
+  });
+
+  it("does not expose a snapshot through another project boundary", async () => {
+    const { service } = createService();
+    const deck = createDeck();
+    const putResponse = await service.putDeck(deck.projectId, { deck });
+
+    await expectDeckApiError(
+      () =>
+        service.getSnapshot(
+          "project_other_1",
+          putResponse.snapshot.snapshotId,
+        ),
+      HttpStatus.NOT_FOUND,
+      "SNAPSHOT_NOT_FOUND",
+    );
+  });
+
   it("materializes and locks patch-only activity slides for transactional reads", async () => {
     const { dataSource, service } = createService();
     const deck = createDeck();
@@ -931,6 +976,34 @@ describe("DecksService", () => {
     ).toEqual([1]);
   });
 
+  it("persists deck and slide target duration patches", async () => {
+    const { service } = createService();
+    const deck = createDeck();
+    await service.putDeck(deck.projectId, { deck });
+
+    const response = await service.appendPatch(deck.projectId, {
+      patch: {
+        baseVersion: deck.version,
+        deckId: deck.deckId,
+        operations: [
+          { type: "update_deck", targetDurationMinutes: 12 },
+          {
+            type: "update_slide",
+            slideId: deck.slides[0]!.slideId,
+            estimatedSeconds: 90,
+          },
+        ],
+        source: "user",
+      },
+    });
+    const persisted = await service.getDeck(deck.projectId);
+
+    expect(response.deck.targetDurationMinutes).toBe(12);
+    expect(response.deck.slides[0]!.estimatedSeconds).toBe(90);
+    expect(persisted.deck.targetDurationMinutes).toBe(12);
+    expect(persisted.deck.slides[0]!.estimatedSeconds).toBe(90);
+  });
+
   it("returns a lightweight acknowledgement when requested", async () => {
     const { service } = createService();
     const deck = createDeck();
@@ -1058,6 +1131,7 @@ describe("DecksService", () => {
         deckId: deck.deckId,
         changeId: response.changeRecord.changeId,
         targetDeckVersion: 2,
+        syncCapabilityVersion: 2,
       },
     });
     expect(enqueueSyncJob).toHaveBeenCalledWith(
@@ -1175,6 +1249,7 @@ describe("DecksService", () => {
         deckId: current.deckId,
         changeId: "change_deck_demo_1_3_put",
         targetDeckVersion: 3,
+        syncCapabilityVersion: 2,
       },
     });
     expect(enqueueSyncJob).toHaveBeenCalledWith(
@@ -1711,6 +1786,7 @@ describe("DecksService", () => {
         deckId: deck.deckId,
         changeId: response.changeRecord.changeId,
         targetDeckVersion: 2,
+        syncCapabilityVersion: 2,
       },
     });
     expect(enqueueSyncJob).toHaveBeenCalledWith(
@@ -2032,6 +2108,7 @@ describe("DecksService", () => {
         deckId: currentDeck.deckId,
         changeId: "change_deck_demo_1_4_put",
         targetDeckVersion: 4,
+        syncCapabilityVersion: 2,
       },
     });
     expect(enqueueSyncJob).toHaveBeenCalledWith(
@@ -2576,6 +2653,43 @@ describe("DecksService", () => {
     );
   });
 
+  it("blocks retry for a non-retryable failure from the current sync capability", async () => {
+    const { deck, service, jobsService } = createFailedOoxmlSyncService({
+      code: "PPTX_OOXML_SYNC_UNSUPPORTED_OPERATION",
+      message: "unsupported authored element",
+      retryable: false,
+      syncCapabilityVersion: 2,
+    });
+
+    const response = await service.getOoxmlSyncState(deck.projectId);
+
+    expect(response.ooxmlSyncState).toMatchObject({
+      status: "failed",
+      retryable: false,
+      job: { jobId: "job_sync_failed" },
+    });
+    await expect(service.retryOoxmlSync(deck.projectId)).rejects.toMatchObject({
+      status: HttpStatus.CONFLICT,
+    });
+    expect(jobsService.create).not.toHaveBeenCalled();
+  });
+
+  it("keeps a transient failure retryable at the current sync capability", async () => {
+    const { deck, service } = createFailedOoxmlSyncService({
+      code: "PPTX_OOXML_SYNC_FAILED",
+      message: "worker temporarily unavailable",
+      retryable: true,
+      syncCapabilityVersion: 2,
+    });
+
+    const response = await service.getOoxmlSyncState(deck.projectId);
+
+    expect(response.ooxmlSyncState).toMatchObject({
+      status: "failed",
+      retryable: true,
+    });
+  });
+
   it("retries OOXML sync against the current Deck version", async () => {
     stubOrbitEnv();
     const dataSource = new InMemoryDeckDataSource();
@@ -2628,3 +2742,44 @@ describe("DecksService", () => {
     );
   });
 });
+
+function createFailedOoxmlSyncService(error: {
+  code: string;
+  message: string;
+  retryable: boolean;
+  syncCapabilityVersion: number;
+}) {
+  const dataSource = new InMemoryDeckDataSource();
+  const deck = deckSchema.parse({ ...createDeck(), version: 145 });
+  seedStoredDeck(dataSource, deck, deck);
+  dataSource.templateBlueprintRows.push({
+    template_id: "template_file_1",
+    project_id: deck.projectId,
+    deck_id: deck.deckId,
+    blueprint_json: {
+      templateId: "template_file_1",
+      sourceFileId: "file_1",
+      currentPackageFileId: "file_current",
+      ooxmlSyncedDeckVersion: 1,
+      slides: [{ slideIndex: 1, sourceSlideIndex: 1, slots: [] }],
+    },
+  });
+  const failedJob = jobSchema.parse({
+    ...createJob("job_sync_failed"),
+    status: "failed",
+    error,
+  });
+  const jobsService = {
+    create: vi.fn(),
+    update: vi.fn(),
+    getLatestPptxOoxmlSync: vi.fn(async () => failedJob),
+  };
+  return {
+    deck,
+    jobsService,
+    service: new DecksService(
+      dataSource as unknown as DataSource,
+      jobsService as never,
+    ),
+  };
+}

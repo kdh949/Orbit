@@ -77,6 +77,8 @@ export function AudienceOutputRenderer(props: {
         deckId={deck.deckId}
         projectId={deck.projectId}
         scale={scale}
+        slideStyle={slide.style}
+        theme={deck.theme}
       />
     );
   }

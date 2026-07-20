@@ -23,6 +23,27 @@ describe("PresenterStageSection", () => {
       '<div class="rehearsal-stage-surface"><div data-testid="rendered-slide">'
     );
   });
+
+  it("marks the stage busy and disables navigation while slide assets load", () => {
+    const html = renderToStaticMarkup(
+      <PresenterStageSection
+        currentIndex={1}
+        emptyStageLabel="비어 있음"
+        navigationPending
+        nextHint="다음 설명"
+        nextSlideTitle="다음 슬라이드"
+        onNext={() => undefined}
+        onPrevious={() => undefined}
+        previousDisabled={false}
+        renderStage={<div>슬라이드</div>}
+        totalSlides={8}
+      />
+    );
+
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain("슬라이드 준비 중…");
+    expect(html.match(/disabled=""/g)).toHaveLength(2);
+  });
 });
 
 describe("PresenterTimerCard", () => {

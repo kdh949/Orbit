@@ -23,6 +23,12 @@ from PIL import Image
 from pptx import Presentation
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.ai.authored_element_rasterizer import (
+    AUTHORED_RASTER_ELEMENT_TYPES,
+    AuthoredElementRasterizationError,
+    RasterizedAuthoredElement,
+    rasterize_authored_element,
+)
 from app.ai.pptx_design_importer import (
     CANVAS_HEIGHT,
     CANVAS_WIDTH,
@@ -154,6 +160,7 @@ PptxOoxmlUnsupportedReasonCode = Literal[
     "ADD_SLIDE_LAYOUT_UNSAFE",
     "ADD_ELEMENT_FAILED",
     "ADD_ELEMENT_TYPE_UNSUPPORTED",
+    "AUTHORED_RASTER_FALLBACK_FAILED",
     "CROP_CAPABILITY_UNSAFE",
     "DELETE_SLIDE_FAILED",
     "DELETE_SLIDE_LOCATOR_UNSAFE",
@@ -390,6 +397,7 @@ def sync_pptx_ooxml(
     deck_canvas: dict[str, Any],
     synced_deck_version: int,
     slide_motion: list[dict[str, Any]] | None = None,
+    authored_element_fallbacks: dict[str, Any] | None = None,
     render: bool = True,
 ) -> PptxOoxmlSyncResult:
     del synced_deck_version
@@ -415,6 +423,7 @@ def sync_pptx_ooxml(
         operations,
         scale,
         slide_motion=slide_motion or [],
+        authored_element_fallbacks=authored_element_fallbacks or {},
     )
     assets = [
         package_asset("current_package", package_bytes, f"{safe_file_stem(path)}.pptx")
@@ -796,6 +805,58 @@ def imported_image_crop_capability(
     return image_crop_capability_for_shape(shape, source)
 
 
+def authored_raster_fallback_map(
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], dict[tuple[str, str], dict[str, Any]]]:
+    if not payload:
+        return {}, {}
+    theme = payload.get("theme")
+    raw_elements = payload.get("elements")
+    if not isinstance(theme, dict) or not isinstance(raw_elements, list):
+        raise AuthoredElementRasterizationError("FALLBACK_PAYLOAD_INVALID")
+    if len(raw_elements) > 500:
+        raise AuthoredElementRasterizationError("FALLBACK_PAYLOAD_INVALID")
+    elements: dict[tuple[str, str], dict[str, Any]] = {}
+    for raw_candidate in raw_elements:
+        if not isinstance(raw_candidate, dict):
+            raise AuthoredElementRasterizationError("FALLBACK_PAYLOAD_INVALID")
+        slide_id = raw_candidate.get("slideId")
+        element = raw_candidate.get("element")
+        if (
+            not isinstance(slide_id, str)
+            or not slide_id
+            or not isinstance(element, dict)
+            or str(element.get("type", "")) not in AUTHORED_RASTER_ELEMENT_TYPES
+        ):
+            raise AuthoredElementRasterizationError("FALLBACK_PAYLOAD_INVALID")
+        element_id = element.get("elementId")
+        if not isinstance(element_id, str) or not element_id:
+            raise AuthoredElementRasterizationError("FALLBACK_PAYLOAD_INVALID")
+        key = (slide_id, element_id)
+        if key in elements:
+            raise AuthoredElementRasterizationError("FALLBACK_PAYLOAD_INVALID")
+        elements[key] = element
+    return cast(dict[str, Any], theme), elements
+
+
+def rasterized_fallback_candidate(
+    slide_id: str,
+    element_id: str,
+    theme: dict[str, Any],
+    elements: dict[tuple[str, str], dict[str, Any]],
+    cache: dict[tuple[str, str], RasterizedAuthoredElement],
+) -> RasterizedAuthoredElement | None:
+    key = (slide_id, element_id)
+    if key in cache:
+        return cache[key]
+    element = elements.get(key)
+    if element is None:
+        return None
+    rendered = rasterize_authored_element(element, theme)
+    cache[key] = rendered
+    return rendered
+
+
 def apply_patch_operations_to_package(
     package_bytes: bytes,
     template_blueprint: dict[str, Any],
@@ -803,6 +864,7 @@ def apply_patch_operations_to_package(
     scale: PackageFrameScale,
     *,
     slide_motion: list[dict[str, Any]] | None = None,
+    authored_element_fallbacks: dict[str, Any] | None = None,
 ) -> tuple[
     bytes,
     list[str],
@@ -813,6 +875,18 @@ def apply_patch_operations_to_package(
     list[PptxOoxmlUnsupportedSlideMotion],
 ]:
     slide_motion = slide_motion or []
+    try:
+        fallback_theme, fallback_elements = authored_raster_fallback_map(
+            authored_element_fallbacks or {},
+        )
+    except AuthoredElementRasterizationError:
+        first_operation = operations[0] if operations else {}
+        failure = unsupported_operation(
+            first_operation,
+            "AUTHORED_RASTER_FALLBACK_FAILED",
+        )
+        return package_bytes, [], [], [], [failure], [], []
+    raster_cache: dict[tuple[str, str], RasterizedAuthoredElement] = {}
     sources = element_source_map(template_blueprint)
     operations = route_operations_to_source_parts(template_blueprint, operations)
     warnings: list[str] = []
@@ -890,6 +964,9 @@ def apply_patch_operations_to_package(
                 warnings,
                 source,
                 template_blueprint,
+                fallback_theme,
+                fallback_elements,
+                raster_cache,
             )
             if reason_code is None:
                 applied_operations.append(applied_operation(operation))
@@ -1503,6 +1580,9 @@ def apply_sync_operation(
     warnings: list[str],
     source_package: zipfile.ZipFile,
     template_blueprint: dict[str, Any],
+    fallback_theme: dict[str, Any],
+    fallback_elements: dict[tuple[str, str], dict[str, Any]],
+    raster_cache: dict[tuple[str, str], RasterizedAuthoredElement],
 ) -> PptxOoxmlUnsupportedReasonCode | None:
     operation_type = str(operation.get("type", ""))
     if operation_type == "add_slide":
@@ -1514,6 +1594,9 @@ def apply_sync_operation(
             warnings,
             source_package,
             template_blueprint,
+            fallback_theme,
+            fallback_elements,
+            raster_cache,
         )
         if reason_code is not None:
             return reason_code
@@ -1553,7 +1636,39 @@ def apply_sync_operation(
             return "ADD_ELEMENT_FAILED"
         if not operation_slide_part or operation_slide_part not in package_entries:
             return "SLIDE_PART_MISSING"
-        if str(element.get("type", "")) not in {"text", "rect", "image", "table"}:
+        element_type = str(element.get("type", ""))
+        if element_type in AUTHORED_RASTER_ELEMENT_TYPES:
+            try:
+                rendered = rasterized_fallback_candidate(
+                    str(operation.get("slideId", "")),
+                    str(element.get("elementId", "")),
+                    fallback_theme,
+                    fallback_elements,
+                    raster_cache,
+                )
+            except AuthoredElementRasterizationError:
+                return "AUTHORED_RASTER_FALLBACK_FAILED"
+            if rendered is None:
+                return "AUTHORED_RASTER_FALLBACK_FAILED"
+            element_source = add_rasterized_element_to_slide_xml(
+                operation_slide_part,
+                element,
+                rendered,
+                package_entries,
+                added_entries,
+                scale,
+                warnings,
+            )
+            if element_source is None:
+                return "AUTHORED_RASTER_FALLBACK_FAILED"
+            added_key = (
+                str(element_source["slidePart"]),
+                str(element_source["elementId"]),
+            )
+            sources[added_key] = element_source
+            updated_sources[added_key] = element_source
+            return None
+        if element_type not in {"text", "rect", "image", "table"}:
             return "ADD_ELEMENT_TYPE_UNSUPPORTED"
         if add_element_has_unsupported_props(element):
             return "PROPS_FIELDS_UNSUPPORTED"
@@ -1600,6 +1715,43 @@ def apply_sync_operation(
         return "SHAPE_MISSING"
 
     shape_changed = False
+    if source.get("fallbackMode") == "rasterized" and operation_type in {
+        "update_element_props",
+        "update_element_frame",
+    }:
+        try:
+            rendered = rasterized_fallback_candidate(
+                str(operation.get("slideId", "")),
+                element_id,
+                fallback_theme,
+                fallback_elements,
+                raster_cache,
+            )
+        except AuthoredElementRasterizationError:
+            return "AUTHORED_RASTER_FALLBACK_FAILED"
+        if rendered is None or not replace_rasterized_picture(
+            shape,
+            source,
+            slide_part,
+            rendered,
+            package_entries,
+            added_entries,
+            source_package,
+            scale,
+        ):
+            return "AUTHORED_RASTER_FALLBACK_FAILED"
+        if parent is None or not reorder_visual_shape(
+            parent,
+            shape,
+            fallback_elements[(str(operation.get("slideId", "")), element_id)].get(
+                "zIndex",
+                0,
+            ),
+        ):
+            return "AUTHORED_RASTER_FALLBACK_FAILED"
+        package_entries[slide_part] = xml_bytes(root)
+        updated_sources[source_key] = dict(source)
+        return None
     if operation_type == "update_element_props":
         props = operation.get("props")
         if not isinstance(props, dict) or not props:
@@ -4556,6 +4708,9 @@ def add_authored_slide_to_package(
     warnings: list[str],
     source_package: zipfile.ZipFile,
     template_blueprint: dict[str, Any],
+    fallback_theme: dict[str, Any],
+    fallback_elements: dict[tuple[str, str], dict[str, Any]],
+    raster_cache: dict[tuple[str, str], RasterizedAuthoredElement],
 ) -> tuple[list[dict[str, Any]], PptxOoxmlUnsupportedReasonCode | None]:
     slide = operation.get("slide")
     slide_part = slide_part_for_operation(operation, template_blueprint)
@@ -4650,21 +4805,42 @@ def add_authored_slide_to_package(
     if not isinstance(elements, list):
         return [], "ADD_SLIDE_FAILED"
     for element in elements:
-        if not isinstance(element, dict) or str(element.get("type", "")) not in {
-            "text",
-            "rect",
-            "image",
-            "table",
-        }:
+        if not isinstance(element, dict):
             return [], "ADD_SLIDE_FAILED"
-        added_source = add_element_to_slide_xml(
-            slide_part,
-            element,
-            package_entries,
-            added_entries,
-            scale,
-            warnings,
-        )
+        element_type = str(element.get("type", ""))
+        if element_type in AUTHORED_RASTER_ELEMENT_TYPES:
+            try:
+                rendered = rasterized_fallback_candidate(
+                    str(slide.get("slideId", operation.get("slideId", ""))),
+                    str(element.get("elementId", "")),
+                    fallback_theme,
+                    fallback_elements,
+                    raster_cache,
+                )
+            except AuthoredElementRasterizationError:
+                return [], "AUTHORED_RASTER_FALLBACK_FAILED"
+            if rendered is None:
+                return [], "AUTHORED_RASTER_FALLBACK_FAILED"
+            added_source = add_rasterized_element_to_slide_xml(
+                slide_part,
+                element,
+                rendered,
+                package_entries,
+                added_entries,
+                scale,
+                warnings,
+            )
+        elif element_type in {"text", "rect", "image", "table"}:
+            added_source = add_element_to_slide_xml(
+                slide_part,
+                element,
+                package_entries,
+                added_entries,
+                scale,
+                warnings,
+            )
+        else:
+            return [], "ADD_SLIDE_FAILED"
         if added_source is None:
             return [], "ADD_SLIDE_FAILED"
         added_sources.append(added_source)
@@ -4737,6 +4913,192 @@ def slide_layout_relationships_xml(target: str) -> bytes:
         {"Id": "rId1", "Type": SLIDE_LAYOUT_REL_TYPE, "Target": target},
     )
     return xml_bytes(root)
+
+
+def add_rasterized_element_to_slide_xml(
+    slide_part: str,
+    element: dict[str, Any],
+    rendered: RasterizedAuthoredElement,
+    package_entries: dict[str, bytes],
+    added_entries: dict[str, bytes],
+    scale: PackageFrameScale,
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    slide_xml = package_entries.get(slide_part)
+    content_types_xml = package_entries.get("[Content_Types].xml")
+    if slide_xml is None or content_types_xml is None:
+        return None
+    try:
+        root = ET.fromstring(slide_xml)
+        shape_tree = first_local_descendant(root, "spTree")
+        if shape_tree is None:
+            return None
+        next_shape_id = next_c_nv_pr_id(root)
+        rels_part = rels_part_for_slide_part(slide_part)
+        rels_xml = package_entries.get(rels_part, empty_relationships_xml())
+        media_token = safe_package_token(
+            f"{Path(slide_part).stem}_{next_shape_id}_{element.get('elementId', '')}"
+        )
+        media_name = f"orbit_raster_{media_token}.png"
+        media_part = f"ppt/media/{media_name}"
+        relationship_id, next_rels_xml = append_image_relationship(
+            rels_xml,
+            f"../media/{media_name}",
+        )
+        next_content_types_xml = ensure_content_type_default(
+            content_types_xml,
+            "png",
+            "image/png",
+        )
+        frame = rasterized_picture_frame(element, rendered)
+        shape = picture_shape_element(
+            next_shape_id,
+            frame,
+            relationship_id,
+            scale,
+            (rendered.pixel_width, rendered.pixel_height),
+        )
+    except (ET.ParseError, ValueError):
+        warnings.append(
+            f"OOXML raster relationship invalid for {element.get('elementId')}."
+        )
+        return None
+    shape_tree.append(shape)
+    package_entries[slide_part] = xml_bytes(root)
+    package_entries[rels_part] = next_rels_xml
+    package_entries["[Content_Types].xml"] = next_content_types_xml
+    added_entries[media_part] = rendered.png_bytes
+    return {
+        "elementId": str(element.get("elementId", "")),
+        "elementType": str(element.get("type", "")),
+        "ooxmlOrigin": "authored",
+        "ooxmlEditCapabilities": {
+            "richText": "none",
+            "crop": "none",
+            "tableCellText": False,
+            "frame": True,
+            "delete": True,
+            "imageSource": False,
+        },
+        "slidePart": slide_part,
+        "shapeId": str(next_shape_id),
+        "relationshipId": relationship_id,
+        "sourceType": "image",
+        "writable": True,
+        "fallbackMode": "rasterized",
+        "fallbackReason": "AUTHORED_ELEMENT_TYPE_RASTERIZED",
+    }
+
+
+def rasterized_picture_frame(
+    element: dict[str, Any],
+    rendered: RasterizedAuthoredElement,
+) -> dict[str, Any]:
+    return {
+        **element,
+        "x": rendered.x,
+        "y": rendered.y,
+        "width": rendered.width,
+        "height": rendered.height,
+        "rotation": rendered.rotation,
+        "opacity": 1,
+        "visible": True,
+    }
+
+
+def replace_rasterized_picture(
+    shape: ET.Element[Any],
+    source: dict[str, Any],
+    slide_part: str,
+    rendered: RasterizedAuthoredElement,
+    package_entries: dict[str, bytes],
+    added_entries: dict[str, bytes],
+    source_package: zipfile.ZipFile,
+    scale: PackageFrameScale,
+) -> bool:
+    if shape.tag != P_PIC:
+        return False
+    relationship_id = str(source.get("relationshipId", ""))
+    rels_part = rels_part_for_slide_part(slide_part)
+    rels_xml = package_entries.get(rels_part)
+    if not relationship_id or rels_xml is None:
+        return False
+    try:
+        relationships_root = ET.fromstring(rels_xml)
+    except ET.ParseError:
+        return False
+    matches = [
+        relationship
+        for relationship in list(relationships_root)
+        if relationship.get("Id") == relationship_id
+        and relationship.get("Type") == IMAGE_REL_TYPE
+    ]
+    if len(matches) != 1:
+        return False
+    target = str(matches[0].get("Target", ""))
+    media_part = resolve_relationship_part(slide_part, target)
+    if not media_part.startswith("ppt/media/") or ".." in media_part:
+        return False
+    if media_part not in source_package.namelist() and media_part not in added_entries:
+        return False
+    if (
+        package_image_relationship_reference_count(
+            source_package,
+            package_entries,
+            media_part,
+        )
+        != 1
+    ):
+        return False
+    if direct_image_blip(shape, source) is None:
+        return False
+    update_shape_frame(shape, rasterized_picture_frame({}, rendered), scale)
+    if not set_picture_opacity(shape, source, 1):
+        return False
+    if not set_shape_visibility(shape, True):
+        return False
+    added_entries[media_part] = rendered.png_bytes
+    return True
+
+
+def package_image_relationship_reference_count(
+    source_package: zipfile.ZipFile,
+    package_entries: dict[str, bytes],
+    media_part: str,
+) -> int | None:
+    relationship_parts = {
+        name for name in source_package.namelist() if name.endswith(".rels")
+    }
+    relationship_parts.update(
+        name for name in package_entries if name.endswith(".rels")
+    )
+    count = 0
+    for rels_part in relationship_parts:
+        content = package_entries.get(rels_part)
+        if content is None:
+            content = source_package.read(rels_part)
+        try:
+            root = ET.fromstring(content)
+        except ET.ParseError:
+            return None
+        source_part = source_part_for_relationships_part(rels_part)
+        if source_part is None:
+            continue
+        for relationship in list(root):
+            if relationship.get("Type") != IMAGE_REL_TYPE:
+                continue
+            target = str(relationship.get("Target", ""))
+            if resolve_relationship_part(source_part, target) == media_part:
+                count += 1
+    return count
+
+
+def source_part_for_relationships_part(rels_part: str) -> str | None:
+    marker = "/_rels/"
+    if marker not in rels_part or not rels_part.endswith(".rels"):
+        return None
+    prefix, name = rels_part.split(marker, maxsplit=1)
+    return f"{prefix}/{name.removesuffix('.rels')}"
 
 
 def add_element_to_slide_xml(

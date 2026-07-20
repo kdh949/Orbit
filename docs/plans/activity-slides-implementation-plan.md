@@ -127,7 +127,7 @@ packages/shared/src/activity/
 | 주관식 답변 | 최대 2,000자, plain text로만 렌더링 |
 | 선택지 | 2~8개, label 1~100자, 동일 question 내 label·ID 중복 금지 |
 | 만족도 문항 | 1~5개 |
-| 사전 질문 | `free-text` 정확히 1문항 |
+| 사전 질문 | `free-text` 1~5문항 |
 | 실시간 투표 | `single-choice` 정확히 1문항 |
 | 5점 척도 | 값 1~5, 양끝 label은 각각 최대 40자 |
 

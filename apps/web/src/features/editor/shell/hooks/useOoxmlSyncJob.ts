@@ -5,6 +5,16 @@ import { useEffect, useState } from "react";
 import { ooxmlSyncJobEventName } from "../api/deckPersistenceApi";
 import { getOoxmlSyncState, retryOoxmlSync } from "../api/editorJobApi";
 
+export async function refreshOoxmlStateForTerminalJob(
+  projectId: string,
+  job: Job,
+  loadState: typeof getOoxmlSyncState = getOoxmlSyncState,
+): Promise<OoxmlSyncState | null> {
+  return ["succeeded", "failed"].includes(job.status)
+    ? loadState(projectId)
+    : null;
+}
+
 export function useOoxmlSyncJob(projectId: string) {
   const [job, setJob] = useState<Job | null>(null);
   const [state, setState] = useState<OoxmlSyncState | null>(null);
@@ -25,24 +35,27 @@ export function useOoxmlSyncJob(projectId: string) {
   }, [projectId]);
 
   useEffect(() => {
+    let isCancelled = false;
     function handleOoxmlSyncJob(event: Event) {
-      const nextJob = (event as CustomEvent<Job>).detail;
-      setJob(jobSchema.parse(nextJob));
+      const nextJob = jobSchema.parse((event as CustomEvent<Job>).detail);
+      setJob(nextJob);
+      if (["succeeded", "failed"].includes(nextJob.status)) {
+        void refreshOoxmlStateForTerminalJob(projectId, nextJob)
+          .then((nextState) => {
+            if (!isCancelled && nextState) {
+              setState(nextState);
+              setJob(nextState.job ?? nextJob);
+            }
+          })
+          .catch(() => undefined);
+        return;
+      }
       setState((current) =>
         current
           ? {
               ...current,
-              status:
-                nextJob.status === "failed"
-                  ? "failed"
-                  : nextJob.status === "succeeded"
-                    ? "synced"
-                    : "pending",
-              syncedDeckVersion:
-                nextJob.status === "succeeded"
-                  ? current.deckVersion
-                  : current.syncedDeckVersion,
-              retryable: nextJob.status === "failed",
+              status: "pending",
+              retryable: false,
               job: nextJob
             }
           : current
@@ -50,9 +63,11 @@ export function useOoxmlSyncJob(projectId: string) {
     }
 
     window.addEventListener(ooxmlSyncJobEventName, handleOoxmlSyncJob);
-    return () =>
+    return () => {
+      isCancelled = true;
       window.removeEventListener(ooxmlSyncJobEventName, handleOoxmlSyncJob);
-  }, []);
+    };
+  }, [projectId]);
 
   useEffect(() => {
     if (!job || ["succeeded", "failed"].includes(job.status)) return;

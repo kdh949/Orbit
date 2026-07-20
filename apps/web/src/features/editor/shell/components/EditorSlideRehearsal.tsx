@@ -16,7 +16,10 @@ import {
 } from "../../../rehearsal/presenter/RehearsalScriptTeleprompter";
 import { createDefaultPhraseExtractor } from "../../../rehearsal/speech/phraseExtractor";
 import type { SpeechTrackerSnapshot } from "../../../rehearsal/speech/speechTrackingEvents";
-import type { PracticeSessionState } from "../../practice/useSlidePracticeSession";
+import {
+  slidePracticeDisabledMessage,
+  type PracticeSessionState
+} from "../../practice/useSlidePracticeSession";
 import type { EditorSlideRehearsalState } from "../hooks/useEditorSlideRehearsal";
 
 type EditorSlideRehearsalSummaryProps = {
@@ -34,11 +37,13 @@ export function EditorSlideRehearsalBottomPanel(
     onStart: () => void;
     onStop: () => void;
     practiceState: PracticeSessionState;
+    slidePracticeEnabled: boolean | null;
   }
 ) {
   const isRecording = props.practiceState === "recording";
   const isBusy =
     props.practiceState === "starting" || props.practiceState === "stopping";
+  const isDisabled = props.slidePracticeEnabled === false;
   const scriptProgress = useMemo(
     () =>
       createEditorSlideRehearsalScriptProgress({
@@ -148,12 +153,14 @@ export function EditorSlideRehearsalBottomPanel(
             <button
               aria-label="슬라이드 연습 시작"
               className="editor-slide-rehearsal-restart"
-              disabled={isBusy}
+              disabled={isBusy || isDisabled}
               type="button"
               onClick={props.onStart}
             >
               <IconPlayerPlay aria-hidden="true" size={15} />
-              {props.practiceState === "starting"
+              {isDisabled
+                ? "기능이 꺼져 있습니다"
+                : props.practiceState === "starting"
                 ? "준비 중"
                 : props.practiceState === "stopping"
                   ? "분석 중"
@@ -411,6 +418,9 @@ export function formatRehearsalTime(elapsedSeconds: number) {
 }
 
 function getRehearsalStatusLabel(state: PracticeSessionState, message: string) {
+  if (message === slidePracticeDisabledMessage) {
+    return "연습 기능 꺼짐";
+  }
   switch (state) {
     case "starting":
       return "준비 중";

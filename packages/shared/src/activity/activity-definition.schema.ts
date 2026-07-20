@@ -146,13 +146,12 @@ export const activityDefinitionSchema = z
 
     if (
       definition.template === "pre-question" &&
-      (definition.questions.length !== 1 ||
-        definition.questions[0]?.type !== "free-text")
+      definition.questions.some((question) => question.type !== "free-text")
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["questions"],
-        message: "pre-question requires exactly one free-text question"
+        message: "pre-question requires one to five free-text questions"
       });
     }
 

@@ -65,7 +65,7 @@ describe("RehearsalPanel", () => {
     expect(html).toContain("반복 이슈 알림 닫기");
   });
 
-  it("debug flag와 무관하게 시스템 capability 상태를 조언과 분리해 표시한다", () => {
+  it("시스템 capability 상태를 패널에 표시하지 않는다", () => {
     const html = renderPanel({
       semanticCapabilityItems: [
         {
@@ -83,8 +83,8 @@ describe("RehearsalPanel", () => {
       ]
     });
 
-    expect(html).toContain("시스템 상태");
-    expect(html).toContain("의미 체크 오프라인");
+    expect(html).not.toContain("시스템 상태");
+    expect(html).not.toContain("의미 체크 오프라인");
     expect(html).not.toContain("AI 코칭");
   });
 

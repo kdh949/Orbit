@@ -22,6 +22,7 @@ ORBIT-10의 project DB 모델과 권한 모델이 확정되기 전까지 `projec
 | `PUT` | `/deck` | current deck 전체 교체 저장 및 snapshot 생성 |
 | `POST` | `/deck/patches` | current deck에 patch 적용, version 증가, change record/snapshot 생성 |
 | `GET` | `/snapshots` | project의 snapshot metadata 목록 조회 |
+| `GET` | `/snapshots/:snapshotId` | snapshot metadata와 전체 deck 조회 |
 | `POST` | `/snapshots/:snapshotId/restore` | snapshot을 current deck으로 복원 |
 
 MVP 기준으로 별도의 patch log 조회, snapshot 삭제, snapshot 이름 변경 API는 추가하지 않는다. 필요하면 history UI 또는 운영 정책이 확정될 때 별도 이슈로 확장한다.
@@ -332,6 +333,10 @@ Response 예시:
   ]
 }
 ```
+
+### `GET /api/v1/projects/:projectId/snapshots/:snapshotId`
+
+선택한 snapshot의 metadata와 저장 당시 전체 deck JSON을 조회한다. 읽기 권한이 필요하며, 응답은 `deckSnapshotDetailSchema`로 검증한다. URL의 `projectId`와 snapshot의 project boundary가 일치하지 않으면 `SNAPSHOT_NOT_FOUND`로 응답한다.
 
 ### `POST /api/v1/projects/:projectId/snapshots/:snapshotId/restore`
 

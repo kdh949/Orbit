@@ -1,5 +1,8 @@
 import type { ActivityResultsSlide, ActivitySlide, Deck } from "@orbit/shared";
 
+import { OrbitBrand } from "../../../components/ui";
+import { createActivityThemeStyle } from "../rendering/activityThemeStyle";
+
 const resultLayoutLabels: Record<ActivityResultsSlide["activityResult"]["layout"], string> = {
   summary: "요약 결과",
   chart: "차트 결과",
@@ -7,7 +10,7 @@ const resultLayoutLabels: Record<ActivityResultsSlide["activityResult"]["layout"
 };
 
 export function ActivitySpecialSlideThumbnail(props: {
-  deck: Pick<Deck, "slides">;
+  deck: Pick<Deck, "slides" | "theme">;
   slide: ActivitySlide | ActivityResultsSlide;
 }) {
   if (props.slide.kind === "activity") {
@@ -17,8 +20,9 @@ export function ActivitySpecialSlideThumbnail(props: {
         aria-label={`${props.slide.activity.title} 참여 장표 미리보기`}
         className="activity-special-thumbnail activity-special-thumbnail--activity"
         data-testid="activity-slide-thumbnail"
+        style={createActivityThemeStyle(props.deck.theme, props.slide.style)}
       >
-        <span>ACTIVITY</span>
+        <OrbitBrand className="activity-special-thumbnail-brand" />
         <strong>{props.slide.activity.title}</strong>
         <small>{firstQuestion?.prompt ?? props.slide.activity.description}</small>
       </span>
@@ -38,8 +42,9 @@ export function ActivitySpecialSlideThumbnail(props: {
       aria-label={`${source?.activity.title ?? "연결 결과"} 결과 장표 미리보기`}
       className="activity-special-thumbnail activity-special-thumbnail--results"
       data-testid="activity-results-slide-thumbnail"
+      style={createActivityThemeStyle(props.deck.theme, resultSlide.style)}
     >
-      <span>RESULTS</span>
+      <OrbitBrand className="activity-special-thumbnail-brand" />
       <strong>{source ? `${source.activity.title} 결과` : "원본 연결 필요"}</strong>
       <small>{resultLayoutLabels[resultSlide.activityResult.layout]}</small>
     </span>

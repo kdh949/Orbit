@@ -202,7 +202,10 @@ export async function ensureOoxmlReadyForExport(
   fetcher: typeof fetch = fetch
 ): Promise<void> {
   let state = await getOoxmlSyncState(projectId, fetcher);
-  if (state.status === "stale" || state.status === "failed") {
+  if (
+    state.status === "stale" ||
+    (state.status === "failed" && state.retryable)
+  ) {
     state = await retryOoxmlSync(projectId, fetcher);
   }
   await waitForOoxmlSync(projectId, state, fetcher);

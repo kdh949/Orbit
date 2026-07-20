@@ -31,7 +31,30 @@ describe("activityDefinitionSchema", () => {
     });
   });
 
-  it("requires exactly one free-text question for pre-question", () => {
+  it("accepts one to five free-text questions for pre-question", () => {
+    const result = activityDefinitionSchema.safeParse({
+      ...satisfactionDefinition(),
+      template: "pre-question",
+      questions: [
+        {
+          questionId: "question_pre_1",
+          type: "free-text",
+          prompt: "발표 전에 궁금한 점이 있나요?",
+          required: true
+        },
+        {
+          questionId: "question_pre_2",
+          type: "free-text",
+          prompt: "가장 기대하는 내용은 무엇인가요?",
+          required: false
+        }
+      ]
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects non-free-text questions for pre-question", () => {
     const result = activityDefinitionSchema.safeParse({
       ...satisfactionDefinition(),
       template: "pre-question"

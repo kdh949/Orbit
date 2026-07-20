@@ -5,6 +5,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
 import {
+  PPTX_OOXML_SYNC_CAPABILITY_VERSION,
   deckSchema,
   templateBlueprintSchema,
   type Deck,
@@ -182,6 +183,252 @@ describeIntegration("PPTX OOXML PostgreSQL round-trip", () => {
     expect(reimportedText.y).toBeCloseTo(expectedFrame.y, 0);
     expect(reimportedText.width).toBeCloseTo(expectedFrame.width, 0);
     expect(reimportedText.height).toBeCloseTo(expectedFrame.height, 0);
+  }, 120_000);
+
+  it("coalesces cumulative reorder and authored line, arrow, and chart fallbacks", async () => {
+    const projectId = integrationId("project");
+    const sourceFileId = integrationId("file");
+    const sourceStorageKey = `integration/${projectId}/source.pptx`;
+    const storage = new MemoryStorage();
+    projectIds.add(projectId);
+
+    await expectPythonWorkerHealthy(pythonWorkerUrl);
+    const baseDeck = createDeck(projectId, integrationId("deck"), 1);
+    const sourceDeck = deckSchema.parse({
+      ...baseDeck,
+      slides: [
+        {
+          ...baseDeck.slides[0],
+          slideId: "slide_source_1",
+          order: 1,
+          elements: [createTextElement("Slide 1", "el_source_1")],
+        },
+        {
+          ...baseDeck.slides[0],
+          slideId: "slide_source_2",
+          order: 2,
+          title: "Slide 2",
+          elements: [createTextElement("Slide 2", "el_source_2")],
+        },
+      ],
+    });
+    const sourceBytes = await exportDeckWithPython(pythonWorkerUrl, sourceDeck);
+    storage.seed(sourceStorageKey, sourceBytes, pptxMimeType, "pptx-import");
+    await seedProject(dataSource, projectId);
+    await seedAsset(dataSource, {
+      projectId,
+      fileId: sourceFileId,
+      storageKey: sourceStorageKey,
+      purpose: "pptx-import",
+      body: sourceBytes,
+    });
+
+    const harness = createServiceHarness(dataSource);
+    const importJob = await harness.jobs.create({
+      projectId,
+      type: "pptx-ooxml-generation",
+      payload: { request: { fileId: sourceFileId } },
+    });
+    const importedJob = await processPptxOoxmlGenerationJob(
+      dataSource,
+      storage,
+      pythonWorkerUrl,
+      {
+        jobId: importJob.jobId,
+        projectId,
+        request: { fileId: sourceFileId },
+      },
+    );
+    expect(importedJob.status, JSON.stringify(importedJob.error)).toBe(
+      "succeeded",
+    );
+
+    const imported = (await harness.decks.getDeck(projectId)).deck;
+    const targetSlideId = imported.slides[0]!.slideId;
+    const line = createAuthoredLineOrArrow("line", "el_authored_line", 120);
+    const arrow = createAuthoredLineOrArrow(
+      "arrow",
+      "el_authored_arrow",
+      280,
+    );
+    const chart = createAuthoredChart();
+    const afterLine = await harness.decks.appendPatch(projectId, {
+      patch: {
+        deckId: imported.deckId,
+        baseVersion: imported.version,
+        source: "user",
+        operations: [
+          { type: "add_element", slideId: targetSlideId, element: line },
+        ],
+      },
+    });
+    const afterArrow = await harness.decks.appendPatch(projectId, {
+      patch: {
+        deckId: imported.deckId,
+        baseVersion: afterLine.deck.version,
+        source: "user",
+        operations: [
+          { type: "add_element", slideId: targetSlideId, element: arrow },
+        ],
+      },
+    });
+    const finalSlideIds = [...imported.slides]
+      .reverse()
+      .map((slide) => slide.slideId);
+    const accumulated = await harness.decks.appendPatch(projectId, {
+      patch: {
+        deckId: imported.deckId,
+        baseVersion: afterArrow.deck.version,
+        source: "user",
+        operations: [
+          { type: "add_element", slideId: targetSlideId, element: chart },
+          {
+            type: "reorder_slides",
+            slideOrders: finalSlideIds.map((slideId, index) => ({
+              slideId,
+              order: index + 1,
+            })),
+          },
+        ],
+      },
+    });
+
+    const firstSyncPayload = await enqueueSync(harness, projectId, {
+      deckId: imported.deckId,
+      changeId: accumulated.changeRecord.changeId,
+      targetDeckVersion: accumulated.deck.version,
+    });
+    const firstSync = await processPptxOoxmlSyncJob(
+      dataSource,
+      storage,
+      pythonWorkerUrl,
+      firstSyncPayload,
+    );
+    expect(firstSync.status, JSON.stringify(firstSync.error)).toBe("succeeded");
+    expect(firstSync.result).toMatchObject({
+      syncedDeckVersion: accumulated.deck.version,
+      syncCapabilityVersion: 2,
+      rasterizedElements: [
+        expect.objectContaining({ elementId: line.elementId, elementType: "line" }),
+        expect.objectContaining({ elementId: arrow.elementId, elementType: "arrow" }),
+        expect.objectContaining({ elementId: chart.elementId, elementType: "chart" }),
+      ],
+      warnings: [expect.stringContaining("arrow 1, chart 1, line 1")],
+    });
+    const firstBlueprint = await loadTemplateBlueprint(
+      dataSource,
+      projectId,
+      imported.deckId,
+    );
+    expect(firstBlueprint.ooxmlSyncedDeckVersion).toBe(accumulated.deck.version);
+    expect(
+      firstBlueprint.slides.flatMap((slide) => slide.elementSources).filter(
+        (source) => source.fallbackMode === "rasterized",
+      ),
+    ).toHaveLength(3);
+    const firstPackageBytes = await currentPackageBytes(
+      dataSource,
+      storage,
+      projectId,
+      firstBlueprint.currentPackageFileId!,
+    );
+
+    const updated = await harness.decks.appendPatch(projectId, {
+      patch: {
+        deckId: imported.deckId,
+        baseVersion: accumulated.deck.version,
+        source: "user",
+        operations: [
+          {
+            type: "update_element_props",
+            slideId: targetSlideId,
+            elementId: line.elementId,
+            props: { stroke: "#DC2626", strokeWidth: 10 },
+          },
+          {
+            type: "delete_element",
+            slideId: targetSlideId,
+            elementId: arrow.elementId,
+          },
+        ],
+      },
+    });
+    const secondSyncPayload = await enqueueSync(harness, projectId, {
+      deckId: imported.deckId,
+      changeId: updated.changeRecord.changeId,
+      targetDeckVersion: updated.deck.version,
+    });
+    const secondSync = await processPptxOoxmlSyncJob(
+      dataSource,
+      storage,
+      pythonWorkerUrl,
+      secondSyncPayload,
+    );
+    expect(secondSync.status, JSON.stringify(secondSync.error)).toBe(
+      "succeeded",
+    );
+    expect(secondSync.result).toMatchObject({
+      syncedDeckVersion: updated.deck.version,
+      rasterizedElements: [
+        expect.objectContaining({ elementId: line.elementId }),
+        expect.objectContaining({ elementId: chart.elementId }),
+      ],
+    });
+    expect(
+      (secondSync.result?.rasterizedElements as Array<{ elementId: string }>).map(
+        (element) => element.elementId,
+      ),
+    ).not.toContain(arrow.elementId);
+
+    const finalBlueprint = await loadTemplateBlueprint(
+      dataSource,
+      projectId,
+      imported.deckId,
+    );
+    const finalFallbackSources = finalBlueprint.slides
+      .flatMap((slide) => slide.elementSources)
+      .filter((source) => source.fallbackMode === "rasterized");
+    expect(finalFallbackSources.map((source) => source.elementId).sort()).toEqual(
+      [chart.elementId, line.elementId].sort(),
+    );
+    const finalPackageBytes = await currentPackageBytes(
+      dataSource,
+      storage,
+      projectId,
+      finalBlueprint.currentPackageFileId!,
+    );
+    expect(finalPackageBytes).not.toEqual(firstPackageBytes);
+    expect(finalPackageBytes.subarray(0, 2).toString()).toBe("PK");
+    const patchRows = await dataSource.query<Array<{ count: string }>>(
+      `SELECT count(*)::text AS count FROM deck_patches
+       WHERE project_id = $1 AND deck_id = $2`,
+      [projectId, imported.deckId],
+    );
+    expect(patchRows[0]?.count).toBe("0");
+
+    const exportPayload = await enqueueExport(harness, projectId);
+    const exportedJob = await processDeckExportJob(
+      dataSource,
+      storage,
+      pythonWorkerUrl,
+      exportPayload,
+      { ooxmlReadyAttempts: 2, ooxmlReadyDelayMs: 0 },
+    );
+    expect(exportedJob.status, JSON.stringify(exportedJob.error)).toBe(
+      "succeeded",
+    );
+    const reimported = await importPptxWithPython(
+      pythonWorkerUrl,
+      await jobAssetBytes(dataSource, storage, exportedJob),
+      projectId,
+      integrationId("file"),
+    );
+    expect(importedSlideTextOrder(reimported)).toEqual(["Slide 2", "Slide 1"]);
+    expect(
+      (reimported.blueprint.slides ?? [])
+        .flatMap((slide) => slide.elements ?? [])
+        .filter((element) => element.type === "image"),
+    ).toHaveLength(2);
   }, 120_000);
 
   it("replays add, duplicate, delete, reorder, and undo before export and re-import", async () => {
@@ -714,12 +961,16 @@ async function enqueueSync(
   projectId: string,
   input: { deckId: string; changeId: string; targetDeckVersion: number },
 ) {
+  const versionedInput = {
+    ...input,
+    syncCapabilityVersion: PPTX_OOXML_SYNC_CAPABILITY_VERSION,
+  };
   const job = await harness.jobs.create({
     projectId,
     type: "pptx-ooxml-sync",
-    payload: input,
+    payload: versionedInput,
   });
-  const payload = { jobId: job.jobId, projectId, ...input };
+  const payload = { jobId: job.jobId, projectId, ...versionedInput };
   harness.syncPayloads.push(payload);
   return payload;
 }
@@ -1012,6 +1263,66 @@ function createTextElement(
       align: "left",
       verticalAlign: "top",
       lineHeight: 1.2,
+    },
+  };
+}
+
+function createAuthoredLineOrArrow(
+  type: "line" | "arrow",
+  elementId: string,
+  y: number,
+): DeckElement {
+  return {
+    elementId,
+    type,
+    role: "decoration",
+    x: 160,
+    y,
+    width: 520,
+    height: 80,
+    rotation: 0,
+    opacity: 1,
+    zIndex: type === "line" ? 2 : 3,
+    locked: false,
+    visible: true,
+    ooxmlOrigin: "authored",
+    props: {
+      stroke: type === "line" ? "#2563EB" : "#7C3AED",
+      strokeWidth: 8,
+      lineCap: "round",
+      dash: type === "line" ? [16, 8] : undefined,
+    },
+  };
+}
+
+function createAuthoredChart(): DeckElement {
+  return {
+    elementId: "el_authored_chart",
+    type: "chart",
+    role: "chart",
+    x: 760,
+    y: 180,
+    width: 720,
+    height: 460,
+    rotation: 0,
+    opacity: 1,
+    zIndex: 4,
+    locked: false,
+    visible: true,
+    ooxmlOrigin: "authored",
+    props: {
+      type: "bar",
+      title: "Authored fallback chart",
+      data: [
+        { label: "Q1", series: "2026", value: 32 },
+        { label: "Q2", series: "2026", value: 48 },
+      ],
+      style: {
+        colors: ["#2563EB", "#7C3AED"],
+        showLegend: true,
+        showDataLabels: true,
+        showGrid: true,
+      },
     },
   };
 }

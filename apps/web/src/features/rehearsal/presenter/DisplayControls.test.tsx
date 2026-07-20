@@ -7,7 +7,7 @@ import {
   DisplayControls,
   getDisplayControlMessage,
   getDefaultAutoPlacementScreen,
-  getDisplayStatusLabel,
+  queryWindowManagementPermissionState,
   shouldShowRecoverAction,
 } from "./DisplayControls";
 
@@ -30,7 +30,7 @@ describe("DisplayControls", () => {
 
     expect(html).toContain("슬라이드 창 열기");
     expect(html).toContain("프레젠테이션 옵션");
-    expect(html).toContain("대기");
+    expect(html).not.toContain("presenter-display-status");
     expect(html).not.toContain("speakerNotes");
     expect(html).not.toContain("Partial transcript");
   });
@@ -52,18 +52,6 @@ describe("DisplayControls", () => {
       "전체화면",
     );
     expect(getDisplayControlMessage("placement-failed")).toContain("자동 배치");
-  });
-
-  it("prioritizes actionable status labels", () => {
-    expect(getDisplayStatusLabel("connected", "idle")).toBe(
-      "슬라이드 화면 연결됨",
-    );
-    expect(getDisplayStatusLabel("stale", "idle")).toBe(
-      "슬라이드 화면 응답 없음",
-    );
-    expect(getDisplayStatusLabel("idle", "opening")).toBe("발표자 창 여는 중");
-    expect(getDisplayStatusLabel("idle", "manual-guide")).toBe("전환 안내");
-    expect(getDisplayStatusLabel("idle", "failed")).toBe("확인 필요");
   });
 
   it("detects browsers that support fullscreen capability delegation", () => {
@@ -101,6 +89,20 @@ describe("DisplayControls", () => {
     ).toMatchObject({ label: "발표 화면", screenIndex: 1 });
   });
 
+  it("reads granted Window Management permission and supports its legacy name", async () => {
+    const queriedNames: string[] = [];
+    const state = await queryWindowManagementPermissionState(async (descriptor) => {
+      queriedNames.push(descriptor.name);
+      if (descriptor.name === ("window-management" as PermissionName)) {
+        throw new TypeError("unsupported permission name");
+      }
+      return { state: "granted" };
+    });
+
+    expect(state).toBe("granted");
+    expect(queriedNames).toEqual(["window-management", "window-placement"]);
+  });
+
   it("starts the slide display request before updating control state", () => {
     const source = fs.readFileSync(displayControlsSourcePath, "utf8");
     const start = source.indexOf("async function openSlideWindow(");
@@ -112,7 +114,7 @@ describe("DisplayControls", () => {
     ).toBeLessThan(openSlideWindowBody.indexOf('setDisplayState("opening")'));
   });
 
-  it("starts the display permission request before updating request state", () => {
+  it("starts the display permission request before showing request progress", () => {
     const source = fs.readFileSync(displayControlsSourcePath, "utf8");
     const start = source.indexOf("async function requestDisplayScreens(");
     const end = source.indexOf("function setPresenterView(", start);
@@ -121,7 +123,9 @@ describe("DisplayControls", () => {
     expect(
       requestDisplayScreensBody.indexOf("onRequestDisplayScreens()"),
     ).toBeLessThan(
-      requestDisplayScreensBody.indexOf('setScreenRequestState("loading")'),
+      requestDisplayScreensBody.indexOf(
+        'setScreenMessage("브라우저 권한을 요청하는 중입니다.")',
+      ),
     );
   });
 
@@ -159,6 +163,7 @@ describe("DisplayControls", () => {
       "startFromBeginning: event.currentTarget.checked",
     );
     expect(source).not.toContain("autoPlace: event.currentTarget.checked");
+    expect(source).not.toContain("autoPlace: checked");
     expect(source).not.toContain("fullscreen: event.currentTarget.checked");
   });
 });

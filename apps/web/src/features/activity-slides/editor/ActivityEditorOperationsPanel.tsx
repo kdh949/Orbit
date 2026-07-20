@@ -1,7 +1,8 @@
 import type { ActivityRuntimeStatus, ActivitySlide } from "@orbit/shared";
-import { IconCopy, IconQrcode } from "@tabler/icons-react";
+import { IconChartBar, IconCopy, IconQrcode } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { OrbitButtonLink } from "../../../components/ui";
 import { createQrDataUrl } from "../../editor/audience-link/audienceLinkUtils";
 import {
   getActivityPrimaryCommand,
@@ -14,6 +15,7 @@ export function ActivityEditorOperationsPanel(props: {
   onOpenAudienceLink?: () => void;
   onUpdateStatus: (status?: ActivityRuntimeStatus) => void;
   pending: boolean;
+  projectId?: string;
   runtime: ActivityEditorRuntime | null;
   slide: ActivitySlide;
 }) {
@@ -54,12 +56,12 @@ export function ActivityEditorOperationsPanel(props: {
     return (
       <section aria-label="참여 장표 운영" className="activity-editor-operations">
         <div>
-          <strong>발표 세션이 없습니다.</strong>
-          <p>세션을 만들면 상태 제어와 장표별 링크·QR을 사용할 수 있습니다.</p>
+          <strong>먼저 발표 준비를 시작하세요.</strong>
+          <p>세션을 만들면 청중 참여 링크와 QR을 사용할 수 있어요.</p>
         </div>
         {props.onOpenAudienceLink ? (
           <button type="button" onClick={props.onOpenAudienceLink}>
-            발표 세션 만들기
+            발표 준비하기
           </button>
         ) : null}
       </section>
@@ -71,16 +73,16 @@ export function ActivityEditorOperationsPanel(props: {
     <section aria-label="참여 장표 운영" className="activity-editor-operations">
       <div className="activity-editor-operation-heading">
         <div>
-          <span>현재 상태</span>
+          <span>진행 상태</span>
           <strong>{statusLabel(status)}</strong>
         </div>
         <div>
-          <span>청중 결과</span>
+          <span>청중에게 결과</span>
           <strong>{status === "results" ? "공개" : "비공개"}</strong>
         </div>
         <div>
-          <span>응답</span>
-          <strong>{props.runtime.run.responseCount}</strong>
+          <span>받은 응답</span>
+          <strong>{props.runtime.run.responseCount}개</strong>
         </div>
       </div>
       {reopenCommand ? (
@@ -117,12 +119,22 @@ export function ActivityEditorOperationsPanel(props: {
           {props.pending ? "상태 변경 중" : command.label}
         </button>
       )}
+      {props.projectId ? (
+        <OrbitButtonLink
+          className="activity-editor-results-link"
+          href={activitySessionResultsPath(props.projectId, props.runtime.sessionId)}
+          icon={<IconChartBar aria-hidden="true" size={17} />}
+          variant="secondary"
+        >
+          모든 응답 보기
+        </OrbitButtonLink>
+      ) : null}
       <label className="activity-editor-direct-link">
-        장표별 직접 링크
+        이 슬라이드 참여 링크
         <span>
           <input readOnly value={directUrl} />
           <button
-            aria-label="장표별 직접 링크 복사"
+            aria-label="이 슬라이드 참여 링크 복사"
             type="button"
             onClick={() => {
               if (!navigator.clipboard) return;
@@ -143,7 +155,7 @@ export function ActivityEditorOperationsPanel(props: {
         onClick={() => setQrOpen((open) => !open)}
       >
         <IconQrcode aria-hidden="true" size={17} />
-        QR 코드 확인
+        참여 QR 코드 {qrOpen ? "닫기" : "보기"}
       </button>
       {qrOpen ? (
         <div className="activity-editor-qr-preview">
@@ -156,6 +168,10 @@ export function ActivityEditorOperationsPanel(props: {
       ) : null}
     </section>
   );
+}
+
+export function activitySessionResultsPath(projectId: string, sessionId: string) {
+  return `/project/${encodeURIComponent(projectId)}/presentation-sessions/${encodeURIComponent(sessionId)}/results`;
 }
 
 function statusLabel(status: ActivityRuntimeStatus) {

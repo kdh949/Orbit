@@ -109,7 +109,7 @@ export function ActivityResultsPage(props: {
           에디터로 돌아가기
         </a>
         <div>
-          <span className="redesign-eyebrow">PRESENTATION RESULTS</span>
+          <span className="redesign-eyebrow">발표 결과</span>
           <h1>발표 세션 결과</h1>
           <p>{archive.data.sessionName}</p>
         </div>

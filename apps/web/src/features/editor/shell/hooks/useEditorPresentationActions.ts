@@ -113,8 +113,8 @@ function navigateToRehearsal(projectId: string, snapshotPreparationId?: string) 
   const search = snapshotPreparationId
     ? `?snapshotPreparationId=${encodeURIComponent(snapshotPreparationId)}`
     : "";
-  window.history.pushState({}, "", `/rehearsal/${encodeURIComponent(projectId)}${search}`);
-  window.dispatchEvent(new PopStateEvent("popstate"));
+  const path = `/rehearsal/${encodeURIComponent(projectId)}${search}`;
+  window.dispatchEvent(new CustomEvent("orbit:rehearsal-navigation-request", { detail: path }));
 }
 
 function navigateToPresentation(projectId: string) {

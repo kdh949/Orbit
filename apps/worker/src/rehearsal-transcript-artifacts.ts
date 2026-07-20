@@ -17,6 +17,7 @@ export type RehearsalTranscriptArtifactInput = {
   transcriptTextFileId: string | null;
   transcriptJsonStatus: string | null;
   transcriptTextStatus: string | null;
+  liveTranscript?: string | null;
   transcription: {
     transcript: string;
     language: string;
@@ -74,6 +75,7 @@ export async function storeRehearsalTranscriptArtifacts(
 
   const artifact = rehearsalTranscriptArtifactSchema.parse({
     text: input.transcription.transcript,
+    liveTranscript: input.liveTranscript ?? null,
     language: input.transcription.language,
     duration: input.transcription.durationSeconds ?? 0,
     provider: input.transcription.provider,

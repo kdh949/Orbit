@@ -66,6 +66,7 @@ from app.ai.pptx_ooxml_generation import (
     sync_pptx_ooxml,
 )
 from app.ai.pptx_ooxml_sync_transport import (
+    AUTHORED_ELEMENT_FALLBACKS_MAX_BYTES,
     DECK_CANVAS_MAX_BYTES,
     OPERATIONS_MAX_BYTES,
     SLIDE_MOTION_MAX_BYTES,
@@ -73,6 +74,7 @@ from app.ai.pptx_ooxml_sync_transport import (
     PptxOoxmlSyncTransportError,
     parse_json_part,
     read_pptx_package,
+    validate_authored_element_fallbacks,
 )
 from app.ai.pptx_ooxml_vector_importer import (
     import_pptx_design_with_optional_ooxml_vector,
@@ -692,6 +694,7 @@ async def sync_pptx_ooxml_endpoint(
     operations_file: UploadFile | None = File(None),
     slide_motion_file: UploadFile | None = File(None),
     deck_canvas_file: UploadFile | None = File(None),
+    authored_element_fallbacks_file: UploadFile | None = File(None),
     template_blueprint: str | None = Form(None),
     operations: str | None = Form(None),
     slide_motion: str | None = Form(None),
@@ -746,6 +749,17 @@ async def sync_pptx_ooxml_endpoint(
                 expected="object",
             ),
         )
+        parsed_authored_element_fallbacks = validate_authored_element_fallbacks(
+            await parse_json_part(
+                field="authored_element_fallbacks",
+                upload=authored_element_fallbacks_file,
+                legacy_text=None,
+                max_bytes=AUTHORED_ELEMENT_FALLBACKS_MAX_BYTES,
+                expected="object",
+            )
+            if authored_element_fallbacks_file is not None
+            else {"theme": {}, "elements": []}
+        )
     except PptxOoxmlSyncTransportError as error:
         raise HTTPException(
             status_code=error.status_code,
@@ -763,6 +777,7 @@ async def sync_pptx_ooxml_endpoint(
                 operations=parsed_operations,
                 slide_motion=parsed_slide_motion,
                 deck_canvas=parsed_deck_canvas,
+                authored_element_fallbacks=parsed_authored_element_fallbacks,
                 synced_deck_version=synced_deck_version,
                 render=render,
             )

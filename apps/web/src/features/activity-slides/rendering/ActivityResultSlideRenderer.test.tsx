@@ -54,6 +54,15 @@ const presenterResult = activityPresenterResultSchema.parse({
     type: question.type,
     responseCount: 1,
     average: question.type === "rating" ? 4 : null,
+    ratingDistribution: question.type === "rating"
+      ? [
+          { value: 1, count: 0, ratio: 0 },
+          { value: 2, count: 0, ratio: 0 },
+          { value: 3, count: 0, ratio: 0 },
+          { value: 4, count: 1, ratio: 1 },
+          { value: 5, count: 0, ratio: 0 }
+        ]
+      : [],
     choices: []
   })),
   textEntries: [{
@@ -68,6 +77,27 @@ const presenterResult = activityPresenterResultSchema.parse({
 });
 
 describe("ActivityResultSlideRenderer", () => {
+  it("uses the linked activity copy and removes decorative result labels", () => {
+    const html = renderToStaticMarkup(
+      <ActivityResultSlideRenderer
+        presenterResult={null}
+        publicResult={null}
+        role="presenter"
+        run={null}
+        slide={resultSlide}
+        source={source}
+        theme={deck.theme}
+      />
+    );
+
+    expect(html).not.toContain("redesign-orbit-brand");
+    expect(html).toContain("실시간 참여 결과");
+    expect(html).toContain("시작 전");
+    expect(html).toContain(source.activity.title);
+    expect(html).not.toContain("ACTIVITY RESULTS");
+    expect(html).not.toContain(resultSlide.title);
+  });
+
   it.each([
     [null, false, "audience", null, null, "source-missing"],
     [source, true, "audience", null, null, "waiting"],
@@ -120,7 +150,8 @@ describe("ActivityResultSlideRenderer", () => {
 
     expect(html).toContain('data-result-state="presenter-live"');
     expect(html).toContain("공개 전 원문 sentinel");
-    expect(html).toContain("pending");
+    expect(html).toContain("확인 전");
+    expect(html).toContain("새 응답은 이 화면에 자동으로 반영됩니다.");
   });
 
   it("renders distinct summary and chart layouts", () => {
@@ -150,6 +181,7 @@ describe("ActivityResultSlideRenderer", () => {
 
     expect(summary).toContain('data-result-layout="summary"');
     expect(summary).toContain("결과 요약");
+    expect(summary).toContain("응답 결과 한눈에 보기");
     expect(chart).toContain('data-result-layout="chart"');
     expect(chart).toContain("집계 차트");
     expect(chart).toContain("activity-result-chart-track");
@@ -184,7 +216,7 @@ describe("ActivityResultSlideRenderer", () => {
     );
 
     expect(html).toContain("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
-    expect(html).not.toContain("<img");
+    expect(html).not.toContain("<img src=x");
     expect(html).not.toContain('onerror="alert(1)"');
   });
 });

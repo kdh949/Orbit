@@ -3,6 +3,11 @@ export {
   AudienceSatisfactionForm,
   AudienceSatisfactionPage
 } from "./audience/AudienceSatisfactionPage";
+export {
+  ActivityAudiencePreviewPage,
+  activityAudiencePreviewQueryKey,
+  findActivityPreviewSlide
+} from "./audience/ActivityAudiencePreviewPage";
 export { ActivitySlideInspector } from "./editor/ActivitySlideInspector";
 export {
   ActivityResultSlideInspector,

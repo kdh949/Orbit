@@ -22,12 +22,21 @@ export const activityChoiceAggregateItemSchema = z
   })
   .strict();
 
+export const activityRatingAggregateItemSchema = z
+  .object({
+    value: z.number().int().min(1).max(5),
+    count: z.number().int().nonnegative(),
+    ratio: z.number().finite().min(0).max(1)
+  })
+  .strict();
+
 export const activityQuestionAggregateSchema = z
   .object({
     questionId: activityQuestionIdSchema,
     type: activityQuestionTypeSchema,
     responseCount: z.number().int().nonnegative(),
     average: z.number().finite().min(1).max(5).nullable(),
+    ratingDistribution: z.array(activityRatingAggregateItemSchema).max(5),
     choices: z.array(activityChoiceAggregateItemSchema).max(8)
   })
   .strict();
@@ -91,6 +100,9 @@ export const activityEditorSummarySchema = z
 
 export type ActivityChoiceAggregateItem = z.infer<
   typeof activityChoiceAggregateItemSchema
+>;
+export type ActivityRatingAggregateItem = z.infer<
+  typeof activityRatingAggregateItemSchema
 >;
 export type ActivityQuestionAggregate = z.infer<
   typeof activityQuestionAggregateSchema

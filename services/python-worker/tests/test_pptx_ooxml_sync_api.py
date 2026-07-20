@@ -25,6 +25,7 @@ def captured_sync(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         template_blueprint: dict[str, Any],
         operations: list[dict[str, Any]],
         slide_motion: list[dict[str, Any]],
+        authored_element_fallbacks: dict[str, Any],
         deck_canvas: dict[str, Any],
         synced_deck_version: int,
         render: bool,
@@ -35,6 +36,7 @@ def captured_sync(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
                 "template_blueprint": template_blueprint,
                 "operations": operations,
                 "slide_motion": slide_motion,
+                "authored_element_fallbacks": authored_element_fallbacks,
                 "deck_canvas": deck_canvas,
                 "synced_deck_version": synced_deck_version,
                 "render": render,
@@ -107,6 +109,33 @@ def test_slide_motion_json_uses_a_bounded_file_part(
 
     assert response.status_code == 200
     assert captured_sync["slide_motion"] == motion
+
+
+def test_authored_raster_fallbacks_use_a_bounded_file_part(
+    captured_sync: dict[str, Any],
+) -> None:
+    fallbacks = {
+        "theme": {"name": "Orbit"},
+        "elements": [
+            {
+                "slideId": "slide_1",
+                "element": {
+                    "elementId": "el_line_1",
+                    "type": "line",
+                    "x": 0,
+                    "y": 0,
+                    "width": 100,
+                    "height": 20,
+                    "props": {"stroke": "#2563EB", "strokeWidth": 3},
+                },
+            }
+        ],
+    }
+
+    response = post_sync(authored_element_fallbacks=fallbacks)
+
+    assert response.status_code == 200
+    assert captured_sync["authored_element_fallbacks"] == fallbacks
 
 
 def test_reorder_acknowledgment_omits_element_locator_nulls(
@@ -241,6 +270,7 @@ def post_sync(
     template_blueprint: dict[str, Any] | None = None,
     operations: list[dict[str, Any]] | None = None,
     slide_motion: list[dict[str, Any]] | None = None,
+    authored_element_fallbacks: dict[str, Any] | None = None,
     files_override: dict[str, tuple[str, bytes, str] | None] | None = None,
 ) -> Any:
     files: dict[str, tuple[str, bytes, str]] = {
@@ -263,6 +293,15 @@ def post_sync(
         "deck_canvas_file": (
             "deck-canvas.json",
             json.dumps(deck_canvas()).encode(),
+            "application/json",
+        ),
+        "authored_element_fallbacks_file": (
+            "authored-element-fallbacks.json",
+            json.dumps(
+                authored_element_fallbacks
+                if authored_element_fallbacks is not None
+                else {"theme": {"name": "Orbit"}, "elements": []}
+            ).encode(),
             "application/json",
         ),
     }

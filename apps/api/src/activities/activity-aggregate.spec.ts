@@ -49,6 +49,13 @@ describe("buildActivityAggregates", () => {
         type: "rating",
         responseCount: 2,
         average: 4,
+        ratingDistribution: [
+          { value: 1, count: 0, ratio: 0 },
+          { value: 2, count: 0, ratio: 0 },
+          { value: 3, count: 1, ratio: 0.5 },
+          { value: 4, count: 0, ratio: 0 },
+          { value: 5, count: 1, ratio: 0.5 }
+        ],
         choices: []
       },
       {
@@ -56,6 +63,7 @@ describe("buildActivityAggregates", () => {
         type: "single-choice",
         responseCount: 2,
         average: null,
+        ratingDistribution: [],
         choices: [
           { optionId: "option_1", count: 1, ratio: 0.5 },
           { optionId: "option_2", count: 1, ratio: 0.5 }

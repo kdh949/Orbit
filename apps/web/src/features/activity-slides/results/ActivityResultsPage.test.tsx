@@ -47,6 +47,7 @@ const result = activityPresenterResultSchema.parse({
     type: "free-text",
     responseCount: 1,
     average: null,
+    ratingDistribution: [],
     choices: []
   }],
   textEntries: [{

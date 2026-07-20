@@ -268,10 +268,11 @@ API:
 - group은 child element를 직접 중첩하지 않는다. 실제 child element는 `slide.elements` flat list에 그대로 두고, group은 `childElementIds`로 묶음 관계만 표현한다.
 - group의 `childElementIds`는 `el_` prefix를 따르는 `elementId` 목록이다.
 - group의 child element 좌표는 group-local 좌표가 아니라 slide canvas 기준 절대 좌표로 유지한다.
-- 객체 좌표 `x`, `y`는 `0` 이상이어야 하고, `width`, `height`는 `0`보다 커야 한다.
-- 1차 스프린트 MVP에서는 객체 기준점이 음수 좌표가 되는 것까지만 금지한다.
-- `x + width > canvas.width`, `y + height > canvas.height`처럼 객체가 오른쪽/아래쪽으로 캔버스 밖에 일부 노출되는 경우는 현재 schema에서 막지 않는다.
-- 캔버스 밖 일부 노출을 완전히 금지할지는 PPTX import/export 구현 중 실제 잘림, 누락, 위치 보정 필요성을 확인한 뒤 다시 결정한다.
+- 객체 좌표 `x`, `y`는 finite number여야 하고, `width`, `height`는 `0`보다 커야 한다.
+- `x`, `y`의 허용 범위는 `-1,000,000` 이상 `1,000,000` 이하이며, 범위를 벗어난 Deck과 frame patch는 거부한다.
+- 사용자가 객체를 캔버스 밖에 일부 또는 전체 배치할 수 있도록 음수 좌표와 canvas 크기를 넘는 좌표를 허용하며, 저장 시 해당 좌표를 보존한다.
+- renderer와 exporter는 canvas 경계 밖의 객체 영역을 표시 영역에서 clip한다.
+- 캔버스 밖 좌표는 편집과 저장에서 보존하며, PPTX import/export에서도 임의로 안쪽 좌표로 보정하지 않는다.
 - 객체 공통 상태 필드는 `rotation`, `opacity`, `zIndex`, `locked`(하위 호환용), `visible`을 사용한다.
 - `opacity`는 `0`부터 `1`까지만 허용하고, `zIndex`는 `0` 이상의 정수만 허용한다.
 - `chart` 객체의 `props`는 `chart.schema.ts`로 검증하며, 지원하지 않는 chart type은 거부한다.
@@ -359,7 +360,8 @@ ORBIT-14 진행 중에는 위 구현 위치를 기준으로 계약을 변경한�
 - `activity` Slide는 strict `ActivityDefinition` 하나를 소유하고, `activity-results` Slide는 strict `{ sourceActivityId, display: "live", layout }` 참조만 소유한다.
 - Activity가 하나라도 있는 Deck은 `canvas.preset = "wide-16-9"`여야 한다. `activityId`는 Deck 안에서 유일하다.
 - 정의에는 `pre-question | poll | satisfaction` template과 `rating | single-choice | multiple-choice | free-text` 문항만 허용한다.
-- 만족도 조사는 최대 5문항, 사전 질문은 `free-text` 1문항, 투표는 선택지 2~8개의 `single-choice` 1문항이다.
+- 만족도 조사는 최대 5문항, 사전 질문은 `free-text` 1~5문항, 투표는 선택지 2~8개의 `single-choice` 1문항이다.
+- 평점 문항 aggregate는 `average`와 1~5점의 `value`, `count`, `ratio`를 모두 담은 `ratingDistribution`을 제공한다. 비평점 문항의 `ratingDistribution`은 빈 배열이다.
 - 응답, aggregate, QR, audience URL, response count는 Deck JSON과 `slide.elements`에 저장하지 않는다.
 - 결과 장표의 dangling `sourceActivityId`는 parse를 허용하고 editor/renderer에서 `source-missing` 복구 상태로 표시한다.
 - Deck patch는 `update_activity_definition`, `update_activity_result_definition` 전용 operation을 사용하며 적용 후 전체 Deck을 다시 검증한다.
@@ -422,9 +424,9 @@ DeckPatch 결정 사항:
 
 지원하는 patch operation:
 
-- `update_deck`: deck 제목 수정
+- `update_deck`: deck 제목, 전체 발표 목표 시간(`targetDurationMinutes`) 또는 metadata 수정
 - `add_slide`: slide 전체 추가
-- `update_slide`: slide 제목 또는 thumbnail URL 수정
+- `update_slide`: slide 제목, thumbnail URL 또는 목표 발표 시간(`estimatedSeconds`) 수정. `estimatedSeconds=null`이면 개별 목표 시간을 제거한다.
 - `update_slide_transition`: destination slide의 fade transition 전체 설정 또는 `null`로 제거
 - `delete_slide`: slide 삭제
 - `reorder_slides`: slide order 재정렬
@@ -570,6 +572,7 @@ MVP API:
 - `PUT /api/v1/projects/:projectId/deck`
 - `POST /api/v1/projects/:projectId/deck/patches`
 - `GET /api/v1/projects/:projectId/snapshots`
+- `GET /api/v1/projects/:projectId/snapshots/:snapshotId`
 - `POST /api/v1/projects/:projectId/snapshots/:snapshotId/restore`
 
 결정 사항:
@@ -1040,7 +1043,7 @@ Job:
 - Job type: `pptx-ooxml-sync`
 - Queue name: `pptx-ooxml-sync`
 
-클라이언트는 `GET /api/v1/projects/:projectId/deck/ooxml-sync-state`로 현재 Deck version과 PPTX package의 동기화 상태를 조회한다. 응답의 `ooxmlSyncState.status`는 `not-applicable`, `pending`, `synced`, `stale`, `failed` 중 하나이며 `deckId`, `deckVersion`, nullable `syncedDeckVersion`, `retryable`, optional 최신 `job`을 포함한다. `POST /api/v1/projects/:projectId/deck/ooxml-sync/retry`는 stale 또는 failed imported Deck에 대해 현재 Deck version 대상 sync Job을 enqueue한다. 같은 version의 queued/running Job이 있으면 기존 Job을 반환하며 중복 enqueue하지 않는다.
+클라이언트는 `GET /api/v1/projects/:projectId/deck/ooxml-sync-state`로 현재 Deck version과 PPTX package의 동기화 상태를 조회한다. 응답의 `ooxmlSyncState.status`는 `not-applicable`, `pending`, `synced`, `stale`, `failed` 중 하나이며 `deckId`, `deckVersion`, nullable `syncedDeckVersion`, `retryable`, optional 최신 `job`을 포함한다. `POST /api/v1/projects/:projectId/deck/ooxml-sync/retry`는 stale, retryable failure, 또는 현재 `PPTX_OOXML_SYNC_CAPABILITY_VERSION`보다 낮은 implementation에서 만들어진 failure에 대해 현재 Deck version 대상 sync Job을 enqueue한다. 같은 version의 queued/running Job이 있으면 기존 Job을 반환하며 중복 enqueue하지 않고, 현재 capability의 non-retryable failure는 HTTP 409로 거부한다.
 
 Job result:
 
@@ -1051,11 +1054,13 @@ Job result:
   "currentPackageFileId": "file_current_package",
   "renderAssetFileIds": ["file_slide_1"],
   "syncedDeckVersion": 2,
+  "syncCapabilityVersion": 2,
+  "rasterizedElements": [],
   "warnings": []
 }
 ```
 
-Worker에서 Python Worker로 보내는 `/ai/pptx-ooxml-sync` multipart 요청은 PPTX package를 `file` file part로, `TemplateBlueprint`, operation 배열, slide motion full-state 배열, Deck canvas를 각각 `template_blueprint_file`, `operations_file`, `slide_motion_file`, `deck_canvas_file`의 `application/json` file part로 전송한다. JSON을 일반 multipart text field로 보내지 않는다. 배포 중 rolling compatibility를 위해 Python Worker는 기존 `template_blueprint`, `operations`, `slide_motion`, `deck_canvas` text field도 소형 요청에 한해 읽지만, 신규 Worker는 file part만 사용한다.
+Worker에서 Python Worker로 보내는 `/ai/pptx-ooxml-sync` multipart 요청은 PPTX package를 `file` file part로, `TemplateBlueprint`, operation 배열, slide motion full-state 배열, Deck canvas, authored raster fallback 후보를 각각 `template_blueprint_file`, `operations_file`, `slide_motion_file`, `deck_canvas_file`, `authored_element_fallbacks_file`의 `application/json` file part로 전송한다. fallback part는 strict `{ theme, elements: [{ slideId, element }] }` 구조이며 현재 Deck의 최종 요소 상태만 포함한다. JSON을 일반 multipart text field로 보내지 않는다. 배포 중 rolling compatibility를 위해 Python Worker는 기존 `template_blueprint`, `operations`, `slide_motion`, `deck_canvas` text field도 소형 요청에 한해 읽지만, 신규 Worker는 file part만 사용한다.
 
 전송 경계는 저장소의 50 MiB asset upload 제한과 image data URL의 base64 증가분, bounded OOXML metadata 규모를 기준으로 다음과 같이 제한한다.
 
@@ -1064,7 +1069,9 @@ Worker에서 Python Worker로 보내는 `/ai/pptx-ooxml-sync` multipart 요청�
 - `operations_file`: 72 MiB
 - `slide_motion_file`: 16 MiB
 - `deck_canvas_file`: 4 KiB
+- `authored_element_fallbacks_file`: 72 MiB
 - operation 배열: 최대 500개
+- authored raster fallback 요소 배열: 최대 500개
 
 Python Worker는 각 file part를 최대 크기보다 1 byte만 더 읽는 bounded read 후 JSON object/array 외형을 Pydantic으로 검증한다. 누락·중복, 잘못된 MIME type, 최대 크기 초과, malformed JSON, 잘못된 JSON 외형은 `PPTX_OOXML_SYNC_*` bounded code와 field 이름만 포함해 non-retryable로 실패한다. package/JSON 원문과 자유 형식 parser 오류는 Job 오류나 로그에 포함하지 않는다. 이 transport 단계가 실패하면 새 asset 저장, `currentPackageFileId`, `ooxmlSyncedDeckVersion`, patch compaction을 변경하지 않는다.
 
@@ -1085,7 +1092,9 @@ ORBIT editor의 `group` element는 PPTX shape group이 아니라 interaction 전
 
 `reorder_slides`는 기존 DeckPatch의 `slideOrders` 계약을 재사용하며 operation이 실행되는 시점의 Deck slide ID 전체와 `1..N` order를 각각 정확히 한 번씩 포함해야 한다. Worker는 `ooxmlSyncedDeckVersion`의 `TemplateBlueprint.slides`를 시작 상태로 삼아 pending `add_slide`, `delete_slide`, `reorder_slides`를 저장 순서대로 replay하고 각 시점의 permutation을 검증한다. replay 결과가 stored Deck의 최종 순서와 정확히 일치해야 하며, 검증 후 transient add/delete와 과거 reorder는 최종 package mutation으로 compact한다. imported PPTX sync에서 Worker는 `TemplateBlueprint.slides[].slideId`로 각 opaque Deck slide ID를 유일한 `sourceSlidePart`에 대응시킨다. Python serializer는 전달된 `slideId ↔ sourceSlidePart`를 다시 검증하고 `ppt/presentation.xml`의 `p:sldIdLst` 자식 순서만 바꾸며 각 `p:sldId@id`, `r:id`, slide part 이름과 slide별 package entry를 유지한다. slide ID의 숫자 suffix 또는 `slideIndex`로 package part를 추론하지 않는다.
 
-`add_slide`는 imported Deck에서 생성된 `ooxmlOrigin: authored` 슬라이드에 새 `ppt/slides/slideN.xml`, presentation relationship, content type override, 기존 slide layout relationship을 원자적으로 연결한다. 같은 sync batch의 `text`, `rect`, `image`, `table` authored element를 새 slide part에 추가하고 `elementSources`를 반환한다. Worker는 생성한 opaque `slideId ↔ sourceSlidePart`를 TemplateBlueprint에 저장하므로 이후 이미지 추가와 재정렬도 동일한 locator를 사용한다.
+`add_slide`는 imported Deck에서 생성된 `ooxmlOrigin: authored` 슬라이드에 새 `ppt/slides/slideN.xml`, presentation relationship, content type override, 기존 slide layout relationship을 원자적으로 연결한다. 같은 sync batch의 `text`, `rect`, `image`, `table` authored element는 native OOXML로 추가하고, `ellipse`, `line`, `arrow`, `polygon`, `star`, `ring`, `svg`, `customShape`, `chart` authored element는 요소 단위 투명 PNG와 `p:pic`으로 추가한 뒤 `elementSources`를 반환한다. Worker는 생성한 opaque `slideId ↔ sourceSlidePart`를 TemplateBlueprint에 저장하므로 이후 이미지 추가와 재정렬도 동일한 locator를 사용한다.
+
+authored raster fallback source는 원래 `elementType`을 유지하고 `ooxmlOrigin="authored"`, `sourceType="image"`, `writable=true`, `fallbackMode="rasterized"`, `fallbackReason="AUTHORED_ELEMENT_TYPE_RASTERIZED"`와 전용 picture relationship을 기록한다. 후속 frame/props 변경은 최종 Deck element를 다시 렌더링해 같은 media part를 교체한다. Deck JSON의 요소 타입과 편집성은 바뀌지 않는다. active raster source는 sync Job result의 bounded `rasterizedElements`와 사용자 warning에 계속 노출되며 Job은 `succeeded`로 완료한다.
 
 `delete_slide`는 안정적인 `slideId ↔ sourceSlidePart` locator를 요구하고 `ppt/presentation.xml`의 slide ID 및 presentation relationship과 해당 content type override를 함께 제거한다. 마지막 슬라이드는 삭제하지 않는다. sync 성공 후 TemplateBlueprint는 최종 Deck에 남은 slide만 현재 order로 재구성한다. locator 누락, 두 Deck slide가 같은 source part를 가리키는 경우, 끊어진 presentation relationship, 중복·누락·unknown slide 또는 불완전 permutation은 bounded slide lifecycle reason으로 package 원본 bytes를 반환하고 freshness를 올리지 않는다.
 
@@ -1124,7 +1133,7 @@ speaker notes, keywords, semantic cues, slide action처럼 package visual tree�
 - `ooxmlSyncedDeckVersion >= deck.version`이면 provider와 asset 저장을 반복하지 않는 idempotent success로 종료한다.
 - TemplateBlueprint update는 현재 저장된 `ooxmlSyncedDeckVersion`보다 높은 결과만 반영한다. 낮은 version의 완료가 최신 `currentPackageFileId`를 덮어쓰지 않는다.
 - 성공한 sync version 이하의 patch만 compact한다.
-- writable canonical rich text/frame, image source, image crop, supported authored table을 동기화한다. imported text는 writable direct text shape와 authoritative source mapping을 검사해 `richText=full | style-only | none`을 기록한다. `full`은 canonical paragraph/run content와 style을 동기화하고, `style-only`는 semantic text와 기존 paragraph 경계를 유지하면서 modeled style만 반영한다. 기존 run 경계와 target 경계를 합쳐 hyperlink relationship을 보존하며, 안전하게 reconcile할 수 없는 field·구조는 `RICH_TEXT_CAPABILITY_UNSAFE`로 package와 synced version을 갱신하지 않는다. 새로 추가된 text/rect/image/table 요소는 실제 OOXML `shapeId`와 writable authored source mapping을 만들고, table은 complete locator를 갱신한다. image에는 relationship과 media part를 함께 생성해 후속 편집도 같은 요소를 갱신한다. imported table cell text는 authoritative locator/fingerprint가 일치할 때만 갱신하고 imported table structure는 fail-closed한다. 지원하지 않는 fallback 요소는 package를 손상시키지 않고 bounded unsupported reason으로 실패한다.
+- writable canonical rich text/frame, image source, image crop, supported authored table을 동기화한다. imported text는 writable direct text shape와 authoritative source mapping을 검사해 `richText=full | style-only | none`을 기록한다. `full`은 canonical paragraph/run content와 style을 동기화하고, `style-only`는 semantic text와 기존 paragraph 경계를 유지하면서 modeled style만 반영한다. 기존 run 경계와 target 경계를 합쳐 hyperlink relationship을 보존하며, 안전하게 reconcile할 수 없는 field·구조는 `RICH_TEXT_CAPABILITY_UNSAFE`로 package와 synced version을 갱신하지 않는다. 새로 추가된 text/rect/image/table 요소는 실제 OOXML `shapeId`와 writable authored source mapping을 만들고, table은 complete locator를 갱신한다. image에는 relationship과 media part를 함께 생성해 후속 편집도 같은 요소를 갱신한다. imported table cell text는 authoritative locator/fingerprint가 일치할 때만 갱신하고 imported table structure는 fail-closed한다. authored raster fallback은 package 구조·slide locator·relationship과 renderer 결과가 모두 안전할 때만 적용하며, 오류가 하나라도 있으면 원본 package bytes와 freshness를 보존한다.
 - group 내부 child의 frame은 group-local 좌표 역변환을 지원하기 전까지 `GROUPED_FRAME_UNSUPPORTED`로 실패하고 원본 package bytes와 freshness를 보존한다. grouped child의 지원 가능한 text/image props 동기화는 계속 허용한다.
 
 Imported Deck export 규칙:
@@ -1184,10 +1193,18 @@ API에서는 노출하지 않는다. `rehearsal_runs.transcript_json_file_id`와
 
 리허설 STT 성공 시 Worker는 run의 `created_at`을 Asia/Seoul 날짜로 변환하고
 `rehearsals/{date}/{projectId}/{runId}/transcript.json`과 `transcript.txt`를 저장한다.
-JSON은 `text`, `language`, `duration`, `provider`, `segments[{ text, start, end }]`
-구조이며 speaker와 word-level segment는 보관하지 않는다. 두 `project_assets` row와
+JSON은 `text`, `liveTranscript`, `language`, `duration`, `provider`,
+`segments[{ text, start, end }]` 구조다. `text`는 서버의 리포트 STT 결과이며
+`liveTranscript`는 브라우저가 리허설 중 누적한 실시간 인식 문장이다. 실시간 인식을
+사용하지 않았거나 전달되지 않은 경우 `liveTranscript`는 `null`이다. speaker와
+word-level segment는 보관하지 않는다. 두 `project_assets` row와
 `rehearsal_runs` 참조 갱신은 하나의 DB transaction으로 처리하고, DB 반영 실패 시
 이번 시도에서 새로 생성한 storage object만 보상 삭제한다.
+
+리포트 지표 중 `liveTranscript`를 데이터 원본으로 사용하는 항목은 전체 `습관어`
+횟수와 단어별 횟수뿐이다. 말하기 속도, 키워드 포함률, 침묵, 의미 평가 등 나머지
+지표는 서버 STT와 오디오 분석 결과를 유지한다. `liveTranscript`가 비어 있으면
+습관어도 기존 서버 분석 결과를 사용한다.
 
 결정 사항:
 
@@ -1329,7 +1346,7 @@ API:
 - `GET /api/v1/projects/:projectId/rehearsal-summary`
   - response: `{ "summary": RehearsalProjectSummary | null }`
   - 성공한 리허설이 없으면 `summary=null`을 반환한다.
-  - `runMetricSeries`는 성공 회차별 총 소요시간, 긴 침묵, 핵심 메시지 전달률, 시간 초과 슬라이드 비율과 각 항목의 `measurementState`를 제공한다.
+  - `runMetricSeries`는 성공 회차별 총 소요시간, 긴 침묵, 핵심 키워드 전달률, 시간 초과 슬라이드 비율과 각 항목의 `measurementState`를 제공한다.
   - `slidePerformanceSummaries`는 최신 성공 회차의 immutable `evaluationSnapshot`을 기준으로 슬라이드 순서·제목·썸네일·권장 시간을 제공하고, 같은 slide ID의 측정 가능한 과거 결과만 평균·비율에 집계한다.
 - `POST /api/v1/rehearsals/:runId/audio/clip`
   - request: `{ "startSeconds": 10, "endSeconds": 12.5 }`; 0초보다 길고 최대 60초인 구간만 허용한다.
@@ -1608,7 +1625,10 @@ Report 응답 구조:
 
 - 총 소요시간은 `metrics.measurements.duration.measurementState=measured`인 회차의 `metrics.durationSeconds`만 사용한다. 미측정·유효하지 않은 report는 `0`으로 대체하지 않고 `unmeasured`로 반환한다.
 - 긴 침묵은 `silenceAnalysis.measurementState=measured`인 회차의 `longSilenceCount`와 `metricDefinitionVersion`을 사용한다. UI는 서로 다른 버전을 같은 추세로 직접 비교하지 않는다.
-- 핵심 메시지 전달률은 `semanticEvaluation.state=succeeded`, `measurementMode=full`인 report에서 `importance=core`이고 상태가 `covered | partial | missed`인 outcome만 대상으로 `covered / (covered + partial + missed)`로 계산한다. `partial`은 측정 분모에는 포함하지만 완전 전달로 계산하지 않으며 `excluded | unmeasured`는 분모에서 제외한다.
+- 핵심 키워드 전달률은 각 run의 immutable `evaluationSnapshot.slides[].keywords`를 분모로 사용하고, 같은 `(slideId, keywordId)`가 `report.missedKeywords`에 없으면 전달된 것으로 계산한다. 원문·유의어·약어·발음 보정 별칭의 일치 여부는 report 생성 단계에서 판정하며, 이 지표는 키워드 언급 여부만 나타내고 설명의 의미 정확성은 평가하지 않는다.
+- `metrics.measurements.keywordCoverage` 또는 `metrics.keywordCoverageMeasurement`가 미측정이거나 snapshot에 키워드가 없으면 `0%`가 아니라 `unmeasured`와 `KEYWORD_COVERAGE_UNMEASURED | NO_MEASURABLE_KEYWORDS` reason code를 반환한다. 최신 회차는 직전 측정 가능 회차와 개수가 아니라 전달률의 percentage point 차이로 비교한다.
+- 슬라이드별 `keywordCoverage`는 같은 slide ID의 측정 가능 성공 회차에서 당시 snapshot 키워드를 누적한다. 직전 두 측정 가능 회차에 같은 `(slideId, keywordId)` 누락이 반복되면 `repeatedMissedKeywordCount`에 기록한다. 최신 snapshot에서 삭제된 슬라이드는 현재 요약에서 제외한다.
+- 기존 `coreMessageCoverage`는 호환성을 위해 유지하는 deprecated 필드다. 이는 Semantic Cue의 의미 전달 평가 결과이며 핵심 키워드 전달률로 재해석하거나 UI 지표에 사용하지 않는다.
 - 시간 초과 슬라이드는 `targetSeconds > 0`인 `slideTimings` 중 `actualSeconds > targetSeconds * 1.2`인 항목이다. 실제 시간이 없는 마지막 슬라이드와 측정 불가 항목은 분모에서 제외한다.
 - 슬라이드별 평균 소요시간은 같은 slide ID의 측정 가능한 `actualSeconds` 산술평균이며 `sampleCount`를 함께 반환한다. 최신 snapshot에 없는 과거 슬라이드는 현재 표에서 제외한다.
 - 최신 snapshot이 없는 legacy/delivery-only 회차는 슬라이드 메타데이터의 기준으로 사용하지 않는다. 측정 가능한 report가 없으면 해당 수치는 `N/A`로 표시한다.

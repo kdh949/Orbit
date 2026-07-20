@@ -75,6 +75,7 @@
   --redesign-color-on-success-container: #084c2d;
   --redesign-color-success-subtle: #eef9f2;
   --redesign-color-warning: #865500;
+  --redesign-color-warning-progress: #f0be36;
   --redesign-color-on-warning: var(--redesign-color-light-surface);
   --redesign-color-warning-container: #fff1cf;
   --redesign-color-on-warning-container: #5d3a00;
@@ -95,6 +96,19 @@
   --redesign-color-on-dark: #f5f5f7;
   --redesign-color-light-surface: #ffffff;
   --redesign-color-on-light: #111114;
+  /* Fixed light roles for bright panels embedded in dark workbenches. */
+  --redesign-color-light-container-low: #f8f8fa;
+  --redesign-color-light-container: #f1f1f4;
+  --redesign-color-light-container-high: #e9e9ed;
+  --redesign-color-light-outline: #d6d6dc;
+  --redesign-color-on-light-variant: #55555f;
+  --redesign-color-light-primary: #0090ff;
+  --redesign-color-light-primary-emphasis: #0068b7;
+  --redesign-color-light-primary-subtle: #edf8ff;
+  --redesign-color-light-warning: #865500;
+  --redesign-color-light-warning-subtle: #fff8e8;
+  --redesign-color-light-error: #d3283f;
+  --redesign-color-light-error-subtle: #fff2f2;
 
   /* Typography — single family across all roles */
   --redesign-font-family: "Pretendard", sans-serif;
@@ -243,7 +257,8 @@
   --redesign-shadow-none: none;
   --redesign-shadow-raised: 0 8px 24px rgba(17, 17, 20, 0.08);
   --redesign-shadow-overlay: 0 20px 56px rgba(17, 17, 20, 0.16);
-  --redesign-shadow-focus-inverse: 0 0 0 3px color-mix(in srgb, var(--redesign-color-inverse-on-surface) 30%, transparent);
+  --redesign-shadow-focus-inverse: 0 0 0 3px
+    color-mix(in srgb, var(--redesign-color-inverse-on-surface) 30%, transparent);
   --redesign-shadow-inset-subtle: inset 0 0 0 1px color-mix(in srgb, var(--redesign-color-primary) 4%, transparent);
   --redesign-shadow-inset-primary: inset 0 0 0 1px var(--redesign-color-primary);
   --redesign-shadow-inset-primary-emphasis: inset 0 0 0 1px var(--redesign-color-primary-emphasis);
@@ -252,9 +267,17 @@
   --redesign-shadow-inset-primary-top: inset 0 3px 0 var(--redesign-color-primary-emphasis);
   --redesign-shadow-inset-primary-bottom: inset 0 -1px var(--redesign-color-primary);
   --redesign-shadow-inset-surface-strong: inset 0 0 0 5px var(--redesign-color-light-surface);
-  --redesign-shadow-image-drop-target: 0 0 0 4px color-mix(in srgb, var(--redesign-color-primary) 58%, transparent), 0 22px 58px color-mix(in srgb, var(--redesign-color-primary) 20%, transparent);
-  --redesign-shadow-card: inset 0 0 0 1px color-mix(in srgb, var(--redesign-color-on-surface) 6%, transparent), 0 1px 2px color-mix(in srgb, var(--redesign-color-on-surface) 4%, transparent), 0 10px 28px color-mix(in srgb, var(--redesign-color-on-surface) 6%, transparent);
-  --redesign-shadow-card-hover: inset 0 0 0 1.5px color-mix(in srgb, var(--redesign-color-primary) 60%, transparent), 0 2px 6px color-mix(in srgb, var(--redesign-color-on-surface) 6%, transparent), 0 16px 40px color-mix(in srgb, var(--redesign-color-on-surface) 12%, transparent);
+  --redesign-shadow-image-drop-target:
+    0 0 0 4px color-mix(in srgb, var(--redesign-color-primary) 58%, transparent),
+    0 22px 58px color-mix(in srgb, var(--redesign-color-primary) 20%, transparent);
+  --redesign-shadow-card:
+    inset 0 0 0 1px color-mix(in srgb, var(--redesign-color-on-surface) 6%, transparent),
+    0 1px 2px color-mix(in srgb, var(--redesign-color-on-surface) 4%, transparent),
+    0 10px 28px color-mix(in srgb, var(--redesign-color-on-surface) 6%, transparent);
+  --redesign-shadow-card-hover:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--redesign-color-primary) 60%, transparent),
+    0 2px 6px color-mix(in srgb, var(--redesign-color-on-surface) 6%, transparent),
+    0 16px 40px color-mix(in srgb, var(--redesign-color-on-surface) 12%, transparent);
   --redesign-blur-overlay: 14px;
 
   /* Layering */
@@ -275,7 +298,10 @@
   --redesign-duration-loop: 1000ms;
   --redesign-ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --redesign-ease-emphasized: cubic-bezier(0.2, 0, 0, 1.2);
-  --redesign-transition-color: color var(--redesign-duration-fast) var(--redesign-ease-standard), background-color var(--redesign-duration-fast) var(--redesign-ease-standard), border-color var(--redesign-duration-fast) var(--redesign-ease-standard);
+  --redesign-transition-color:
+    color var(--redesign-duration-fast) var(--redesign-ease-standard),
+    background-color var(--redesign-duration-fast) var(--redesign-ease-standard),
+    border-color var(--redesign-duration-fast) var(--redesign-ease-standard);
   --redesign-transition-transform: transform var(--redesign-duration-normal) var(--redesign-ease-standard);
 
   /* Responsive reference values (use in matching media queries) */
@@ -366,6 +392,7 @@
   --redesign-color-on-success-container: #b6f1cf;
   --redesign-color-success-subtle: #172a21;
   --redesign-color-warning: #ffcc70;
+  --redesign-color-warning-progress: #f0be36;
   --redesign-color-on-warning: #4a2d00;
   --redesign-color-warning-container: #5c3b08;
   --redesign-color-on-warning-container: #ffe3ad;

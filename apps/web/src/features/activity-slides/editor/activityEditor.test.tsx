@@ -1,8 +1,4 @@
-import {
-  createActivityResultsSlide,
-  createActivitySlide,
-  createDemoDeck
-} from "@orbit/editor-core";
+import { createActivityResultsSlide, createActivitySlide, createDemoDeck } from "@orbit/editor-core";
 import { deckSchema } from "@orbit/shared";
 import type { ActivitySessionResultItem } from "@orbit/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -13,6 +9,7 @@ import {
   ActivitySlideInspector,
   convertQuestionType,
   moveQuestion,
+  moveQuestionOption,
   removeQuestionOption
 } from "./ActivitySlideInspector";
 import { ActivityEditorOperationsPanel } from "./ActivityEditorOperationsPanel";
@@ -34,18 +31,24 @@ describe("activity slide editor", () => {
 
     expect(audience).toContain("청중 참여 장표 미리보기");
     expect(audience).toContain("응답 제출");
+    expect(audience).toContain("답변을 입력해 주세요");
+    expect(audience).toContain("전혀 아니요");
+    expect(audience).toContain("매우 그래요");
+    expect(audience).not.toContain("redesign-orbit-brand");
+    expect(audience).not.toContain("AUDIENCE");
     expect(presenter).toContain("발표자 참여 장표 미리보기");
     expect(presenter).toContain("응답 0");
+    expect(presenter).not.toContain("PRESENTER");
   });
 
   it("keeps generated response controls in a locked system layer", () => {
-    const html = renderToStaticMarkup(
-      <ActivitySlideInspector onChange={vi.fn()} slide={slide} />
-    );
+    const html = renderToStaticMarkup(<ActivitySlideInspector onChange={vi.fn()} slide={slide} />);
 
-    expect(html).toContain("청중 화면");
-    expect(html).toContain("발표자 화면");
-    expect(html).toContain("잠긴 시스템 레이어");
+    expect(html).not.toContain('aria-label="참여 장표 미리보기 역할"');
+    expect(html).toContain("발표자 화면 미리보기");
+    expect(html).toContain("발표자 참여 장표 미리보기");
+    expect(html).toContain("응답 화면은 자동으로 만들어져요.");
+    expect(html).not.toContain("시스템 레이어");
     expect(html).toContain('data-activity-system-layer="locked"');
     expect(html).toContain('data-semantic-locked="false"');
   });
@@ -57,14 +60,9 @@ describe("activity slide editor", () => {
     });
     const resultSlide = createActivityResultsSlide(deck, slide.activity.activityId);
 
-    const activityHtml = renderToStaticMarkup(
-      <ActivitySpecialSlideThumbnail deck={deck} slide={slide} />
-    );
+    const activityHtml = renderToStaticMarkup(<ActivitySpecialSlideThumbnail deck={deck} slide={slide} />);
     const resultHtml = renderToStaticMarkup(
-      <ActivitySpecialSlideThumbnail
-        deck={{ ...deck, slides: [...deck.slides, resultSlide] }}
-        slide={resultSlide}
-      />
+      <ActivitySpecialSlideThumbnail deck={{ ...deck, slides: [...deck.slides, resultSlide] }} slide={resultSlide} />
     );
 
     expect(activityHtml).toContain('data-testid="activity-slide-thumbnail"');
@@ -78,6 +76,7 @@ describe("activity slide editor", () => {
       <ActivityEditorOperationsPanel
         onUpdateStatus={vi.fn()}
         pending={false}
+        projectId="project_1"
         runtime={{
           audienceUrl: "/audience/session_1",
           sessionId: "session_1",
@@ -106,10 +105,12 @@ describe("activity slide editor", () => {
     );
 
     expect(html).toContain("결과 공개");
-    expect(html).toContain("청중 결과");
+    expect(html).toContain("청중에게 결과");
     expect(html).toContain("/audience/session_1/a/");
-    expect(html).toContain("장표별 직접 링크 복사");
-    expect(html).toContain("QR 코드 확인");
+    expect(html).toContain("이 슬라이드 참여 링크 복사");
+    expect(html).toContain("참여 QR 코드 보기");
+    expect(html).toContain("모든 응답 보기");
+    expect(html).toContain('href="/project/project_1/presentation-sessions/session_1/results"');
   });
 
   it("offers reopening and result reveal together after responses close", () => {
@@ -160,7 +161,7 @@ describe("activity slide editor", () => {
       />
     );
 
-    expect(html).toContain("발표 세션 만들기");
+    expect(html).toContain("발표 준비하기");
   });
 
   it("converts and reorders satisfaction questions without changing their IDs", () => {
@@ -184,45 +185,129 @@ describe("activity slide editor", () => {
     if (converted.type !== "multiple-choice") throw new Error("multiple-choice fixture");
     const withThreeOptions = {
       ...converted,
-      options: [
-        ...converted.options,
-        { optionId: "option_extra", label: "추가 선택" }
-      ],
+      options: [...converted.options, { optionId: "option_extra", label: "추가 선택" }],
       maxSelections: 3
     };
 
     const next = removeQuestionOption(withThreeOptions, "option_extra");
 
     expect(next).toMatchObject({ maxSelections: 2 });
-    expect(deckSchema.safeParse({
-      ...createDemoDeck(),
-      slides: [{
-        ...slide,
-        activity: { ...slide.activity, questions: [next] }
-      }]
-    }).success).toBe(true);
+    expect(
+      deckSchema.safeParse({
+        ...createDemoDeck(),
+        slides: [
+          {
+            ...slide,
+            activity: { ...slide.activity, questions: [next] }
+          }
+        ]
+      }).success
+    ).toBe(true);
   });
 
-  it.each(["pre-question", "poll", "satisfaction"] as const)(
-    "renders the %s template inspector",
-    (template) => {
+  it("reorders choice options without changing their IDs", () => {
+    const source = convertQuestionType(slide.activity, slide.activity.questions[0]!, "single-choice");
+    if (source.type !== "single-choice") throw new Error("choice fixture");
+
+    const moved = moveQuestionOption(source, 1, -1);
+
+    if (moved.type !== "single-choice") throw new Error("choice result");
+    expect(moved.options.map((option) => option.optionId)).toEqual([
+      source.options[1]!.optionId,
+      source.options[0]!.optionId
+    ]);
+  });
+
+  it("renders every poll option in the slide preview", () => {
+    const pollSlide = createActivitySlide(createDemoDeck(), "poll");
+    const question = pollSlide.activity.questions[0]!;
+    if (question.type !== "single-choice") throw new Error("poll fixture");
+    const options = Array.from({ length: 8 }, (_, index) => ({
+      optionId: `option_${index + 1}`,
+      label: `선택지 ${index + 1}`
+    }));
+    const html = renderToStaticMarkup(
+      <ActivitySlidePreview
+        role="audience"
+        slide={{
+          ...pollSlide,
+          activity: {
+            ...pollSlide.activity,
+            questions: [{ ...question, options }]
+          }
+        }}
+      />
+    );
+
+    expect(html).toContain("선택지 8");
+    expect(html).toContain('data-activity-template="poll"');
+  });
+
+  it.each(["pre-question", "poll", "satisfaction"] as const)("renders the %s template inspector", (template) => {
+    const templateSlide = createActivitySlide(createDemoDeck(), template);
+    const html = renderToStaticMarkup(<ActivitySlideInspector onChange={vi.fn()} slide={templateSlide} />);
+    expect(html).toContain(templateSlide.activity.title);
+  });
+
+  it("shows that pre-question edits are reflected on the slide canvas", () => {
+    const preQuestionSlide = createActivitySlide(createDemoDeck(), "pre-question");
+    const questionPrompt = preQuestionSlide.activity.questions[0]!.prompt;
+    const previewHtml = renderToStaticMarkup(<ActivitySlidePreview role="audience" slide={preQuestionSlide} />);
+    const inspectorHtml = renderToStaticMarkup(
+      <ActivitySlideInspector
+        deckId="deck_demo_1"
+        onChange={vi.fn()}
+        projectId="project_demo_1"
+        slide={preQuestionSlide}
+      />
+    );
+
+    expect(previewHtml).toContain(questionPrompt);
+    expect(previewHtml).toContain("답변을 입력해 주세요");
+    expect(inspectorHtml).not.toContain("캔버스 자동 반영");
+    expect(inspectorHtml).toContain("변경 즉시 에디터 미리보기에 반영돼요.");
+    expect(inspectorHtml).toContain("질문 추가");
+    expect(inspectorHtml).toContain("1/5");
+    expect(inspectorHtml).toContain("슬라이드 제목");
+    expect(inspectorHtml).toContain("설명 문구");
+    expect(inspectorHtml).toContain("꼭 답하게 하기");
+    expect(inspectorHtml).toContain("청중 화면 새 창에서 보기");
+    expect(inspectorHtml).not.toContain('title="실제 청중 화면 미리보기"');
+    expect(inspectorHtml).not.toContain("실제 청중 입력 화면을 그대로 표시합니다.");
+    expect(inspectorHtml).toContain("발표자 화면 미리보기");
+    expect(inspectorHtml).toContain("발표 중 확인하게 될 응답 상태를 미리 보여줍니다.");
+    expect(inspectorHtml).toContain("받은 사전 질문");
+    expect(inspectorHtml).toContain("질문 확인");
+    expect(inspectorHtml).not.toContain("들어온 주관식 답변 확인");
+    expect(inspectorHtml).toContain(
+      `/project/project_demo_1/activity-preview/${preQuestionSlide.activity.activityId}`
+    );
+    expect(inspectorHtml).not.toContain("문항 설정");
+  });
+
+  it("does not show response review controls for poll and satisfaction slides", () => {
+    for (const template of ["poll", "satisfaction"] as const) {
       const templateSlide = createActivitySlide(createDemoDeck(), template);
       const html = renderToStaticMarkup(
-        <ActivitySlideInspector onChange={vi.fn()} slide={templateSlide} />
+        <ActivitySlideInspector
+          deckId="deck_demo_1"
+          onChange={vi.fn()}
+          projectId="project_demo_1"
+          slide={templateSlide}
+        />
       );
-      expect(html).toContain(templateSlide.activity.title);
+
+      expect(html).not.toContain("받은 사전 질문");
+      expect(html).not.toContain("들어온 주관식 답변 확인");
     }
-  );
+  });
 
   it("renders result source recovery without persisting a session or response", () => {
     const deck = deckSchema.parse({
       ...createDemoDeck(),
       slides: [...createDemoDeck().slides, slide]
     });
-    const resultSlide = createActivityResultsSlide(
-      deck,
-      slide.activity.activityId
-    );
+    const resultSlide = createActivityResultsSlide(deck, slide.activity.activityId);
     const completeDeck = deckSchema.parse({
       ...deck,
       slides: [...deck.slides, resultSlide]
@@ -242,8 +327,8 @@ describe("activity slide editor", () => {
       </QueryClientProvider>
     );
 
-    expect(html).toContain("원본 장표로 이동");
-    expect(html).toContain("세션 선택과 응답 데이터는 Deck에 저장되지 않습니다");
+    expect(html).toContain("선택한 슬라이드로 이동");
+    expect(html).toContain("미리보기에서 고른 발표는 이 슬라이드에 저장되지 않아요.");
     expect(resultSlide.activityResult).toEqual({
       sourceActivityId: slide.activity.activityId,
       display: "live",
@@ -256,43 +341,33 @@ describe("activity slide editor", () => {
       ...createDemoDeck(),
       slides: [...createDemoDeck().slides, slide]
     });
-    const resultSlide = createActivityResultsSlide(
-      deck,
-      slide.activity.activityId
-    );
+    const resultSlide = createActivityResultsSlide(deck, slide.activity.activityId);
     const danglingDeck = deckSchema.parse({
       ...deck,
       slides: [...createDemoDeck().slides, resultSlide]
     });
 
-    expect(
-      findActivityResultSource(
-        danglingDeck,
-        resultSlide.activityResult.sourceActivityId
-      )
-    ).toBeNull();
+    expect(findActivityResultSource(danglingDeck, resultSlide.activityResult.sourceActivityId)).toBeNull();
   });
 
   it("selects only the current run from a chosen presentation session", () => {
-    const runs = [
-      sessionResultItem("activity_run_old", false, 1),
-      sessionResultItem("activity_run_current", true, 2)
-    ];
+    const runs = [sessionResultItem("activity_run_old", false, 1), sessionResultItem("activity_run_current", true, 2)];
 
-    expect(
-      findCurrentActivityResult(runs, slide.activity.activityId)?.run
-        .activityRunId
-    ).toBe("activity_run_current");
+    expect(findCurrentActivityResult(runs, slide.activity.activityId)?.run.activityRunId).toBe("activity_run_current");
     expect(findCurrentActivityResult(runs, "activity_other")).toBeNull();
   });
 
   it("waits for a slow refresh before scheduling the next editor poll", async () => {
     vi.useFakeTimers();
     let resolveRefresh: (() => void) | undefined;
-    const refresh = vi.fn()
-      .mockImplementationOnce(() => new Promise<void>((resolve) => {
-        resolveRefresh = resolve;
-      }))
+    const refresh = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveRefresh = resolve;
+          })
+      )
       .mockResolvedValue(undefined);
     const stopPolling = startSequentialPolling(refresh, 2_000);
 
@@ -310,11 +385,7 @@ describe("activity slide editor", () => {
     vi.useRealTimers();
   });
 
-  function sessionResultItem(
-    activityRunId: string,
-    isCurrent: boolean,
-    version: number
-  ): ActivitySessionResultItem {
+  function sessionResultItem(activityRunId: string, isCurrent: boolean, version: number): ActivitySessionResultItem {
     return {
       availability: "raw-retained",
       result: null,

@@ -1,3 +1,4 @@
+import { deckElementCoordinateLimit } from "@orbit/shared";
 import type {
   Deck,
   DeckCanvas,
@@ -26,7 +27,7 @@ export type ElementFrameDraft = Partial<
 };
 
 export function normalizeElementFrameDraft(
-  canvas: DeckCanvas,
+  _canvas: DeckCanvas,
   currentElement: DeckElement,
   draft: ElementFrameDraft
 ): ElementFramePatch {
@@ -34,8 +35,8 @@ export function normalizeElementFrameDraft(
     role: Object.prototype.hasOwnProperty.call(draft, "role")
       ? draft.role
       : currentElement.role,
-    x: clampCoordinate(draft.x ?? currentElement.x, canvas.width),
-    y: clampCoordinate(draft.y ?? currentElement.y, canvas.height),
+    x: normalizeCoordinate(draft.x ?? currentElement.x, currentElement.x),
+    y: normalizeCoordinate(draft.y ?? currentElement.y, currentElement.y),
     width: clampSize(draft.width ?? currentElement.width),
     height: clampSize(draft.height ?? currentElement.height),
     rotation: normalizeRotation(draft.rotation ?? currentElement.rotation),
@@ -76,8 +77,13 @@ export function createElementFramePatch(
   };
 }
 
-function clampCoordinate(value: number, max: number) {
-  return Math.max(0, Math.min(max, Number.isFinite(value) ? value : 0));
+function normalizeCoordinate(value: number, fallback: number) {
+  const safeFallback = Number.isFinite(fallback) ? fallback : 0;
+  const coordinate = Number.isFinite(value) ? value : safeFallback;
+  return Math.max(
+    -deckElementCoordinateLimit,
+    Math.min(deckElementCoordinateLimit, coordinate)
+  );
 }
 
 function clampSize(value: number) {

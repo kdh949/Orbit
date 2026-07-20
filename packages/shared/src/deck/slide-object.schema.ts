@@ -35,7 +35,12 @@ export const deckElementRoleSchema = z.enum([
   "footer"
 ]);
 
-export const deckElementCoordinateSchema = z.number().finite().nonnegative();
+export const deckElementCoordinateLimit = 1_000_000;
+export const deckElementCoordinateSchema = z
+  .number()
+  .finite()
+  .min(-deckElementCoordinateLimit)
+  .max(deckElementCoordinateLimit);
 export const deckElementSizeSchema = z.number().finite().positive();
 
 export const ooxmlOriginSchema = z.enum(["imported", "authored"]);

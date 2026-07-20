@@ -114,6 +114,10 @@ html:has(.present-window-shell) #root {
     var(--redesign-color-dark-surface);
 }
 
+.present-window-shell:has(.present-window-status-waiting) {
+  background: var(--redesign-color-inverse-surface);
+}
+
 .present-window-status {
   align-items: center;
   gap: var(--redesign-space-3);
@@ -143,6 +147,28 @@ html:has(.present-window-shell) #root {
 .present-window-status p {
   color: color-mix(in srgb, var(--redesign-color-light-surface) 68%, transparent);
   font-size: var(--redesign-type-body-sm-size);
+}
+
+.present-window-status-waiting {
+  gap: var(--redesign-space-5);
+  justify-items: center;
+  padding: 0;
+}
+
+.present-window-status-waiting > img {
+  height: 61px;
+  margin: 0;
+  padding-bottom: calc(var(--redesign-space-4) - 1px);
+  transform: translateX(-6px);
+  width: 140px;
+}
+
+.present-window-status-waiting h1 {
+  color: var(--redesign-color-inverse-on-surface);
+  font-size: var(--redesign-type-title-lg-size);
+  font-weight: 700;
+  letter-spacing: var(--redesign-type-title-lg-tracking);
+  line-height: var(--redesign-type-title-lg-line-height);
 }
 
 .present-window-actions {

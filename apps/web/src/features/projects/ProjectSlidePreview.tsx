@@ -12,6 +12,8 @@ import { buildWorkspaceThumbnailSlide } from "./workspaceThumbnail";
 export default function ProjectSlidePreview(props: {
   className?: string;
   projectId: string;
+  slideId?: string;
+  slideOrder?: number;
 }) {
   const deckQuery = useQuery({
     queryKey: ["projects", props.projectId, "deck-preview"],
@@ -22,7 +24,13 @@ export default function ProjectSlidePreview(props: {
   const shell = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(0);
   const deck = deckQuery.data ?? null;
-  const slide = deck?.slides[0] ?? null;
+  const slide = deck
+    ? deck.slides.find((candidate) => candidate.slideId === props.slideId) ??
+      deck.slides.find((candidate) => candidate.order === props.slideOrder) ??
+      (props.slideId == null && props.slideOrder == null
+        ? deck.slides[0]
+        : null)
+    : null;
   const thumbnailSlide = slide ? buildWorkspaceThumbnailSlide(slide) : null;
 
   useEffect(() => {

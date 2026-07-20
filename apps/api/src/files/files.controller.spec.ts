@@ -1,4 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
+import { Readable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { AuthService } from "../auth/auth.service";
 import { ProjectsService } from "../projects/projects.service";
@@ -9,6 +10,7 @@ function createController(serviceOverrides: Partial<FilesService> = {}) {
   const service = {
     createUploadUrl: vi.fn(),
     completeUpload: vi.fn(),
+    openUploadedAssetContent: vi.fn(),
     readUploadedAssetContent: vi.fn(),
     list: vi.fn(),
     ...serviceOverrides,
@@ -107,19 +109,26 @@ describe("FilesController", () => {
 
   it("reads uploaded asset content through the service", async () => {
     const { controller, projectsService, service } = createController({
-      readUploadedAssetContent: vi.fn(async () => ({
-        body: Buffer.from("png"),
+      openUploadedAssetContent: vi.fn(async () => ({
+        status: "ok" as const,
+        body: Readable.from(Buffer.from("png")),
+        cacheControl: "private, no-cache",
         contentType: "image/png",
+        contentLength: 3,
+        etag: 'W/"asset-etag"',
       })),
     });
     const response = {
       setHeader: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+      end: vi.fn(),
     } as any;
 
     const file = await controller.readContent(
       "project_1",
       "file_1",
       createRequest(),
+      undefined,
       response,
     );
 
@@ -127,11 +136,82 @@ describe("FilesController", () => {
       "project_1",
       "user_1",
     );
-    expect(service.readUploadedAssetContent).toHaveBeenCalledWith(
+    expect(service.openUploadedAssetContent).toHaveBeenCalledWith(
       "project_1",
       "file_1",
+      undefined,
     );
-    expect(response.setHeader).toHaveBeenCalledWith("content-type", "image/png");
+    expect(response.setHeader).toHaveBeenCalledWith(
+      "content-type",
+      "image/png",
+    );
+    expect(response.setHeader).toHaveBeenCalledWith(
+      "cache-control",
+      "private, no-cache",
+    );
+    expect(response.setHeader).toHaveBeenCalledWith("etag", 'W/"asset-etag"');
+    expect(response.setHeader).toHaveBeenCalledWith("content-length", "3");
     expect(file).toBeDefined();
+  });
+
+  it("returns 304 after authorization when the asset etag matches", async () => {
+    const { controller, projectsService, service } = createController({
+      openUploadedAssetContent: vi.fn(async () => ({
+        status: "not-modified" as const,
+        cacheControl: "private, no-cache",
+        etag: 'W/"asset-etag"',
+      })),
+    });
+    const response = {
+      setHeader: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+      end: vi.fn(),
+    } as any;
+
+    const file = await controller.readContent(
+      "project_1",
+      "file_1",
+      createRequest(),
+      'W/"asset-etag"',
+      response,
+    );
+
+    expect(projectsService.assertCanReadProject).toHaveBeenCalledWith(
+      "project_1",
+      "user_1",
+    );
+    expect(service.openUploadedAssetContent).toHaveBeenCalledWith(
+      "project_1",
+      "file_1",
+      'W/"asset-etag"',
+    );
+    expect(response.status).toHaveBeenCalledWith(304);
+    expect(response.end).toHaveBeenCalledOnce();
+    expect(file).toBeUndefined();
+  });
+
+  it("rejects an unauthorized conditional request before checking the etag", async () => {
+    const { controller, projectsService, service } = createController();
+    vi.mocked(projectsService.assertCanReadProject).mockRejectedValue(
+      new Error("Project access denied"),
+    );
+    const response = {
+      setHeader: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+      end: vi.fn(),
+    } as any;
+
+    await expect(
+      controller.readContent(
+        "project_1",
+        "file_1",
+        createRequest(),
+        'W/"asset-etag"',
+        response,
+      ),
+    ).rejects.toThrow("Project access denied");
+
+    expect(service.openUploadedAssetContent).not.toHaveBeenCalled();
+    expect(response.status).not.toHaveBeenCalled();
   });
 });

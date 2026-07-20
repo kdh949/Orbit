@@ -78,6 +78,15 @@ function TrendLineChart({
   for (let index = 0; index < series.length; index += axisStep) {
     axisIndexes.add(index);
   }
+  if (!isCompact) {
+    const latestIndex = series.length - 1;
+    for (const index of axisIndexes) {
+      const distanceFromLatest = ((latestIndex - index) / latestIndex) * chartW;
+      if (index !== latestIndex && distanceFromLatest < 72) {
+        axisIndexes.delete(index);
+      }
+    }
+  }
 
   const toY = (value: number) =>
     padTop + (1 - (value - min) / Math.max(max - min, 1)) * chartH;
@@ -145,9 +154,9 @@ function TrendLineChart({
             className="report-project-chart-target"
           />
           <text
-            x={width - padX}
+            x={padX + 8}
             y={Math.max(14, toY(targetValue) - 8)}
-            textAnchor="end"
+            textAnchor="start"
             className="report-project-chart-target-label"
           >
             목표 {valueFormatter(targetValue)}

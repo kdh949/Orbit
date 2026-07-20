@@ -69,7 +69,7 @@ export function useActivityEditorRuntime(input: {
     } catch (cause) {
       setError(
         cause instanceof Error
-          ? cause.message
+          ? mapEditorErrorMessage(cause)
           : "참여 장표 실행 정보를 불러오지 못했습니다."
       );
     }
@@ -95,7 +95,7 @@ export function useActivityEditorRuntime(input: {
     } catch (cause) {
       setError(
         cause instanceof Error
-          ? cause.message
+          ? mapEditorErrorMessage(cause)
           : "새 실행 버전을 만들지 못했습니다."
       );
       await refresh();
@@ -125,7 +125,7 @@ export function useActivityEditorRuntime(input: {
     } catch (cause) {
       setError(
         cause instanceof Error
-          ? cause.message
+          ? mapEditorErrorMessage(cause)
           : "참여 장표 상태를 변경하지 못했습니다."
       );
       await refresh();
@@ -144,4 +144,12 @@ export function useActivityEditorRuntime(input: {
     supersede,
     updateStatus
   };
+}
+
+function mapEditorErrorMessage(cause: unknown) {
+  if (cause instanceof ActivityApiError && cause.code === "ACTIVITY_DEFINITION_LOCKED") {
+    return "이미 응답이 들어온 뒤라 질문은 바로 수정할 수 없어요. 새 라운드로 바꿔서 계속 진행하세요.";
+  }
+  if (cause instanceof Error && cause.message) return cause.message;
+  return "참여 장표 실행 정보를 불러오지 못했습니다.";
 }

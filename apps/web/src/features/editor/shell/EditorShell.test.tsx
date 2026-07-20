@@ -11,6 +11,7 @@ import type {
   DeckPatch,
   DeckElement,
   Job,
+  OoxmlSyncState,
   SemanticCue
 } from "@orbit/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -42,6 +43,7 @@ import {
 import {
   createSemanticCueExtractionJob,
   createDeckExportJob,
+  ensureOoxmlReadyForExport,
   exportDeck,
   exportDeckToPptx,
   importPptxIntoEditor,
@@ -189,6 +191,87 @@ describe("editor shell", () => {
         job: syncJob
       })
     ).toBeNull();
+  });
+
+  it("disables OOXML retry when the API marks the failed state non-retryable", () => {
+    const job = jobPayload("failed", null, "pptx-ooxml-sync");
+    job.error = {
+      code: "PPTX_OOXML_SYNC_UNSUPPORTED_OPERATION",
+      message: "unsupported authored element",
+      retryable: false,
+      syncCapabilityVersion: 2
+    };
+    const state: OoxmlSyncState = {
+      status: "failed",
+      deckId: "deck_ai_1",
+      deckVersion: 53,
+      syncedDeckVersion: 52,
+      retryable: false,
+      job
+    };
+
+    expect(getOoxmlSyncStatus(job, state)).toMatchObject({
+      label: "OOXML 동기화 실패",
+      retryable: false
+    });
+  });
+
+  it("shows retry only when the OOXML state API allows it", () => {
+    const job = jobPayload("failed", null, "pptx-ooxml-sync");
+    job.error = {
+      code: "PPTX_OOXML_SYNC_FAILED",
+      message: "worker unavailable",
+      retryable: true,
+      syncCapabilityVersion: 2
+    };
+    const state: OoxmlSyncState = {
+      status: "failed",
+      deckId: "deck_ai_1",
+      deckVersion: 53,
+      syncedDeckVersion: 52,
+      retryable: true,
+      job
+    };
+
+    expect(getOoxmlSyncStatus(job, state)).toMatchObject({
+      label: "동기화 재시도",
+      retryable: true
+    });
+  });
+
+  it("does not call retry for a non-retryable OOXML failure", async () => {
+    const requestedUrls: string[] = [];
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      requestedUrls.push(url);
+      return new Response(
+        JSON.stringify({
+          ooxmlSyncState: {
+            status: "failed",
+            deckId: "deck_ai_1",
+            deckVersion: 53,
+            syncedDeckVersion: 52,
+            retryable: false,
+            job: {
+              ...jobPayload("failed", null, "pptx-ooxml-sync"),
+              error: {
+                code: "PPTX_OOXML_SYNC_UNSUPPORTED_OPERATION",
+                message: "unsupported authored element",
+                retryable: false,
+                syncCapabilityVersion: 2
+              }
+            }
+          }
+        })
+      );
+    });
+
+    await expect(
+      ensureOoxmlReadyForExport("project-a", fetcher)
+    ).rejects.toThrow("PPTX 원본 동기화에 실패했습니다.");
+    expect(
+      requestedUrls.some((url) => url.endsWith("/deck/ooxml-sync/retry"))
+    ).toBe(false);
   });
 
   beforeEach(() => {

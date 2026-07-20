@@ -109,7 +109,18 @@ def proposal_payload(*, x: float = 1200) -> dict[str, Any]:
                 "type": "update_element_frame",
                 "slideId": "slide_1",
                 "elementId": "el_image",
-                "frame": {"x": x},
+                "frame": {
+                    "role": None,
+                    "x": x,
+                    "y": None,
+                    "width": None,
+                    "height": None,
+                    "rotation": None,
+                    "opacity": None,
+                    "zIndex": None,
+                    "visible": None,
+                    "locked": None,
+                },
             }
         ],
         "affectedElementIds": ["el_image"],
@@ -133,13 +144,62 @@ def test_generates_and_validates_design_operations() -> None:
     assert "untrusted presentation data" in client.responses.calls[0]["instructions"]
 
 
-def test_rejects_operations_outside_canvas() -> None:
+@pytest.mark.parametrize("x", [-1, 1500])
+def test_rejects_frame_update_result_outside_canvas(x: float) -> None:
     with pytest.raises(DesignAgentGenerationError, match="outside the canvas"):
         generate_design_proposal(
             request_payload(),
             model="test-model",
             api_key=None,
-            client=FakeClient(proposal_payload(x=1500)),
+            client=FakeClient(proposal_payload(x=x)),
+        )
+
+
+def test_allows_off_canvas_element_as_frame_update_target() -> None:
+    request = request_payload()
+    request.context.slide["elements"][0]["x"] = -240
+
+    result = generate_design_proposal(
+        request,
+        model="test-model",
+        api_key=None,
+        client=FakeClient(proposal_payload(x=80)),
+    )
+
+    assert result.operations[0].frame.x == 80
+
+
+def test_validates_off_canvas_target_after_all_frame_updates() -> None:
+    request = request_payload()
+    request.context.slide["elements"][0]["x"] = -240
+    payload = proposal_payload(x=80)
+    payload["operations"] = [
+        {
+            "type": "update_element_frame",
+            "slideId": "slide_1",
+            "elementId": "el_image",
+            "frame": {"y": 220},
+        },
+        payload["operations"][0],
+    ]
+
+    result = generate_design_proposal(
+        request,
+        model="test-model",
+        api_key=None,
+        client=FakeClient(payload),
+    )
+
+    assert len(result.operations) == 2
+
+
+def test_rejects_frame_coordinates_outside_supported_range() -> None:
+    with pytest.raises(DesignAgentGenerationError, match="generation failed"):
+        generate_design_proposal(
+            request_payload(),
+            model="test-model",
+            api_key=None,
+            client=FakeClient(proposal_payload(x=1_000_001)),
         )
 
 

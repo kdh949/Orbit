@@ -1,6 +1,7 @@
 import type { Deck, DeckExportFormat } from "@orbit/shared";
 import {
   IconChevronDown as ChevronDown,
+  IconClock as Clock,
   IconHistory as History,
   IconHome as Home,
   IconPencil as PenLine,
@@ -46,8 +47,8 @@ type EditorTopbarProps = {
   onOpenExport: (format: DeckExportFormat) => void;
   onImportPptx: () => void;
   onOpenAudienceLink: () => void;
-  onOpenPresenceDebug: () => void;
   onOpenShare: () => void;
+  onOpenTargetDuration: () => void;
   onRefresh: () => void;
   onRenameDeckTitle: (title: string) => void;
   onRetryOoxmlSync: () => void;
@@ -92,8 +93,8 @@ export function EditorTopbar(props: EditorTopbarProps) {
     onOpenExport,
     onImportPptx,
     onOpenAudienceLink,
-    onOpenPresenceDebug,
     onOpenShare,
+    onOpenTargetDuration,
     onRefresh,
     onRenameDeckTitle,
     onRetryOoxmlSync,
@@ -279,11 +280,9 @@ export function EditorTopbar(props: EditorTopbarProps) {
 
       <div className="top-actions">
         {projectPresenceUsers.length > 0 ? (
-          <button
+          <div
             aria-label="소켓 접속 상태 보기"
             className="presence-avatar-trigger"
-            type="button"
-            onClick={onOpenPresenceDebug}
           >
             {projectPresenceUsers.slice(0, 4).map((user) => (
               <span
@@ -299,7 +298,15 @@ export function EditorTopbar(props: EditorTopbarProps) {
                 +{projectPresenceUsers.length - 4}
               </span>
             ) : null}
-          </button>
+          </div>
+        ) : null}
+        {canMutateDeck ? (
+          <EditorIconButton
+            icon={<Clock aria-hidden="true" size={17} />}
+            label="발표 시간 배분"
+            onClick={onOpenTargetDuration}
+            title="발표 시간 배분"
+          />
         ) : null}
         {canMutateDeck ? (
           <EditorSaveControl

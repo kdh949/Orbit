@@ -13,6 +13,7 @@ import {
   retryAiDeckStagedCoordinatorJob,
   enqueueSemanticCueExtractionJob,
   enqueuePptxOoxmlGenerationJob,
+  enqueuePptxOoxmlSyncJob,
   enqueueRehearsalSttJob,
   enqueueRehearsalSemanticEvaluationJob,
   enqueueWorkerHealthCheckJob,
@@ -24,6 +25,8 @@ import {
   enqueueDeckExportJob,
   pptxOoxmlGenerationJobName,
   pptxOoxmlGenerationQueueName,
+  pptxOoxmlSyncJobName,
+  pptxOoxmlSyncQueueName,
   referenceExtractQueueName,
   rehearsalSemanticEvaluationJobName,
   rehearsalSemanticEvaluationQueueName,
@@ -447,6 +450,37 @@ describe("enqueuePptxOoxmlGenerationJob", () => {
       expect.objectContaining({ jobId: "job-1", attempts: 5 })
     );
     expect(queueMock.close).toHaveBeenCalled();
+  });
+});
+
+describe("enqueuePptxOoxmlSyncJob", () => {
+  it("records the sync capability version in the BullMQ payload", async () => {
+    await enqueuePptxOoxmlSyncJob({
+      driver: "bullmq",
+      redisUrl: "redis://localhost:6379",
+      jobId: "job-sync-1",
+      projectId: "project-a",
+      deckId: "deck-a",
+      changeId: "change-a",
+      targetDeckVersion: 53,
+      syncCapabilityVersion: 2,
+    });
+
+    expect(queueMock.Queue).toHaveBeenCalledWith(pptxOoxmlSyncQueueName, {
+      connection: expect.objectContaining({ host: "localhost", port: 6379 }),
+    });
+    expect(queueMock.add).toHaveBeenCalledWith(
+      pptxOoxmlSyncJobName,
+      {
+        jobId: "job-sync-1",
+        projectId: "project-a",
+        deckId: "deck-a",
+        changeId: "change-a",
+        targetDeckVersion: 53,
+        syncCapabilityVersion: 2,
+      },
+      expect.objectContaining({ jobId: "job-sync-1" }),
+    );
   });
 });
 

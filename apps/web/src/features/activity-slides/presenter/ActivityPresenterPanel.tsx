@@ -17,7 +17,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { activityApi, ActivityApiError } from "../api/activityApi";
 import { startSequentialPolling } from "../model/sequentialPolling";
-import { canonicalActivityUrl } from "../rendering/ActivityAudienceSlideRenderer";
+import {
+  ActivityRatingDistribution,
+  canonicalActivityUrl
+} from "../rendering/ActivityAudienceSlideRenderer";
 import "./activity-presenter-panel.css";
 
 type ActivityPresenterRuntime = {
@@ -159,7 +162,7 @@ export function ActivityPresenterPanel(props: {
     <section className="activity-presenter-panel" aria-label="참여 장표 운영">
       <div className="activity-presenter-panel-heading">
         <div>
-          <span>ACTIVITY CONTROL</span>
+          <span>참여 장표 운영</span>
           <strong>{props.slide.activity.title}</strong>
         </div>
         <ActivityStatusBadge status={runtime?.run.status ?? "draft"} />
@@ -379,9 +382,19 @@ export function ActivityPresenterResults(props: {
         const aggregate = props.result.aggregates.find(
           (candidate) => candidate.questionId === question.questionId
         );
-        if (!aggregate || (question.type !== "single-choice" && question.type !== "multiple-choice")) {
-          return null;
+        if (!aggregate) return null;
+        if (question.type === "rating") {
+          return (
+            <section key={question.questionId} aria-label={`${question.prompt} 평점 집계`}>
+              <div className="activity-presenter-rating-heading">
+                <strong>{question.prompt}</strong>
+                <span>평균 <b>{aggregate.average === null ? "–" : aggregate.average.toFixed(1)}</b> / 5</span>
+              </div>
+              <ActivityRatingDistribution items={aggregate.ratingDistribution} />
+            </section>
+          );
         }
+        if (question.type !== "single-choice" && question.type !== "multiple-choice") return null;
         return (
           <section key={question.questionId} aria-label={`${question.prompt} 집계`}>
             <strong>{question.prompt}</strong>

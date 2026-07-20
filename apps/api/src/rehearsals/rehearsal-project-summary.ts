@@ -4,6 +4,7 @@ import {
   rehearsalReportSchema,
   type RehearsalEvaluationSnapshot,
   type RehearsalProjectCoreMessageCoverage,
+  type RehearsalProjectKeywordCoverage,
   type RehearsalProjectSummary,
   type RehearsalProjectTimingOverrun,
   type RehearsalReport,
@@ -30,6 +31,10 @@ type SlideAccumulator = {
   coveredCount: number;
   partialCount: number;
   missedCount: number;
+  matchedKeywordCount: number;
+  missedKeywordCount: number;
+  repeatedMissedKeywordCount: number;
+  previousMissedKeywordIds: Set<string> | null;
 };
 
 export function buildRehearsalProjectSummary(input: {
@@ -96,6 +101,7 @@ function buildRunMetricPoint(run: ParsedRun) {
     duration: buildDurationMetric(run.report, targetSeconds),
     longSilence: buildLongSilenceMetric(run.report),
     coreMessageCoverage: buildCoreMessageCoverage(run.report),
+    keywordCoverage: buildKeywordCoverage(run.report, run.snapshot),
     timingOverrun: buildTimingOverrun(run.report?.slideTimings ?? []),
   };
 }
@@ -199,6 +205,48 @@ function buildCoreMessageCoverage(
   };
 }
 
+function buildKeywordCoverage(
+  report: RehearsalReport | null,
+  snapshot: RehearsalEvaluationSnapshot | null,
+): RehearsalProjectKeywordCoverage {
+  if (report === null) {
+    return unmeasuredKeywordCoverage("REPORT_UNAVAILABLE");
+  }
+
+  const keywords = snapshot?.slides.flatMap((slide) =>
+    slide.keywords.map((keyword) => ({
+      keywordId: keyword.keywordId,
+      slideId: slide.slideId,
+    })),
+  ) ?? [];
+  if (keywords.length === 0) {
+    return unmeasuredKeywordCoverage("NO_MEASURABLE_KEYWORDS");
+  }
+
+  if (!isKeywordCoverageMeasured(report)) {
+    return unmeasuredKeywordCoverage("KEYWORD_COVERAGE_UNMEASURED");
+  }
+
+  const missedKeywordKeys = new Set(
+    report.missedKeywords.map((keyword) =>
+      toKeywordKey(keyword.slideId, keyword.keywordId),
+    ),
+  );
+  const missedCount = keywords.filter((keyword) =>
+    missedKeywordKeys.has(toKeywordKey(keyword.slideId, keyword.keywordId)),
+  ).length;
+  const matchedCount = keywords.length - missedCount;
+
+  return {
+    measurementState: "measured",
+    reasonCode: null,
+    matchedCount,
+    missedCount,
+    measurableCount: keywords.length,
+    rate: divide(matchedCount, keywords.length),
+  };
+}
+
 function buildTimingOverrun(
   timings: RehearsalReport["slideTimings"],
 ): RehearsalProjectTimingOverrun {
@@ -237,6 +285,43 @@ function buildSlidePerformanceSummaries(runs: ParsedRun[]) {
       accumulator.actualTotal += timing.actualSeconds;
       accumulator.timingCount += 1;
       if (isTimingOverrun(timing)) accumulator.overrunCount += 1;
+    }
+
+    if (run.snapshot !== null && isKeywordCoverageMeasured(run.report)) {
+      const missedKeywordKeys = new Set(
+        run.report.missedKeywords.map((keyword) =>
+          toKeywordKey(keyword.slideId, keyword.keywordId),
+        ),
+      );
+
+      for (const slide of run.snapshot.slides) {
+        if (slide.keywords.length === 0) continue;
+        const accumulator = rememberSlide(slide.slideId);
+        const currentMissedKeywordIds = new Set<string>();
+
+        for (const keyword of slide.keywords) {
+          if (
+            missedKeywordKeys.has(
+              toKeywordKey(slide.slideId, keyword.keywordId),
+            )
+          ) {
+            accumulator.missedKeywordCount += 1;
+            currentMissedKeywordIds.add(keyword.keywordId);
+          } else {
+            accumulator.matchedKeywordCount += 1;
+          }
+        }
+
+        const previousMissedKeywordIds =
+          accumulator.previousMissedKeywordIds;
+        accumulator.repeatedMissedKeywordCount =
+          previousMissedKeywordIds === null
+            ? 0
+            : [...currentMissedKeywordIds].filter((keywordId) =>
+                previousMissedKeywordIds.has(keywordId),
+              ).length;
+        accumulator.previousMissedKeywordIds = currentMissedKeywordIds;
+      }
     }
 
     if (
@@ -279,6 +364,8 @@ function buildSlidePerformanceSummaries(runs: ParsedRun[]) {
       accumulator.coveredCount +
       accumulator.partialCount +
       accumulator.missedCount;
+    const keywordMeasurableCount =
+      accumulator.matchedKeywordCount + accumulator.missedKeywordCount;
 
     return {
       slideId,
@@ -316,6 +403,21 @@ function buildSlidePerformanceSummaries(runs: ParsedRun[]) {
               rate: divide(accumulator.coveredCount, semanticMeasurableCount),
             }
           : unmeasuredCoreMessageCoverage("NO_MEASURABLE_CORE_CUES"),
+      keywordCoverage:
+        keywordMeasurableCount > 0
+          ? {
+              measurementState: "measured" as const,
+              reasonCode: null,
+              matchedCount: accumulator.matchedKeywordCount,
+              missedCount: accumulator.missedKeywordCount,
+              measurableCount: keywordMeasurableCount,
+              rate: divide(
+                accumulator.matchedKeywordCount,
+                keywordMeasurableCount,
+              ),
+            }
+          : unmeasuredKeywordCoverage("NO_MEASURABLE_KEYWORDS"),
+      repeatedMissedKeywordCount: accumulator.repeatedMissedKeywordCount,
     };
   });
 }
@@ -338,6 +440,10 @@ function emptySlideAccumulator(): SlideAccumulator {
     coveredCount: 0,
     partialCount: 0,
     missedCount: 0,
+    matchedKeywordCount: 0,
+    missedKeywordCount: 0,
+    repeatedMissedKeywordCount: 0,
+    previousMissedKeywordIds: null,
   };
 }
 
@@ -358,6 +464,22 @@ function unmeasuredCoreMessageCoverage(
   };
 }
 
+function unmeasuredKeywordCoverage(
+  reasonCode:
+    | "REPORT_UNAVAILABLE"
+    | "KEYWORD_COVERAGE_UNMEASURED"
+    | "NO_MEASURABLE_KEYWORDS",
+): RehearsalProjectKeywordCoverage {
+  return {
+    measurementState: "unmeasured",
+    reasonCode,
+    matchedCount: 0,
+    missedCount: 0,
+    measurableCount: 0,
+    rate: null,
+  };
+}
+
 function unmeasuredTimingOverrun(): RehearsalProjectTimingOverrun {
   return {
     measurementState: "unmeasured",
@@ -372,6 +494,18 @@ function isTimingOverrun(
   timing: RehearsalReport["slideTimings"][number],
 ) {
   return timing.actualSeconds > timing.targetSeconds * TIMING_OVERRUN_RATIO;
+}
+
+function isKeywordCoverageMeasured(report: RehearsalReport) {
+  return (
+    report.metrics.measurements.keywordCoverage.measurementState ===
+      "measured" &&
+    report.metrics.keywordCoverageMeasurement.state === "measured"
+  );
+}
+
+function toKeywordKey(slideId: string, keywordId: string) {
+  return `${slideId}:${keywordId}`;
 }
 
 function divide(numerator: number, denominator: number) {

@@ -1,0 +1,165 @@
+.activity-audience-preview-page {
+  background: var(--redesign-color-background);
+  color: var(--redesign-color-on-background);
+  font-family: var(--redesign-font-family);
+  min-height: 100dvh;
+}
+
+.activity-audience-preview-header {
+  background: var(--redesign-color-surface);
+  border-bottom: 1px solid var(--redesign-color-outline-variant);
+}
+
+.activity-audience-preview-header-inner {
+  align-items: center;
+  display: grid;
+  gap: var(--redesign-space-4);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: var(--redesign-size-header);
+}
+
+.activity-audience-preview-header-inner > a:first-child {
+  color: var(--redesign-color-on-surface);
+  display: inline-flex;
+  text-decoration: none;
+}
+
+.activity-audience-preview-header-inner > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.activity-audience-preview-header-inner strong {
+  font-size: var(--redesign-type-label-md-size);
+}
+
+.activity-audience-preview-header-inner span {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-audience-preview-main {
+  box-sizing: border-box;
+  min-height: calc(100dvh - var(--redesign-size-header));
+  padding-block: var(--redesign-space-8) var(--redesign-space-16);
+}
+
+.activity-audience-preview-notice {
+  align-items: center;
+  background: var(--redesign-color-primary-subtle);
+  border: 1px solid var(--redesign-color-primary-outline);
+  border-radius: var(--redesign-radius-lg);
+  display: grid;
+  gap: var(--redesign-space-3);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  margin: 0 auto var(--redesign-space-5);
+  max-width: 560px;
+  padding: var(--redesign-space-3) var(--redesign-space-4);
+}
+
+.activity-audience-preview-notice > svg {
+  color: var(--redesign-color-primary-emphasis);
+}
+
+.activity-audience-preview-notice > div {
+  display: grid;
+  gap: 2px;
+}
+
+.activity-audience-preview-notice strong {
+  font-size: var(--redesign-type-label-md-size);
+}
+
+.activity-audience-preview-notice span:not(.redesign-status) {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.activity-audience-preview-loading {
+  align-items: center;
+  display: grid;
+  gap: var(--redesign-space-3);
+  justify-items: center;
+  min-height: 360px;
+}
+
+.activity-audience-preview-loading > span {
+  animation: activity-audience-preview-spin var(--redesign-duration-loop) linear infinite;
+  border: 3px solid var(--redesign-color-outline-variant);
+  border-radius: 50%;
+  border-top-color: var(--redesign-color-primary);
+  height: 28px;
+  width: 28px;
+}
+
+.activity-audience-preview-loading strong {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-body-md-size);
+}
+
+.activity-audience-preview-receipt {
+  justify-items: start;
+}
+
+.activity-audience-preview-receipt > p {
+  color: var(--redesign-color-on-surface-variant);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.activity-audience-preview-receipt-icon {
+  align-items: center;
+  background: var(--redesign-color-success-container);
+  border-radius: var(--redesign-radius-full);
+  color: var(--redesign-color-success);
+  display: inline-flex;
+  height: 52px;
+  justify-content: center;
+  width: 52px;
+}
+
+.activity-audience-preview-receipt > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--redesign-space-2);
+  margin-top: var(--redesign-space-2);
+}
+
+.activity-audience-preview-page .activity-text-question em {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@keyframes activity-audience-preview-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .activity-audience-preview-header-inner {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding-block: var(--redesign-space-3);
+  }
+
+  .activity-audience-preview-header-inner > .redesign-button {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+
+  .activity-audience-preview-main {
+    padding-block: var(--redesign-space-5) var(--redesign-space-8);
+  }
+
+  .activity-audience-preview-notice {
+    align-items: start;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .activity-audience-preview-notice .redesign-status {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

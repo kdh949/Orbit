@@ -431,6 +431,44 @@ describe("displayManager", () => {
     expect(manager.getCurrentScreen()).toBeNull();
   });
 
+  it("returns a snapshot of the current screen bounds", async () => {
+    const currentScreen = {
+      availHeight: 860,
+      availLeft: 0,
+      availTop: 40,
+      availWidth: 1440,
+      height: 900,
+      left: 0,
+      top: 0,
+      width: 1440
+    };
+    const manager = createDisplayManager({
+      getScreenDetails: async () => ({
+        currentScreen,
+        screens: [currentScreen]
+      }),
+      open: () => null
+    });
+
+    await manager.listExternalScreens();
+    const snapshot = manager.getCurrentScreen();
+    currentScreen.availLeft = 1440;
+    currentScreen.left = 1440;
+    currentScreen.width = 1920;
+
+    expect(snapshot).toEqual({
+      availHeight: 860,
+      availLeft: 0,
+      availTop: 40,
+      availWidth: 1440,
+      height: 900,
+      left: 0,
+      top: 0,
+      width: 1440
+    });
+    expect(snapshot).not.toBe(currentScreen);
+  });
+
   it("requests fullscreen on a cached live screen", async () => {
     const requestFullscreen = vi.fn().mockResolvedValue(undefined);
     const target = {} as Element;

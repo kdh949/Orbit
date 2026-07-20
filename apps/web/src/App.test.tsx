@@ -204,6 +204,23 @@ describe("App shell routing", () => {
     });
   });
 
+  it("parses the standalone activity audience preview route", () => {
+    expect(
+      getRoute("/project/project_demo_1/activity-preview/activity_pre_question_1")
+    ).toEqual({
+      name: "activity-preview",
+      projectId: "project_demo_1",
+      activityId: "activity_pre_question_1"
+    });
+    expect(
+      shouldRenderAppFrame({
+        name: "activity-preview",
+        projectId: "project_demo_1",
+        activityId: "activity_pre_question_1"
+      })
+    ).toBe(false);
+  });
+
   it("renders the production AI PPT wizard from the createdeck route", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(authMeQueryKey, {

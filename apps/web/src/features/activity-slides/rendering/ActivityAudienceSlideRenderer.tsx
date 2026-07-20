@@ -1,13 +1,18 @@
 import type {
   ActivityDefinition,
   ActivityPublicResult,
-  ActivityRuntimeStatus
+  ActivityRatingAggregateItem,
+  ActivityRuntimeStatus,
+  ActivitySlide,
+  Deck
 } from "@orbit/shared";
 import { IconChartBar, IconQrcode } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 
 import { createQrDataUrl } from "../../editor/audience-link/audienceLinkUtils";
+import { OrbitBrand } from "../../../components/ui";
 import { activityApi } from "../api/activityApi";
+import { createActivityThemeStyle } from "./activityThemeStyle";
 import "./activity-audience-slide.css";
 
 type AudienceProjection = {
@@ -27,6 +32,8 @@ export function ActivityAudienceRuntime(props: {
   deckId: string;
   projectId: string;
   scale: number;
+  slideStyle?: ActivitySlide["style"];
+  theme?: Deck["theme"];
 }) {
   const [projection, setProjection] = useState<AudienceProjection>(emptyProjection);
 
@@ -76,7 +83,9 @@ export function ActivityAudienceRuntime(props: {
       audienceUrl={projection.audienceUrl}
       publicResult={projection.publicResult}
       scale={props.scale}
+      slideStyle={props.slideStyle}
       status={projection.status}
+      theme={props.theme}
     />
   );
 }
@@ -86,7 +95,9 @@ export function ActivityAudienceSlideRenderer(props: {
   audienceUrl: string | null;
   publicResult: ActivityPublicResult | null;
   scale?: number;
+  slideStyle?: ActivitySlide["style"];
   status: ActivityRuntimeStatus | "preparing";
+  theme?: Deck["theme"];
 }) {
   const { activity } = props;
   const [qrDataUrl, setQrDataUrl] = useState("");
@@ -122,10 +133,13 @@ export function ActivityAudienceSlideRenderer(props: {
         aria-label="청중 참여 장표"
         className="activity-audience-slide"
         data-activity-status={props.status}
-        style={{ transform: `scale(${scale})` }}
+        style={{
+          ...createActivityThemeStyle(props.theme, props.slideStyle),
+          transform: `scale(${scale})`
+        }}
       >
         <header>
-          <span className="activity-audience-slide-kicker">LIVE ACTIVITY</span>
+          <OrbitBrand className="activity-slide-brand" />
           <h1>{activity.title}</h1>
           {activity.description ? <p>{activity.description}</p> : null}
         </header>
@@ -176,10 +190,13 @@ export function ActivityPublicResults(props: {
             <article key={question.questionId}>
               <span>{question.prompt}</span>
               {question.type === "rating" ? (
-                <strong>
-                  {aggregate.average === null ? "–" : aggregate.average.toFixed(1)}
-                  <small>/ 5</small>
-                </strong>
+                <div className="activity-public-rating-result">
+                  <strong>
+                    {aggregate.average === null ? "–" : aggregate.average.toFixed(1)}
+                    <small>/ 5</small>
+                  </strong>
+                  <ActivityRatingDistribution items={aggregate.ratingDistribution} />
+                </div>
               ) : question.type === "single-choice" || question.type === "multiple-choice" ? (
                 <ul className="activity-public-choice-chart">
                   {question.options.map((option) => {
@@ -208,6 +225,22 @@ export function ActivityPublicResults(props: {
         </ul>
       ) : null}
     </section>
+  );
+}
+
+export function ActivityRatingDistribution(props: {
+  items: ActivityRatingAggregateItem[];
+}) {
+  return (
+    <ul className="activity-rating-distribution" aria-label="평점 분포">
+      {props.items.map((item) => (
+        <li key={item.value}>
+          <span>{item.value}점</span>
+          <i><span style={{ width: `${item.ratio * 100}%` }} /></i>
+          <b>{item.count}</b>
+        </li>
+      ))}
+    </ul>
   );
 }
 

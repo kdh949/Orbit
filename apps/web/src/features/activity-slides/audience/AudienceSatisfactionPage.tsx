@@ -1,5 +1,6 @@
 import type {
   ActivityDefinition,
+  ActivityResponse,
   ActivityRuntimeStatus,
   GetAudienceActivityResponse,
   UpsertActivityResponseRequest
@@ -12,8 +13,9 @@ import {
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import orbitLogo from "../../../assets/orbit-logo.png";
+import { WorkspaceContainer } from "../../../components/patterns";
 import {
+  OrbitBrand,
   OrbitButton,
   OrbitField,
   OrbitInput,
@@ -264,102 +266,170 @@ export function AudienceSatisfactionPage(props: {
   return (
     <main className="activity-audience-page">
       <header className="activity-audience-header">
-        <img alt="ORBIT" src={orbitLogo} />
-        <span>{sessionTitle}</span>
+        <WorkspaceContainer className="activity-audience-header-inner">
+          <a
+            aria-label="ORBIT 홈으로 이동"
+            className="activity-audience-brand"
+            href="/"
+          >
+            <OrbitBrand />
+          </a>
+          <span className="activity-audience-session-title">{sessionTitle}</span>
+        </WorkspaceContainer>
       </header>
 
-      {pending ? (
-        <aside className="activity-transition-banner" role="status">
-          <div>
-            <strong>새 참여 장표가 열렸습니다</strong>
-            <span>작성 중인 응답은 그대로 보관됩니다.</span>
-          </div>
-          <div>
-            <button
-              type="button"
-              onClick={() => {
-                setIgnoredActivityId(pending.activityId);
-                setPending(null);
-              }}
-            >계속 작성</button>
-            <button type="button" onClick={() => showActivity(pending)}>새 장표로 이동</button>
-          </div>
-        </aside>
-      ) : null}
+      <WorkspaceContainer as="section" className="activity-audience-main" width="content">
+        {pending ? (
+          <aside className="activity-transition-banner" role="status">
+            <div>
+              <strong>새 참여 장표가 열렸습니다</strong>
+              <span>작성 중인 응답은 그대로 보관됩니다.</span>
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIgnoredActivityId(pending.activityId);
+                  setPending(null);
+                }}
+              >계속 작성</button>
+              <button type="button" onClick={() => showActivity(pending)}>새 장표로 이동</button>
+            </div>
+          </aside>
+        ) : null}
 
-      {mode === "loading" ? <AudienceStatus icon={<IconRefresh />} title="참여 화면을 준비하고 있습니다" /> : null}
-      {mode === "error" ? <AudienceStatus icon={<IconClock />} title={errorMessage} /> : null}
-      {mode === "waiting" ? (
-        <AudienceStatus
-          icon={<IconClock />}
-          title="다음 참여 장표를 기다리고 있습니다"
-          description="발표자가 응답을 열면 이 화면에 자동으로 표시됩니다."
-        />
-      ) : null}
-      {mode === "join" ? (
-        <section className="activity-audience-card activity-join-card" aria-labelledby="audience-join-title">
-          <span className="activity-audience-eyebrow">LIVE AUDIENCE</span>
-          <h1 id="audience-join-title">발표에 참여하기</h1>
-          <p>{sessionTitle}</p>
-          {accessMode === "passcode" ? (
-            <OrbitField id="activity-passcode" label="4자리 입장 비밀번호" error={errorMessage || undefined}>
-              <OrbitInput
-                autoComplete="one-time-code"
-                inputMode="numeric"
-                maxLength={4}
-                pattern="[0-9]*"
-                value={passcode}
-                onChange={(event) => setPasscode(event.currentTarget.value.replace(/\D/g, "").slice(0, 4))}
-              />
-            </OrbitField>
-          ) : errorMessage ? <p className="activity-form-error" role="alert">{errorMessage}</p> : null}
-          <OrbitButton disabled={accessMode === "passcode" && passcode.length !== 4} onClick={() => void join()}>
-            입장하기
-          </OrbitButton>
-        </section>
-      ) : null}
-      {current ? <AudiencePublicResultCard current={current} /> : null}
-      {mode === "form" && current && current.run.status !== "results" ? (
-        current.run.status === "open" ? (
-          <AudienceSatisfactionForm
-            definition={current.run.definitionSnapshot}
-            draft={draft}
-            errorMessage={errorMessage}
-            isSubmitting={isSubmitting}
-            onChange={(next) => {
-              setDraft(next);
-              setIsDirty(true);
-            }}
-            onSubmit={(next) => void submit(next)}
-          />
-        ) : (
+        {mode === "loading" ? <AudienceStatus icon={<IconRefresh />} title="참여 화면을 준비하고 있습니다" /> : null}
+        {mode === "error" ? <AudienceStatus icon={<IconClock />} title={errorMessage} /> : null}
+        {mode === "waiting" ? (
           <AudienceStatus
-            description={getAudienceActivityStatusCopy(current.run.status).description}
             icon={<IconClock />}
-            title={getAudienceActivityStatusCopy(current.run.status).title}
+            title="다음 참여 장표를 기다리고 있습니다"
+            description="발표자가 응답을 열면 이 화면에 자동으로 표시됩니다."
           />
-        )
-      ) : null}
-      {mode === "receipt" && current?.ownResponse && current.run.status !== "results" ? (
-        <section className="activity-audience-card activity-receipt" aria-labelledby="activity-receipt-title">
-          <span className="activity-receipt-icon"><IconCheck aria-hidden="true" /></span>
-          <span className="activity-audience-eyebrow">RESPONSE SAVED</span>
-          <h1 id="activity-receipt-title">응답이 저장되었습니다</h1>
-          <p>발표자가 응답을 마감하기 전까지 내용을 수정할 수 있습니다.</p>
-          <dl>
-            <div><dt>참여 장표</dt><dd>{current.run.definitionSnapshot.title}</dd></div>
-            <div><dt>저장 상태</dt><dd>수정본 {current.ownResponse.revision}</dd></div>
-          </dl>
-          {current.run.status === "open" ? (
-            <OrbitButton variant="secondary" icon={<IconRefresh aria-hidden="true" />} onClick={() => setMode("form")}>
-              응답 수정
+        ) : null}
+        {mode === "join" ? (
+          <section className="activity-audience-card activity-join-card" aria-labelledby="audience-join-title">
+            <span className="activity-audience-eyebrow">ORBIT</span>
+            <h1 id="audience-join-title">발표에 참여하기</h1>
+            <p>{sessionTitle}</p>
+            {accessMode === "passcode" ? (
+              <OrbitField id="activity-passcode" label="4자리 입장 비밀번호" error={errorMessage || undefined}>
+                <OrbitInput
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  maxLength={4}
+                  pattern="[0-9]*"
+                  value={passcode}
+                  onChange={(event) => setPasscode(event.currentTarget.value.replace(/\D/g, "").slice(0, 4))}
+                />
+              </OrbitField>
+            ) : errorMessage ? <p className="activity-form-error" role="alert">{errorMessage}</p> : null}
+            <OrbitButton disabled={accessMode === "passcode" && passcode.length !== 4} onClick={() => void join()}>
+              입장하기
             </OrbitButton>
-          ) : null}
-          <span className="activity-receipt-wait">다음 참여 장표가 열리면 자동으로 이동합니다.</span>
-        </section>
-      ) : null}
+          </section>
+        ) : null}
+        {current ? <AudiencePublicResultCard current={current} /> : null}
+        {mode === "form" && current && current.run.status !== "results" ? (
+          current.run.status === "open" ? (
+            <AudienceSatisfactionForm
+              definition={current.run.definitionSnapshot}
+              draft={draft}
+              errorMessage={errorMessage}
+              isSubmitting={isSubmitting}
+              onChange={(next) => {
+                setDraft(next);
+                setIsDirty(true);
+              }}
+              onSubmit={(next) => void submit(next)}
+            />
+          ) : (
+            <AudienceStatus
+              description={getAudienceActivityStatusCopy(current.run.status).description}
+              icon={<IconClock />}
+              title={getAudienceActivityStatusCopy(current.run.status).title}
+            />
+          )
+        ) : null}
+        {mode === "receipt" && current?.ownResponse && current.run.status !== "results" ? (
+          <section className="activity-audience-card activity-receipt" aria-labelledby="activity-receipt-title">
+            <span className="activity-receipt-icon"><IconCheck aria-hidden="true" /></span>
+            <span className="activity-audience-eyebrow">{getAudienceTemplateCopy(current.run.definitionSnapshot).receiptEyebrow}</span>
+            <h1 id="activity-receipt-title">{getAudienceTemplateCopy(current.run.definitionSnapshot).receiptTitle}</h1>
+            <p>발표자가 응답을 마감하기 전까지 내용을 수정할 수 있습니다.</p>
+            <dl>
+              <div><dt>참여 장표</dt><dd>{current.run.definitionSnapshot.title}</dd></div>
+              <div><dt>저장 상태</dt><dd>수정본 {current.ownResponse.revision}</dd></div>
+            </dl>
+            <AudienceResponseSummary
+              definition={current.run.definitionSnapshot}
+              response={current.ownResponse}
+            />
+            {current.run.status === "open" ? (
+              <OrbitButton variant="secondary" icon={<IconRefresh aria-hidden="true" />} onClick={() => setMode("form")}>
+                응답 수정
+              </OrbitButton>
+            ) : null}
+            <span className="activity-receipt-wait">다음 참여 장표가 열리면 자동으로 이동합니다.</span>
+          </section>
+        ) : null}
+      </WorkspaceContainer>
     </main>
   );
+}
+
+export function AudienceResponseSummary(props: {
+  definition: ActivityDefinition;
+  response: ActivityResponse;
+}) {
+  const rows = props.definition.questions.flatMap((question) => {
+    const answer = props.response.answers.find(
+      (candidate) => candidate.questionId === question.questionId
+    );
+    if (!answer) return [];
+    return [{
+      id: question.questionId,
+      label: question.prompt,
+      value: formatAudienceAnswer(question, answer)
+    }];
+  });
+
+  if (rows.length === 0) return null;
+
+  return (
+    <section className="activity-receipt-answer-summary" aria-labelledby="activity-receipt-answer-title">
+      <strong id="activity-receipt-answer-title">내가 제출한 답변</strong>
+      <dl>
+        {rows.map((row) => (
+          <div key={row.id}>
+            <dt>{row.label}</dt>
+            <dd>{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function formatAudienceAnswer(
+  question: ActivityDefinition["questions"][number],
+  answer: ActivityResponse["answers"][number]
+) {
+  if (answer.type === "rating") return `${answer.value} / 5`;
+  if (answer.type === "free-text") return answer.text;
+  if (question.type !== "single-choice" && question.type !== "multiple-choice") {
+    return "저장됨";
+  }
+  if (answer.type === "single-choice") {
+    return question.options.find((option) => option.optionId === answer.optionId)?.label ?? "선택 항목";
+  }
+  if (answer.type === "multiple-choice") {
+    return answer.optionIds
+      .map((optionId) => question.options.find((option) => option.optionId === optionId)?.label)
+      .filter((label): label is string => Boolean(label))
+      .join(", ");
+  }
+  return "저장됨";
 }
 
 export async function loadAudienceActivityRefresh(
@@ -396,7 +466,7 @@ export function AudiencePublicResultCard(props: {
       className="activity-audience-card activity-participant-results"
       aria-labelledby="activity-public-results-title"
     >
-      <span className="activity-audience-eyebrow">RESULTS</span>
+      <span className="activity-audience-eyebrow">응답 결과</span>
       <h1 id="activity-public-results-title">
         {props.current.run.definitionSnapshot.title} 결과
       </h1>
@@ -424,9 +494,14 @@ export function AudienceSatisfactionForm(props: {
     if (Object.keys(nextErrors).length === 0) props.onSubmit(props.draft);
   }
 
+  const templateCopy = getAudienceTemplateCopy(props.definition);
+
   return (
-    <section className="activity-audience-card activity-response-card" aria-labelledby="activity-response-title">
-      <span className="activity-audience-eyebrow">AUDIENCE ACTIVITY</span>
+    <section
+      aria-labelledby="activity-response-title"
+      className="activity-audience-card activity-response-card"
+      data-activity-template={props.definition.template}
+    >
       <h1 id="activity-response-title">{props.definition.title}</h1>
       {props.definition.description ? <p className="activity-response-description">{props.definition.description}</p> : null}
 
@@ -526,6 +601,8 @@ export function AudienceSatisfactionForm(props: {
           }
           if (question.type === "multiple-choice") {
             const selected = props.draft.multipleChoice[question.questionId] ?? [];
+            const maxSelections = question.maxSelections ?? question.options.length;
+            const selectionLimitReached = selected.length >= maxSelections;
             return (
               <fieldset
                 aria-describedby={errors[question.questionId] ? errorId : undefined}
@@ -533,12 +610,13 @@ export function AudienceSatisfactionForm(props: {
                 key={question.questionId}
               >
                 <legend><span>{index + 1}</span>{question.prompt}{question.required ? <em>필수</em> : null}</legend>
-                {question.maxSelections ? <p>최대 {question.maxSelections}개 선택</p> : null}
+                <p>{selected.length}/{maxSelections}개 선택 · 최대 {maxSelections}개</p>
                 <div className="activity-choice-options">
                   {question.options.map((option) => (
                     <label key={option.optionId}>
                       <input
                         checked={selected.includes(option.optionId)}
+                        disabled={selectionLimitReached && !selected.includes(option.optionId)}
                         type="checkbox"
                         onChange={(event) => props.onChange({
                           ...props.draft,
@@ -578,10 +656,32 @@ export function AudienceSatisfactionForm(props: {
       ) : null}
 
       <OrbitButton icon={<IconArrowRight aria-hidden="true" />} disabled={props.isSubmitting} onClick={submit}>
-        {props.isSubmitting ? "저장 중" : "응답 제출"}
+        {props.isSubmitting ? "저장 중" : templateCopy.submitLabel}
       </OrbitButton>
     </section>
   );
+}
+
+export function getAudienceTemplateCopy(definition: ActivityDefinition) {
+  if (definition.template === "pre-question") {
+    return {
+      receiptEyebrow: "QUESTION SENT",
+      receiptTitle: "질문을 보냈습니다",
+      submitLabel: "질문 보내기"
+    };
+  }
+  if (definition.template === "poll") {
+    return {
+      receiptEyebrow: "VOTE SAVED",
+      receiptTitle: "투표가 제출되었습니다",
+      submitLabel: "투표 제출"
+    };
+  }
+  return {
+    receiptEyebrow: "RESPONSE SAVED",
+    receiptTitle: "의견이 저장되었습니다",
+    submitLabel: "의견 제출"
+  };
 }
 
 function AudienceStatus(props: { description?: string; icon: React.ReactNode; title: string }) {

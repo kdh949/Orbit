@@ -3,7 +3,7 @@ export {
   DropdownMenuAccount,
   DropdownMenuItem
 } from "./DropdownMenu";
-export { OrbitButton } from "./Button";
+export { OrbitButton, OrbitButtonLink } from "./Button";
 export type { OrbitButtonSize, OrbitButtonVariant } from "./Button";
 export { OrbitCard } from "./Card";
 export { OrbitColorBlock } from "./ColorBlock";

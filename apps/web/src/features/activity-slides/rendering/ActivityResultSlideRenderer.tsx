@@ -6,10 +6,20 @@ import type {
   ActivitySlide,
   Deck
 } from "@orbit/shared";
-import { IconChartBar, IconEyeOff, IconLinkOff } from "@tabler/icons-react";
+import {
+  IconBroadcast,
+  IconChartBar,
+  IconEyeOff,
+  IconLetterQ,
+  IconLinkOff,
+  IconRefresh,
+  IconSparkles,
+  IconUsers
+} from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 
 import { activityApi } from "../api/activityApi";
+import { createActivityThemeStyle } from "./activityThemeStyle";
 import "./activity-result-slide.css";
 
 export type ActivityResultRenderState =
@@ -121,6 +131,7 @@ export function ActivityResultRuntime(props: {
       scale={props.scale}
       slide={props.slide}
       source={source}
+      theme={props.deck.theme}
       waiting={projection.waiting}
     />
   );
@@ -134,6 +145,7 @@ export function ActivityResultSlideRenderer(props: {
   scale?: number;
   slide: ActivityResultsSlide;
   source: ActivitySlide | null;
+  theme?: Deck["theme"];
   waiting?: boolean;
 }) {
   const state = getActivityResultRenderState(props);
@@ -150,12 +162,24 @@ export function ActivityResultSlideRenderer(props: {
         aria-label={props.role === "presenter" ? "발표자 결과 장표" : "공개 결과 장표"}
         className="activity-result-slide"
         data-result-state={state}
-        style={{ transform: `scale(${scale})` }}
+        style={{
+          ...createActivityThemeStyle(props.theme, props.slide.style),
+          transform: `scale(${scale})`
+        }}
       >
-        <header>
-          <span>ACTIVITY RESULTS</span>
-          <h1>{props.source ? `${props.source.activity.title} 결과` : "연결 결과"}</h1>
-          <p>{props.slide.title}</p>
+        <header className="activity-result-intro">
+          <div className="activity-result-eyebrow">
+            <IconBroadcast aria-hidden="true" size={24} stroke={1.8} />
+            <span>실시간 참여 결과</span>
+          </div>
+          <h1>{props.source?.activity.title ?? "연결 결과"}</h1>
+          {props.source?.activity.description ? (
+            <p>{props.source.activity.description}</p>
+          ) : null}
+          <div className="activity-result-status">
+            <IconBroadcast aria-hidden="true" size={26} stroke={1.8} />
+            <span>{resultStatusLabel(state)}</span>
+          </div>
         </header>
         {visibleResult && props.source ? (
           <ResultContent
@@ -201,101 +225,121 @@ function ResultContent(props: {
   if (!result) return null;
   const publicTexts = props.publicResult?.approvedTextEntries ?? [];
   const presenterTexts = props.presenterResult?.textEntries ?? [];
+  const resultFooter = (
+    <p className="activity-result-live-note">
+      <IconRefresh aria-hidden="true" size={28} stroke={1.8} />
+      <span>새 응답은 이 화면에 자동으로 반영됩니다.</span>
+    </p>
+  );
+
+  const responseCount = (
+    <div className="activity-result-response-count">
+      <IconUsers aria-hidden="true" size={34} stroke={1.8} />
+      <span>응답</span>
+      <strong>{result.responseCount}</strong>
+    </div>
+  );
 
   if (props.layout === "approved-text") {
     const texts = props.presenterResult
       ? presenterTexts
       : publicTexts.map((entry) => ({ ...entry, moderationStatus: "approved" as const }));
     return (
-      <section
-        className="activity-result-texts"
-        aria-label="주관식 결과"
-        data-result-layout="approved-text"
-      >
-        <strong>응답 {result.responseCount}개</strong>
-        {texts.length > 0 ? (
-          <ul>
-            {texts.slice(0, 6).map((entry) => (
-              <li key={entry.entryId}>
-                {entry.text}
-                {props.presenterResult ? <small>{entry.moderationStatus}</small> : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>표시할 주관식 응답이 없습니다.</p>
-        )}
+      <section className="activity-result-stage" data-result-layout="approved-text">
+        {responseCount}
+        <section className="activity-result-card activity-result-texts" aria-label="주관식 결과">
+          <header className="activity-result-question-heading">
+            <span><IconLetterQ aria-hidden="true" size={28} stroke={2} /></span>
+            <strong>{props.source.activity.questions[0]?.prompt ?? "청중 응답"}</strong>
+          </header>
+          {texts.length > 0 ? (
+            <ul>
+              {texts.slice(0, 6).map((entry) => (
+                <li key={entry.entryId}>
+                  {entry.text}
+                  {props.presenterResult ? (
+                    <small>{moderationStatusLabel(entry.moderationStatus)}</small>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="activity-result-empty-copy">표시할 주관식 응답이 없습니다.</p>
+          )}
+          {resultFooter}
+        </section>
       </section>
     );
   }
 
   if (props.layout === "summary") {
     return (
-      <section
-        className="activity-result-summary-layout"
-        aria-label="결과 요약"
-        data-result-layout="summary"
-      >
-        <div className="activity-result-total">
-          <IconChartBar aria-hidden="true" size={42} stroke={1.5} />
-          <span>응답</span>
-          <strong>{result.responseCount}</strong>
-        </div>
-        <ul>
-          {props.source.activity.questions.map((question) => {
-            const aggregate = result.aggregates.find(
-              (candidate) => candidate.questionId === question.questionId
-            );
-            if (!aggregate) return null;
-            let value = `${aggregate.responseCount}개 의견`;
-            if (question.type === "rating") {
-              value = `${aggregate.average?.toFixed(1) ?? "–"} / 5`;
-            } else if (
-              question.type === "single-choice" ||
-              question.type === "multiple-choice"
-            ) {
-              const top = [...aggregate.choices].sort(
-                (left, right) => right.count - left.count
-              )[0];
-              value = question.options.find(
-                (option) => option.optionId === top?.optionId
-              )?.label ?? "응답 없음";
-            }
-            return (
-              <li key={question.questionId}>
-                <span>{question.prompt}</span>
-                <strong>{value}</strong>
-              </li>
-            );
-          })}
-        </ul>
+      <section className="activity-result-stage" data-result-layout="summary">
+        {responseCount}
+        <section className="activity-result-card activity-result-summary-layout" aria-label="결과 요약">
+          <header className="activity-result-question-heading">
+            <span><IconChartBar aria-hidden="true" size={28} stroke={2} /></span>
+            <strong>응답 결과 한눈에 보기</strong>
+          </header>
+          <ul>
+            {props.source.activity.questions.map((question) => {
+              const aggregate = result.aggregates.find(
+                (candidate) => candidate.questionId === question.questionId
+              );
+              if (!aggregate) return null;
+              let value = `${aggregate.responseCount}개 의견`;
+              if (question.type === "rating") {
+                value = `${aggregate.average?.toFixed(1) ?? "–"} / 5`;
+              } else if (
+                question.type === "single-choice" ||
+                question.type === "multiple-choice"
+              ) {
+                const top = [...aggregate.choices].sort(
+                  (left, right) => right.count - left.count
+                )[0];
+                value = question.options.find(
+                  (option) => option.optionId === top?.optionId
+                )?.label ?? "응답 없음";
+              }
+              return (
+                <li key={question.questionId}>
+                  <span>{question.prompt}</span>
+                  <strong>{value}</strong>
+                </li>
+              );
+            })}
+          </ul>
+          {resultFooter}
+        </section>
       </section>
     );
   }
 
   return (
-    <section
-      className="activity-result-content"
-      aria-label="집계 차트"
-      data-result-layout="chart"
-    >
-      <div className="activity-result-total">
-        <IconChartBar aria-hidden="true" size={42} stroke={1.5} />
-        <span>응답</span>
-        <strong>{result.responseCount}</strong>
-      </div>
-      <div className="activity-result-grid">
+    <section className="activity-result-stage" data-result-layout="chart">
+      {responseCount}
+      <section className="activity-result-card" aria-label="집계 차트">
+        <div
+          className="activity-result-grid"
+          data-question-count={props.source.activity.questions.length}
+        >
         {props.source.activity.questions.map((question) => {
           const aggregate = result.aggregates.find(
             (candidate) => candidate.questionId === question.questionId
           );
           if (!aggregate) return null;
+          const leadingCount = Math.max(0, ...aggregate.choices.map((choice) => choice.count));
           return (
             <article key={question.questionId}>
-              <span>{question.prompt}</span>
+              <header className="activity-result-question-heading">
+                <span><IconLetterQ aria-hidden="true" size={28} stroke={2} /></span>
+                <strong>{question.prompt}</strong>
+              </header>
               {question.type === "rating" ? (
                 <>
-                  <strong>{aggregate.average?.toFixed(1) ?? "–"}<small>/ 5</small></strong>
+                  <strong className="activity-result-rating">
+                    {aggregate.average?.toFixed(1) ?? "–"}<small>/ 5</small>
+                  </strong>
                   <i className="activity-result-chart-track" aria-hidden="true">
                     <span style={{ width: `${((aggregate.average ?? 0) / 5) * 100}%` }} />
                   </i>
@@ -306,13 +350,23 @@ function ResultContent(props: {
                     const choice = aggregate.choices.find(
                       (candidate) => candidate.optionId === option.optionId
                     );
+                    const ratio = choice?.ratio ?? 0;
+                    const isLeading = leadingCount > 0 && choice?.count === leadingCount;
                     return (
-                      <li key={option.optionId}>
-                        <span>{option.label}</span>
+                      <li className={isLeading ? "is-leading" : undefined} key={option.optionId}>
+                        <div>
+                          <span>{option.label}</span>
+                          {isLeading ? (
+                            <small className="activity-result-leading-badge">
+                              <IconSparkles aria-hidden="true" size={18} stroke={1.8} />
+                              가장 많음
+                            </small>
+                          ) : null}
+                        </div>
                         <i className="activity-result-chart-track" aria-hidden="true">
-                          <span style={{ width: `${(choice?.ratio ?? 0) * 100}%` }} />
+                          <span style={{ width: `${ratio * 100}%` }} />
                         </i>
-                        <strong>{Math.round((choice?.ratio ?? 0) * 100)}%</strong>
+                        <strong>{Math.round(ratio * 100)}%</strong>
                       </li>
                     );
                   })}
@@ -323,9 +377,27 @@ function ResultContent(props: {
             </article>
           );
         })}
-      </div>
+        </div>
+        {resultFooter}
+      </section>
     </section>
   );
+}
+
+function resultStatusLabel(state: ActivityResultRenderState) {
+  const labels: Record<ActivityResultRenderState, string> = {
+    "no-run": "시작 전",
+    waiting: "집계 중",
+    "presenter-live": "진행 중",
+    "public-hidden": "공개 전",
+    "public-results": "결과 공개",
+    "source-missing": "연결 필요"
+  };
+  return labels[state];
+}
+
+function moderationStatusLabel(status: "pending" | "approved" | "hidden") {
+  return { pending: "확인 전", approved: "공개", hidden: "숨김" }[status];
 }
 
 function ResultStateNotice(props: { state: ActivityResultRenderState }) {

@@ -133,7 +133,11 @@ export function EditorCanvasStage(props: EditorCanvasStageProps) {
           >
             {props.currentSlide.kind === "activity" ? (
               <div aria-label="잠긴 시스템 레이어" className="activity-editor-system-layer">
-                <ActivitySlidePreview role="audience" slide={props.currentSlide} />
+                <ActivitySlidePreview
+                  role="audience"
+                  slide={props.currentSlide}
+                  theme={props.deck.theme}
+                />
               </div>
             ) : props.currentSlide.kind === "activity-results" ? (
               <div aria-label="잠긴 시스템 레이어" className="activity-editor-system-layer">
@@ -148,6 +152,7 @@ export function EditorCanvasStage(props: EditorCanvasStageProps) {
                     props.deck,
                     props.currentSlide.activityResult.sourceActivityId
                   )}
+                  theme={props.deck.theme}
                 />
               </div>
             ) : (

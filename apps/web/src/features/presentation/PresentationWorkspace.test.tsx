@@ -68,6 +68,6 @@ describe("PresentationWorkspace", () => {
     );
 
     expect(html).toContain('aria-label="참여 장표 운영"');
-    expect(html).toContain("ACTIVITY CONTROL");
+    expect(html).toContain("응답 열기");
   });
 });

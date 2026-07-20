@@ -276,6 +276,15 @@ test.describe("P1 presenter screen and slide window", () => {
     await page.getByRole("button", { name: "슬라이드쇼 시작" }).click();
     const remoteWindow = await remoteWindowPromise;
     await remoteWindow.waitForLoadState();
+    await expect
+      .poll(() => getSurfaceSwapPresenterWindowFeatures(page))
+      .toContain("left=0");
+    expect(await getSurfaceSwapPresenterWindowFeatures(page)).toContain(
+      "top=0",
+    );
+    expect(await getSurfaceSwapPresenterWindowFeatures(page)).not.toContain(
+      "left=1440",
+    );
 
     await expect(page.getByLabel("슬라이드 전용 창")).toBeVisible();
     await expectPresentWindowFillsViewport(page);
@@ -328,7 +337,7 @@ test.describe("P1 presenter screen and slide window", () => {
       .getByRole("button", { name: "슬라이드로 돌아가기" })
       .click();
     await expect(
-      page.locator('[data-slide-id="slide_presenter_2"]'),
+      page.locator('.slideshow-renderer[data-slide-id="slide_presenter_2"]'),
     ).toBeVisible();
 
     await remoteWindow
@@ -340,7 +349,7 @@ test.describe("P1 presenter screen and slide window", () => {
       .getByRole("button", { name: "슬라이드로 돌아가기" })
       .click();
     await expect(
-      page.locator('[data-slide-id="slide_presenter_2"]'),
+      page.locator('.slideshow-renderer[data-slide-id="slide_presenter_2"]'),
     ).toBeVisible();
 
     await remoteWindow
@@ -349,7 +358,7 @@ test.describe("P1 presenter screen and slide window", () => {
     await expect(page.getByLabel("공유 중인 웹 또는 실습 화면")).toBeVisible();
     await remoteWindow.close();
     await expect(
-      page.locator('[data-slide-id="slide_presenter_2"]'),
+      page.locator('.slideshow-renderer[data-slide-id="slide_presenter_2"]'),
     ).toBeVisible();
     expect(await page.content()).not.toContain("두 번째 슬라이드 대본도");
   });
@@ -602,17 +611,50 @@ async function installSurfaceSwapMock(page: import("@playwright/test").Page) {
       top: 0,
       width: 1920,
     };
+    const screenDetails = {
+      currentScreen,
+      screens: [currentScreen, audienceScreen],
+    };
+    const surfaceSwapQa = {
+      presenterWindowFeatures: [] as string[],
+    };
+    const originalOpen = window.open.bind(window);
+    Object.defineProperty(window, "__orbitSurfaceSwapQa", {
+      configurable: true,
+      value: surfaceSwapQa,
+    });
+    Object.defineProperty(window, "open", {
+      configurable: true,
+      value: (url?: string | URL, target?: string, features?: string) => {
+        if (target?.startsWith("orbit-presenter-")) {
+          surfaceSwapQa.presenterWindowFeatures.push(features ?? "");
+        }
+        return originalOpen(url, target, features);
+      },
+    });
     Object.defineProperty(window, "getScreenDetails", {
       configurable: true,
-      value: async () => ({
-        currentScreen,
-        screens: [currentScreen, audienceScreen],
-      }),
+      value: async () => screenDetails,
     });
     Object.defineProperty(Element.prototype, "requestFullscreen", {
       configurable: true,
-      value: async () => undefined,
+      value: async (options?: { screen?: typeof currentScreen }) => {
+        screenDetails.currentScreen = options?.screen ?? audienceScreen;
+      },
     });
+  });
+}
+
+async function getSurfaceSwapPresenterWindowFeatures(
+  page: import("@playwright/test").Page,
+) {
+  return page.evaluate(() => {
+    const qa = (
+      window as unknown as {
+        __orbitSurfaceSwapQa: { presenterWindowFeatures: string[] };
+      }
+    ).__orbitSurfaceSwapQa;
+    return qa.presenterWindowFeatures.at(-1) ?? "";
   });
 }
 

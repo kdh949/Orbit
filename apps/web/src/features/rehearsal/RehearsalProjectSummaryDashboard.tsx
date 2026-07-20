@@ -1,10 +1,16 @@
 import {
+  ArrowRight,
   ArrowUpRight,
   CheckCircle2,
-  ImageOff,
+  Clock3,
+  MessageCircle,
+  MessageCircleMore,
+  Pause,
+  Presentation,
   Target,
+  type LucideIcon,
 } from "lucide-react";
-import type { CSSProperties } from "react";
+import { lazy, Suspense, type CSSProperties } from "react";
 import type { RehearsalProjectSummary } from "@orbit/shared";
 import { DurationLineChart, MetricTrendChart } from "./ReportProgressCharts";
 import {
@@ -15,6 +21,10 @@ import {
   type ProjectSummarySlideRow,
 } from "./rehearsalProjectSummaryModel";
 import type { RehearsalRunComparisonViewModel } from "./rehearsalRunComparisonModel";
+
+const ProjectSlidePreview = lazy(
+  () => import("../projects/ProjectSlidePreview"),
+);
 
 export function RehearsalProjectSummaryDashboard({
   comparison,
@@ -38,6 +48,28 @@ export function RehearsalProjectSummaryDashboard({
 
   return (
     <section className="project-summary-dashboard" aria-labelledby="project-summary-title">
+      <article className="project-summary-next-action" aria-label="다음 연습 우선 행동">
+        <span className="project-summary-next-action-icon" aria-hidden="true">
+          <Target size={23} />
+        </span>
+        <div>
+          <span>다음 연습에서 먼저 할 일</span>
+          <strong>{model.primaryAction.label}</strong>
+          {model.primaryAction.slideLabel ? <small>{model.primaryAction.slideLabel}</small> : null}
+          <p>{model.primaryAction.reason}</p>
+        </div>
+        {model.primaryAction.href ? (
+          <a href={model.primaryAction.href}>
+            상세 리포트에서 보기
+            <ArrowUpRight size={17} />
+          </a>
+        ) : (
+          <span className="project-summary-next-action-ready">
+            <CheckCircle2 size={17} /> 흐름 유지
+          </span>
+        )}
+      </article>
+
       <section className="project-summary-card project-summary-kpi-section">
         <header className="project-summary-plain-heading">
           <h2 id="project-summary-title">발표 개선 요약</h2>
@@ -48,6 +80,10 @@ export function RehearsalProjectSummaryDashboard({
             <KpiCard key={kpi.key} kpi={kpi} />
           ))}
         </div>
+        <p className="project-summary-keyword-help">
+          핵심 키워드 전달률은 발표자료에 등록된 키워드를 유의어와 약어를 포함해
+          한 번 이상 언급했는지 확인합니다. 설명의 정확성은 평가하지 않습니다.
+        </p>
       </section>
 
       <section className="project-summary-card project-summary-slide-section">
@@ -65,11 +101,15 @@ export function RehearsalProjectSummaryDashboard({
                 <span role="columnheader">평균 소요시간</span>
                 <span role="columnheader">권장 시간</span>
                 <span role="columnheader">시간 초과<br />회차 비율</span>
-                <span role="columnheader">핵심 메시지<br />전달률</span>
+                <span role="columnheader">핵심 키워드<br />전달률</span>
                 <span role="columnheader">상태</span>
               </div>
               {model.slideRows.map((slide) => (
-                <SlidePerformanceRow key={slide.slideId} slide={slide} />
+                <SlidePerformanceRow
+                  key={slide.slideId}
+                  projectId={summary.projectId}
+                  slide={slide}
+                />
               ))}
             </div>
           </div>
@@ -118,10 +158,10 @@ export function RehearsalProjectSummaryDashboard({
           />
           <TrendPanel
             tone="secondary"
-            title="핵심 메시지 전달률"
-            description="완전히 전달된 핵심 Cue 비율"
-            series={model.metricSeries.coreMessage}
-            ariaLabel="회차별 핵심 메시지 전달률 추이"
+            title="핵심 키워드 전달률"
+            description="등록 키워드를 한 번 이상 언급한 비율"
+            series={model.metricSeries.keywordCoverage}
+            ariaLabel="회차별 핵심 키워드 전달률 추이"
             valueFormatter={formatPercent}
           />
           <TrendPanel
@@ -135,40 +175,104 @@ export function RehearsalProjectSummaryDashboard({
         </div>
       </section>
 
-      <article className="project-summary-next-action">
-        <span className="project-summary-next-action-icon" aria-hidden="true">
-          <Target size={23} />
-        </span>
-        <div>
-          <span>다음 연습에서 먼저 할 일</span>
-          <strong>{model.primaryAction.label}</strong>
-          {model.primaryAction.slideLabel ? <small>{model.primaryAction.slideLabel}</small> : null}
-          <p>{model.primaryAction.reason}</p>
-        </div>
-        {model.primaryAction.href ? (
-          <a href={model.primaryAction.href}>
-            상세 리포트에서 보기
-            <ArrowUpRight size={17} />
-          </a>
-        ) : (
-          <span className="project-summary-next-action-ready">
-            <CheckCircle2 size={17} /> 흐름 유지
-          </span>
-        )}
-      </article>
     </section>
   );
 }
 
 function KpiCard({ kpi }: { kpi: ProjectSummaryKpi }) {
+  const visual = KPI_VISUALS[kpi.key];
+  const hasComparison = kpi.comparisonValue !== null;
+  const showValueTransition = hasComparison && kpi.key !== "duration";
+  const isTargetMatch =
+    kpi.key === "duration" && kpi.deltaLabel === "권장과 일치";
+  const currentDisplayValue = toKpiDisplayValue(kpi.key, kpi.value);
+  const comparisonDisplayValue = kpi.comparisonValue
+    ? toKpiDisplayValue(kpi.key, kpi.comparisonValue)
+    : null;
+  const ariaLabel = [
+    kpi.label,
+    hasComparison
+      ? `${kpi.comparisonLabel} ${kpi.comparisonValue}에서 현재 ${kpi.value}`
+      : `현재 ${kpi.value}`,
+    kpi.deltaLabel ?? kpi.detail,
+  ].join(". ");
+
   return (
-    <article className={`project-summary-kpi is-${kpi.state}`}>
+    <article
+      aria-label={ariaLabel}
+      className={`project-summary-kpi is-${kpi.state}${isTargetMatch ? " is-target-match" : ""}`}
+    >
       <strong className="project-summary-kpi-label">{kpi.label}</strong>
-      <strong className="project-summary-kpi-value">{kpi.value}</strong>
-      <p>{kpi.detail}</p>
-      {kpi.deltaLabel ? <span className="project-summary-kpi-delta">{kpi.deltaLabel}</span> : null}
+      <div
+        className={`project-summary-kpi-visual${hasComparison ? " is-comparison" : ""}`}
+        aria-hidden="true"
+      >
+        {hasComparison ? (
+          <KpiVisualState icon={visual.previous} tone="previous" />
+        ) : null}
+        {hasComparison ? (
+          <ArrowRight
+            className="project-summary-kpi-arrow"
+            size={22}
+            strokeWidth={2}
+          />
+        ) : null}
+        <KpiVisualState icon={visual.current} tone="current" />
+      </div>
+      <div
+        className={`project-summary-kpi-readout${showValueTransition ? " is-comparison" : ""}`}
+      >
+        {showValueTransition ? (
+          <>
+            <span>{comparisonDisplayValue}</span>
+            <ArrowRight aria-hidden="true" size={20} strokeWidth={2.25} />
+          </>
+        ) : null}
+        <strong>{currentDisplayValue}</strong>
+      </div>
+      {kpi.deltaLabel ? (
+        <span className="project-summary-kpi-delta">{kpi.deltaLabel}</span>
+      ) : (
+        <span className="project-summary-kpi-delta is-context">
+          {kpi.detail}
+        </span>
+      )}
     </article>
   );
+}
+
+const KPI_VISUALS: Record<
+  ProjectSummaryKpi["key"],
+  { current: LucideIcon; previous: LucideIcon }
+> = {
+  duration: { current: Target, previous: Clock3 },
+  silence: { current: Pause, previous: Pause },
+  "keyword-coverage": {
+    current: MessageCircle,
+    previous: MessageCircleMore,
+  },
+  "timing-overrun": { current: CheckCircle2, previous: Presentation },
+};
+
+function KpiVisualState({
+  icon: Icon,
+  tone,
+}: {
+  icon: LucideIcon;
+  tone: "current" | "previous";
+}) {
+  return (
+    <span className={`project-summary-kpi-icon is-${tone}`}>
+      <Icon size={44} strokeWidth={1.75} />
+    </span>
+  );
+}
+
+function toKpiDisplayValue(key: ProjectSummaryKpi["key"], value: string) {
+  if (key === "silence") return value.replace(/회$/, "");
+  if (key === "keyword-coverage") return value.replace(/ 전달$/, "");
+  if (key === "timing-overrun") return value.split("/")[0];
+  return value;
 }
 
 function SectionHeading({
@@ -191,7 +295,13 @@ function SectionHeading({
   );
 }
 
-function SlidePerformanceRow({ slide }: { slide: ProjectSummarySlideRow }) {
+function SlidePerformanceRow({
+  projectId,
+  slide,
+}: {
+  projectId: string;
+  slide: ProjectSummarySlideRow;
+}) {
   const average = slide.avgActualSeconds;
   const target = slide.targetSeconds;
   const chartMax = Math.max(average ?? 0, target ?? 0, 1);
@@ -203,8 +313,8 @@ function SlidePerformanceRow({ slide }: { slide: ProjectSummarySlideRow }) {
       ? slide.timingOverrun.rate
       : null;
   const coverageRate =
-    slide.coreMessageCoverage.measurementState === "measured"
-      ? slide.coreMessageCoverage.rate
+    slide.keywordCoverage.measurementState === "measured"
+      ? slide.keywordCoverage.rate
       : null;
   const metricStyle = (rate: number | null) =>
     ({ "--metric-width": `${(rate ?? 0) * 100}%` }) as CSSProperties;
@@ -215,13 +325,12 @@ function SlidePerformanceRow({ slide }: { slide: ProjectSummarySlideRow }) {
         {slide.order}
       </span>
       <span className="project-summary-slide-identity" role="cell">
-        <span className="project-summary-slide-thumbnail">
-          {slide.thumbnailUrl ? (
-            <img src={slide.thumbnailUrl} alt="" loading="lazy" />
-          ) : (
-            <ImageOff size={18} aria-label="썸네일 없음" />
-          )}
-        </span>
+        <SlideThumbnail
+          order={slide.order}
+          projectId={projectId}
+          slideId={slide.slideId}
+          title={slide.title}
+        />
         <span>
           <strong>{slide.title}</strong>
         </span>
@@ -287,6 +396,39 @@ function SlidePerformanceRow({ slide }: { slide: ProjectSummarySlideRow }) {
     <div className={rowClass} role="row">
       {content}
     </div>
+  );
+}
+
+function SlideThumbnail({
+  order,
+  projectId,
+  slideId,
+  title,
+}: {
+  order: number;
+  projectId: string;
+  slideId: string;
+  title: string;
+}) {
+  return (
+    <span
+      className="project-summary-slide-thumbnail"
+      role="img"
+      aria-label={`${order}번 슬라이드 미리보기`}
+    >
+      <span className="project-summary-slide-thumbnail-fallback" aria-hidden="true">
+        <i>{order}</i>
+        <strong>{title}</strong>
+      </span>
+      <Suspense fallback={null}>
+        <ProjectSlidePreview
+          className="project-summary-slide-thumbnail-canvas"
+          projectId={projectId}
+          slideId={slideId}
+          slideOrder={order}
+        />
+      </Suspense>
+    </span>
   );
 }
 

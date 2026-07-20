@@ -25,6 +25,14 @@ export function buildActivityAggregates(
           values.length === 0
             ? null
             : values.reduce((sum, value) => sum + value, 0) / values.length,
+        ratingDistribution: [1, 2, 3, 4, 5].map((value) => {
+          const count = values.filter((candidate) => candidate === value).length;
+          return {
+            value,
+            count,
+            ratio: values.length === 0 ? 0 : count / values.length,
+          };
+        }),
         choices: [],
       };
     }
@@ -43,6 +51,7 @@ export function buildActivityAggregates(
         type: question.type,
         responseCount,
         average: null,
+        ratingDistribution: [],
         choices: question.options.map((option) => {
           const count = selected.filter(
             (optionId) => optionId === option.optionId,
@@ -60,6 +69,7 @@ export function buildActivityAggregates(
       type: question.type,
       responseCount: answers.length,
       average: null,
+      ratingDistribution: [],
       choices: [],
     };
   });

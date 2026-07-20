@@ -486,6 +486,7 @@ export class RehearsalsService {
         runId: run.runId,
         deckId: run.deckId,
         audioFileId: request.fileId,
+        liveTranscript: request.liveTranscript,
       });
 
       this.logger.info(

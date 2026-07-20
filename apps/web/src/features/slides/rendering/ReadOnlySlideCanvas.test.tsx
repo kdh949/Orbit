@@ -3,6 +3,7 @@ import { forwardRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { p0AnimationDeck } from "../../rehearsal/presenter/__fixtures__/animationDeck";
+import { computeSettledElementStates } from "../../rehearsal/presenter/slideshowStepModel";
 import {
   buildSlideBackgroundStyle,
   getActiveHighlightElementIds,
@@ -256,6 +257,50 @@ describe("ReadOnlySlideCanvas", () => {
 
     expect(html).toContain("data-element-id=\"el_group_label\"");
     expect(html).toContain("data-opacity=\"0\"");
+  });
+
+  it("applies a group presentation state to every grouped child", () => {
+    const html = renderToStaticMarkup(
+      <ReadOnlySlideCanvas
+        deck={p0AnimationDeck}
+        elementStates={{
+          el_group: {
+            opacity: 0.25,
+            visible: true
+          }
+        }}
+        slide={slide}
+      />
+    );
+
+    expect(html).toMatch(
+      /data-element-id="el_group_rect" data-opacity="0\.25"/
+    );
+    expect(html).toMatch(
+      /data-element-id="el_group_label" data-opacity="0\.25"/
+    );
+  });
+
+  it("hides every grouped child after a group fade-out animation settles", () => {
+    const html = renderToStaticMarkup(
+      <ReadOnlySlideCanvas
+        deck={p0AnimationDeck}
+        elementStates={computeSettledElementStates({
+          deck: p0AnimationDeck,
+          slide,
+          stepIndex: 1,
+          triggerAnimationIds: ["anim_group_fade_out"]
+        })}
+        slide={slide}
+      />
+    );
+
+    expect(html).toMatch(
+      /data-element-id="el_group_rect" data-opacity="0"/
+    );
+    expect(html).toMatch(
+      /data-element-id="el_group_label" data-opacity="0"/
+    );
   });
 
   it("does not render placeholder text for empty groups", () => {

@@ -69,6 +69,7 @@ export const jobErrorSchema = z.object({
   message: z.string().min(1),
   failedStage: aiDeckGenerationStageSchema.optional(),
   retryable: z.boolean().optional(),
+  syncCapabilityVersion: z.number().int().positive().optional(),
 });
 
 export const jobSchema = z.object({

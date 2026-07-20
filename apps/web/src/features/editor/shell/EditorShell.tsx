@@ -142,6 +142,7 @@ import { SlideNavigatorPane } from "./components/SlideNavigatorPane";
 import { EditorUndoToast } from "./components/EditorUndoToast";
 import { EditorContextMenus } from "./components/EditorContextMenus";
 import { EditorModals } from "./components/EditorModals";
+import { createTargetDurationPatch } from "./targetDurationModel";
 import { EditorCanvasStage } from "./components/EditorCanvasStage";
 import { EditorToolbar } from "./components/EditorToolbar";
 import { PrintDeckView } from "./components/PrintDeckView";
@@ -416,6 +417,7 @@ export function EditorShell(props: { projectId?: string }) {
   const [exportDialogFormat, setExportDialogFormat] =
     useState<DeckExportFormat>("pptx");
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isTargetDurationOpen, setIsTargetDurationOpen] = useState(false);
   const editorStageRef = useRef<Konva.Stage | null>(null);
   const panelStateBeforeRehearsalRef = useRef<{
     isRightPanelOpen: boolean;
@@ -811,6 +813,7 @@ export function EditorShell(props: { projectId?: string }) {
     isAudienceLinkModalOpen ||
     isExitConfirmOpen ||
     isExportDialogOpen ||
+    isTargetDurationOpen ||
     isPresenceDebugOpen ||
     isSharePanelOpen ||
     isSpeakerNotesAssistantOpen
@@ -1507,6 +1510,10 @@ export function EditorShell(props: { projectId?: string }) {
           setIsExportDialogOpen(false);
           return;
         }
+        if (isTargetDurationOpen) {
+          setIsTargetDurationOpen(false);
+          return;
+        }
         if (isSpeakerNotesAssistantOpen) {
           speakerNotesEditorActions.closeAssistant();
           return;
@@ -2022,8 +2029,11 @@ export function EditorShell(props: { projectId?: string }) {
             setIsAudienceLinkModalOpen(true);
             setActiveTopMenu(null);
           }}
-          onOpenPresenceDebug={() => setIsPresenceDebugOpen(true)}
           onOpenShare={openSharePanel}
+          onOpenTargetDuration={() => {
+            setIsTargetDurationOpen(true);
+            setActiveTopMenu(null);
+          }}
           onRefresh={() => {
             void health.refetch();
             void deckQuery.refetch();
@@ -2120,6 +2130,22 @@ export function EditorShell(props: { projectId?: string }) {
             onMemberRoleChange: handleShareMemberRoleChange,
             onRequestStatusChange: handleShareRequestStatus,
             onTabChange: setShareAccessTab
+          }
+        }}
+        targetDuration={{
+          isOpen: isTargetDurationOpen,
+          modalProps: {
+            deck,
+            onClose: () => setIsTargetDurationOpen(false),
+            onSave: ({ durations, targetDurationMinutes }) => {
+              const patch = createTargetDurationPatch(
+                deck,
+                targetDurationMinutes,
+                durations
+              );
+              return patch ? commitPatch(patch, deck) : true;
+            },
+            open: isTargetDurationOpen
           }
         }}
       />
@@ -2386,6 +2412,7 @@ export function EditorShell(props: { projectId?: string }) {
                 onSkipSentence={skipCurrentSlideRehearsalSentence}
                 onStart={() => void handleStartSlidePractice()}
                 onStop={() => void handleStopSlidePractice()}
+                slidePracticeEnabled={slidePracticeSession.slidePracticeEnabled}
                 practiceState={slidePracticeSession.state}
                 slide={rehearsalSlide}
                 state={slideRehearsalState}
@@ -2533,6 +2560,7 @@ export function EditorShell(props: { projectId?: string }) {
                 onOpenAudienceLink={() => setIsAudienceLinkModalOpen(true)}
                 projectId={deck.projectId}
                 slide={currentSlide}
+                theme={deck.theme}
                 onChange={(activity) => {
                   commitPatch((currentDeck) =>
                     createUpdateActivityDefinitionPatch(
@@ -2726,7 +2754,10 @@ export function getEditorStatusLabel(props: {
   return "저장됨";
 }
 
-export function getOoxmlSyncStatus(job: Job | null, state: OoxmlSyncState | null) {
+export function getOoxmlSyncStatus(
+  job: Job | null,
+  state: OoxmlSyncState | null,
+) {
   if (state?.status === "not-applicable") {
     return null;
   }
@@ -2735,8 +2766,18 @@ export function getOoxmlSyncStatus(job: Job | null, state: OoxmlSyncState | null
     return {
       detail: `현재 Deck version ${state.deckVersion}, 동기화 version ${state.syncedDeckVersion ?? "없음"}`,
       kind: "failed",
-      label: "동기화 재시도",
-      retryable: true
+      label: state.retryable ? "동기화 재시도" : "OOXML 동기화 실패",
+      retryable: state.retryable
+    };
+  }
+
+  if (state?.status === "failed") {
+    const failedJob = state.job ?? job;
+    return {
+      detail: failedJob?.error?.message ?? "PPTX OOXML sync failed.",
+      kind: "failed",
+      label: state.retryable ? "동기화 재시도" : "OOXML 동기화 실패",
+      retryable: state.retryable
     };
   }
 
@@ -2747,8 +2788,8 @@ export function getOoxmlSyncStatus(job: Job | null, state: OoxmlSyncState | null
     return {
       detail: job.error?.message ?? "PPTX OOXML sync failed.",
       kind: "failed",
-      label: "동기화 재시도",
-      retryable: true
+      label: "OOXML 동기화 실패",
+      retryable: false
     };
   }
 

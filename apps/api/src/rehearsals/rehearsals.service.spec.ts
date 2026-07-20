@@ -430,6 +430,7 @@ describe("RehearsalsService", () => {
 
     const result = await service.completeAudioUpload(run.runId, {
       fileId: "file-audio",
+      liveTranscript: "브라우저에서 인식한 전체 문장",
     });
 
     expect(result.run).toMatchObject({
@@ -451,6 +452,7 @@ describe("RehearsalsService", () => {
       runId: run.runId,
       deckId: "deck-a",
       audioFileId: "file-audio",
+      liveTranscript: "브라우저에서 인식한 전체 문장",
     });
   });
 

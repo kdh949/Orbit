@@ -911,6 +911,7 @@ export const rehearsalRecordingDurationSecondsSchema = z
 export const completeRehearsalAudioUploadUrlRequestSchema = z.object({
   fileId: z.string().min(1),
   recordingDurationSeconds: rehearsalRecordingDurationSecondsSchema,
+  liveTranscript: z.string().max(200_000).nullable().default(null),
 });
 
 export const rehearsalAudioSha256Schema = z
@@ -1692,6 +1693,8 @@ export const rehearsalProjectMetricReasonCodeSchema = z.enum([
   "SILENCE_UNMEASURED",
   "SEMANTIC_EVALUATION_UNAVAILABLE",
   "NO_MEASURABLE_CORE_CUES",
+  "KEYWORD_COVERAGE_UNMEASURED",
+  "NO_MEASURABLE_KEYWORDS",
   "SLIDE_TIMINGS_UNAVAILABLE",
 ]);
 
@@ -1753,6 +1756,24 @@ export const rehearsalProjectCoreMessageCoverageSchema = z.discriminatedUnion(
   ],
 );
 
+export const rehearsalProjectKeywordCoverageSchema = z.discriminatedUnion(
+  "measurementState",
+  [
+    rehearsalProjectMeasuredStateSchema.extend({
+      matchedCount: z.number().int().nonnegative(),
+      missedCount: z.number().int().nonnegative(),
+      measurableCount: z.number().int().positive(),
+      rate: z.number().min(0).max(1),
+    }),
+    rehearsalProjectUnmeasuredStateSchema.extend({
+      matchedCount: z.literal(0),
+      missedCount: z.literal(0),
+      measurableCount: z.literal(0),
+      rate: z.null(),
+    }),
+  ],
+);
+
 export const rehearsalProjectTimingOverrunSchema = z.discriminatedUnion(
   "measurementState",
   [
@@ -1775,6 +1796,7 @@ export const rehearsalProjectRunMetricPointSchema = z.object({
   duration: rehearsalProjectDurationMetricSchema,
   longSilence: rehearsalProjectLongSilenceMetricSchema,
   coreMessageCoverage: rehearsalProjectCoreMessageCoverageSchema,
+  keywordCoverage: rehearsalProjectKeywordCoverageSchema,
   timingOverrun: rehearsalProjectTimingOverrunSchema,
 });
 
@@ -1788,6 +1810,8 @@ export const rehearsalProjectSlidePerformanceSummarySchema = z.object({
   sampleCount: z.number().int().nonnegative(),
   timingOverrun: rehearsalProjectTimingOverrunSchema,
   coreMessageCoverage: rehearsalProjectCoreMessageCoverageSchema,
+  keywordCoverage: rehearsalProjectKeywordCoverageSchema,
+  repeatedMissedKeywordCount: z.number().int().nonnegative().default(0),
 });
 
 export const rehearsalProjectSummarySchema = z.object({
@@ -1819,6 +1843,9 @@ export type RehearsalProjectLongSilenceMetric = z.infer<
 >;
 export type RehearsalProjectCoreMessageCoverage = z.infer<
   typeof rehearsalProjectCoreMessageCoverageSchema
+>;
+export type RehearsalProjectKeywordCoverage = z.infer<
+  typeof rehearsalProjectKeywordCoverageSchema
 >;
 export type RehearsalProjectTimingOverrun = z.infer<
   typeof rehearsalProjectTimingOverrunSchema

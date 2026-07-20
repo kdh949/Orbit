@@ -6,6 +6,7 @@ import type {
 import { useEffect, useRef, useState } from "react";
 
 import { useFocusedPracticeAudio, type FocusedPracticeCapture } from "../../coaching/useFocusedPracticeAudio";
+import { fetchLiveSttRuntimeConfig } from "../../rehearsal/stt/liveSttRuntimeConfig";
 import type { LiveSttResult } from "../../rehearsal/stt/liveSttPort";
 import {
   getStableDeviceIdHash,
@@ -32,6 +33,9 @@ export type PracticeTranscriptState = {
   finalParts: string[];
   interim: string;
 };
+
+export const slidePracticeDisabledMessage =
+  "부분 슬라이드 연습 기능이 현재 환경에서 꺼져 있습니다.";
 
 export function createPracticeTranscriptState(): PracticeTranscriptState {
   return { finalParts: [], interim: "" };
@@ -76,6 +80,9 @@ export function useSlidePracticeSession(input: {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [report, setReport] = useState<SlidePracticeReport | null>(null);
   const [message, setMessage] = useState("");
+  const [slidePracticeEnabled, setSlidePracticeEnabled] = useState<
+    boolean | null
+  >(null);
   const startedAtRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const deviceIdHashRef = useRef<string | null>(null);
@@ -95,6 +102,13 @@ export function useSlidePracticeSession(input: {
     setMessage("");
     setReport(null);
     try {
+      const enabled =
+        slidePracticeEnabled ??
+        (await fetchLiveSttRuntimeConfig()).slidePracticeEnabled;
+      setSlidePracticeEnabled(enabled);
+      if (!enabled) {
+        throw new Error(slidePracticeDisabledMessage);
+      }
       await input.beforeStart?.();
       deviceIdHashRef.current = await getStableDeviceIdHash().catch(() => null);
       const stream = await audio.start();
@@ -115,7 +129,7 @@ export function useSlidePracticeSession(input: {
     } catch (error) {
       clearTimer();
       setState("error");
-      setMessage(error instanceof Error ? error.message : "마이크를 시작하지 못했습니다.");
+      setMessage(getSlidePracticeErrorMessage(error, "마이크를 시작하지 못했습니다."));
       return null;
     }
   }
@@ -129,7 +143,7 @@ export function useSlidePracticeSession(input: {
       await finishCapture(capture);
     } catch (error) {
       setState("error");
-      setMessage(error instanceof Error ? error.message : "연습 녹음을 완료하지 못했습니다.");
+      setMessage(getSlidePracticeErrorMessage(error, "연습 녹음을 완료하지 못했습니다."));
     }
   }
 
@@ -141,7 +155,7 @@ export function useSlidePracticeSession(input: {
     sessionSnapshotRef.current = null;
     startedAtRef.current = null;
     setElapsedMs(0);
-    setMessage("");
+    setMessage(slidePracticeEnabled === false ? slidePracticeDisabledMessage : "");
     setReport(null);
     setState("idle");
     return true;
@@ -201,9 +215,25 @@ export function useSlidePracticeSession(input: {
     setState("stopping");
     void finishCapture(capture).catch((error) => {
       setState("error");
-      setMessage(error instanceof Error ? error.message : "연습 녹음을 완료하지 못했습니다.");
+      setMessage(getSlidePracticeErrorMessage(error, "연습 녹음을 완료하지 못했습니다."));
     });
   }, [audio.automaticCapture, state]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchLiveSttRuntimeConfig()
+      .then((runtimeConfig) => {
+        if (cancelled) return;
+        setSlidePracticeEnabled(runtimeConfig.slidePracticeEnabled);
+        if (!runtimeConfig.slidePracticeEnabled) {
+          setMessage(slidePracticeDisabledMessage);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return {
     state,
@@ -211,9 +241,17 @@ export function useSlidePracticeSession(input: {
     report,
     message,
     reset,
+    slidePracticeEnabled,
     start,
     stop,
   };
+}
+
+export function getSlidePracticeErrorMessage(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : "";
+  return message.includes("Slide practice is not enabled")
+    ? slidePracticeDisabledMessage
+    : message || fallback;
 }
 
 function mergeBaseline(

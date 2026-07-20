@@ -152,9 +152,40 @@ export const templateElementSourceSchema = z
     ]),
     writable: z.boolean(),
     tableCellLocators: templateTableCellLocatorsSchema.optional(),
+    fallbackMode: z.literal("rasterized").optional(),
     fallbackReason: z.string().min(1).optional(),
   })
   .superRefine((source, ctx) => {
+    if (source.fallbackMode === "rasterized") {
+      const eligibleElementTypes = new Set([
+        "ellipse",
+        "line",
+        "arrow",
+        "polygon",
+        "star",
+        "ring",
+        "svg",
+        "customShape",
+        "chart",
+      ]);
+      const isAuthoritativeRasterSource =
+        source.elementType !== undefined &&
+        eligibleElementTypes.has(source.elementType) &&
+        source.ooxmlOrigin === "authored" &&
+        source.sourceType === "image" &&
+        source.writable &&
+        source.relationshipId !== undefined &&
+        source.fallbackReason === "AUTHORED_ELEMENT_TYPE_RASTERIZED" &&
+        source.tableCellLocators === undefined;
+      if (!isAuthoritativeRasterSource) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "raster fallback requires an authoritative authored image source",
+          path: ["fallbackMode"],
+        });
+      }
+    }
     if (source.ooxmlEditCapabilities?.tableCellText === true) {
       const hasAuthoritativeTableSource =
         source.elementType === "table" &&

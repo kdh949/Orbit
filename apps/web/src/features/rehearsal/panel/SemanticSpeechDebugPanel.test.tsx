@@ -12,6 +12,7 @@ describe("SemanticSpeechDebugPanel", () => {
   it("latest final transcript와 decision 적용 상태를 표시한다", () => {
     const html = renderToStaticMarkup(
       <SemanticSpeechDebugPanel
+        liveTranscript="첫 문장 두 번째 문장 현재 말하는 중"
         semanticMatchingEnabled
         state={createSemanticDebugState({
           status: "ready",
@@ -41,6 +42,8 @@ describe("SemanticSpeechDebugPanel", () => {
     );
 
     expect(html).toContain("Semantic STT");
+    expect(html).toContain("실시간 전체 인식");
+    expect(html).toContain("첫 문장 두 번째 문장 현재 말하는 중");
     expect(html).toContain("방금 인식");
     expect(html).toContain("방금 final STT 문장");
     expect(html).toContain("#1 · 0.842 · 문장 3");

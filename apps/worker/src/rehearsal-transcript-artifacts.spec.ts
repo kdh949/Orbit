@@ -12,6 +12,7 @@ const input = {
   transcriptTextFileId: null,
   transcriptJsonStatus: null,
   transcriptTextStatus: null,
+  liveTranscript: "브라우저에서 인식한 전체 문장",
   transcription: {
     transcript: "안녕하세요. 발표를 시작하겠습니다.",
     language: "ko",
@@ -58,6 +59,7 @@ describe("storeRehearsalTranscriptArtifacts", () => {
     const jsonBody = JSON.parse(Buffer.from(jsonCall?.body ?? []).toString("utf8"));
     expect(jsonBody).toEqual({
       text: input.transcription.transcript,
+      liveTranscript: input.liveTranscript,
       language: "ko",
       duration: 5.4,
       provider: "whisperx",

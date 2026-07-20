@@ -24,8 +24,25 @@ export const activityResponseRetentionJobResultSchema = z
   })
   .strict();
 
-export const activityRetentionSnapshotSchema = activityPresenterResultSchema.superRefine(
-  (snapshot, ctx) => {
+export const activityRetentionSnapshotSchema = z
+  .preprocess(
+    (snapshot) => {
+      if (!isRecord(snapshot) || !Array.isArray(snapshot.aggregates)) {
+        return snapshot;
+      }
+
+      return {
+        ...snapshot,
+        aggregates: snapshot.aggregates.map((aggregate) =>
+          isRecord(aggregate) && aggregate.ratingDistribution === undefined
+            ? { ...aggregate, ratingDistribution: [] }
+            : aggregate,
+        ),
+      };
+    },
+    activityPresenterResultSchema,
+  )
+  .superRefine((snapshot, ctx) => {
     if (snapshot.textEntries.length > 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -33,8 +50,11 @@ export const activityRetentionSnapshotSchema = activityPresenterResultSchema.sup
         message: "retention snapshots cannot contain free-text entries",
       });
     }
-  },
-);
+  });
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 export type ActivityResponseRetentionJobPayload = z.infer<
   typeof activityResponseRetentionJobPayloadSchema

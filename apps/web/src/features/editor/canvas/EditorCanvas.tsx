@@ -49,6 +49,7 @@ import {
   ReadOnlySlideCanvas,
   type ElementPresentationState,
 } from "../../slides/rendering";
+import { resolveGroupedElementPresentationStates } from "../../slides/rendering/groupPresentationState";
 import { resolveRedesignPalette } from "../../../styles/redesignPalette";
 import { isEditorKeyboardCommandSuppressedTarget } from "../shell/editorKeyboardCommands";
 
@@ -441,10 +442,13 @@ export function EditableCanvas(props: {
   const validationHighlightElementIdSet = new Set(
     validationHighlightElementIds,
   );
+  const resolvedElementStates = elementStates
+    ? resolveGroupedElementPresentationStates({ elementStates, slide })
+    : null;
   const validationHighlightElements = getHighlightOverlayElements({
     activeHighlightElementIds: validationHighlightElementIdSet,
     deck,
-    elementStates: elementStates ?? undefined,
+    elementStates: resolvedElementStates ?? undefined,
     slide,
   });
   const editorPrimarySoftColor = withColorAlpha(editorPrimaryColor, 0.08);
@@ -699,7 +703,7 @@ export function EditableCanvas(props: {
                 element.elementId === editingElementId
               }
               isSelected={selectedElementIds.includes(element.elementId)}
-              presentationState={elementStates?.[element.elementId]}
+              presentationState={resolvedElementStates?.[element.elementId]}
               selectedCount={selectedElementIds.length}
               showIds={showIds}
               slide={slide}
@@ -763,7 +767,7 @@ export function EditableCanvas(props: {
                 color={editorPrimaryColor}
                 element={element}
                 key={`validation-highlight-${element.elementId}`}
-                state={elementStates?.[element.elementId]}
+                state={resolvedElementStates?.[element.elementId]}
               />
             ))}
           {customShapeInsertDraft ? (

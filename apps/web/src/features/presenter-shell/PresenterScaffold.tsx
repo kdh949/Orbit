@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, PauseCircle, PlayCircle, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw } from "lucide-react";
 import type { ReactNode } from "react";
 
 export type PresenterTimeMode = "stopwatch" | "timer";
@@ -36,8 +36,8 @@ export function PresenterTopbar(props: {
   onReset: () => void;
   onTimeModeChange: (value: PresenterTimeMode) => void;
   statusActive?: boolean;
-  statusLabel: string;
-  subtitle: string;
+  statusLabel?: string;
+  subtitle?: string;
   timeMode: PresenterTimeMode;
   timerDurationInput: string;
   title: string;
@@ -54,21 +54,25 @@ export function PresenterTopbar(props: {
         {props.exitButtonContent}
       </button>
       <h1 className="rehearsal-smoke-heading">{props.title}</h1>
-      <span className="rehearsal-session-status">
-        <span aria-hidden="true" />
-        {props.subtitle}
-      </span>
+      {props.subtitle ? (
+        <span className="rehearsal-session-status">
+          <span aria-hidden="true" />
+          {props.subtitle}
+        </span>
+      ) : null}
 
       {props.toolbar}
 
-      <span
-        className={`rehearsal-recording-status ${
-          props.statusActive ? "rehearsal-recording-status-active" : ""
-        }`}
-      >
-        <span aria-hidden="true" />
-        {props.statusLabel}
-      </span>
+      {props.statusLabel ? (
+        <span
+          className={`rehearsal-recording-status ${
+            props.statusActive ? "rehearsal-recording-status-active" : ""
+          }`}
+        >
+          <span aria-hidden="true" />
+          {props.statusLabel}
+        </span>
+      ) : null}
 
       <div className="rehearsal-timer-pill" aria-live="polite">
         <span className="timer-wave" aria-hidden="true">
@@ -116,13 +120,13 @@ export function PresenterTopbar(props: {
           disabled={props.primaryActionDisabled}
         >
           {props.primaryActionRunning ? (
-            <PauseCircle size={16} />
+            <Pause fill="currentColor" size={22} strokeWidth={0} />
           ) : (
-            <PlayCircle size={16} />
+            <Play fill="currentColor" size={22} strokeWidth={2.5} />
           )}
         </button>
         <button type="button" aria-label="Reset timer" onClick={props.onReset}>
-          <RotateCcw size={15} />
+          <RotateCcw size={22} />
         </button>
       </div>
     </header>
@@ -133,6 +137,7 @@ export function PresenterStageSection(props: {
   currentIndex: number;
   currentSlideTitle?: string;
   emptyStageLabel: string;
+  navigationPending?: boolean;
   nextHint: string;
   nextSlideContent?: ReactNode;
   nextSlideTitle: string;
@@ -146,7 +151,11 @@ export function PresenterStageSection(props: {
 }) {
   return (
     <section className="rehearsal-presenter-main">
-      <div className="rehearsal-stage-wrap" ref={props.stageRef}>
+      <div
+        aria-busy={props.navigationPending || undefined}
+        className="rehearsal-stage-wrap"
+        ref={props.stageRef}
+      >
         {props.renderStage ? (
           <>
             <span className="rehearsal-stage-label">현재</span>
@@ -158,30 +167,37 @@ export function PresenterStageSection(props: {
         ) : (
           <div className="rehearsal-empty-stage">{props.emptyStageLabel}</div>
         )}
-      </div>
-
-      <div className="rehearsal-slide-controls">
-        <button
-          type="button"
-          onClick={props.onPrevious}
-          disabled={props.previousDisabled}
-          aria-label="이전 슬라이드"
-          title="이전 슬라이드"
-        >
-          <ChevronLeft size={24} />
-        </button>
-        <span>
-          {props.currentIndex + 1} / {props.totalSlides}
-        </span>
-        <button
-          type="button"
-          onClick={props.onNext}
-          disabled={props.currentIndex >= props.totalSlides - 1}
-          aria-label="다음 슬라이드"
-          title="다음 슬라이드"
-        >
-          <ChevronRight size={24} />
-        </button>
+        {props.navigationPending ? (
+          <span className="rehearsal-slide-loading" role="status">
+            슬라이드 준비 중…
+          </span>
+        ) : null}
+        <div className="rehearsal-slide-controls">
+          <button
+            type="button"
+            onClick={props.onPrevious}
+            disabled={props.previousDisabled || props.navigationPending}
+            aria-label="이전 슬라이드"
+            title="이전 슬라이드"
+          >
+            <ChevronLeft size={24} />
+          </button>
+          <span>
+            {props.currentIndex + 1} / {props.totalSlides}
+          </span>
+          <button
+            type="button"
+            onClick={props.onNext}
+            disabled={
+              props.navigationPending ||
+              props.currentIndex >= props.totalSlides - 1
+            }
+            aria-label="다음 슬라이드"
+            title="다음 슬라이드"
+          >
+            <ChevronRight size={24} />
+          </button>
+        </div>
       </div>
 
       <section className="rehearsal-next-slide-preview" aria-label="다음 슬라이드">
@@ -216,7 +232,7 @@ export type PresenterTimingProgressItem = {
 export function PresenterTimerCard(props: {
   ariaLabel: string;
   currentTimeLabel: string;
-  infoCards: readonly PresenterInfoCardItem[];
+  infoCards?: readonly PresenterInfoCardItem[];
   meterPercent: number;
   onPrimaryAction: () => void;
   onReset: () => void;
@@ -268,9 +284,9 @@ export function PresenterTimerCard(props: {
               disabled={props.primaryActionDisabled}
             >
               {props.primaryActionRunning ? (
-                <PauseCircle size={15} />
+                <Pause fill="currentColor" size={22} strokeWidth={0} />
               ) : (
-                <PlayCircle size={15} />
+                <Play fill="currentColor" size={22} strokeWidth={2.5} />
               )}
             </button>
             <button
@@ -278,7 +294,7 @@ export function PresenterTimerCard(props: {
               aria-label={props.resetAriaLabel ?? "타이머 초기화"}
               onClick={props.onReset}
             >
-              <RotateCcw size={15} />
+              <RotateCcw size={22} />
             </button>
           </div>
         </div>
@@ -329,18 +345,20 @@ export function PresenterTimerCard(props: {
         )}
       </div>
 
-      <div className="rehearsal-side-detail-grid">
-        {props.infoCards.map((card, index) => (
-          <article
-            className={`rehearsal-side-detail-card ${card.variantClassName ?? ""}`.trim()}
-            key={index}
-          >
-            <span>{card.label}</span>
-            <strong>{card.value}</strong>
-            <small>{card.detail}</small>
-          </article>
-        ))}
-      </div>
+      {props.infoCards?.length ? (
+        <div className="rehearsal-side-detail-grid">
+          {props.infoCards.map((card, index) => (
+            <article
+              className={`rehearsal-side-detail-card ${card.variantClassName ?? ""}`.trim()}
+              key={index}
+            >
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+              <small>{card.detail}</small>
+            </article>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

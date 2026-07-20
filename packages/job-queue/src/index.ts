@@ -124,6 +124,7 @@ export interface RehearsalSttBullMqPayload {
   runId: string;
   deckId: string;
   audioFileId: string;
+  liveTranscript?: string | null;
 }
 
 export interface EnqueueRehearsalSttJobInput extends RehearsalSttBullMqPayload {
@@ -265,6 +266,7 @@ export interface PptxOoxmlSyncBullMqPayload {
   deckId: string;
   changeId: string;
   targetDeckVersion: number;
+  syncCapabilityVersion: number;
 }
 
 export interface EnqueuePptxOoxmlSyncJobInput extends PptxOoxmlSyncBullMqPayload {
@@ -331,6 +333,7 @@ export async function enqueueRehearsalSttJob(
       runId: input.runId,
       deckId: input.deckId,
       audioFileId: input.audioFileId,
+      liveTranscript: input.liveTranscript ?? null,
     } satisfies RehearsalSttBullMqPayload, canonicalJobOptions(input.jobId));
   } finally {
     await queue.close();
@@ -690,6 +693,7 @@ export async function enqueuePptxOoxmlSyncJob(
       deckId: input.deckId,
       changeId: input.changeId,
       targetDeckVersion: input.targetDeckVersion,
+      syncCapabilityVersion: input.syncCapabilityVersion,
     } satisfies PptxOoxmlSyncBullMqPayload, canonicalJobOptions(input.jobId));
   } finally {
     await queue.close();

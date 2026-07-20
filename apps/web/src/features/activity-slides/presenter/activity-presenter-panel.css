@@ -105,6 +105,28 @@
   font-size: var(--redesign-type-label-sm-size);
 }
 
+.activity-presenter-rating-heading {
+  align-items: baseline;
+  display: flex;
+  gap: var(--redesign-space-2);
+  justify-content: space-between;
+}
+
+.activity-presenter-rating-heading > strong {
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.activity-presenter-rating-heading > span {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.activity-presenter-rating-heading b {
+  color: var(--redesign-color-secondary);
+  font-size: var(--redesign-type-body-md-size);
+}
+
 .activity-presenter-result-detail section > ul > li {
   align-items: center;
   background: var(--redesign-color-surface-container-low);

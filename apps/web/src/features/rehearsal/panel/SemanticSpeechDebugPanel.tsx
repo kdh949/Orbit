@@ -4,6 +4,7 @@ export const semanticSpeechDebugPanelStorageKey =
   "orbit.semanticSpeech.debugPanel";
 
 export function SemanticSpeechDebugPanel(props: {
+  liveTranscript?: string;
   semanticMatchingEnabled: boolean;
   state: SemanticUtteranceDebugState;
 }) {
@@ -28,6 +29,13 @@ export function SemanticSpeechDebugPanel(props: {
         <strong>Semantic STT</strong>
         <span>{props.state.status}</span>
       </header>
+
+      <section>
+        <span>실시간 전체 인식</span>
+        <p aria-live="polite">
+          {props.liveTranscript?.trim() || "아직 인식된 음성이 없습니다."}
+        </p>
+      </section>
 
       <section>
         <span>방금 인식</span>

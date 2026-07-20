@@ -282,6 +282,44 @@ describe("applyDeckPatch", () => {
     expect(result.deck.title).toBe(deck.title);
   });
 
+  it("applies deck and slide target duration patches", () => {
+    const deck = createPatchTestDeck();
+    deck.slides[0]!.estimatedSeconds = 30;
+
+    const result = applyPatchOrFail(
+      deck,
+      createPatch([
+        { type: "update_deck", targetDurationMinutes: 12 },
+        {
+          type: "update_slide",
+          slideId: "slide_1",
+          estimatedSeconds: 90,
+        },
+      ]),
+    );
+
+    expect(result.deck.targetDurationMinutes).toBe(12);
+    expect(result.deck.slides[0]!.estimatedSeconds).toBe(90);
+  });
+
+  it("clears a slide target duration override", () => {
+    const deck = createPatchTestDeck();
+    deck.slides[0]!.estimatedSeconds = 30;
+
+    const result = applyPatchOrFail(
+      deck,
+      createPatch([
+        {
+          type: "update_slide",
+          slideId: "slide_1",
+          estimatedSeconds: null,
+        },
+      ]),
+    );
+
+    expect(result.deck.slides[0]!.estimatedSeconds).toBeUndefined();
+  });
+
   it("adds a slide and keeps slides sorted by order", () => {
     const result = applyPatchOrFail(
       createPatchTestDeck(),

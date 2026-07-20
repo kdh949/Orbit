@@ -140,6 +140,19 @@ def test_analyze_rehearsal_metrics_counts_silences_fillers_and_keywords() -> Non
     assert metrics.keyword_coverage == 1
 
 
+def test_analyze_keywords_accepts_synonyms_and_abbreviations() -> None:
+    result = rehearsal_module.analyze_keywords(
+        "오르빗은 RF를 제공합니다",
+        [
+            DeckKeyword(text="ORBIT", synonyms=["오르빗"]),
+            DeckKeyword(text="실시간 피드백", abbreviations=["RF"]),
+        ],
+    )
+
+    assert result.coverage == 1
+    assert result.missed == []
+
+
 def test_analyze_rehearsal_metrics_matches_korean_pronunciation_aliases() -> None:
     metrics = analyze_rehearsal_metrics(
         transcript="오픈 에이아이 에이피아이를 활용했습니다",

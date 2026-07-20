@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { Project, demoIds } from "@orbit/shared";
 import { StoragePort } from "@orbit/storage";
+import { Readable } from "node:stream";
 import { Repository } from "typeorm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProjectsService } from "../projects/projects.service";
@@ -87,6 +88,11 @@ function createStorage(overrides: Partial<StoragePort> = {}): StoragePort {
       body: new Uint8Array([1, 2, 3]),
       contentType: "application/octet-stream",
     })),
+    getObjectStream: vi.fn(async () => ({
+      body: Readable.from(Uint8Array.from([1, 2, 3])),
+      contentLength: 3,
+      contentType: "application/octet-stream",
+    })),
     getSignedReadUrl: vi.fn(
       async (key) => `http://localhost:9000/orbit-local/${key}`,
     ),
@@ -126,6 +132,104 @@ function createService(
 describe("FilesService", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+  });
+
+  it("opens public asset content as a stream with a stable private validator", async () => {
+    const getObjectStream = vi.fn(async () => ({
+      body: Readable.from(Uint8Array.from([1, 2, 3])),
+      contentLength: 3,
+      contentType: "image/png",
+    }));
+    const uploadedAt = new Date("2026-07-20T01:00:00.000Z");
+    const { repository } = createAssetRepository([
+      {
+        fileId: "file_1",
+        projectId: demoProject.projectId,
+        storageKey: "projects/project_demo_created/assets/file_1-report.png",
+        originalName: "report.png",
+        mimeType: "image/png",
+        size: 3,
+        url: "/api/v1/projects/project_demo_created/assets/file_1/content",
+        purpose: "reference-material",
+        status: "uploaded",
+        createdAt: uploadedAt,
+        uploadedAt,
+      } as ProjectAssetEntity,
+    ]);
+    const service = new FilesService(
+      repository,
+      {
+        getAccessibleProject: vi.fn(async () => demoProject),
+      } as unknown as ProjectsService,
+      createStorage({ getObjectStream }),
+      "http://localhost:5173",
+    );
+
+    const result = await service.openUploadedAssetContent(
+      demoProject.projectId,
+      "file_1",
+    );
+
+    expect(result).toMatchObject({
+      status: "ok",
+      cacheControl: "private, no-cache",
+      contentLength: 3,
+      contentType: "image/png",
+      etag: expect.stringMatching(/^W\/"[A-Za-z0-9_-]+"$/),
+    });
+    expect(getObjectStream).toHaveBeenCalledWith(
+      "projects/project_demo_created/assets/file_1-report.png",
+    );
+  });
+
+  it("returns not-modified without opening storage when the validator matches", async () => {
+    const getObjectStream = vi.fn(async () => ({
+      body: Readable.from(Uint8Array.from([1, 2, 3])),
+      contentLength: 3,
+      contentType: "image/png",
+    }));
+    const uploadedAt = new Date("2026-07-20T01:00:00.000Z");
+    const asset = {
+      fileId: "file_1",
+      projectId: demoProject.projectId,
+      storageKey: "projects/project_demo_created/assets/file_1-report.png",
+      originalName: "report.png",
+      mimeType: "image/png",
+      size: 3,
+      url: "/api/v1/projects/project_demo_created/assets/file_1/content",
+      purpose: "reference-material",
+      status: "uploaded",
+      createdAt: uploadedAt,
+      uploadedAt,
+    } as ProjectAssetEntity;
+    const { repository } = createAssetRepository([asset]);
+    const service = new FilesService(
+      repository,
+      {
+        getAccessibleProject: vi.fn(async () => demoProject),
+      } as unknown as ProjectsService,
+      createStorage({ getObjectStream }),
+      "http://localhost:5173",
+    );
+    const first = await service.openUploadedAssetContent(
+      demoProject.projectId,
+      "file_1",
+    );
+    if (first.status !== "ok") throw new Error("expected streamed asset");
+    getObjectStream.mockClear();
+
+    const result = await service.openUploadedAssetContent(
+      demoProject.projectId,
+      "file_1",
+      first.etag,
+    );
+
+    expect(result).toEqual({
+      status: "not-modified",
+      cacheControl: "private, no-cache",
+      etag: first.etag,
+    });
+    expect(getObjectStream).not.toHaveBeenCalled();
   });
 
   it("creates a pending upload URL and completes it as uploaded metadata", async () => {

@@ -1,4 +1,5 @@
 import { FilePurpose } from "@orbit/shared";
+import { Readable } from "node:stream";
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -48,10 +49,18 @@ export interface StorageReadResult {
   contentType: string;
 }
 
+export interface StorageStreamReadResult {
+  body: Readable;
+  contentLength: number;
+  contentType: string;
+  etag?: string;
+}
+
 export interface StoragePort {
   putObject(input: StoragePutInput): Promise<StorageObject>;
   createUploadUrl(input: StorageUploadUrlInput): Promise<StorageUploadUrl>;
   getObject(key: string): Promise<StorageReadResult>;
+  getObjectStream(key: string): Promise<StorageStreamReadResult>;
   getSignedReadUrl(key: string, expiresInSeconds?: number): Promise<string>;
   removeObject(key: string): Promise<void>;
   headObject(key: string): Promise<StorageHeadResult | null>;
@@ -145,6 +154,22 @@ export class S3CompatibleStorage implements StoragePort {
     return {
       body: await result.Body.transformToByteArray(),
       contentType: result.ContentType ?? "application/octet-stream",
+    };
+  }
+
+  async getObjectStream(key: string): Promise<StorageStreamReadResult> {
+    const result = await this.internalClient.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
+    if (!result.Body) {
+      throw new Error(`Storage object body is empty: ${key}`);
+    }
+
+    return {
+      body: Readable.from(result.Body as AsyncIterable<Uint8Array>),
+      contentLength: result.ContentLength ?? 0,
+      contentType: result.ContentType ?? "application/octet-stream",
+      etag: result.ETag,
     };
   }
   // 저장된 object를 읽기 위한 presigned GET URL을 만든다.

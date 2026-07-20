@@ -60,6 +60,7 @@ import {
   prepareRehearsalEvaluationRun,
   rehearsalMicrophoneAudioConstraints,
   rehearsalRawMicrophoneAudioConstraints,
+  readRehearsalMicrophoneDeviceId,
   renderLiveTranscriptBuffer,
   requestRehearsalMicrophoneStream,
   resetRehearsalTimerState,
@@ -72,6 +73,7 @@ import {
   shouldLoadPracticeGoalSummary,
   shouldRenderRehearsalThumbnailImage,
   shouldShowLiveSttDebugPcmDownload,
+  writeRehearsalMicrophoneDeviceId,
 } from "./RehearsalWorkspace";
 import {
   defaultAutoAdvanceConfig,
@@ -166,10 +168,10 @@ describe("RehearsalWorkspace", () => {
     const css = fs.readFileSync(rehearsalWorkspaceCssPath, "utf8");
 
     expect(css).toMatch(
-      /\.rehearsal-presenter-layout \{[^}]*--rehearsal-stage-block-size:[^;]+;[^}]*width: 100%;/s,
+      /\.rehearsal-presenter-shell \.rehearsal-presenter-layout \{[^}]*--rehearsal-stage-block-size:[^;]+;[^}]*width: min\(100%, var\(--redesign-layout-content-max-width\)\);/s,
     );
     expect(css).toMatch(
-      /@media \(max-width:1120px\)[\s\S]*?\.rehearsal-presenter-main \{[^}]*grid-template-rows: var\(--rehearsal-stage-block-size\) 44px;/,
+      /@media \(max-width:1120px\)[\s\S]*?\.rehearsal-presenter-shell \.rehearsal-presenter-main \{[^}]*grid-template-rows: var\(--rehearsal-stage-block-size\);/,
     );
   });
 
@@ -290,30 +292,48 @@ describe("RehearsalWorkspace", () => {
       <RehearsalCompletionScreen
         hasReportTarget={false}
         isReportPending={false}
+        onClose={() => undefined}
         onGoHome={() => undefined}
         onOpenProject={() => undefined}
         onPracticeAgain={() => undefined}
         onPrimaryAction={() => undefined}
-        summary={{
-          comparisonLabel: "",
-          coverageLabel: "측정 안 됨",
-          coveragePercent: 0,
-          durationLabel: "01:00",
-          durationSeconds: 60,
-          hasSpeechTrackingData: false,
-          missedKeywordRows: [],
-          missedKeywordCount: 0,
-          missedKeywordCountLabel: "-",
-          missedKeywordEmptyLabel: "음성 추적 데이터가 없습니다.",
-          targetDeltaLabel: "목표와 같음",
-          targetLabel: "01:00",
-          targetSeconds: 60,
-        }}
       />,
     );
 
     expect(html).toContain("프로젝트 편집기로");
     expect(html).toContain("홈으로");
+    expect(html).toContain("다시 연습하기");
+    expect(html).not.toContain("발표 시간");
+    expect(html).not.toContain("대본 커버리지");
+  });
+
+  it("reflects report preparation and ready states on the completion screen", () => {
+    const sharedProps = {
+      onClose: () => undefined,
+      onGoHome: () => undefined,
+      onOpenProject: () => undefined,
+      onPracticeAgain: () => undefined,
+      onPrimaryAction: () => undefined,
+    };
+    const pendingHtml = renderToStaticMarkup(
+      <RehearsalCompletionScreen
+        {...sharedProps}
+        hasReportTarget
+        isReportPending
+      />,
+    );
+    const readyHtml = renderToStaticMarkup(
+      <RehearsalCompletionScreen
+        {...sharedProps}
+        hasReportTarget
+        isReportPending={false}
+      />,
+    );
+
+    expect(pendingHtml).toContain("리포트를 준비하고 있어요");
+    expect(pendingHtml).toContain("disabled");
+    expect(readyHtml).toContain("리포트가 준비됐어요");
+    expect(readyHtml).not.toContain("disabled");
   });
 
   it("uses the stored previous rehearsal summary on the preflight screen", () => {
@@ -761,12 +781,20 @@ describe("RehearsalWorkspace", () => {
       source.indexOf("});", publisherStart),
     );
     const surfaceBody = source.slice(surfaceStart, openStart);
-
-    expect(surfaceBody).toContain("displayManager.requestFullscreenOnScreen");
-    expect(surfaceBody).toContain("displayManager.openPresenterRemoteWindow");
-    expect(surfaceBody.indexOf("requestFullscreenOnScreen")).toBeLessThan(
-      surfaceBody.indexOf("openPresenterRemoteWindow"),
+    const presenterScreenCapture = surfaceBody.indexOf(
+      "const presenterScreen = displayManager.getCurrentScreen()",
     );
+    const fullscreenRequest = surfaceBody.indexOf(
+      "requestFullscreenOnScreen",
+    );
+    const presenterWindowOpen = surfaceBody.indexOf(
+      "openPresenterRemoteWindow",
+    );
+
+    expect(presenterScreenCapture).toBeGreaterThanOrEqual(0);
+    expect(presenterScreenCapture).toBeLessThan(fullscreenRequest);
+    expect(fullscreenRequest).toBeLessThan(presenterWindowOpen);
+    expect(surfaceBody).toContain("screen: presenterScreen");
     expect(surfaceBody).toContain('setDisplayRole("slide-surface")');
     expect(publisherBody).toContain('displayRole === "slide-surface"');
     expect(publisherBody).toContain("onCommand: handlePresenterRemoteCommand");
@@ -845,10 +873,10 @@ describe("RehearsalWorkspace", () => {
 
     expect(autoAdvanceBody).toContain("evaluateAdvanceController");
     expect(autoAdvanceBody).toContain('command.type !== "advance-slide"');
-    expect(autoAdvanceBody).toContain("setPresenterStepIndex(0)");
-    expect(autoAdvanceBody.indexOf("setPresenterStepIndex(0)")).toBeLessThan(
-      autoAdvanceBody.indexOf("setCurrentSlideIndex"),
-    );
+    expect(autoAdvanceBody).toContain("requestPreparedSlideChange");
+    expect(autoAdvanceBody).toContain('source: "auto"');
+    expect(autoAdvanceBody).toContain("stepIndex: 0");
+    expect(autoAdvanceBody).not.toContain("setCurrentSlideIndex");
   });
 
   it("keeps the presenter step on the last slide when no next slide exists", () => {
@@ -861,11 +889,12 @@ describe("RehearsalWorkspace", () => {
     expect(handleNextPresenterStepBody).toContain(
       "slideCount: deck.slides.length",
     );
+    expect(handleNextPresenterStepBody).toContain("requestPreparedSlideChange");
     expect(handleNextPresenterStepBody).toContain(
-      "setPresenterStepIndex(nextState.stepIndex)",
+      "stepIndex: nextState.stepIndex",
     );
     expect(handleNextPresenterStepBody).toContain(
-      "setCurrentSlideIndex(nextState.slideIndex)",
+      "targetSlideIndex: nextState.slideIndex",
     );
   });
 
@@ -878,11 +907,9 @@ describe("RehearsalWorkspace", () => {
     expect(handleNextPresenterStepBody).not.toContain(
       "setPresenterStepIndex((currentStep)",
     );
-    expect(
-      handleNextPresenterStepBody.indexOf(
-        "setPresenterStepIndex(nextState.stepIndex)",
-      ),
-    ).toBeLessThan(handleNextPresenterStepBody.indexOf("setCurrentSlideIndex"));
+    expect(handleNextPresenterStepBody).not.toContain("setPresenterStepIndex(");
+    expect(handleNextPresenterStepBody).not.toContain("setCurrentSlideIndex(");
+    expect(handleNextPresenterStepBody).toContain("requestPreparedSlideChange");
   });
 
   it("routes the top timer play button through report recording pause and resume", () => {
@@ -1153,6 +1180,16 @@ describe("RehearsalWorkspace", () => {
     expect(getUserMedia).toHaveBeenCalledWith({
       audio: rehearsalMicrophoneAudioConstraints,
     });
+  });
+
+  it("reuses the microphone selected during preflight", async () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    };
+    writeRehearsalMicrophoneDeviceId("mic-external", storage);
+    expect(readRehearsalMicrophoneDeviceId(storage)).toBe("mic-external");
   });
 
   it("requests raw microphone audio constraints when Live STT raw mic debug is enabled", async () => {
@@ -3093,6 +3130,7 @@ describe("runRehearsalUploadFlow", () => {
     const result = await runRehearsalUploadFlow({
       runId: "run-1",
       audioFile,
+      liveTranscript: "브라우저에서 인식한 전체 문장",
       slideTimeline: [
         { slideId: "slide_1", enteredAt: "2026-06-29T00:00:00.000Z" },
       ],
@@ -3119,6 +3157,10 @@ describe("runRehearsalUploadFlow", () => {
     expect(calls[2]?.init).toMatchObject({
       method: "PATCH",
       headers: { "content-type": "application/json" },
+    });
+    expect(JSON.parse(String(calls[3]?.init?.body))).toEqual({
+      fileId: "file-audio",
+      liveTranscript: "브라우저에서 인식한 전체 문장",
     });
   });
 

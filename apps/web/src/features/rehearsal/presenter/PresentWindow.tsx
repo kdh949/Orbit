@@ -251,8 +251,7 @@ export function PresentWindowReceiver(props: {
     return (
       <PresentWindowShell>
         <PresentWindowStatus
-          title="발표자 화면을 기다리는 중"
-          message="발표자 화면에서 현재 슬라이드 상태를 보내면 이 창에 표시됩니다."
+          title="발표자 화면을 기다리는 중..."
         />
       </PresentWindowShell>
     );
@@ -489,13 +488,16 @@ export function getSlideWindowScale(deck: Deck, viewport = readViewportSize()) {
   );
 }
 
-function PresentWindowStatus(props: { message: string; title: string }) {
+function PresentWindowStatus(props: { message?: string; title: string }) {
   return (
-    <section className="present-window-status" role="status">
+    <section
+      className={`present-window-status${props.message ? "" : " present-window-status-waiting"}`}
+      role="status"
+    >
       <img src={orbitLogoWhite} alt="ORBIT" />
-      <span>SLIDE DISPLAY</span>
+      {props.message ? <span>SLIDE DISPLAY</span> : null}
       <h1>{props.title}</h1>
-      <p>{props.message}</p>
+      {props.message ? <p>{props.message}</p> : null}
     </section>
   );
 }

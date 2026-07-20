@@ -24,6 +24,7 @@ import {
   deckExportEnqueueErrorSchema,
   deckExportRequestSchema,
   deckSchema,
+  deckSnapshotDetailSchema,
   deckSnapshotIdSchema,
   deckSnapshotReasonSchema,
   deckSnapshotSchema,
@@ -31,6 +32,7 @@ import {
   getPptxImportQualityResponseSchema,
   getOoxmlSyncStateResponseSchema,
   jobSchema,
+  PPTX_OOXML_SYNC_CAPABILITY_VERSION,
   listDeckSnapshotsResponseSchema,
   putDeckRequestSchema,
   putDeckResponseSchema,
@@ -59,6 +61,7 @@ import type {
   DeckElement,
   DeckPatchOperation,
   DeckSnapshot,
+  DeckSnapshotDetail,
   DeckSnapshotReason,
   GetDeckResponse,
   GetPptxImportQualityResponse,
@@ -73,6 +76,7 @@ import type {
   TemplateBlueprint,
 } from "@orbit/shared";
 import {
+  ConflictException,
   HttpException,
   HttpStatus,
   Inject,
@@ -389,6 +393,9 @@ export class DecksService {
       current.job?.status !== "failed"
     ) {
       return retryOoxmlSyncResponseSchema.parse({ ooxmlSyncState: current });
+    }
+    if (!current.retryable) {
+      throw new ConflictException("PPTX OOXML sync job is not retryable.");
     }
 
     const job = await this.enqueueOoxmlSync(projectId, {
@@ -968,6 +975,35 @@ export class DecksService {
     });
   }
 
+  async getSnapshot(
+    projectId: string,
+    snapshotId: string,
+  ): Promise<DeckSnapshotDetail> {
+    const rows = await this.dataSource.query<DeckSnapshotRow[]>(
+      `
+        SELECT snapshot_id, project_id, deck_id, deck_json, version, reason, created_at
+        FROM deck_snapshots
+        WHERE project_id = $1 AND snapshot_id = $2
+        LIMIT 1
+      `,
+      [projectId, snapshotId],
+    );
+    const row = rows[0];
+
+    if (!row) {
+      throwDeckApiException(
+        "SNAPSHOT_NOT_FOUND",
+        HttpStatus.NOT_FOUND,
+        `Snapshot not found: ${snapshotId}`,
+      );
+    }
+
+    return deckSnapshotDetailSchema.parse({
+      ...parseSnapshotRow(row),
+      deck: removeLegacyAiGeneratedTitleAnimations(parseDeckJson(row.deck_json)),
+    });
+  }
+
   async getOrCreateSnapshot(deck: Deck): Promise<DeckSnapshot> {
     return this.dataSource.transaction(async (manager) => {
       await manager.query(
@@ -1487,12 +1523,18 @@ export class DecksService {
             ? "pending"
             : "stale";
 
+    const attemptedCapabilityVersion = readSyncCapabilityVersion(job);
     return {
       status,
       deckId: deck.deckId,
       deckVersion: deck.version,
       syncedDeckVersion,
-      retryable: status === "stale" || status === "failed",
+      retryable:
+        status === "stale" ||
+        (status === "failed" &&
+          (job?.error?.retryable === true ||
+            attemptedCapabilityVersion <
+              PPTX_OOXML_SYNC_CAPABILITY_VERSION)),
       ...(job ? { job } : {}),
     };
   }
@@ -1505,10 +1547,14 @@ export class DecksService {
       return undefined;
     }
 
+    const versionedInput = {
+      ...input,
+      syncCapabilityVersion: PPTX_OOXML_SYNC_CAPABILITY_VERSION,
+    };
     const queuedJob = await this.jobsService.create({
       projectId,
       type: "pptx-ooxml-sync",
-      payload: input,
+      payload: versionedInput,
     });
 
     try {
@@ -1518,7 +1564,7 @@ export class DecksService {
         redisUrl: config.REDIS_URL,
         jobId: queuedJob.jobId,
         projectId,
-        ...input,
+        ...versionedInput,
       });
       this.logger?.info(
         {
@@ -1543,6 +1589,8 @@ export class DecksService {
               error instanceof Error
                 ? error.message
                 : "PPTX OOXML sync enqueue failed.",
+            retryable: true,
+            syncCapabilityVersion: PPTX_OOXML_SYNC_CAPABILITY_VERSION,
           },
         })) ?? queuedJob;
       this.logger?.error(
@@ -1558,6 +1606,16 @@ export class DecksService {
       return failedJob;
     }
   }
+}
+
+function readSyncCapabilityVersion(job: Job | null | undefined): number {
+  const resultVersion = job?.result?.syncCapabilityVersion;
+  return (
+    job?.error?.syncCapabilityVersion ??
+    (typeof resultVersion === "number" && Number.isInteger(resultVersion)
+      ? resultVersion
+      : 1)
+  );
 }
 
 function parsePutDeckRequest(body: unknown): PutDeckRequest {

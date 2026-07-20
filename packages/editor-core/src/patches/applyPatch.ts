@@ -146,6 +146,10 @@ function applyOperation(
         deck.title = operation.title;
       }
 
+      if (operation.targetDurationMinutes !== undefined) {
+        deck.targetDurationMinutes = operation.targetDurationMinutes;
+      }
+
       if (operation.metadata !== undefined) {
         mergeRecordPatch(
           deck.metadata as unknown as Record<string, unknown>,
@@ -179,6 +183,12 @@ function applyOperation(
 
       if (operation.thumbnailUrl !== undefined) {
         slide.thumbnailUrl = operation.thumbnailUrl;
+      }
+
+      if (operation.estimatedSeconds === null) {
+        delete slide.estimatedSeconds;
+      } else if (operation.estimatedSeconds !== undefined) {
+        slide.estimatedSeconds = operation.estimatedSeconds;
       }
 
       return { ok: true };

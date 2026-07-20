@@ -1,8 +1,9 @@
 import json
-from typing import Any
+import math
+from typing import Any, Self
 
 from fastapi import UploadFile
-from pydantic import TypeAdapter, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, model_validator
 
 
 PPTX_PACKAGE_MAX_BYTES = 50 * 1024 * 1024
@@ -10,6 +11,7 @@ TEMPLATE_BLUEPRINT_MAX_BYTES = 16 * 1024 * 1024
 OPERATIONS_MAX_BYTES = 72 * 1024 * 1024
 SLIDE_MOTION_MAX_BYTES = 16 * 1024 * 1024
 DECK_CANVAS_MAX_BYTES = 4 * 1024
+AUTHORED_ELEMENT_FALLBACKS_MAX_BYTES = 72 * 1024 * 1024
 
 PPTX_MIME_TYPE = (
     "application/vnd.openxmlformats-officedocument.presentationml.presentation"
@@ -18,6 +20,54 @@ JSON_MIME_TYPE = "application/json"
 
 _json_object_adapter = TypeAdapter(dict[str, Any])
 _operations_adapter = TypeAdapter(list[dict[str, Any]])
+_authored_raster_element_types = {
+    "ellipse",
+    "line",
+    "arrow",
+    "polygon",
+    "star",
+    "ring",
+    "svg",
+    "customShape",
+    "chart",
+}
+
+
+class AuthoredElementFallbackCandidate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    slide_id: str = Field(alias="slideId", pattern=r"^slide_[A-Za-z0-9_-]+$")
+    element: dict[str, Any]
+
+    @model_validator(mode="after")
+    def validate_element(self) -> Self:
+        element_id = self.element.get("elementId")
+        element_type = self.element.get("type")
+        if (
+            not isinstance(element_id, str)
+            or not element_id.startswith("el_")
+            or element_type not in _authored_raster_element_types
+            or not isinstance(self.element.get("props"), dict)
+        ):
+            raise ValueError("invalid authored raster element")
+        for field in ("x", "y", "width", "height"):
+            value = self.element.get(field)
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(float(value))
+                or (field in {"width", "height"} and float(value) <= 0)
+                or (field in {"x", "y"} and float(value) < 0)
+            ):
+                raise ValueError("invalid authored raster element frame")
+        return self
+
+
+class AuthoredElementFallbackPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    theme: dict[str, Any]
+    elements: list[AuthoredElementFallbackCandidate] = Field(max_length=500)
 
 
 class PptxOoxmlSyncTransportError(ValueError):
@@ -43,6 +93,25 @@ class PptxOoxmlSyncTransportError(ValueError):
         if self.max_bytes is not None:
             detail["maxBytes"] = self.max_bytes
         return detail
+
+
+def validate_authored_element_fallbacks(
+    value: dict[str, Any] | list[dict[str, Any]],
+) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise PptxOoxmlSyncTransportError(
+            "PPTX_OOXML_SYNC_JSON_SCHEMA_INVALID",
+            "authored_element_fallbacks",
+        )
+    try:
+        return AuthoredElementFallbackPayload.model_validate(value).model_dump(
+            by_alias=True
+        )
+    except ValidationError as error:
+        raise PptxOoxmlSyncTransportError(
+            "PPTX_OOXML_SYNC_JSON_SCHEMA_INVALID",
+            "authored_element_fallbacks",
+        ) from error
 
 
 async def read_pptx_package(file: UploadFile) -> bytes:

@@ -70,6 +70,8 @@ export function SlideshowRenderer(props: {
         deckId={deck.deckId}
         projectId={deck.projectId}
         scale={scale}
+        slideStyle={slide.style}
+        theme={deck.theme}
       />
     );
   }

@@ -131,6 +131,17 @@ export class DecksController {
     return this.decksService.listSnapshots(projectId);
   }
 
+  @Get("snapshots/:snapshotId")
+  async getSnapshot(
+    @Param("projectId") projectId: string,
+    @Param("snapshotId") snapshotId: string,
+    @Req() request: SignedCookieRequest,
+  ) {
+    const user = await this.getCurrentUser(request);
+    await this.projectsService.assertCanReadProject(projectId, user.userId);
+    return this.decksService.getSnapshot(projectId, snapshotId);
+  }
+
   @Post("snapshots/:snapshotId/restore")
   async restoreSnapshot(
     @Param("projectId") projectId: string,

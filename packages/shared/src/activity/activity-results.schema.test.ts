@@ -20,6 +20,13 @@ const presenterResult: ActivityPresenterResult = {
       type: "rating",
       responseCount: 2,
       average: 4.5,
+      ratingDistribution: [
+        { value: 1, count: 0, ratio: 0 },
+        { value: 2, count: 0, ratio: 0 },
+        { value: 3, count: 0, ratio: 0 },
+        { value: 4, count: 1, ratio: 0.5 },
+        { value: 5, count: 1, ratio: 0.5 }
+      ],
       choices: []
     }
   ],

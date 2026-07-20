@@ -1,6 +1,6 @@
 import {
   ArrowLeft,
-  ArrowUpRight,
+  ArrowRight,
   Loader2,
   Mic,
   Sparkles,
@@ -23,11 +23,10 @@ import { fetchProjectDeck } from "./keywords/keywordEditorApi";
 import { RehearsalRunNav } from "./RehearsalRunNav";
 import { RehearsalProjectSummaryDashboard } from "./RehearsalProjectSummaryDashboard";
 import { buildRehearsalRunComparisonViewModel } from "./rehearsalRunComparisonModel";
-import { OrbitButton, OrbitEmptyState, OrbitFailureState } from "../../components/ui";
 import { getRehearsalReportPath } from "./RehearsalWorkspace";
+import { OrbitButton, OrbitEmptyState, OrbitFailureState } from "../../components/ui";
 import orbitReportMascot from "../../assets/orbit-report-mascot-transparent.png";
 import {
-  formatRunDate,
   navigateTo,
   sortRehearsalRunsByCreatedAt,
 } from "./rehearsalUtils";
@@ -97,10 +96,10 @@ export function RehearsalProjectOverviewPage({
     };
   }, [projectId, reloadKey]);
 
-  const latestRun = runs[runs.length - 1] ?? null;
   const comparisonModel = comparison
     ? buildRehearsalRunComparisonViewModel(comparison, deck, projectId)
     : null;
+  const latestRun = runs.at(-1) ?? null;
 
   return (
     <main className="rehearsal-report-page report-project-overview-page">
@@ -114,9 +113,6 @@ export function RehearsalProjectOverviewPage({
           >
             <ArrowLeft size={18} />
           </button>
-          <span className="report-project-title">
-            {project?.title ?? "리포트"}
-          </span>
         </div>
         <div className="rehearsal-report-topbar-actions">
           <button
@@ -162,17 +158,20 @@ export function RehearsalProjectOverviewPage({
                   </span>
                   <h1>{project?.title ?? "프로젝트 리포트"}</h1>
                   <p>{runs.length}회차 발표 기록을 한눈에 비교해보세요.</p>
-                  <div className="report-overview-hero-actions">
-                    {latestRun ? (
-                      <a href={getRehearsalReportPath(projectId, latestRun.runId)}>
-                        <strong>LATEST REPORT</strong>
-                        <span>
-                          {formatRunDate(latestRun.createdAt)} · {runs.length}회차 중 최신 완료 리포트
-                        </span>
-                        <ArrowUpRight size={16} />
-                      </a>
-                    ) : null}
-                  </div>
+                  {latestRun ? (
+                    <OrbitButton
+                      className="report-overview-hero-detail-button"
+                      icon={<ArrowRight aria-hidden="true" size={16} />}
+                      onClick={() =>
+                        navigateTo(
+                          getRehearsalReportPath(projectId, latestRun.runId),
+                        )
+                      }
+                      variant="secondary"
+                    >
+                      최신 상세 리허설 보기
+                    </OrbitButton>
+                  ) : null}
                 </div>
                 <div className="report-overview-hero-visual" aria-hidden="true">
                   <img

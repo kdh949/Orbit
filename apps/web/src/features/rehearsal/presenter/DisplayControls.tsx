@@ -45,12 +45,14 @@ type DisplayState = "idle" | "opening" | "manual-guide" | "failed";
 
 type RemoteFullscreenState = "idle" | "available" | "requested" | "failed";
 
-type ScreenRequestState = "idle" | "loading" | "ready" | "failed";
+type PermissionQuery = (
+  descriptor: PermissionDescriptor,
+) => Promise<Pick<PermissionStatus, "state">>;
 
 const SCREEN_REQUEST_TIMEOUT_MS = 10000;
 
 const defaultSlideDisplayOptions: SlideDisplayOptions = {
-  autoPlace: true,
+  autoPlace: false,
   displayMode: "slide-window",
   fullscreen: true,
   presenterView: true,
@@ -80,8 +82,6 @@ export function DisplayControls(props: {
   );
   const [remoteFullscreenState, setRemoteFullscreenState] =
     useState<RemoteFullscreenState>("idle");
-  const [screenRequestState, setScreenRequestState] =
-    useState<ScreenRequestState>("idle");
   const [screenMessage, setScreenMessage] = useState("");
   const [screenOptions, setScreenOptions] = useState<DisplayScreenDescriptor[]>(
     [],
@@ -94,7 +94,6 @@ export function DisplayControls(props: {
     shouldShowRecoverAction(channelStatus) || displayState === "failed";
   const canUseFullscreenDelegation = canDelegateSlideWindowFullscreen();
   const canStartRemoteFullscreen =
-    channelStatus === "connected" &&
     remoteFullscreenState !== "idle" &&
     canUseFullscreenDelegation &&
     Boolean(onRequestSlideWindowFullscreen);
@@ -198,7 +197,7 @@ export function DisplayControls(props: {
 
   async function requestDisplayScreens() {
     if (!onRequestDisplayScreens) {
-      setScreenRequestState("failed");
+      setOptions((current) => ({ ...current, autoPlace: false }));
       setScreenMessage(
         getDisplayControlMessage("window-management-unsupported"),
       );
@@ -208,7 +207,6 @@ export function DisplayControls(props: {
     // Window Management permission must be requested inside the original click activation.
     const requestScreensResult = onRequestDisplayScreens();
 
-    setScreenRequestState("loading");
     setScreenMessage("브라우저 권한을 요청하는 중입니다.");
 
     const result = await withScreenRequestTimeout(requestScreensResult);
@@ -217,17 +215,17 @@ export function DisplayControls(props: {
     }
 
     if (!result.ok) {
+      setOptions((current) => ({ ...current, autoPlace: false }));
       setScreenOptions([]);
       setSelectedScreenIndex(null);
-      setScreenRequestState("failed");
       setScreenMessage(getDisplayControlMessage(result.code));
       return;
     }
 
+    setOptions((current) => ({ ...current, autoPlace: true }));
     setScreenOptions(result.screens);
     const defaultScreen = getDefaultAutoPlacementScreen(result.screens);
     setSelectedScreenIndex(defaultScreen?.screenIndex ?? null);
-    setScreenRequestState("ready");
     setScreenMessage(
       defaultScreen
         ? `${defaultScreen?.label ?? "추가 화면"}으로 자동 배치합니다.`
@@ -235,12 +233,51 @@ export function DisplayControls(props: {
     );
   }
 
+  async function syncWindowManagementPermission() {
+    const permissionState = await queryWindowManagementPermissionState();
+    if (!mountedRef.current) return;
+
+    const granted = permissionState === "granted";
+    setOptions((current) => ({ ...current, autoPlace: granted }));
+    if (granted) {
+      void requestDisplayScreens();
+      return;
+    }
+
+    setScreenOptions([]);
+    setSelectedScreenIndex(null);
+    setScreenMessage(
+      permissionState === "denied"
+        ? "Chrome 사이트 설정에서 창 관리 권한을 허용한 뒤 다시 시도해주세요."
+        : "",
+    );
+  }
+
+  function handleWindowManagementToggle(checked: boolean) {
+    if (checked) {
+      void requestDisplayScreens();
+      return;
+    }
+
+    setScreenMessage(
+      "권한 해제는 Chrome 주소창의 사이트 정보에서 창 관리 권한을 변경해주세요.",
+    );
+  }
+
+  function toggleDisplayOptions() {
+    const nextOpen = !isOptionsOpen;
+    setIsOptionsOpen(nextOpen);
+    if (nextOpen) void syncWindowManagementPermission();
+  }
+
   function setPresenterView(enabled: boolean) {
     setOptions((current) => ({
       ...current,
+      autoPlace: enabled ? current.autoPlace : false,
       displayMode: enabled ? "slide-window" : current.displayMode,
       presenterView: enabled,
     }));
+    if (enabled) void syncWindowManagementPermission();
   }
 
   function setDisplayMode(displayMode: SlideDisplayMode) {
@@ -257,6 +294,16 @@ export function DisplayControls(props: {
       className="presenter-display-controls"
       aria-label="슬라이드 창 표시 제어"
     >
+      {canStartRemoteFullscreen ? (
+        <button
+          className="presenter-display-fullscreen-start"
+          type="button"
+          onClick={() => void requestSlideWindowFullscreen()}
+        >
+          <Maximize2 size={15} />
+          슬라이드쇼 전체화면
+        </button>
+      ) : null}
       <div className="presenter-display-split">
         <button
           className="presenter-display-primary"
@@ -272,109 +319,55 @@ export function DisplayControls(props: {
           className="presenter-display-options-toggle"
           title="프레젠테이션 옵션"
           type="button"
-          onClick={() => setIsOptionsOpen((current) => !current)}
+          onClick={toggleDisplayOptions}
         >
           <ChevronDown size={15} />
         </button>
-      </div>
-      <span className="presenter-display-status">
-        {getDisplayStatusLabel(channelStatus, displayState)}
-      </span>
-      {canStartRemoteFullscreen ? (
-        <button
-          className="presenter-display-fullscreen-start"
-          type="button"
-          onClick={() => void requestSlideWindowFullscreen()}
-        >
-          <Maximize2 size={15} />
-          {remoteFullscreenState === "available"
-            ? "전체화면 시작"
-            : "전체화면 다시 시작"}
-        </button>
-      ) : null}
-      {isOptionsOpen ? (
+        {isOptionsOpen ? (
         <div
           aria-label="프레젠테이션 디스플레이 옵션"
           className="presenter-display-options-popover"
           role="dialog"
         >
           <div className="presenter-display-options-header">
-            <strong>프레젠테이션 디스플레이 옵션</strong>
-            <button
-              aria-label="옵션 닫기"
-              title="옵션 닫기"
-              type="button"
-              onClick={() => setIsOptionsOpen(false)}
-            >
-              <X size={15} />
-            </button>
+            <strong>
+              <Monitor size={20} />
+              디스플레이 옵션
+            </strong>
           </div>
-          <label className="presenter-display-option-row">
-            <input
-              checked={options.presenterView}
-              type="checkbox"
-              onChange={(event) =>
-                setPresenterView(event.currentTarget.checked)
-              }
-            />
-            <span>
-              <strong>발표자 보기</strong>
-              <small>
-                현재 창에 발표자 도구를 유지하고 슬라이드 창을 별도로 엽니다.
-              </small>
+          <section className="presenter-display-options-section">
+            <span className="presenter-display-options-section-title">
+              발표자 보기 모드
             </span>
-          </label>
-          <label className="presenter-display-option-row">
-            <input
-              checked={options.startFromBeginning}
-              type="checkbox"
-              onChange={(event) => {
-                const checked = event.currentTarget.checked;
-                setOptions((current) => ({
-                  ...current,
-                  startFromBeginning: checked,
-                }));
-              }}
-            />
-            <span>
-              <strong>첫 슬라이드부터 표시</strong>
-              <small>
-                실행 전에 슬라이드와 애니메이션 단계를 처음으로 되돌립니다.
-              </small>
-            </span>
-          </label>
-          <label className="presenter-display-option-row">
-            <input
-              checked={options.autoPlace}
-              type="checkbox"
-              onChange={(event) => {
-                const checked = event.currentTarget.checked;
-                setOptions((current) => ({
-                  ...current,
-                  autoPlace: checked,
-                }));
-              }}
-            />
-            <span>
-              <strong>발표 모니터 자동 배치</strong>
-              <small>
-                권한을 허용하면 추가 디스플레이로 슬라이드 창을 자동 이동합니다.
-              </small>
-            </span>
-          </label>
-          {options.displayMode === "slide-window" && options.autoPlace ? (
+            <label className="presenter-display-option-row presenter-display-option-row-description">
+              <input
+                checked={options.presenterView}
+                type="checkbox"
+                onChange={(event) =>
+                  setPresenterView(event.currentTarget.checked)
+                }
+              />
+              <span>
+                <strong>발표자 보기 모드 사용</strong>
+                <small>발표자 노트 및 핵심 키워드로 슬라이드쇼 시작</small>
+              </span>
+            </label>
+            {options.presenterView ? (
+              <label className="presenter-display-switch-row">
+                <span>추가 디스플레이에 슬라이드쇼 표시 권한 허용</span>
+                <input
+                  checked={options.autoPlace}
+                  className="presenter-display-switch"
+                  type="checkbox"
+                  onChange={(event) =>
+                    handleWindowManagementToggle(event.currentTarget.checked)
+                  }
+                />
+              </label>
+            ) : null}
+          </section>
+          {options.presenterView && (options.autoPlace || screenMessage) ? (
             <div className="presenter-display-screen-picker">
-              <div className="presenter-display-screen-picker-header">
-                <span>슬라이드쇼 표시</span>
-                <button
-                  type="button"
-                  onClick={() => void requestDisplayScreens()}
-                >
-                  {screenRequestState === "loading"
-                    ? "다시 요청"
-                    : "화면 권한 요청"}
-                </button>
-              </div>
               {screenOptions.length > 0 ? (
                 <div
                   className="presenter-display-screen-options"
@@ -390,7 +383,7 @@ export function DisplayControls(props: {
                         onChange={() => {
                           setSelectedScreenIndex(screen.screenIndex);
                           setScreenMessage(
-                            `${screen.label}으로 자동 배치합니다.`,
+                            `${screen.label}으로 자동 표시합니다.`,
                           );
                         }}
                       />
@@ -407,58 +400,81 @@ export function DisplayControls(props: {
               {screenMessage ? <p>{screenMessage}</p> : null}
             </div>
           ) : null}
-          <label className="presenter-display-option-row">
-            <input
-              checked={options.fullscreen}
-              type="checkbox"
-              onChange={(event) => {
-                const checked = event.currentTarget.checked;
-                setOptions((current) => ({
-                  ...current,
-                  fullscreen: checked,
-                }));
-              }}
-            />
-            <span>
-              <strong>전체화면</strong>
-              <small>현재 창 모드에서는 즉시 fullscreen을 요청합니다.</small>
+          <section className="presenter-display-options-section">
+            <span className="presenter-display-options-section-title">
+              슬라이드 쇼
             </span>
-          </label>
-          <div
-            className="presenter-display-option-group"
-            role="radiogroup"
-            aria-label="슬라이드쇼 표시 방식"
-          >
-            <span>슬라이드쇼 표시</span>
-            <label>
+            <label className="presenter-display-option-row">
               <input
-                checked={options.displayMode === "slide-window"}
-                name="slide-display-mode"
-                type="radio"
-                onChange={() => setDisplayMode("slide-window")}
+                checked={options.startFromBeginning}
+                type="checkbox"
+                onChange={(event) => {
+                  const checked = event.currentTarget.checked;
+                  setOptions((current) => ({
+                    ...current,
+                    startFromBeginning: checked,
+                  }));
+                }}
               />
-              <span>별도 슬라이드 창</span>
+              <span>
+                <strong>처음부터 시작</strong>
+              </span>
             </label>
-            <label>
+            <label className="presenter-display-option-row">
               <input
-                checked={options.displayMode === "current-window"}
-                name="slide-display-mode"
-                type="radio"
-                onChange={() => setDisplayMode("current-window")}
+                checked={options.fullscreen}
+                type="checkbox"
+                onChange={(event) => {
+                  const checked = event.currentTarget.checked;
+                  setOptions((current) => ({
+                    ...current,
+                    fullscreen: checked,
+                  }));
+                }}
               />
-              <span>현재 창</span>
+              <span>
+                <strong>전체화면으로 띄우기</strong>
+              </span>
             </label>
-          </div>
+            {options.fullscreen ? (
+              <div
+                className="presenter-display-option-group"
+                role="radiogroup"
+                aria-label="슬라이드쇼 표시 방식"
+              >
+                <span>표시 위치</span>
+                <label>
+                  <input
+                    checked={options.displayMode === "slide-window"}
+                    name="slide-display-mode"
+                    type="radio"
+                    onChange={() => setDisplayMode("slide-window")}
+                  />
+                  <span>새 창</span>
+                </label>
+                <label>
+                  <input
+                    checked={options.displayMode === "current-window"}
+                    name="slide-display-mode"
+                    type="radio"
+                    onChange={() => setDisplayMode("current-window")}
+                  />
+                  <span>현재 창</span>
+                </label>
+              </div>
+            ) : null}
+          </section>
           <div className="presenter-display-options-actions">
-            <button type="button" onClick={() => setIsOptionsOpen(false)}>
-              취소
-            </button>
             <button type="button" onClick={() => void openSlideWindow(options)}>
+              <span aria-hidden="true" className="material-symbols-outlined">
+                slideshow
+              </span>
               슬라이드쇼 시작
             </button>
           </div>
         </div>
-      ) : null}
+        ) : null}
+      </div>
       {message && message !== dismissedMessage ? (
         <p className="presenter-display-message">
           <AlertCircle size={15} />
@@ -502,12 +518,28 @@ export function canDelegateSlideWindowFullscreen(userAgent = readUserAgent()) {
   );
 }
 
+export async function queryWindowManagementPermissionState(
+  query: PermissionQuery | undefined = getBrowserPermissionQuery(),
+): Promise<PermissionState> {
+  if (!query) return "prompt";
+
+  for (const name of ["window-management", "window-placement"]) {
+    try {
+      return (await query({ name: name as PermissionName })).state;
+    } catch {
+      // Chrome used window-placement before window-management.
+    }
+  }
+
+  return "prompt";
+}
+
 export function getDisplayControlMessage(code: DisplayManagerErrorCode) {
   const messages: Record<DisplayManagerErrorCode, string> = {
     "fullscreen-blocked":
       "슬라이드 창을 열었습니다. 열린 슬라이드 창의 전체화면 버튼을 눌러주세요.",
     "permission-denied":
-      "화면 배치 권한이 거부되었습니다. 열린 창을 발표 모니터로 옮긴 뒤 전체화면으로 전환해주세요.",
+      "Chrome에서 창 관리 권한이 차단되었습니다. 주소창 왼쪽의 사이트 정보 → 사이트 설정 → 창 관리를 허용한 뒤 다시 시도해주세요.",
     "placement-failed":
       "자동 배치에 실패했습니다. 열린 창을 발표 모니터로 직접 옮긴 뒤 전체화면으로 전환해주세요.",
     "popup-blocked":
@@ -564,20 +596,6 @@ function getSlideWindowRemoteFullscreenMessage(result: OpenSlideDisplayResult) {
   return "슬라이드 창을 열었습니다. 연결되면 이 화면에서 전체화면 시작을 누르세요.";
 }
 
-export function getDisplayStatusLabel(
-  channelStatus: PresentationChannelStatus,
-  displayState: DisplayState,
-) {
-  if (displayState === "opening") return "발표자 창 여는 중";
-  if (channelStatus === "connected") return "슬라이드 화면 연결됨";
-  if (channelStatus === "stale") return "슬라이드 화면 응답 없음";
-  if (channelStatus === "closed") return "슬라이드 화면 닫힘";
-  if (channelStatus === "unsupported") return "동기화 미지원";
-  if (displayState === "manual-guide") return "전환 안내";
-  if (displayState === "failed") return "확인 필요";
-  return "대기";
-}
-
 function readBrowserMajor(userAgent: string, pattern: RegExp) {
   const match = userAgent.match(pattern);
   if (!match?.[1]) {
@@ -590,4 +608,12 @@ function readBrowserMajor(userAgent: string, pattern: RegExp) {
 
 function readUserAgent() {
   return typeof navigator === "undefined" ? "" : navigator.userAgent;
+}
+
+function getBrowserPermissionQuery(): PermissionQuery | undefined {
+  if (typeof navigator === "undefined" || !navigator.permissions?.query) {
+    return undefined;
+  }
+
+  return navigator.permissions.query.bind(navigator.permissions);
 }

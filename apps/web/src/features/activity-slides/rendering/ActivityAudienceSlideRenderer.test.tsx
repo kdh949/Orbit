@@ -30,12 +30,43 @@ const publicResult: ActivityPublicResult = {
     type: question.type,
     responseCount: 7,
     average: question.type === "rating" ? 4.2 : null,
+    ratingDistribution: question.type === "rating"
+      ? [
+          { value: 1, count: 0, ratio: 0 },
+          { value: 2, count: 0, ratio: 0 },
+          { value: 3, count: 1, ratio: 1 / 7 },
+          { value: 4, count: 3, ratio: 3 / 7 },
+          { value: 5, count: 3, ratio: 3 / 7 }
+        ]
+      : [],
     choices: []
   })),
   approvedTextEntries: []
 };
 
 describe("ActivityAudienceSlideRenderer", () => {
+  it("uses the deck palette and ORBIT identity without decorative English copy", () => {
+    const html = renderToStaticMarkup(
+      <ActivityAudienceSlideRenderer
+        activity={slide.activity}
+        audienceUrl={null}
+        publicResult={null}
+        status="preparing"
+        theme={{
+          ...createDemoDeck().theme,
+          backgroundColor: "#090909",
+          textColor: "#ffffff",
+          accentColor: "#c5b0f4"
+        }}
+      />
+    );
+
+    expect(html).toContain("ORBIT");
+    expect(html).toContain("--activity-color-background:#090909");
+    expect(html).toContain("--activity-color-accent:#c5b0f4");
+    expect(html).not.toContain("LIVE ACTIVITY");
+  });
+
   it("renders only the public result projection after reveal", () => {
     const html = renderToStaticMarkup(
       <ActivityAudienceSlideRenderer
@@ -100,6 +131,7 @@ describe("ActivityAudienceSlideRenderer", () => {
         type: question.type,
         responseCount: 2,
         average: null,
+        ratingDistribution: [],
         choices: question.options.map((option, index) => ({
           optionId: option.optionId,
           count: index === 0 ? 2 : 0,
@@ -126,5 +158,20 @@ describe("ActivityAudienceSlideRenderer", () => {
     );
     expect(revealed).toContain("100%");
     expect(hidden).not.toContain("100%");
+  });
+
+  it("uses the full result grid width for a single question card", () => {
+    const css = fs.readFileSync(activityAudienceSlideCssPath, "utf8");
+    const resultCardRule = css.match(
+      /\.activity-public-result-grid article\s*\{([^}]*)\}/,
+    )?.[1];
+    const singleResultCardRule = css.match(
+      /\.activity-public-result-grid article:only-child\s*\{([^}]*)\}/,
+    )?.[1];
+
+    expect(resultCardRule).toContain(
+      "border-radius: var(--redesign-radius-xl)",
+    );
+    expect(singleResultCardRule).toContain("grid-column: 1 / -1");
   });
 });

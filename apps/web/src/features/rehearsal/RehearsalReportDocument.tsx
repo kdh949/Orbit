@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   ChevronDown,
   ChevronUp,
   Clock,
@@ -127,16 +128,26 @@ export function RehearsalReportDocument({
             <i aria-hidden="true" /> AI 코칭 완료
           </span>
         </div>
-        <OrbitButton
-          className="rrd-hero-action"
-          icon={<Mic aria-hidden="true" size={17} />}
-          onClick={() =>
-            navigateTo(`/rehearsal/${encodeURIComponent(projectId)}`)
-          }
-          size="prominent"
-        >
-          다시 리허설
-        </OrbitButton>
+        <div className="rrd-hero-actions">
+          <OrbitButton
+            icon={<BarChart3 aria-hidden="true" size={17} />}
+            onClick={() => navigateTo(`/reports/${encodeURIComponent(projectId)}`)}
+            size="prominent"
+            variant="secondary"
+          >
+            전체 리허설 리포트
+          </OrbitButton>
+          <OrbitButton
+            className="rrd-hero-action"
+            icon={<Mic aria-hidden="true" size={17} />}
+            onClick={() =>
+              navigateTo(`/rehearsal/${encodeURIComponent(projectId)}`)
+            }
+            size="prominent"
+          >
+            다시 리허설
+          </OrbitButton>
+        </div>
       </section>
 
       <div id="rrd-panel-overview" className="rrd-report-panel" hidden>

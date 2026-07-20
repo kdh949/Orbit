@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  PPTX_OOXML_SYNC_CAPABILITY_VERSION,
+  authoredElementFallbacksSchema,
   pptxOoxmlGenerationJobResultSchema,
   pptxOoxmlGenerationRequestSchema,
   pptxOoxmlSyncJobResultSchema,
@@ -712,6 +714,47 @@ describe("pptxImportJobResultSchema", () => {
 });
 
 describe("pptxOoxmlGeneration schemas", () => {
+  it("bounds authored raster fallback payloads to eligible visual elements", () => {
+    const payload = authoredElementFallbacksSchema.parse({
+      theme: { name: "Orbit" },
+      elements: [
+        {
+          slideId: "slide_1",
+          element: {
+            elementId: "el_line_1",
+            type: "line",
+            x: 10,
+            y: 20,
+            width: 300,
+            height: 4,
+            props: { stroke: "#2563EB", strokeWidth: 3 },
+          },
+        },
+      ],
+    });
+
+    expect(payload.elements[0]?.element.type).toBe("line");
+    expect(
+      authoredElementFallbacksSchema.safeParse({
+        ...payload,
+        elements: [
+          {
+            slideId: "slide_1",
+            element: {
+              elementId: "el_text_1",
+              type: "text",
+              x: 10,
+              y: 20,
+              width: 300,
+              height: 40,
+              props: { text: "native" },
+            },
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
   it("validates request and job result contracts", () => {
     expect(
       pptxOoxmlGenerationRequestSchema.parse({
@@ -747,10 +790,69 @@ describe("pptxOoxmlGeneration schemas", () => {
       currentPackageFileId: "file_current",
       renderAssetFileIds: ["file_slide_1"],
       syncedDeckVersion: 2,
+      syncCapabilityVersion: PPTX_OOXML_SYNC_CAPABILITY_VERSION,
+      rasterizedElements: [
+        {
+          slideId: "slide_1",
+          elementId: "el_chart_1",
+          elementType: "chart",
+          reasonCode: "AUTHORED_ELEMENT_TYPE_RASTERIZED",
+        },
+      ],
       warnings: [],
     });
 
     expect(result.syncedDeckVersion).toBe(2);
+    expect(result.rasterizedElements).toHaveLength(1);
+    expect(result.syncCapabilityVersion).toBe(2);
+  });
+
+  it("keeps authored raster fallback source metadata authoritative", () => {
+    const blueprint = templateBlueprintSchema.parse({
+      templateId: "template_file_1",
+      sourceFileId: "file_1",
+      slides: [
+        {
+          slideIndex: 1,
+          sourceSlideIndex: 1,
+          sourceSlidePart: "ppt/slides/slide1.xml",
+          elementSources: [
+            {
+              elementId: "el_chart_1",
+              elementType: "chart",
+              ooxmlOrigin: "authored",
+              slidePart: "ppt/slides/slide1.xml",
+              shapeId: "8",
+              relationshipId: "rId8",
+              sourceType: "image",
+              writable: true,
+              fallbackMode: "rasterized",
+              fallbackReason: "AUTHORED_ELEMENT_TYPE_RASTERIZED",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(blueprint.slides[0].elementSources[0]?.fallbackMode).toBe(
+      "rasterized",
+    );
+    expect(
+      templateBlueprintSchema.safeParse({
+        ...blueprint,
+        slides: [
+          {
+            ...blueprint.slides[0],
+            elementSources: [
+              {
+                ...blueprint.slides[0].elementSources[0],
+                relationshipId: undefined,
+              },
+            ],
+          },
+        ],
+      }).success,
+    ).toBe(false);
   });
 
   it("keeps logical group IDs as package-neutral blueprint sidecar data", () => {

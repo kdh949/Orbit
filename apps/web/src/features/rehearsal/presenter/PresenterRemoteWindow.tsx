@@ -693,7 +693,11 @@ function PresenterSlidePreview(props: {
       <div className="presenter-remote-preview-frame">
         {slide ? (
           slide.kind === "activity" ? (
-            <ActivitySlidePreview role="presenter" slide={slide} />
+            <ActivitySlidePreview
+              role="presenter"
+              slide={slide}
+              theme={deck.theme}
+            />
           ) : (
             <SlideshowRenderer
               deck={deck}

@@ -40,6 +40,7 @@ describe("EditorSlideRehearsal", () => {
         onStart={vi.fn()}
         onStop={vi.fn()}
         practiceState="recording"
+        slidePracticeEnabled={true}
         slide={slide}
         state={{ ...listeningState, activeSlideId: slide.slideId }}
       />
@@ -71,6 +72,7 @@ describe("EditorSlideRehearsal", () => {
         onStart={vi.fn()}
         onStop={vi.fn()}
         practiceState="completed"
+        slidePracticeEnabled={true}
         slide={slide}
         state={{
           ...listeningState,
@@ -96,6 +98,7 @@ describe("EditorSlideRehearsal", () => {
         onStart={vi.fn()}
         onStop={vi.fn()}
         practiceState="stopping"
+        slidePracticeEnabled={true}
         slide={slide}
         state={{ ...listeningState, activeSlideId: slide.slideId }}
       />
@@ -119,6 +122,7 @@ describe("EditorSlideRehearsal", () => {
         onStart={vi.fn()}
         onStop={vi.fn()}
         practiceState="error"
+        slidePracticeEnabled={true}
         slide={slide}
         state={{ ...listeningState, activeSlideId: slide.slideId }}
       />
@@ -127,6 +131,30 @@ describe("EditorSlideRehearsal", () => {
     expect(html).toContain("녹음 업로드 실패");
     expect(html).toContain("연습 녹음 업로드 서버에 연결하지 못했습니다.");
     expect(html).not.toContain("Failed to fetch");
+  });
+
+  it("기능이 꺼진 환경에서는 시작 버튼과 원인을 함께 표시한다", () => {
+    const slide = createDemoDeck().slides[0]!;
+    const html = renderToStaticMarkup(
+      <EditorSlideRehearsalBottomPanel
+        elapsedMs={0}
+        message="부분 슬라이드 연습 기능이 현재 환경에서 꺼져 있습니다."
+        onNextSentence={vi.fn(() => null)}
+        onPreviousSentence={vi.fn(() => null)}
+        onSkipSentence={vi.fn(() => null)}
+        onStart={vi.fn()}
+        onStop={vi.fn()}
+        practiceState="idle"
+        slidePracticeEnabled={false}
+        slide={slide}
+        state={{ ...listeningState, activeSlideId: slide.slideId }}
+      />
+    );
+
+    expect(html).toContain("연습 기능 꺼짐");
+    expect(html).toContain("기능이 꺼져 있습니다");
+    expect(html).toContain('aria-label="슬라이드 연습 시작"');
+    expect(html).toContain("disabled");
   });
 
   it("자동 모드의 휠 아래는 skip하고 자동 모드를 유지한다", () => {

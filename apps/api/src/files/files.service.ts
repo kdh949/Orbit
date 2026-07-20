@@ -13,7 +13,8 @@ import type {
   UploadedFile,
 } from "@orbit/shared";
 import { StoragePort } from "@orbit/storage";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
+import type { Readable } from "node:stream";
 import {
   BadRequestException,
   ForbiddenException,
@@ -32,6 +33,7 @@ export const UPLOAD_PROXY_ORIGIN = Symbol("UPLOAD_PROXY_ORIGIN");
 
 const uploadUrlExpiresInSeconds = 15 * 60;
 const maximumPrivateAudioReadUrlExpiresInSeconds = 15 * 60;
+const assetContentCacheControl = "private, no-cache";
 const publicAssetContentPurposes = new Set<FilePurpose>([
   "thumbnail",
   "pptx-import",
@@ -430,6 +432,52 @@ export class FilesService {
     };
   }
 
+  async openUploadedAssetContent(
+    projectId: string,
+    fileId: string,
+    ifNoneMatch?: string,
+  ): Promise<
+    | {
+        status: "not-modified";
+        cacheControl: string;
+        etag: string;
+      }
+    | {
+        status: "ok";
+        body: Readable;
+        cacheControl: string;
+        contentLength: number;
+        contentType: string;
+        etag: string;
+      }
+  > {
+    const asset = await this.getUploadedAsset(projectId, fileId);
+    const assetPurpose = filePurposeSchema.parse(asset.purpose);
+
+    if (!publicAssetContentPurposes.has(assetPurpose)) {
+      throw new NotFoundException(`Asset content unavailable: ${fileId}`);
+    }
+
+    const etag = createAssetContentEtag(asset);
+    if (matchesIfNoneMatch(ifNoneMatch, etag)) {
+      return {
+        status: "not-modified",
+        cacheControl: assetContentCacheControl,
+        etag,
+      };
+    }
+
+    const stored = await this.storage.getObjectStream(asset.storageKey);
+    return {
+      status: "ok",
+      body: stored.body,
+      cacheControl: assetContentCacheControl,
+      contentLength: stored.contentLength || asset.size,
+      contentType: asset.mimeType,
+      etag,
+    };
+  }
+
   private createStorageKey(
     projectId: string,
     fileId: string,
@@ -513,6 +561,25 @@ export class FilesService {
       createdAt: asset.createdAt.toISOString(),
     });
   }
+}
+
+function createAssetContentEtag(asset: ProjectAssetEntity): string {
+  const uploadedAt = (asset.uploadedAt ?? asset.createdAt).toISOString();
+  const digest = createHash("sha256")
+    .update(`${asset.fileId}:${asset.size}:${uploadedAt}`)
+    .digest("base64url");
+  return `W/"${digest}"`;
+}
+
+function matchesIfNoneMatch(
+  ifNoneMatch: string | undefined,
+  currentEtag: string,
+): boolean {
+  if (!ifNoneMatch) return false;
+  return ifNoneMatch
+    .split(",")
+    .map((value) => value.trim())
+    .some((value) => value === "*" || value === currentEtag);
 }
 
 function formatAsiaSeoulDate(value: Date): string {

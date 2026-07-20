@@ -24,6 +24,7 @@ describe("buildRehearsalProjectSummary", () => {
               { slideId: "slide_2", targetSeconds: 60, actualSeconds: 40 },
             ],
             semanticStatuses: ["covered", "partial"],
+            missedKeywordIds: ["kw_1", "kw_2"],
           }),
           evaluationSnapshot: snapshotFixture(),
         },
@@ -39,6 +40,7 @@ describe("buildRehearsalProjectSummary", () => {
               { slideId: "slide_2", targetSeconds: 60, actualSeconds: 61 },
             ],
             semanticStatuses: ["covered", "covered"],
+            missedKeywordIds: ["kw_1"],
           }),
           evaluationSnapshot: snapshotFixture(),
         },
@@ -58,6 +60,13 @@ describe("buildRehearsalProjectSummary", () => {
         coveredCount: 2,
         measurableCount: 2,
         rate: 1,
+      },
+      keywordCoverage: {
+        measurementState: "measured",
+        matchedCount: 1,
+        missedCount: 1,
+        measurableCount: 2,
+        rate: 0.5,
       },
       timingOverrun: {
         measurementState: "measured",
@@ -85,6 +94,13 @@ describe("buildRehearsalProjectSummary", () => {
           measurableCount: 2,
           rate: 1,
         }),
+        keywordCoverage: expect.objectContaining({
+          matchedCount: 0,
+          missedCount: 2,
+          measurableCount: 2,
+          rate: 0,
+        }),
+        repeatedMissedKeywordCount: 1,
       }),
       expect.objectContaining({
         slideId: "slide_2",
@@ -97,6 +113,12 @@ describe("buildRehearsalProjectSummary", () => {
         coreMessageCoverage: expect.objectContaining({
           coveredCount: 1,
           partialCount: 1,
+          measurableCount: 2,
+          rate: 0.5,
+        }),
+        keywordCoverage: expect.objectContaining({
+          matchedCount: 1,
+          missedCount: 1,
           measurableCount: 2,
           rate: 0.5,
         }),
@@ -135,6 +157,11 @@ describe("buildRehearsalProjectSummary", () => {
         reasonCode: "REPORT_UNAVAILABLE",
         rate: null,
       },
+      keywordCoverage: {
+        measurementState: "unmeasured",
+        reasonCode: "REPORT_UNAVAILABLE",
+        rate: null,
+      },
     });
     expect(summary.runDurationSeries).toEqual([]);
     expect(summary.slidePerformanceSummaries).toEqual([
@@ -150,6 +177,119 @@ describe("buildRehearsalProjectSummary", () => {
       }),
     ]);
   });
+
+  it("calculates keyword coverage from the run snapshot without semantic cues", () => {
+    const snapshot = snapshotFixture();
+    snapshot.slides[0]!.keywords = Array.from({ length: 8 }, (_, index) => ({
+      keywordId: `kw_coverage_${index + 1}`,
+      text: `키워드 ${index + 1}`,
+      synonyms: [],
+      abbreviations: [],
+      required: true,
+    }));
+    snapshot.slides[1]!.keywords = [];
+    const report = reportFixture({
+      runId: "run_keyword",
+      durationSeconds: 90,
+      longSilenceCount: 0,
+      slideTimings: [],
+      semanticStatuses: [],
+    });
+    report.missedKeywords = [
+      {
+        slideId: "slide_1",
+        keywordId: "kw_coverage_8",
+        text: "키워드 8",
+      },
+    ];
+
+    const summary = buildRehearsalProjectSummary({
+      projectId: "project_1",
+      progressComment: null,
+      runs: [
+        {
+          runId: "run_keyword",
+          createdAt: new Date("2026-07-19T00:00:00.000Z"),
+          rehearsalReport: report,
+          evaluationSnapshot: snapshot,
+        },
+      ],
+    });
+
+    expect(summary.runMetricSeries[0]?.keywordCoverage).toEqual({
+      measurementState: "measured",
+      reasonCode: null,
+      matchedCount: 7,
+      missedCount: 1,
+      measurableCount: 8,
+      rate: 0.875,
+    });
+    expect(summary.runMetricSeries[0]?.coreMessageCoverage).toMatchObject({
+      measurementState: "unmeasured",
+      reasonCode: "NO_MEASURABLE_CORE_CUES",
+    });
+  });
+
+  it("returns N/A reasons for unmeasured STT coverage and snapshots without keywords", () => {
+    const unmeasuredReport = reportFixture({
+      runId: "run_unmeasured",
+      durationSeconds: 90,
+      longSilenceCount: 0,
+      slideTimings: [],
+      semanticStatuses: [],
+    });
+    unmeasuredReport.metrics.measurements.keywordCoverage = {
+      measurementState: "unmeasured",
+      metricDefinitionVersion: 1,
+      reasonCode: "LOW_TRANSCRIPTION_CONFIDENCE",
+    };
+    unmeasuredReport.metrics.keywordCoverageMeasurement = {
+      state: "unmeasured",
+      reason: "low-transcription-confidence",
+    };
+    unmeasuredReport.missedKeywords = [];
+
+    const noKeywordSnapshot = snapshotFixture();
+    noKeywordSnapshot.slides.forEach((slide) => {
+      slide.keywords = [];
+    });
+
+    const summary = buildRehearsalProjectSummary({
+      projectId: "project_1",
+      progressComment: null,
+      runs: [
+        {
+          runId: "run_unmeasured",
+          createdAt: new Date("2026-07-18T00:00:00.000Z"),
+          rehearsalReport: unmeasuredReport,
+          evaluationSnapshot: snapshotFixture(),
+        },
+        {
+          runId: "run_no_keywords",
+          createdAt: new Date("2026-07-19T00:00:00.000Z"),
+          rehearsalReport: reportFixture({
+            runId: "run_no_keywords",
+            durationSeconds: 90,
+            longSilenceCount: 0,
+            slideTimings: [],
+            semanticStatuses: [],
+          }),
+          evaluationSnapshot: noKeywordSnapshot,
+        },
+      ],
+    });
+
+    expect(summary.runMetricSeries[0]?.keywordCoverage).toMatchObject({
+      measurementState: "unmeasured",
+      reasonCode: "KEYWORD_COVERAGE_UNMEASURED",
+      rate: null,
+    });
+    expect(summary.runMetricSeries[1]?.keywordCoverage).toMatchObject({
+      measurementState: "unmeasured",
+      reasonCode: "NO_MEASURABLE_KEYWORDS",
+      rate: null,
+    });
+  });
 });
 
 function reportFixture(input: {
@@ -162,6 +302,7 @@ function reportFixture(input: {
     actualSeconds: number;
   }>;
   semanticStatuses: Array<"covered" | "partial" | "missed">;
+  missedKeywordIds?: string[];
 }): RehearsalReport {
   return rehearsalReportSchema.parse({
     reportId: `report_${input.runId}`,
@@ -222,6 +363,11 @@ function reportFixture(input: {
       coveredConcepts: status === "covered" ? ["핵심"] : [],
       missingConcepts: status === "covered" ? [] : ["근거"],
     })),
+    missedKeywords: (input.missedKeywordIds ?? []).map((keywordId) => ({
+      slideId: keywordId === "kw_1" ? "slide_1" : "slide_2",
+      keywordId,
+      text: keywordId === "kw_1" ? "문제" : "해결",
+    })),
     slideTimings: input.slideTimings,
     slideInsights: [],
     coaching: {
@@ -268,7 +414,15 @@ function snapshotFixture() {
         title: "문제 정의",
         estimatedSeconds: 60,
         thumbnailUrl: "/slides/1.png",
-        keywords: [],
+        keywords: [
+          {
+            keywordId: "kw_1",
+            text: "문제",
+            synonyms: ["고충"],
+            abbreviations: [],
+            required: true,
+          },
+        ],
         semanticCues: [],
       },
       {
@@ -277,7 +431,15 @@ function snapshotFixture() {
         title: "해결책",
         estimatedSeconds: 60,
         thumbnailUrl: "/slides/2.png",
-        keywords: [],
+        keywords: [
+          {
+            keywordId: "kw_2",
+            text: "해결",
+            synonyms: [],
+            abbreviations: ["솔루션"],
+            required: true,
+          },
+        ],
         semanticCues: [],
       },
     ],

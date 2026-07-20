@@ -5,7 +5,9 @@ import { countSpokenSyllables } from "./fillerAnalyzer";
 import {
   createPracticeTranscriptState,
   finalizePracticeTranscript,
+  getSlidePracticeErrorMessage,
   shouldUpdateVoiceBaseline,
+  slidePracticeDisabledMessage,
   updatePracticeTranscript,
 } from "./useSlidePracticeSession";
 
@@ -44,6 +46,17 @@ describe("slide practice transcript finalization", () => {
     });
 
     expect(finalizePracticeTranscript(second)).toBe("첫 번째 문장입니다 두 번째 문장입니다");
+  });
+});
+
+describe("slide practice feature gate guidance", () => {
+  it("서버의 비활성화 403 메시지를 사용자 안내로 바꾼다", () => {
+    expect(
+      getSlidePracticeErrorMessage(
+        new Error("Slide practice is not enabled."),
+        "연습 녹음을 완료하지 못했습니다.",
+      ),
+    ).toBe(slidePracticeDisabledMessage);
   });
 });
 

@@ -52,7 +52,7 @@ canonical coaching result나 Job payload/result에 포함하지 않는다.
 | `projects/project.schema.ts` | 프로젝트 생성/삭제 요청과 프로젝트 응답 schema. |
 | `rehearsals/live-stt.schema.ts` | 발표/리허설 중 온디바이스 Live STT가 내보내는 local transcript, keyword, cue, slide advance event 계약. |
 | `rehearsals/realtime-transcription.schema.ts` | 브라우저 Live STT가 OpenAI Realtime transcription에 연결할 때 API에서 받는 project-scoped client secret 응답 계약. |
-| `rehearsals/rehearsal.schema.ts` | 리허설 run, legacy upload-url/complete 요청, 후속 audio chunk begin/upload/complete, run meta, run 조회 API 계약. `completeRehearsalAudioUploadRequestSchema`는 `{ fileId }` legacy complete 요청이며 chunk manifest는 `completeRehearsalAudioChunkUploadRequestSchema`를 사용한다. |
+| `rehearsals/rehearsal.schema.ts` | 리허설 run, upload-url/complete 요청, 후속 audio chunk begin/upload/complete, run meta, run 조회 API 계약. `completeRehearsalAudioUploadRequestSchema`는 `fileId`와 선택적인 `liveTranscript`를 받으며 chunk manifest는 `completeRehearsalAudioChunkUploadRequestSchema`를 사용한다. |
 | `realtime/websocket.schema.ts` | WebSocket event envelope과 주요 payload schema. |
 | `presentation/presentation.schema.ts` | Deck version과 access 기간을 고정한 발표 세션, 리허설 지표, 최종 보고서 schema. |
 
@@ -76,7 +76,7 @@ ORBIT-14의 핵심 작업은 deck 계약을 더 엄격하게 만드는 것이다
 - `deck/patch.schema.ts`: `DeckPatchSchema`는 적용 요청, `DeckChangeRecordSchema`는 적용 완료 이력이다. patch는 `baseVersion` 기준으로 충돌을 확인하고, 적용 후 최종 Deck JSON은 반드시 `deckSchema`로 다시 검증한다.
 - `deck/patch.schema.ts`: patch operation은 deck 제목, slide 추가/수정/삭제/정렬, theme 수정, slide style 수정, element 추가/좌표/props/삭제, speakerNotes, keywords, animation 추가/수정/삭제, slide action 추가/수정/삭제를 지원한다. element props patch는 타입별 부분 업데이트를 위해 `record unknown`으로 받고, 적용된 최종 element는 `deckElementSchema`가 검증한다.
 - `deck/slide-object.schema.ts`: `text`, `rect`, `ellipse`, `line`, `arrow`, `polygon`, `star`, `ring`, `image`, `group`, `customShape`, `chart` object type을 허용한다. `shape`, `video`는 허용하지 않는다.
-- `deck/slide-object.schema.ts`: `x`, `y`는 `0` 이상, `width`, `height`는 `0` 초과로 검증한다. 객체가 오른쪽/아래쪽으로 캔버스 밖에 일부 노출되는 경우는 MVP에서 막지 않고, PPTX import/export 구현 중 다시 결정한다. `rotation`, `opacity`, `zIndex`, `locked`, `visible`은 객체 공통 상태로 관리한다.
+- `deck/slide-object.schema.ts`: `x`, `y`는 `-1,000,000` 이상 `1,000,000` 이하의 finite number, `width`, `height`는 `0` 초과로 검증한다. 캔버스 밖 좌표는 범위 안에서 보존한다. `rotation`, `opacity`, `zIndex`, `locked`, `visible`은 객체 공통 상태로 관리한다.
 - `deck/slide-object.schema.ts`: `text`, `image`, `chart`, `group`, `customShape`는 타입별 props로 검증한다. `image`는 `fit`과 `cover` crop 기준점인 `focusX`, `focusY`를 가진다. 도형류는 공통 shape props를 사용하고, `customShape`는 `pathData`, `viewBoxWidth`, `viewBoxHeight`, `closed`, `nodes` 기반 편집 계약으로 관리한다. AI 디자인 의미는 공통 `role` 필드로 표현한다. 배경 이미지와 장식 요소는 `slide.elements` flat list에 유지하되, 신규 AI 생성 slide의 단색 canvas 배경은 `slide.style.backgroundColor`를 사용한다.
 - `deck/chart.schema.ts`: unsupported chart type 거부 대상. `chart` object의 `props`는 이 schema로 검증한다. `data: []`는 빈 차트 편집을 위해 허용하고, `bar`/`line`, `pie`/`doughnut`, `scatter`는 타입별 data와 value 범위를 따로 검증한다. chart 내부 텍스트는 `style.fontFamily`와 title/axis/legend/data label font size 필드로 조정한다.
 - `deck/animation.schema.ts`: `appear`, `disappear`, `fade-in`, `fade-out`, `zoom-in`, `zoom-out`, `rotate`만 MVP animation type으로 허용한다. animation은 `slide.animations` flat list에 저장하고 `elementId`로 대상 객체를 참조한다. `order`는 `1`부터 시작하며 `durationMs`, `delayMs`, `easing`은 기본값으로 정규화한다.

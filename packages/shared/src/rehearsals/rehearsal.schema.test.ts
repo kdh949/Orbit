@@ -895,6 +895,16 @@ describe("completeRehearsalAudioUploadRequestSchema", () => {
 
     expect(request.fileId).toBe("file_audio_1");
     expect(request.recordingDurationSeconds).toBeNull();
+    expect(request.liveTranscript).toBeNull();
+  });
+
+  it("accepts the accumulated browser live transcript", () => {
+    const request = completeRehearsalAudioUploadRequestSchema.parse({
+      fileId: "file_audio_1",
+      liveTranscript: "첫 문장 두 번째 문장",
+    });
+
+    expect(request.liveTranscript).toBe("첫 문장 두 번째 문장");
   });
 });
 
@@ -1245,6 +1255,14 @@ describe("rehearsalProjectSummarySchema", () => {
             measurableCount: 8,
             rate: 0.875,
           },
+          keywordCoverage: {
+            measurementState: "measured",
+            reasonCode: null,
+            matchedCount: 7,
+            missedCount: 1,
+            measurableCount: 8,
+            rate: 0.875,
+          },
           timingOverrun: {
             measurementState: "measured",
             reasonCode: null,
@@ -1279,12 +1297,25 @@ describe("rehearsalProjectSummarySchema", () => {
             measurableCount: 2,
             rate: 0.5,
           },
+          keywordCoverage: {
+            measurementState: "measured",
+            reasonCode: null,
+            matchedCount: 7,
+            missedCount: 1,
+            measurableCount: 8,
+            rate: 0.875,
+          },
+          repeatedMissedKeywordCount: 1,
         },
       ],
       progressComment: null,
     });
 
     expect(summary.runMetricSeries[0]?.coreMessageCoverage.rate).toBe(0.875);
+    expect(summary.runMetricSeries[0]?.keywordCoverage.rate).toBe(0.875);
+    expect(
+      summary.slidePerformanceSummaries[0]?.repeatedMissedKeywordCount,
+    ).toBe(1);
     expect(summary.slidePerformanceSummaries[0]?.sampleCount).toBe(2);
   });
 
@@ -1313,6 +1344,14 @@ describe("rehearsalProjectSummarySchema", () => {
             reasonCode: "SEMANTIC_EVALUATION_UNAVAILABLE",
             coveredCount: 0,
             partialCount: 0,
+            missedCount: 0,
+            measurableCount: 0,
+            rate: null,
+          },
+          keywordCoverage: {
+            measurementState: "unmeasured",
+            reasonCode: "KEYWORD_COVERAGE_UNMEASURED",
+            matchedCount: 0,
             missedCount: 0,
             measurableCount: 0,
             rate: null,

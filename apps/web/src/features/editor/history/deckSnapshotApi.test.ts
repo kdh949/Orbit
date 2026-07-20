@@ -2,7 +2,7 @@ import { createDemoDeck } from "@orbit/editor-core";
 import type { DeckSnapshot } from "@orbit/shared";
 import { describe, expect, it, vi } from "vitest";
 
-import { fetchDeckSnapshots, restoreDeckSnapshot } from "./deckSnapshotApi";
+import { fetchDeckSnapshot, fetchDeckSnapshots, restoreDeckSnapshot } from "./deckSnapshotApi";
 
 describe("deck snapshot API", () => {
   it("lists project snapshot metadata with credentials", async () => {
@@ -15,6 +15,19 @@ describe("deck snapshot API", () => {
 
     await expect(fetchDeckSnapshots(deck.projectId, fetcher)).resolves.toEqual([snapshot]);
     expect(fetcher).toHaveBeenCalledWith(`/api/v1/projects/${deck.projectId}/snapshots`, { credentials: "include" });
+  });
+
+  it("fetches a selected snapshot with its Deck for preview", async () => {
+    const deck = createDemoDeck();
+    const snapshot = createSnapshot(deck.version, deck.projectId, deck.deckId);
+    const detail = { ...snapshot, deck };
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(detail), { status: 200 }));
+
+    await expect(fetchDeckSnapshot(deck.projectId, snapshot.snapshotId, fetcher)).resolves.toEqual(detail);
+    expect(fetcher).toHaveBeenCalledWith(
+      `/api/v1/projects/${deck.projectId}/snapshots/${snapshot.snapshotId}`,
+      { credentials: "include" },
+    );
   });
 
   it("restores a selected snapshot through the shared restore contract", async () => {

@@ -648,6 +648,173 @@ def test_sync_pptx_ooxml_adds_writable_text_rect_and_image(
     }
 
 
+def test_sync_pptx_ooxml_rasterizes_and_updates_authored_visual_elements(
+    tmp_path: Path,
+) -> None:
+    pptx_path = sample_round_trip_pptx(tmp_path)
+    generated = generate_pptx_ooxml(pptx_path, "file_template", render=False)
+    slide_id = template_slide_id(generated)
+    line = {
+        "elementId": "el_raster_line",
+        "type": "line",
+        "x": 140,
+        "y": 180,
+        "width": 420,
+        "height": 120,
+        "rotation": 5,
+        "props": {"stroke": "#2563EB", "strokeWidth": 8},
+    }
+    chart = {
+        "elementId": "el_raster_chart",
+        "type": "chart",
+        "x": 620,
+        "y": 180,
+        "width": 520,
+        "height": 320,
+        "props": {
+            "type": "bar",
+            "title": "분기별 매출",
+            "data": [
+                {"label": "1Q", "value": 20},
+                {"label": "2Q", "value": 42},
+            ],
+            "style": {"showDataLabels": True},
+        },
+    }
+    theme = {
+        "name": "Orbit",
+        "fontFamily": "Inter",
+        "textColor": "#111827",
+        "accentColor": "#2563EB",
+    }
+    fallbacks = {
+        "theme": theme,
+        "elements": [
+            {"slideId": slide_id, "element": line},
+            {"slideId": slide_id, "element": chart},
+        ],
+    }
+
+    added = sync_pptx_ooxml(
+        pptx_path,
+        template_blueprint=generated.template_blueprint,
+        deck_canvas=generated.canvas,
+        synced_deck_version=2,
+        render=False,
+        authored_element_fallbacks=fallbacks,
+        operations=[
+            {"type": "add_element", "slideId": slide_id, "element": line},
+            {"type": "add_element", "slideId": slide_id, "element": chart},
+        ],
+    )
+
+    assert added.unsupported_operations == []
+    assert [item.element_id for item in added.applied_operations] == [
+        "el_raster_line",
+        "el_raster_chart",
+    ]
+    sources = {
+        source["elementId"]: source for source in added.element_sources
+    }
+    assert set(sources) == {"el_raster_line", "el_raster_chart"}
+    assert all(source["fallbackMode"] == "rasterized" for source in sources.values())
+    assert all(source["sourceType"] == "image" for source in sources.values())
+    added_bytes = current_package_bytes(added.assets)
+    first_line_png = relationship_blob(
+        added_bytes,
+        "ppt/slides/slide1.xml",
+        sources["el_raster_line"]["relationshipId"],
+    )
+    assert Image.open(BytesIO(first_line_png)).mode == "RGBA"
+
+    updated_line = copy.deepcopy(line)
+    updated_line["x"] = 260
+    updated_line["props"] = {"stroke": "#EF4444", "strokeWidth": 14}
+    next_blueprint = copy.deepcopy(generated.template_blueprint)
+    next_blueprint["slides"][0]["elementSources"].extend(added.element_sources)
+    added_path = tmp_path / "raster-added.pptx"
+    added_path.write_bytes(added_bytes)
+    updated = sync_pptx_ooxml(
+        added_path,
+        template_blueprint=next_blueprint,
+        deck_canvas=generated.canvas,
+        synced_deck_version=3,
+        render=False,
+        authored_element_fallbacks={
+            "theme": theme,
+            "elements": [{"slideId": slide_id, "element": updated_line}],
+        },
+        operations=[
+            {
+                "type": "update_element_props",
+                "slideId": slide_id,
+                "elementId": "el_raster_line",
+                "props": updated_line["props"],
+            },
+            {
+                "type": "update_element_frame",
+                "slideId": slide_id,
+                "elementId": "el_raster_line",
+                "frame": {"x": 260},
+            },
+        ],
+    )
+
+    assert updated.unsupported_operations == []
+    assert [item.operation_type for item in updated.applied_operations] == [
+        "update_element_props",
+        "update_element_frame",
+    ]
+    updated_source = source_for_element(updated.element_sources, "el_raster_line")
+    assert updated_source["relationshipId"] == sources["el_raster_line"][
+        "relationshipId"
+    ]
+    updated_bytes = current_package_bytes(updated.assets)
+    assert relationship_blob(
+        updated_bytes,
+        "ppt/slides/slide1.xml",
+        updated_source["relationshipId"],
+    ) != first_line_png
+    assert b'x="' in shape_xml(updated_bytes, updated_source["shapeId"])
+
+
+def test_sync_pptx_ooxml_keeps_package_atomic_when_raster_candidate_is_missing(
+    tmp_path: Path,
+) -> None:
+    pptx_path = sample_round_trip_pptx(tmp_path)
+    original_bytes = pptx_path.read_bytes()
+    generated = generate_pptx_ooxml(pptx_path, "file_template", render=False)
+    result = sync_pptx_ooxml(
+        pptx_path,
+        template_blueprint=generated.template_blueprint,
+        deck_canvas=generated.canvas,
+        synced_deck_version=2,
+        render=False,
+        authored_element_fallbacks={"theme": {"name": "Orbit"}, "elements": []},
+        operations=[
+            {
+                "type": "add_element",
+                "slideId": template_slide_id(generated),
+                "element": {
+                    "elementId": "el_missing_fallback",
+                    "type": "arrow",
+                    "x": 10,
+                    "y": 20,
+                    "width": 300,
+                    "height": 80,
+                    "props": {"stroke": "#2563EB", "strokeWidth": 4},
+                },
+            }
+        ],
+    )
+
+    assert current_package_bytes(result.assets) == original_bytes
+    assert result.applied_operations == []
+    assert [
+        item.reason_code for item in result.unsupported_operations
+    ] == ["AUTHORED_RASTER_FALLBACK_FAILED"]
+
+
 def test_sync_pptx_ooxml_scopes_duplicate_element_ids_to_slide_part(
     tmp_path: Path,
 ) -> None:
@@ -944,6 +1111,15 @@ def test_sync_pptx_ooxml_adds_authored_slide_and_same_batch_image(
     image_src = "data:image/png;base64," + base64.b64encode(
         png_bytes("#22c55e")
     ).decode("ascii")
+    authored_line = {
+        "elementId": "el_authored_line",
+        "type": "line",
+        "x": 160,
+        "y": 500,
+        "width": 480,
+        "height": 80,
+        "props": {"stroke": "#7C3AED", "strokeWidth": 6},
+    }
 
     result = sync_pptx_ooxml(
         pptx_path,
@@ -951,6 +1127,12 @@ def test_sync_pptx_ooxml_adds_authored_slide_and_same_batch_image(
         deck_canvas=generated.canvas,
         synced_deck_version=2,
         render=False,
+        authored_element_fallbacks={
+            "theme": {"name": "Orbit", "accentColor": "#2563EB"},
+            "elements": [
+                {"slideId": "slide_authored", "element": authored_line}
+            ],
+        },
         operations=[
             {
                 "type": "add_slide",
@@ -978,6 +1160,7 @@ def test_sync_pptx_ooxml_adds_authored_slide_and_same_batch_image(
                             "height": 180,
                             "props": {"fill": "#2563EB"},
                         },
+                        authored_line,
                     ],
                 },
             },
@@ -1022,9 +1205,17 @@ def test_sync_pptx_ooxml_adds_authored_slide_and_same_batch_image(
     assert {source["elementId"] for source in result.element_sources} == {
         "el_authored_text",
         "el_authored_rect",
+        "el_authored_line",
         "el_authored_image",
     }
+    line_source = source_for_element(result.element_sources, "el_authored_line")
+    assert line_source["fallbackMode"] == "rasterized"
     package_bytes = current_package_bytes(result.assets)
+    assert relationship_blob(
+        package_bytes,
+        "ppt/slides/slide2.xml",
+        line_source["relationshipId"],
+    ).startswith(b"\x89PNG")
     round_trip = Presentation(BytesIO(package_bytes))
     assert len(round_trip.slides) == 2
     assert any(

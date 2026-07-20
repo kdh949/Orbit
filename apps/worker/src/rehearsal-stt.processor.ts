@@ -1,5 +1,6 @@
 import type { StoragePort } from "@orbit/storage";
 import {
+  analyzeKoreanFillers,
   type Deck,
   deckPatchSchema,
   deckSchema,
@@ -39,6 +40,7 @@ const rehearsalSttPayloadSchema = z.object({
   runId: z.string().min(1),
   deckId: z.string().min(1),
   audioFileId: z.string().min(1),
+  liveTranscript: z.string().max(200_000).nullable().default(null),
 });
 
 const audioAssetRowSchema = z.object({
@@ -439,6 +441,7 @@ export async function processRehearsalSttJob(
       transcriptTextFileId: runInput.transcript_text_file_id,
       transcriptJsonStatus: runInput.transcript_json_status,
       transcriptTextStatus: runInput.transcript_text_status,
+      liveTranscript: payload.liveTranscript,
       transcription: audioProcessingResponse,
     });
   } catch {
@@ -474,6 +477,10 @@ export async function processRehearsalSttJob(
       deckContext,
       audioProcessingResponse,
       runMeta,
+    );
+    analysis = applyLiveTranscriptFillerAnalysis(
+      analysis,
+      payload.liveTranscript,
     );
     onSlideSpeakingRateEvent?.(
       buildSlideSpeakingRateBusinessEvent(payload, analysis.slideInsights),
@@ -616,6 +623,22 @@ export function buildTranscriptionPronunciationContext(
   }
 
   return context;
+}
+
+export function applyLiveTranscriptFillerAnalysis(
+  analysis: z.infer<typeof analyzeResponseSchema>,
+  liveTranscript: string | null,
+): z.infer<typeof analyzeResponseSchema> {
+  if (!liveTranscript?.trim()) {
+    return analysis;
+  }
+
+  const fillers = analyzeKoreanFillers(liveTranscript);
+  return {
+    ...analysis,
+    fillerWordCount: fillers.totalCount,
+    fillerWordDetails: fillers.details,
+  };
 }
 
 function buildRehearsalReport(
@@ -1371,6 +1394,9 @@ function applyReportDeckPatch(
         nextDeck = {
           ...nextDeck,
           ...(operation.title !== undefined ? { title: operation.title } : {}),
+          ...(operation.targetDurationMinutes !== undefined
+            ? { targetDurationMinutes: operation.targetDurationMinutes }
+            : {}),
           ...(operation.metadata
             ? {
                 metadata: applyReportDeckMetadataPatch(
@@ -1382,6 +1408,27 @@ function applyReportDeckPatch(
         };
         break;
       }
+      case "update_slide":
+        nextDeck = {
+          ...nextDeck,
+          slides: nextDeck.slides.map((slide) => {
+            if (slide.slideId !== operation.slideId) return slide;
+            const nextSlide = {
+              ...slide,
+              ...(operation.title !== undefined ? { title: operation.title } : {}),
+              ...(operation.thumbnailUrl !== undefined
+                ? { thumbnailUrl: operation.thumbnailUrl }
+                : {}),
+            };
+            if (operation.estimatedSeconds === null) {
+              delete nextSlide.estimatedSeconds;
+            } else if (operation.estimatedSeconds !== undefined) {
+              nextSlide.estimatedSeconds = operation.estimatedSeconds;
+            }
+            return nextSlide;
+          }),
+        };
+        break;
       case "add_slide":
         nextDeck = {
           ...nextDeck,

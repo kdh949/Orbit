@@ -274,6 +274,7 @@ describe("ActivityPresenterPanel", () => {
         type: question.type,
         responseCount: 2,
         average: null,
+        ratingDistribution: [],
         choices: question.options.map((option, index) => ({
           optionId: option.optionId,
           count: index === 0 ? 2 : 0,

@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 
 import { resolveEditorAssetUrl } from "../../editor/shared/editorAssetUrl";
 import { getImageElementLayout } from "./imageElementLayout";
+import { getReadySlideImage, loadSlideImage } from "./slideImageCache";
 
 type KonvaComponent = ComponentType<any>;
 
@@ -27,9 +28,10 @@ export function ImageElementContent(props: {
     rotation: number;
   };
   imageProps: ImageElementProps;
+  projectId: string;
 }) {
-  const { frame, imageProps } = props;
-  const image = useLoadedImage(resolveEditorAssetUrl(imageProps.src));
+  const { frame, imageProps, projectId } = props;
+  const image = useLoadedImage(projectId, resolveEditorAssetUrl(imageProps.src));
   const layout =
     image && image.naturalWidth > 0 && image.naturalHeight > 0
       ? getImageElementLayout({
@@ -87,8 +89,10 @@ export function ImageElementContent(props: {
   );
 }
 
-function useLoadedImage(src: string) {
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
+function useLoadedImage(projectId: string, src: string) {
+  const [image, setImage] = useState<HTMLImageElement | null>(() =>
+    getReadySlideImage(projectId, src)
+  );
 
   useEffect(() => {
     if (!src || typeof window === "undefined") {
@@ -97,32 +101,27 @@ function useLoadedImage(src: string) {
     }
 
     let cancelled = false;
-    const nextImage = new window.Image();
+    const readyImage = getReadySlideImage(projectId, src);
+    if (readyImage) {
+      setImage(readyImage);
+      return;
+    }
 
-    nextImage.onload = () => {
+    setImage(null);
+    void loadSlideImage(projectId, src, "high").then((nextImage) => {
       if (!cancelled) {
         setImage(nextImage);
       }
-    };
-    nextImage.onerror = () => {
+    }).catch(() => {
       if (!cancelled) {
         setImage(null);
       }
-    };
-    nextImage.src = src;
-
-    if (nextImage.complete && nextImage.naturalWidth > 0) {
-      setImage(nextImage);
-    } else {
-      setImage(null);
-    }
+    });
 
     return () => {
       cancelled = true;
-      nextImage.onload = null;
-      nextImage.onerror = null;
     };
-  }, [src]);
+  }, [projectId, src]);
 
   return image;
 }

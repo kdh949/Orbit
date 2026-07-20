@@ -11,6 +11,7 @@ export const rehearsalTranscriptArtifactSegmentSchema = z
 export const rehearsalTranscriptArtifactSchema = z
   .object({
     text: z.string(),
+    liveTranscript: z.string().nullable().optional(),
     language: z.string().min(1),
     duration: z.number().finite().nonnegative(),
     provider: z.string().min(1),

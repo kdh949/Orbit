@@ -16,24 +16,32 @@ describe("buildRehearsalProjectSummaryDashboardModel", () => {
       expect.objectContaining({
         key: "duration",
         value: "8:42",
+        comparisonLabel: "권장",
+        comparisonValue: "8:00",
         deltaLabel: "+0:42 초과",
         state: "negative",
       }),
       expect.objectContaining({
         key: "silence",
         value: "2회",
+        comparisonLabel: "직전",
+        comparisonValue: "3회",
         deltaLabel: "1회 감소",
         state: "positive",
       }),
       expect.objectContaining({
-        key: "core-message",
+        key: "keyword-coverage",
         value: "7/8 전달",
-        deltaLabel: "1개 개선",
+        comparisonLabel: "직전",
+        comparisonValue: "6/8 전달",
+        deltaLabel: "+13%p 개선",
         state: "positive",
       }),
       expect.objectContaining({
         key: "timing-overrun",
         value: "2/8장",
+        comparisonLabel: "직전",
+        comparisonValue: "3/8장",
         deltaLabel: "1장 감소",
         state: "positive",
       }),
@@ -61,7 +69,11 @@ describe("buildRehearsalProjectSummaryDashboardModel", () => {
     const model = buildRehearsalProjectSummaryDashboardModel(summary, null);
 
     expect(model?.kpis[0]).toEqual(
-      expect.objectContaining({ value: "N/A", detail: "발표 시간 미측정" }),
+      expect.objectContaining({
+        value: "N/A",
+        comparisonValue: null,
+        detail: "발표 시간 미측정",
+      }),
     );
     expect(model?.kpis[1]).toEqual(
       expect.objectContaining({ value: "N/A", detail: "침묵 구간 미측정" }),
@@ -80,6 +92,34 @@ describe("buildRehearsalProjectSummaryDashboardModel", () => {
     );
   });
 
+  it("두 누적 지표가 모두 미측정이고 비교 이슈가 없으면 측정 불가로 표시한다", () => {
+    const summary = summaryFixture();
+    summary.slidePerformanceSummaries[0] = {
+      ...summary.slidePerformanceSummaries[0],
+      timingOverrun: {
+        measurementState: "unmeasured",
+        reasonCode: "SLIDE_TIMINGS_UNAVAILABLE",
+        overrunCount: 0,
+        measurableCount: 0,
+        rate: null,
+      },
+      keywordCoverage: {
+        measurementState: "unmeasured",
+        reasonCode: "NO_MEASURABLE_KEYWORDS",
+        matchedCount: 0,
+        missedCount: 0,
+        measurableCount: 0,
+        rate: null,
+      },
+    };
+
+    const model = buildRehearsalProjectSummaryDashboardModel(summary, null);
+
+    expect(model?.slideRows[0]).toEqual(
+      expect.objectContaining({ status: "측정 불가", statusTone: "neutral" }),
+    );
+  });
+
   it("긴 침묵 추이는 최신 측정 기준과 같은 버전만 연결한다", () => {
     const summary = summaryFixture();
     summary.runMetricSeries[0].longSilence = {
@@ -92,6 +132,38 @@ describe("buildRehearsalProjectSummaryDashboardModel", () => {
     expect(model?.metricSeries.longSilence).toEqual([
       { label: "2회차", value: 2 },
     ]);
+  });
+
+  it("Deck 변경으로 키워드 분모가 달라도 전달률 차이를 비교한다", () => {
+    const summary = summaryFixture();
+    summary.runMetricSeries[0]!.keywordCoverage = {
+      measurementState: "measured",
+      reasonCode: null,
+      matchedCount: 1,
+      missedCount: 38,
+      measurableCount: 39,
+      rate: 0.0256,
+    };
+    summary.runMetricSeries[1]!.keywordCoverage = {
+      measurementState: "measured",
+      reasonCode: null,
+      matchedCount: 3,
+      missedCount: 39,
+      measurableCount: 42,
+      rate: 0.0714,
+    };
+
+    const model = buildRehearsalProjectSummaryDashboardModel(summary, null);
+
+    expect(model?.kpis[2]).toEqual(
+      expect.objectContaining({
+        value: "3/42 전달",
+        comparisonValue: "1/39 전달",
+        detail: "7%",
+        deltaLabel: "+5%p 개선",
+        state: "positive",
+      }),
+    );
   });
 });
 
@@ -134,6 +206,14 @@ function summaryFixture(): RehearsalProjectSummary {
           measurableCount: 8,
           rate: 0.75,
         },
+        keywordCoverage: {
+          measurementState: "measured",
+          reasonCode: null,
+          matchedCount: 6,
+          missedCount: 2,
+          measurableCount: 8,
+          rate: 0.75,
+        },
         timingOverrun: {
           measurementState: "measured",
           reasonCode: null,
@@ -162,6 +242,14 @@ function summaryFixture(): RehearsalProjectSummary {
           reasonCode: null,
           coveredCount: 7,
           partialCount: 0,
+          missedCount: 1,
+          measurableCount: 8,
+          rate: 0.875,
+        },
+        keywordCoverage: {
+          measurementState: "measured",
+          reasonCode: null,
+          matchedCount: 7,
           missedCount: 1,
           measurableCount: 8,
           rate: 0.875,
@@ -200,6 +288,15 @@ function summaryFixture(): RehearsalProjectSummary {
           measurableCount: 2,
           rate: 0.5,
         },
+        keywordCoverage: {
+          measurementState: "measured",
+          reasonCode: null,
+          matchedCount: 1,
+          missedCount: 1,
+          measurableCount: 2,
+          rate: 0.5,
+        },
+        repeatedMissedKeywordCount: 0,
       },
     ],
   };

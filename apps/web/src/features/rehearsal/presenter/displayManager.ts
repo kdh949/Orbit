@@ -131,7 +131,7 @@ export function createDisplayManager(port: DisplayBrowserPort = createBrowserDis
       }
     },
     getCurrentScreen: (): DisplayWindowBounds | null =>
-      cachedScreenDetails?.currentScreen ?? null,
+      snapshotWindowBounds(cachedScreenDetails?.currentScreen),
     getLiveScreen: (screenIndex: number): DisplayWindowBounds | null =>
       cachedScreenDetails?.screens[screenIndex] ?? null,
     openSlideWindow: (
@@ -321,6 +321,23 @@ function toScreenDescriptor(
     screenIndex,
     top: screen.availTop ?? screen.top,
     width: screen.availWidth ?? screen.width
+  };
+}
+
+function snapshotWindowBounds(screen?: ScreenLike): DisplayWindowBounds | null {
+  if (!screen) {
+    return null;
+  }
+
+  return {
+    availHeight: screen.availHeight,
+    availLeft: screen.availLeft,
+    availTop: screen.availTop,
+    availWidth: screen.availWidth,
+    height: screen.height,
+    left: screen.left,
+    top: screen.top,
+    width: screen.width
   };
 }
 

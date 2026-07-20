@@ -1,4 +1,4 @@
-import type { DeckSnapshot, DeckSnapshotReason } from "@orbit/shared";
+import type { DeckSnapshot, DeckSnapshotDetail, DeckSnapshotReason } from "@orbit/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   IconArrowLeft,
@@ -7,7 +7,7 @@ import {
   IconHistory,
   IconRefresh,
 } from "@tabler/icons-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   OrbitButton,
@@ -16,7 +16,8 @@ import {
   type OrbitStatusTone,
 } from "../../../components/ui";
 import { fetchProjectDeck } from "../../rehearsal/keywords/keywordEditorApi";
-import { fetchDeckSnapshots, restoreDeckSnapshot } from "./deckSnapshotApi";
+import { ReadOnlySlideCanvas } from "../../slides/rendering";
+import { fetchDeckSnapshot, fetchDeckSnapshots, restoreDeckSnapshot } from "./deckSnapshotApi";
 import "./deck-version-history.css";
 
 const reasonLabels: Record<DeckSnapshotReason, string> = {
@@ -54,6 +55,16 @@ export function DeckVersionHistoryPage(props: { projectId: string }) {
     () => snapshotsQuery.data?.find((item) => item.snapshotId === selectedId) ?? snapshotsQuery.data?.[0],
     [selectedId, snapshotsQuery.data],
   );
+  const selectedSnapshotId = selected?.snapshotId;
+  const snapshotQuery = useQuery({
+    queryKey: ["deck-snapshot", props.projectId, selectedSnapshotId],
+    queryFn: () => {
+      if (!selectedSnapshotId) throw new Error("선택한 버전이 없습니다.");
+      return fetchDeckSnapshot(props.projectId, selectedSnapshotId);
+    },
+    enabled: Boolean(selectedSnapshotId),
+    retry: false,
+  });
 
   async function restoreSelected() {
     if (!selected) return;
@@ -139,8 +150,16 @@ export function DeckVersionHistoryPage(props: { projectId: string }) {
                 </OrbitButton>
               </header>
               <div className="deck-history-version-card">
-                <span>{currentDeck?.title ?? "ORBIT PRESENTATION"}</span>
-                <div><small>RESTORE POINT</small><strong>VERSION<br />{selected.version}</strong></div>
+                {snapshotQuery.isLoading ? (
+                  <div className="deck-history-preview-state" role="status">버전 미리보기를 불러오는 중이에요.</div>
+                ) : snapshotQuery.isError ? (
+                  <div className="deck-history-preview-state" role="alert">
+                    <span>선택한 버전을 불러오지 못했어요.</span>
+                    <OrbitButton onClick={() => void snapshotQuery.refetch()} size="compact" variant="secondary">다시 시도</OrbitButton>
+                  </div>
+                ) : snapshotQuery.data ? (
+                  <DeckSnapshotCanvasPreview snapshot={snapshotQuery.data} />
+                ) : null}
                 <dl>
                   <div><dt>변경 유형</dt><dd>{reasonLabels[selected.reason]}</dd></div>
                   <div><dt>저장 시각</dt><dd>{formatSnapshotDate(selected.createdAt)}</dd></div>
@@ -162,6 +181,45 @@ export function DeckVersionHistoryPage(props: { projectId: string }) {
       >
         <p className="deck-history-dialog-note">현재 작업은 사라지지 않고 복원 직전 상태로 보존됩니다.</p>
       </OrbitDialog>
+    </div>
+  );
+}
+
+function DeckSnapshotCanvasPreview(props: { snapshot: DeckSnapshotDetail }) {
+  const shell = useRef<HTMLDivElement | null>(null);
+  const [scale, setScale] = useState(0);
+  const { deck } = props.snapshot;
+  const slide = deck.slides[0];
+
+  useEffect(() => {
+    const target = shell.current;
+    if (!target || !slide) return;
+
+    const update = () => {
+      if (target.clientWidth <= 0) return;
+      setScale(target.clientWidth / deck.canvas.width);
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [deck, slide]);
+
+  if (!slide) {
+    return <div className="deck-history-preview-state">이 버전에는 표시할 슬라이드가 없습니다.</div>;
+  }
+
+  return (
+    <div
+      aria-label={`버전 ${props.snapshot.version} 첫 슬라이드 미리보기`}
+      className="deck-history-slide-preview"
+      ref={shell}
+      style={{ aspectRatio: `${deck.canvas.width} / ${deck.canvas.height}` }}
+    >
+      {scale > 0 ? (
+        <ReadOnlySlideCanvas deck={deck} scale={scale} slide={slide} />
+      ) : null}
     </div>
   );
 }

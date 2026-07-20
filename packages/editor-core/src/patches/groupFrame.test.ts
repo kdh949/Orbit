@@ -199,5 +199,37 @@ describe("group frame helpers", () => {
       height: 50,
       rotation: 12
     });
+
+    const offCanvasPatch = createGroupedElementFramePatch(
+      deck,
+      firstSlide.slideId,
+      "el_group",
+      {
+        x: -80,
+        y: -60
+      }
+    );
+    const offCanvasResult = applyDeckPatch(deck, offCanvasPatch);
+
+    expect(offCanvasResult.ok).toBe(true);
+
+    if (!offCanvasResult.ok) {
+      return;
+    }
+
+    const offCanvasElements = offCanvasResult.deck.slides[0].elements;
+
+    expect(
+      offCanvasElements.find((element) => element.elementId === "el_group")
+    ).toMatchObject({ x: -80, y: -60 });
+    expect(
+      offCanvasElements.find((element) => element.elementId === "el_child_1")
+    ).toMatchObject({ x: -60, y: -40 });
+    expect(
+      offCanvasElements.find((element) => element.elementId === "el_nested_group")
+    ).toMatchObject({ x: 60, y: -40 });
+    expect(
+      offCanvasElements.find((element) => element.elementId === "el_nested_child")
+    ).toMatchObject({ x: 100, y: -10 });
   });
 });

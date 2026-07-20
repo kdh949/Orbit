@@ -1,5 +1,9 @@
 import type { DeckSnapshot } from "@orbit/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("../../slides/rendering", () => ({
+  ReadOnlySlideCanvas: () => null,
+}));
 
 import { snapshotLabel, snapshotTone } from "./DeckVersionHistoryPage";
 

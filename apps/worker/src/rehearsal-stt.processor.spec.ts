@@ -2,6 +2,7 @@ import type { StoragePort } from "@orbit/storage";
 import type { DataSource } from "typeorm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  applyLiveTranscriptFillerAnalysis,
   buildTranscriptionPronunciationContext,
   processRehearsalSttJob,
 } from "./rehearsal-stt.processor";
@@ -13,6 +14,45 @@ const payload = {
   deckId: "deck-a",
   audioFileId: "file-audio",
 };
+
+describe("applyLiveTranscriptFillerAnalysis", () => {
+  const serverAnalysis = {
+    runId: "run-a",
+    wordsPerMinute: 123,
+    fillerWordCount: 1,
+    longSilenceCount: 2,
+    keywordCoverage: 0.75,
+    speedSamples: [{ startSecond: 0, endSecond: 10, wordsPerMinute: 123 }],
+    fillerWordDetails: [{ word: "음", count: 1 }],
+    missedKeywords: [{ slideId: "slide-1", keywordId: "keyword-1", text: "목표" }],
+    slideInsights: [],
+  };
+
+  it("uses the live transcript only for aggregate filler metrics", () => {
+    const result = applyLiveTranscriptFillerAnalysis(
+      serverAnalysis,
+      "음 오늘은 어 그러니까 핵심을 설명합니다",
+    );
+
+    expect(result.fillerWordCount).toBe(3);
+    expect(result.fillerWordDetails).toEqual(expect.arrayContaining([
+      { word: "그러니까", count: 1 },
+      { word: "어", count: 1 },
+      { word: "음", count: 1 },
+    ]));
+    expect(result.wordsPerMinute).toBe(serverAnalysis.wordsPerMinute);
+    expect(result.keywordCoverage).toBe(serverAnalysis.keywordCoverage);
+    expect(result.speedSamples).toBe(serverAnalysis.speedSamples);
+    expect(result.missedKeywords).toBe(serverAnalysis.missedKeywords);
+    expect(result.slideInsights).toBe(serverAnalysis.slideInsights);
+  });
+
+  it("keeps the server filler result when no live transcript is available", () => {
+    expect(applyLiveTranscriptFillerAnalysis(serverAnalysis, null)).toBe(
+      serverAnalysis,
+    );
+  });
+});
 
 const assetRow = {
   file_id: "file-audio",

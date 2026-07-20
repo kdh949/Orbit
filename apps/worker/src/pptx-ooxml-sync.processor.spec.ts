@@ -9,6 +9,12 @@ import {
 
 const pptxMimeType =
   "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+const pngSignature = new Uint8Array([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+]);
+const pngSignatureDataUrl = `data:image/png;base64,${Buffer.from(
+  pngSignature,
+).toString("base64")}`;
 
 const payload = {
   jobId: "job-sync",
@@ -69,7 +75,7 @@ describe("processPptxOoxmlSyncJob", () => {
       const url = String(input);
       if (url.endsWith("current.pptx")) return new Response("pptx-bytes");
       if (url.endsWith("image.png")) {
-        return new Response(new Uint8Array([1, 2, 3]));
+        return new Response(pngSignature);
       }
       if (url.endsWith("/ai/pptx-ooxml-sync")) {
         const form = init?.body as FormData;
@@ -87,7 +93,7 @@ describe("processPptxOoxmlSyncJob", () => {
           }),
           expect.objectContaining({
             type: "update_element_props",
-            props: { src: "data:image/png;base64,AQID" },
+            props: { src: pngSignatureDataUrl },
           }),
         ]);
         return new Response(
@@ -139,6 +145,67 @@ describe("processPptxOoxmlSyncJob", () => {
       expect.stringContaining("DELETE FROM deck_patches"),
       ["project-a", "deck_a", 3],
     );
+  });
+
+  it("uses the detected image MIME when legacy asset metadata is wrong", async () => {
+    const { dataSource } = createDataSource({
+      deckVersion: 2,
+      syncedVersion: 1,
+      operations: [
+        {
+          type: "update_element_props",
+          slideId: "slide_1",
+          elementId: "el_image",
+          props: {
+            src: "/api/v1/projects/project-a/assets/file_image/content",
+          },
+        },
+      ],
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("current.pptx")) return new Response("pptx-bytes");
+        if (url.endsWith("image.png")) {
+          return new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]));
+        }
+        if (url.endsWith("/ai/pptx-ooxml-sync")) {
+          const operationsPart = (init?.body as FormData).get(
+            "operations_file",
+          );
+          expect(JSON.parse(await (operationsPart as Blob).text())).toEqual([
+            expect.objectContaining({
+              type: "update_element_props",
+              props: {
+                src: "data:image/jpeg;base64,/9j/4A==",
+              },
+            }),
+          ]);
+          return new Response(
+            JSON.stringify(
+              workerResponse([
+                {
+                  operationType: "update_element_props",
+                  slideId: "slide_1",
+                  elementId: "el_image",
+                },
+              ]),
+            ),
+          );
+        }
+        return new Response("unexpected", { status: 500 });
+      }),
+    );
+
+    const job = await processPptxOoxmlSyncJob(
+      dataSource,
+      storage,
+      "http://localhost:8000",
+      payload,
+    );
+
+    expect(job.status, JSON.stringify(job.error)).toBe("succeeded");
   });
 
   it("keeps logical group operations out of the OOXML package", async () => {
@@ -806,6 +873,7 @@ describe("processPptxOoxmlSyncJob", () => {
     ];
     const { dataSource } = createDataSource({
       blueprint: initialBlueprint,
+      deckElements: [authoredTableElement()],
       deckVersion: 2,
       syncedVersion: 1,
       operations: [
@@ -871,7 +939,13 @@ describe("processPptxOoxmlSyncJob", () => {
   });
 
   it("treats a lower queued version as a no-op after a newer package is synced", async () => {
+    const blueprint = templateBlueprint(3);
+    blueprint.slides[0]!.elementSources = [
+      rasterizedElementSource("el_authored_line", "line"),
+    ];
     const { dataSource, query } = createDataSource({
+      blueprint,
+      deckElements: [authoredLineElement()],
       deckVersion: 3,
       syncedVersion: 3,
       operations: [],
@@ -890,6 +964,15 @@ describe("processPptxOoxmlSyncJob", () => {
     expect(job.result).toMatchObject({
       currentPackageFileId: "file_current",
       syncedDeckVersion: 3,
+      syncCapabilityVersion: 2,
+      rasterizedElements: [
+        expect.objectContaining({
+          slideId: "slide_1",
+          elementId: "el_authored_line",
+          elementType: "line",
+        }),
+      ],
+      warnings: [expect.stringContaining("line 1")],
     });
     expect(fetchMock).not.toHaveBeenCalled();
     expect(storage.putObject).not.toHaveBeenCalled();
@@ -1054,6 +1137,7 @@ describe("processPptxOoxmlSyncJob", () => {
       code: "PPTX_OOXML_SYNC_JSON_INVALID",
       message: "PPTX_OOXML_SYNC_JSON_INVALID:operations",
       retryable: false,
+      syncCapabilityVersion: 2,
     });
     expect(JSON.stringify(job.error)).not.toContain("private deck text");
     expect(storage.putObject).not.toHaveBeenCalled();
@@ -1072,6 +1156,43 @@ describe("processPptxOoxmlSyncJob", () => {
         String(sql).includes("DELETE FROM deck_patches"),
       ),
     ).toBe(false);
+  });
+
+  it("marks a transient transport failure retryable at the current capability", async () => {
+    const { dataSource } = createDataSource({
+      deckVersion: 2,
+      syncedVersion: 1,
+      operations: [
+        {
+          type: "update_element_props",
+          slideId: "slide_1",
+          elementId: "el_title",
+          props: { text: "Retry later" },
+        },
+      ],
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL) => {
+        if (String(input).endsWith("current.pptx")) {
+          return new Response("pptx-bytes");
+        }
+        return new Response("temporarily unavailable", { status: 503 });
+      }),
+    );
+
+    const job = await processPptxOoxmlSyncJob(
+      dataSource,
+      storage,
+      "http://localhost:8000",
+      payload,
+    );
+
+    expect(job.error).toMatchObject({
+      code: "PPTX_OOXML_SYNC_FAILED",
+      retryable: true,
+      syncCapabilityVersion: 2,
+    });
   });
 
   it.each([
@@ -1126,6 +1247,7 @@ describe("processPptxOoxmlSyncJob", () => {
         code: "PPTX_OOXML_SYNC_UNSUPPORTED_OPERATION",
         message: `update_element_props:${reasonCode}:slide_1:el_table`,
         retryable: false,
+        syncCapabilityVersion: 2,
       });
       expect(JSON.stringify(job.error)).not.toContain(privateCellText);
       expect(storage.putObject).not.toHaveBeenCalled();
@@ -1278,6 +1400,7 @@ describe("processPptxOoxmlSyncJob", () => {
       code: "PPTX_OOXML_SYNC_UNSUPPORTED_OPERATION",
       message: "reorder_slides:SLIDE_REORDER_PERMUTATION_INVALID",
       retryable: false,
+      syncCapabilityVersion: 2,
     });
     expect(fetchMock).not.toHaveBeenCalled();
     expect(storage.putObject).not.toHaveBeenCalled();
@@ -1290,8 +1413,22 @@ describe("processPptxOoxmlSyncJob", () => {
 
   it("creates an authored slide and embeds an image from the same sync batch", async () => {
     let savedBlueprint: Record<string, unknown> | null = null;
+    const authoredImage = authoredImageElement();
     const { dataSource } = createDataSource({
-      deckSlideIds: ["slide_1", "slide_authored"],
+      deckSlides: [
+        {
+          slideId: "slide_1",
+          order: 1,
+          title: "Slide 1",
+          elements: [],
+        },
+        {
+          slideId: "slide_authored",
+          order: 2,
+          title: "Authored slide",
+          elements: [authoredImage],
+        },
+      ],
       deckVersion: 2,
       syncedVersion: 1,
       operations: [
@@ -1312,24 +1449,7 @@ describe("processPptxOoxmlSyncJob", () => {
         {
           type: "add_element",
           slideId: "slide_authored",
-          element: {
-            elementId: "el_authored_image",
-            type: "image",
-            x: 100,
-            y: 100,
-            width: 320,
-            height: 180,
-            rotation: 0,
-            opacity: 1,
-            zIndex: 0,
-            locked: false,
-            visible: true,
-            ooxmlOrigin: "authored",
-            props: {
-              src: "/api/v1/projects/project-a/assets/file_image/content",
-              fit: "contain",
-            },
-          },
+          element: authoredImage,
         },
       ],
       onBlueprintUpdate: (blueprint) => {
@@ -1341,7 +1461,7 @@ describe("processPptxOoxmlSyncJob", () => {
       const url = String(input);
       if (url.endsWith("current.pptx")) return new Response("pptx-bytes");
       if (url.endsWith("image.png")) {
-        return new Response(new Uint8Array([1, 2, 3]));
+        return new Response(pngSignature);
       }
       if (url.endsWith("/ai/pptx-ooxml-sync")) {
         const form = init?.body as FormData;
@@ -1359,7 +1479,7 @@ describe("processPptxOoxmlSyncJob", () => {
             sourceSlidePart: "ppt/slides/slide2.xml",
             element: expect.objectContaining({
               props: expect.objectContaining({
-                src: "data:image/png;base64,AQID",
+                src: pngSignatureDataUrl,
               }),
             }),
           }),
@@ -1420,6 +1540,170 @@ describe("processPptxOoxmlSyncJob", () => {
           ],
         }),
       ]),
+    });
+  });
+
+  it("sends final authored raster candidates and persists fallback warnings", async () => {
+    let savedBlueprint: Record<string, unknown> | null = null;
+    const line = authoredLineElement();
+    const { dataSource } = createDataSource({
+      deckElements: [line],
+      deckVersion: 2,
+      syncedVersion: 1,
+      operations: [
+        {
+          type: "add_element",
+          slideId: "slide_1",
+          element: line,
+        },
+      ],
+      onBlueprintUpdate: (blueprint) => {
+        savedBlueprint = blueprint;
+        return true;
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("current.pptx")) return new Response("pptx-bytes");
+        if (url.endsWith("/ai/pptx-ooxml-sync")) {
+          const form = init?.body as FormData;
+          const fallbackPart = form.get("authored_element_fallbacks_file");
+          expect(fallbackPart).toBeInstanceOf(Blob);
+          expect(JSON.parse(await (fallbackPart as Blob).text())).toEqual({
+            theme: expect.objectContaining({ name: expect.any(String) }),
+            elements: [
+              {
+                slideId: "slide_1",
+                element: expect.objectContaining({
+                  ...line,
+                  props: expect.objectContaining(line.props),
+                }),
+              },
+            ],
+          });
+          return new Response(
+            JSON.stringify({
+              ...workerResponse([
+                {
+                  operationType: "add_element",
+                  slideId: "slide_1",
+                  elementId: "el_authored_line",
+                },
+              ]),
+              elementSources: [
+                {
+                  elementId: "el_authored_line",
+                  elementType: "line",
+                  ooxmlOrigin: "authored",
+                  slidePart: "ppt/slides/slide1.xml",
+                  shapeId: "8",
+                  relationshipId: "rId8",
+                  sourceType: "image",
+                  writable: true,
+                  fallbackMode: "rasterized",
+                  fallbackReason: "AUTHORED_ELEMENT_TYPE_RASTERIZED",
+                },
+              ],
+            }),
+          );
+        }
+        return new Response("unexpected", { status: 500 });
+      }),
+    );
+
+    const job = await processPptxOoxmlSyncJob(
+      dataSource,
+      storage,
+      "http://localhost:8000",
+      payload,
+    );
+
+    expect(job.status, JSON.stringify(job.error)).toBe("succeeded");
+    expect(job.result).toMatchObject({
+      syncedDeckVersion: 2,
+      syncCapabilityVersion: 2,
+      rasterizedElements: [
+        {
+          slideId: "slide_1",
+          elementId: "el_authored_line",
+          elementType: "line",
+          reasonCode: "AUTHORED_ELEMENT_TYPE_RASTERIZED",
+        },
+      ],
+      warnings: [expect.stringContaining("line 1")],
+    });
+    expect(savedBlueprint).toMatchObject({
+      slides: [
+        expect.objectContaining({
+          elementSources: expect.arrayContaining([
+            expect.objectContaining({
+              elementId: "el_authored_line",
+              fallbackMode: "rasterized",
+            }),
+          ]),
+        }),
+      ],
+    });
+  });
+
+  it("removes a deleted raster fallback source and its warning", async () => {
+    let savedBlueprint: Record<string, unknown> | null = null;
+    const blueprint = templateBlueprint(1);
+    blueprint.slides[0]!.elementSources = [
+      rasterizedElementSource("el_authored_line", "line"),
+    ];
+    const { dataSource } = createDataSource({
+      blueprint,
+      deckElements: [],
+      deckVersion: 2,
+      syncedVersion: 1,
+      operations: [
+        {
+          type: "delete_element",
+          slideId: "slide_1",
+          elementId: "el_authored_line",
+        },
+      ],
+      onBlueprintUpdate: (nextBlueprint) => {
+        savedBlueprint = nextBlueprint;
+        return true;
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL) =>
+        String(input).endsWith("current.pptx")
+          ? new Response("pptx-bytes")
+          : new Response(
+              JSON.stringify(
+                workerResponse([
+                  {
+                    operationType: "delete_element",
+                    slideId: "slide_1",
+                    elementId: "el_authored_line",
+                  },
+                ]),
+              ),
+            ),
+      ),
+    );
+
+    const job = await processPptxOoxmlSyncJob(
+      dataSource,
+      storage,
+      "http://localhost:8000",
+      payload,
+    );
+
+    expect(job.status, JSON.stringify(job.error)).toBe("succeeded");
+    expect(job.result).toMatchObject({
+      rasterizedElements: [],
+      warnings: [],
+    });
+    expect(savedBlueprint).toMatchObject({
+      slides: [expect.objectContaining({ elementSources: [] })],
     });
   });
 });
@@ -1630,6 +1914,85 @@ function tableElementSource(
         fingerprint: index.toString(16).padStart(64, "0"),
       }),
     ),
+  };
+}
+
+function authoredLineElement() {
+  return {
+    elementId: "el_authored_line",
+    type: "line" as const,
+    x: 120,
+    y: 180,
+    width: 420,
+    height: 90,
+    rotation: 0,
+    opacity: 1,
+    zIndex: 3,
+    locked: false,
+    visible: true,
+    ooxmlOrigin: "authored" as const,
+    props: { stroke: "#2563EB", strokeWidth: 6 },
+  };
+}
+
+function authoredImageElement() {
+  return {
+    elementId: "el_authored_image",
+    type: "image" as const,
+    x: 100,
+    y: 100,
+    width: 320,
+    height: 180,
+    rotation: 0,
+    opacity: 1,
+    zIndex: 0,
+    locked: false,
+    visible: true,
+    ooxmlOrigin: "authored" as const,
+    props: {
+      src: "/api/v1/projects/project-a/assets/file_image/content",
+      fit: "contain" as const,
+    },
+  };
+}
+
+function authoredTableElement() {
+  return {
+    elementId: "el_table",
+    type: "table" as const,
+    x: 100,
+    y: 100,
+    width: 600,
+    height: 240,
+    rotation: 0,
+    opacity: 1,
+    zIndex: 0,
+    locked: false,
+    visible: true,
+    ooxmlOrigin: "authored" as const,
+    props: {
+      rows: [
+        [{ text: "A" }, { text: "B" }, { text: "C" }],
+        [{ text: "D" }, { text: "E" }, { text: "F" }],
+      ],
+      columnWidths: [100, 100, 100],
+      rowHeights: [60, 60],
+    },
+  };
+}
+
+function rasterizedElementSource(elementId: string, elementType: "line") {
+  return {
+    elementId,
+    elementType,
+    ooxmlOrigin: "authored" as const,
+    slidePart: "ppt/slides/slide1.xml",
+    shapeId: "8",
+    relationshipId: "rId8",
+    sourceType: "image" as const,
+    writable: true,
+    fallbackMode: "rasterized" as const,
+    fallbackReason: "AUTHORED_ELEMENT_TYPE_RASTERIZED" as const,
   };
 }
 
