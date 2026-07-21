@@ -2,6 +2,12 @@ import { z } from "zod";
 
 import { openAiRealtimeTranscriptionDelaySchema } from "../config/runtime";
 
+export const realtimeTranscriptionClientSecretRequestSchema = z
+  .object({
+    delay: openAiRealtimeTranscriptionDelaySchema.optional()
+  })
+  .strict();
+
 export const realtimeTranscriptionClientSecretResponseSchema = z
   .object({
     clientSecret: z.string().min(1),

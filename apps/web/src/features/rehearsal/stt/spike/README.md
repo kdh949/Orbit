@@ -14,6 +14,8 @@ http://localhost:5173/gpt-realtime-whisper-spike.html?projectId=<projectId>
 ```
 
 브라우저에는 장기 API key가 아닌 project-scoped ephemeral client secret만 전달된다.
+선택한 delay는 client secret 발급 시점부터 적용되며, `session.created`와
+`session.updated`에서 관찰한 유효 설정이 요청과 다르면 측정을 시작하지 않는다.
 
 ## 측정값
 

@@ -133,6 +133,28 @@ describe("RealtimeTranscriptionService", () => {
     );
   });
 
+  it("uses a validated request delay instead of the env default", async () => {
+    vi.stubEnv("OPENAI_REALTIME_TRANSCRIPTION_DELAY", "medium");
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ value: "ek_test", expires_at: 1790000000 }))
+    );
+    const service = new RealtimeTranscriptionService(
+      fetcher as unknown as typeof fetch,
+      createLogger()
+    );
+
+    await expect(
+      service.createClientSecret({
+        projectId: "project_1",
+        userId: "user_1",
+        delay: "minimal"
+      })
+    ).resolves.toMatchObject({ delay: "minimal" });
+    const request = fetcher.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(request.body)).session.audio.input.transcription.delay)
+      .toBe("minimal");
+  });
+
   it("fails closed when OpenAI API key is unavailable", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
     const service = new RealtimeTranscriptionService(

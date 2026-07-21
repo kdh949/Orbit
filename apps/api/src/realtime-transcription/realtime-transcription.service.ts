@@ -1,5 +1,8 @@
 import { loadOrbitConfig } from "@orbit/config";
-import { realtimeTranscriptionClientSecretResponseSchema } from "@orbit/shared";
+import {
+  realtimeTranscriptionClientSecretResponseSchema,
+  type OpenAiRealtimeTranscriptionDelay
+} from "@orbit/shared";
 import {
   BadGatewayException,
   Inject,
@@ -31,12 +34,17 @@ export class RealtimeTranscriptionService {
     private readonly logger: PinoLogger
   ) {}
 
-  async createClientSecret(input: { projectId: string; userId: string }) {
+  async createClientSecret(input: {
+    projectId: string;
+    userId: string;
+    delay?: OpenAiRealtimeTranscriptionDelay;
+  }) {
     if (!this.config.OPENAI_API_KEY) {
       throw new ServiceUnavailableException("OpenAI API key is not configured.");
     }
 
     const safetyIdentifier = hashSafetyIdentifier(input.userId);
+    const delay = input.delay ?? this.config.OPENAI_REALTIME_TRANSCRIPTION_DELAY;
     let response: Response;
     try {
       response = await this.fetcher(
@@ -54,7 +62,7 @@ export class RealtimeTranscriptionService {
                   transcription: {
                     model: this.config.OPENAI_REALTIME_TRANSCRIPTION_MODEL,
                     language: "ko",
-                    delay: this.config.OPENAI_REALTIME_TRANSCRIPTION_DELAY
+                    delay
                   },
                   turn_detection: null
                 }
@@ -135,7 +143,7 @@ export class RealtimeTranscriptionService {
       clientSecret: parsed.data.value,
       expiresAt: parsed.data.expires_at,
       model: this.config.OPENAI_REALTIME_TRANSCRIPTION_MODEL,
-      delay: this.config.OPENAI_REALTIME_TRANSCRIPTION_DELAY
+      delay
     });
   }
 }

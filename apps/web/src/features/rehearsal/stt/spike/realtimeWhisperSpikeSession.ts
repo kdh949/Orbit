@@ -241,7 +241,12 @@ export class RealtimeWhisperSpikeSession {
   private async fetchClientSecret() {
     const response = await fetch(
       `/api/v1/projects/${encodeURIComponent(this.options.projectId)}/realtime-transcription/client-secret`,
-      { credentials: "include", method: "POST" }
+      {
+        body: JSON.stringify({ delay: this.options.delay }),
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        method: "POST"
+      }
     );
     if (!response.ok) {
       const payload: unknown = await response.json().catch(() => undefined);
@@ -460,10 +465,16 @@ export class RealtimeWhisperSpikeSession {
     });
 
     if (event.type === "session.created" || event.type === "session.updated") {
-      const transcription = readTranscriptionConfig(event);
+      const transcription = mergeTranscriptionConfig(
+        {
+          model: this.snapshot.activeModel,
+          delay: this.snapshot.activeDelay
+        },
+        readTranscriptionConfig(event)
+      );
       this.patch({
-        activeModel: transcription.model ?? this.snapshot.activeModel,
-        activeDelay: transcription.delay ?? this.snapshot.activeDelay
+        activeModel: transcription.model,
+        activeDelay: transcription.delay
       });
       if (event.type === "session.updated") {
         this.handleSessionUpdated(transcription);
@@ -721,6 +732,16 @@ function readTranscriptionConfig(event: Record<string, unknown>) {
       transcription && typeof transcription.delay === "string"
         ? transcription.delay
         : null
+  };
+}
+
+export function mergeTranscriptionConfig(
+  current: { model: string | null; delay: string | null },
+  reported: { model: string | null; delay: string | null }
+) {
+  return {
+    model: reported.model ?? current.model,
+    delay: reported.delay ?? current.delay
   };
 }
 

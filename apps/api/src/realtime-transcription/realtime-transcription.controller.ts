@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   HttpCode,
   HttpStatus,
@@ -7,6 +8,7 @@ import {
   Req,
   UnauthorizedException
 } from "@nestjs/common";
+import { realtimeTranscriptionClientSecretRequestSchema } from "@orbit/shared";
 import type { Request } from "express";
 import { authSessionCookieName } from "../auth/auth.constants";
 import { AuthService } from "../auth/auth.service";
@@ -29,14 +31,19 @@ export class RealtimeTranscriptionController {
   @HttpCode(HttpStatus.OK)
   async createClientSecret(
     @Param("projectId") projectId: string,
-    @Req() request: SignedCookieRequest
+    @Req() request: SignedCookieRequest,
+    @Body() body: unknown
   ) {
     const user = await this.getCurrentUser(request);
     await this.projectsService.assertCanReadProject(projectId, user.userId);
+    const requestBody = realtimeTranscriptionClientSecretRequestSchema.parse(
+      body ?? {}
+    );
 
     return this.realtimeTranscriptionService.createClientSecret({
       projectId,
-      userId: user.userId
+      userId: user.userId,
+      delay: requestBody.delay
     });
   }
 

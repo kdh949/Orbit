@@ -38,7 +38,7 @@ describe("RealtimeTranscriptionController", () => {
         signedCookies: {
           [authSessionCookieName]: "session_1"
         }
-      } as never)
+      } as never, { delay: "high" })
     ).resolves.toMatchObject({
       clientSecret: "ek_test",
       model: "gpt-realtime-whisper"
@@ -50,6 +50,7 @@ describe("RealtimeTranscriptionController", () => {
       "user_1"
     );
     expect(realtimeTranscriptionService.createClientSecret).toHaveBeenCalledWith({
+      delay: "high",
       projectId: "project_1",
       userId: "user_1"
     });
@@ -63,7 +64,11 @@ describe("RealtimeTranscriptionController", () => {
     );
 
     await expect(
-      controller.createClientSecret("project_1", { signedCookies: {} } as never)
+      controller.createClientSecret(
+        "project_1",
+        { signedCookies: {} } as never,
+        {}
+      )
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

@@ -1430,7 +1430,10 @@ OpenAI Realtime client secret API:
 - `POST /api/v1/projects/:projectId/realtime-transcription/client-secret`
   - 인증: signed session cookie 필수
   - 권한: `projectId`에 대한 read 권한 필요
+  - request: `{ "delay"?: "minimal" | "low" | "medium" | "high" | "xhigh" }`
+  - `delay`를 생략하면 `OPENAI_REALTIME_TRANSCRIPTION_DELAY`를 사용한다.
   - response: `{ "clientSecret": "ek_...", "expiresAt": 1790000000, "model": "gpt-realtime-whisper", "delay": "minimal" }`
+  - response의 `delay`는 발급된 transcription session에 실제로 요청한 값이다.
   - 서버 로그에는 OpenAI API key, client secret, raw audio, transcript 원문을 남기지 않는다.
 
 ### Report STT/AI
