@@ -21,6 +21,8 @@ http://localhost:5173/gpt-realtime-whisper-spike.html?projectId=<projectId>
 - 입력: RMS dB, 자동 noise floor/threshold, 안정화된 로컬 speaking 상태
 - 준비 상태: `session.updated` 설정 일치와 1.5초 무음 보정 완료 여부
 - 분할: silence 우선 commit과 선택 가능한 6~12초 safety commit
+- 마이크: 선택 장치 label, track/AudioContext sample rate, channel, mute 상태
+- 오디오 처리: echo cancellation, noise suppression, auto gain control 요청·실제값
 - 전사: incremental delta, completed transcript, item ID, partial count
 - 지연: speech onset → first delta, commit → completed, onset → completed
 - 정확도: 사용자가 입력한 기준 문장과 final transcript 사이의 normalized Korean CER

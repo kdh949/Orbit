@@ -107,7 +107,7 @@ textarea:focus-visible {
 
 .rws-control-strip {
   display: grid;
-  grid-template-columns: minmax(220px, 1.5fr) repeat(4, minmax(116px, 0.7fr)) auto;
+  grid-template-columns: minmax(220px, 1.5fr) minmax(180px, 1.2fr) repeat(4, minmax(116px, 0.7fr)) auto;
   gap: var(--redesign-space-3);
   align-items: end;
   padding: var(--redesign-space-4);
@@ -115,6 +115,38 @@ textarea:focus-visible {
   border: 1px solid var(--redesign-color-dark-surface-high);
   border-radius: var(--redesign-radius-lg);
   background: var(--redesign-color-dark-surface-raised);
+}
+
+.rws-audio-options {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: var(--redesign-space-4);
+  align-items: center;
+  min-width: 0;
+  padding: var(--redesign-space-3) 0 0;
+  border: 0;
+  border-top: 1px solid var(--redesign-color-dark-surface-high);
+  color: var(--redesign-color-disabled);
+  font-size: var(--redesign-type-label-xs-size);
+}
+
+.rws-audio-options legend {
+  float: left;
+  margin-right: var(--redesign-space-2);
+  font-weight: var(--redesign-type-label-sm-weight);
+}
+
+.rws-audio-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--redesign-space-2);
+}
+
+.rws-audio-options input {
+  width: var(--redesign-space-4);
+  height: var(--redesign-space-4);
+  margin: 0;
+  accent-color: var(--redesign-color-primary);
 }
 
 .rws-field {
@@ -559,6 +591,10 @@ textarea:focus-visible {
     grid-column: span 2;
   }
 
+  .rws-device-field {
+    grid-column: span 2;
+  }
+
   .rws-actions {
     justify-content: flex-end;
   }
@@ -590,6 +626,15 @@ textarea:focus-visible {
 
   .rws-project-field {
     grid-column: auto;
+  }
+
+  .rws-device-field {
+    grid-column: auto;
+  }
+
+  .rws-audio-options {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .rws-actions,

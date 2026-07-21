@@ -8,6 +8,7 @@ import {
   createInitialSnapshot,
   RealtimeWhisperSpikeSession,
   type RealtimeWhisperSpikeSnapshot,
+  type SpikeAudioInputInfo,
   type SpikeConnectionPhase
 } from "./realtimeWhisperSpikeSession";
 import "./realtime-whisper-spike.css";
@@ -36,6 +37,11 @@ export function RealtimeWhisperSpikeApp() {
     () => new URLSearchParams(window.location.search).get("projectId") ?? ""
   );
   const [delay, setDelay] = useState<OpenAiRealtimeTranscriptionDelay>("minimal");
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [deviceId, setDeviceId] = useState("");
+  const [echoCancellation, setEchoCancellation] = useState(true);
+  const [noiseSuppression, setNoiseSuppression] = useState(true);
+  const [autoGainControl, setAutoGainControl] = useState(true);
   const [maxCommitIntervalMs, setMaxCommitIntervalMs] = useState<number | null>(
     10_000
   );
@@ -63,6 +69,17 @@ export function RealtimeWhisperSpikeApp() {
     };
   }, []);
 
+  useEffect(() => {
+    const refresh = () => {
+      void readAudioInputDevices().then(setAudioDevices);
+    };
+    refresh();
+    navigator.mediaDevices?.addEventListener("devicechange", refresh);
+    return () => {
+      navigator.mediaDevices?.removeEventListener("devicechange", refresh);
+    };
+  }, []);
+
   const start = async () => {
     const normalizedProjectId = projectId.trim();
     if (!normalizedProjectId) {
@@ -81,17 +98,23 @@ export function RealtimeWhisperSpikeApp() {
         silenceCommitMs,
         noiseCalibrationMs: 1500,
         noiseThresholdMarginDb,
-        speechAttackMs: 200
+        speechAttackMs: 200,
+        ...(deviceId ? { deviceId } : {}),
+        echoCancellation,
+        noiseSuppression,
+        autoGainControl
       },
       setSnapshot
     );
     sessionRef.current = session;
     await session.start();
+    setAudioDevices(await readAudioInputDevices());
   };
 
   const stop = async () => {
     await sessionRef.current?.stop();
     sessionRef.current = null;
+    setAudioDevices(await readAudioInputDevices());
   };
 
   const reset = () => {
@@ -113,7 +136,25 @@ export function RealtimeWhisperSpikeApp() {
         silenceCommitMs,
         noiseCalibrationMs: 1500,
         noiseThresholdMarginDb,
-        speechAttackMs: 200
+        speechAttackMs: 200,
+        requestedAudioProcessing: {
+          echoCancellation,
+          noiseSuppression,
+          autoGainControl
+        },
+        actualAudioProcessing: snapshot.audioInput
+          ? {
+              sampleRate: snapshot.audioInput.sampleRate,
+              audioContextSampleRate: snapshot.audioInput.audioContextSampleRate,
+              channelCount: snapshot.audioInput.channelCount,
+              echoCancellation: snapshot.audioInput.echoCancellation,
+              noiseSuppression: snapshot.audioInput.noiseSuppression,
+              autoGainControl: snapshot.audioInput.autoGainControl,
+              readyState: snapshot.audioInput.readyState,
+              enabled: snapshot.audioInput.enabled,
+              muted: snapshot.audioInput.muted
+            }
+          : null
       },
       connectionTimings: snapshot.timings,
       summary,
@@ -178,6 +219,21 @@ export function RealtimeWhisperSpikeApp() {
             spellCheck={false}
             value={projectId}
           />
+        </label>
+        <label className="rws-field rws-device-field">
+          <span>마이크</span>
+          <select
+            disabled={isRunning}
+            onChange={(event) => setDeviceId(event.target.value)}
+            value={deviceId}
+          >
+            <option value="">시스템 기본 마이크</option>
+            {audioDevices.map((device, index) => (
+              <option key={device.deviceId} value={device.deviceId}>
+                {device.label || `마이크 ${index + 1}`}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="rws-field">
           <span>Delay</span>
@@ -257,6 +313,33 @@ export function RealtimeWhisperSpikeApp() {
             지금 확정
           </button>
         </div>
+        <fieldset className="rws-audio-options" disabled={isRunning}>
+          <legend>브라우저 오디오 처리 요청</legend>
+          <label>
+            <input
+              checked={echoCancellation}
+              onChange={(event) => setEchoCancellation(event.target.checked)}
+              type="checkbox"
+            />
+            Echo cancellation
+          </label>
+          <label>
+            <input
+              checked={noiseSuppression}
+              onChange={(event) => setNoiseSuppression(event.target.checked)}
+              type="checkbox"
+            />
+            Noise suppression
+          </label>
+          <label>
+            <input
+              checked={autoGainControl}
+              onChange={(event) => setAutoGainControl(event.target.checked)}
+              type="checkbox"
+            />
+            Auto gain control
+          </label>
+        </fieldset>
       </section>
 
       {snapshot.error && <div className="rws-error" role="alert">{snapshot.error}</div>}
@@ -316,6 +399,35 @@ export function RealtimeWhisperSpikeApp() {
                 label="Speech threshold"
                 value={formatDb(snapshot.speechThresholdDb)}
                 ok={snapshot.speechThresholdDb !== null}
+              />
+              <StatusRow
+                label="Microphone"
+                value={snapshot.audioInput?.label ?? "—"}
+                ok={snapshot.audioInput?.readyState === "live"}
+              />
+              <StatusRow
+                label="Track"
+                value={formatTrackState(snapshot.audioInput)}
+                ok={
+                  snapshot.audioInput?.readyState === "live" &&
+                  snapshot.audioInput.enabled &&
+                  !snapshot.audioInput.muted
+                }
+              />
+              <StatusRow
+                label="Sample rate"
+                value={formatSampleRate(snapshot.audioInput)}
+                ok={snapshot.audioInput?.sampleRate !== null}
+              />
+              <StatusRow
+                label="Channels"
+                value={snapshot.audioInput?.channelCount?.toString() ?? "—"}
+                ok={snapshot.audioInput?.channelCount === 1}
+              />
+              <StatusRow
+                label="Audio processing"
+                value={formatAudioProcessing(snapshot.audioInput)}
+                ok={snapshot.audioInput !== null}
               />
             </dl>
             <div className="rws-timing-rail">
@@ -491,6 +603,41 @@ function formatDb(value: number | null) {
   return value === null ? "—" : `${value.toFixed(1)} dB`;
 }
 
+function formatTrackState(audioInput: SpikeAudioInputInfo | null) {
+  if (!audioInput) {
+    return "—";
+  }
+  return `${audioInput.readyState} · ${audioInput.enabled ? "enabled" : "disabled"} · ${audioInput.muted ? "muted" : "unmuted"}`;
+}
+
+function formatSampleRate(audioInput: SpikeAudioInputInfo | null) {
+  if (!audioInput) {
+    return "—";
+  }
+  const trackRate = audioInput.sampleRate === null
+    ? "track —"
+    : `track ${audioInput.sampleRate}Hz`;
+  const contextRate = audioInput.audioContextSampleRate === null
+    ? "context —"
+    : `context ${audioInput.audioContextSampleRate}Hz`;
+  return `${trackRate} · ${contextRate}`;
+}
+
+function formatAudioProcessing(audioInput: SpikeAudioInputInfo | null) {
+  if (!audioInput) {
+    return "—";
+  }
+  return [
+    `EC ${formatBoolean(audioInput.echoCancellation)}`,
+    `NS ${formatBoolean(audioInput.noiseSuppression)}`,
+    `AGC ${formatBoolean(audioInput.autoGainControl)}`
+  ].join(" · ");
+}
+
+function formatBoolean(value: boolean | null) {
+  return value === null ? "—" : value ? "on" : "off";
+}
+
 function readinessLabel(snapshot: RealtimeWhisperSpikeSnapshot) {
   if (snapshot.phase === "calibrating") {
     return "말하지 마세요";
@@ -504,4 +651,12 @@ function readinessLabel(snapshot: RealtimeWhisperSpikeSnapshot) {
 function shortId(value: string | null) {
   if (!value) return "—";
   return value.length <= 14 ? value : `${value.slice(0, 7)}…${value.slice(-5)}`;
+}
+
+async function readAudioInputDevices() {
+  if (!navigator.mediaDevices?.enumerateDevices) {
+    return [];
+  }
+  const devices = await navigator.mediaDevices.enumerateDevices().catch(() => []);
+  return devices.filter((device) => device.kind === "audioinput");
 }

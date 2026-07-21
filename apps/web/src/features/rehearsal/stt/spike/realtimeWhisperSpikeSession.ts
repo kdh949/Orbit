@@ -46,6 +46,19 @@ export type SpikeEventLog = {
   detail?: string;
 };
 
+export type SpikeAudioInputInfo = {
+  label: string;
+  sampleRate: number | null;
+  audioContextSampleRate: number | null;
+  channelCount: number | null;
+  echoCancellation: boolean | null;
+  noiseSuppression: boolean | null;
+  autoGainControl: boolean | null;
+  readyState: MediaStreamTrackState;
+  enabled: boolean;
+  muted: boolean;
+};
+
 export type RealtimeWhisperSpikeSnapshot = {
   phase: SpikeConnectionPhase;
   peerConnectionState: RTCPeerConnectionState | "closed";
@@ -57,6 +70,7 @@ export type RealtimeWhisperSpikeSnapshot = {
   noiseFloorDb: number | null;
   speechThresholdDb: number | null;
   calibrationRemainingMs: number | null;
+  audioInput: SpikeAudioInputInfo | null;
   issuedModel: string | null;
   issuedDelay: OpenAiRealtimeTranscriptionDelay | null;
   activeModel: string | null;
@@ -77,6 +91,9 @@ export type RealtimeWhisperSpikeOptions = {
   noiseThresholdMarginDb: number;
   speechAttackMs: number;
   deviceId?: string;
+  echoCancellation: boolean;
+  noiseSuppression: boolean;
+  autoGainControl: boolean;
 };
 
 const initialTimings: SpikeConnectionTimings = {
@@ -126,9 +143,9 @@ export class RealtimeWhisperSpikeSession {
     try {
       const audioConstraints: MediaTrackConstraints = {
         channelCount: 1,
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
+        echoCancellation: this.options.echoCancellation,
+        noiseSuppression: this.options.noiseSuppression,
+        autoGainControl: this.options.autoGainControl,
         ...(this.options.deviceId
           ? { deviceId: { exact: this.options.deviceId } }
           : {})
@@ -136,6 +153,14 @@ export class RealtimeWhisperSpikeSession {
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: audioConstraints
       });
+      const audioTrack = this.mediaStream.getAudioTracks()[0];
+      if (!audioTrack) {
+        throw new Error("마이크 오디오 트랙을 찾지 못했습니다.");
+      }
+      this.publishAudioInput(audioTrack);
+      audioTrack.addEventListener("mute", this.handleAudioTrackState);
+      audioTrack.addEventListener("unmute", this.handleAudioTrackState);
+      audioTrack.addEventListener("ended", this.handleAudioTrackState);
       this.setTiming("microphoneReadyMs");
       this.startAudioMeter(this.mediaStream);
 
@@ -238,6 +263,10 @@ export class RealtimeWhisperSpikeSession {
     audioContext.createMediaStreamSource(stream).connect(analyser);
     this.audioContext = audioContext;
     this.analyser = analyser;
+    const audioTrack = stream.getAudioTracks()[0];
+    if (audioTrack) {
+      this.publishAudioInput(audioTrack, audioContext.sampleRate);
+    }
     const samples = new Float32Array(analyser.fftSize);
 
     this.meterTimer = window.setInterval(() => {
@@ -554,6 +583,36 @@ export class RealtimeWhisperSpikeSession {
     });
   }
 
+  private readonly handleAudioTrackState = (event: Event) => {
+    const track = event.currentTarget;
+    if (track instanceof MediaStreamTrack) {
+      this.publishAudioInput(track, this.audioContext?.sampleRate);
+      this.log(`local.audio_track_${event.type}`);
+    }
+  };
+
+  private publishAudioInput(
+    track: MediaStreamTrack,
+    audioContextSampleRate?: number
+  ) {
+    const settings = track.getSettings();
+    this.patch({
+      audioInput: {
+        label: track.label || "이름 없는 마이크",
+        sampleRate: toFiniteNumber(settings.sampleRate),
+        audioContextSampleRate:
+          audioContextSampleRate ?? this.snapshot.audioInput?.audioContextSampleRate ?? null,
+        channelCount: toFiniteNumber(settings.channelCount),
+        echoCancellation: toBoolean(settings.echoCancellation),
+        noiseSuppression: toBoolean(settings.noiseSuppression),
+        autoGainControl: toBoolean(settings.autoGainControl),
+        readyState: track.readyState,
+        enabled: track.enabled,
+        muted: track.muted
+      }
+    });
+  }
+
   private setTiming(key: keyof SpikeConnectionTimings) {
     this.patch({
       timings: {
@@ -630,6 +689,7 @@ export function createInitialSnapshot(): RealtimeWhisperSpikeSnapshot {
     noiseFloorDb: null,
     speechThresholdDb: null,
     calibrationRemainingMs: null,
+    audioInput: null,
     issuedModel: null,
     issuedDelay: null,
     activeModel: null,
@@ -687,6 +747,14 @@ function readConfidence(event: Record<string, unknown>) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function toFiniteNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function toBoolean(value: unknown) {
+  return typeof value === "boolean" ? value : null;
 }
 
 export function isExpectedTranscriptionConfig(
