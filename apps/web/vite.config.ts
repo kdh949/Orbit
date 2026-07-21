@@ -86,6 +86,16 @@ export default defineConfig(({ mode }) => {
         )
       }
     },
+    build: {
+      rollupOptions: {
+        input: {
+          main: fileURLToPath(new URL("./index.html", import.meta.url)),
+          realtimeWhisperSpike: fileURLToPath(
+            new URL("./gpt-realtime-whisper-spike.html", import.meta.url)
+          )
+        }
+      }
+    },
     server: {
       host: "0.0.0.0",
       port: env.webPort,
