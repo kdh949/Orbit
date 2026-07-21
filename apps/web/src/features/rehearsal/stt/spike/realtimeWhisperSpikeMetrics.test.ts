@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  calculateKoreanCerBreakdown,
   calculateNormalizedKoreanCer,
+  normalizeKoreanNumberVariants,
   normalizeCerText,
   summarizeRealtimeWhisperMetrics
 } from "./realtimeWhisperSpikeMetrics";
@@ -47,5 +49,16 @@ describe("realtimeWhisperSpikeMetrics", () => {
       .toBe(0);
     expect(calculateNormalizedKoreanCer("가나다", "가마"))
       .toBeCloseTo(2 / 3);
+  });
+
+  it("separates number expression variants from counter recognition errors", () => {
+    expect(normalizeKoreanNumberVariants("3건, 두 명, 삼 회"))
+      .toBe("3건2명3회");
+    expect(calculateKoreanCerBreakdown("3건 해결", "세 건 해결")).toEqual({
+      strictCer: 0.25,
+      numberTolerantCer: 0
+    });
+    expect(calculateKoreanCerBreakdown("2건 해결", "두 권 해결").numberTolerantCer)
+      .toBeGreaterThan(0);
   });
 });

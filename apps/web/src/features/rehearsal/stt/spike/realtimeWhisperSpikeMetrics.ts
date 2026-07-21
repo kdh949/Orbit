@@ -60,11 +60,27 @@ export function calculateNormalizedKoreanCer(reference: string, actual: string) 
   return levenshteinDistance([...expected], [...received]) / expected.length;
 }
 
+export function calculateKoreanCerBreakdown(reference: string, actual: string) {
+  return {
+    strictCer: calculateNormalizedKoreanCer(reference, actual),
+    numberTolerantCer: calculateNormalizedKoreanCer(
+      normalizeKoreanNumberVariants(reference),
+      normalizeKoreanNumberVariants(actual)
+    )
+  };
+}
+
 export function normalizeCerText(value: string) {
   return value
     .normalize("NFC")
     .toLocaleLowerCase("ko-KR")
     .replace(/[\s\p{P}\p{S}]+/gu, "");
+}
+
+export function normalizeKoreanNumberVariants(value: string) {
+  return normalizeCerText(value)
+    .replace(/(?:3|삼|세)(?=(?:건|개|명|번|회|장|가지|곳|대|줄|권))/gu, "3")
+    .replace(/(?:2|이|두)(?=(?:건|개|명|번|회|장|가지|곳|대|줄|권))/gu, "2");
 }
 
 function percentile(values: readonly number[], target: number) {

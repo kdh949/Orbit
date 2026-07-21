@@ -1,7 +1,7 @@
 import type { OpenAiRealtimeTranscriptionDelay } from "@orbit/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  calculateNormalizedKoreanCer,
+  calculateKoreanCerBreakdown,
   summarizeRealtimeWhisperMetrics
 } from "./realtimeWhisperSpikeMetrics";
 import {
@@ -61,6 +61,22 @@ export function RealtimeWhisperSpikeApp() {
   const referenceLines = useMemo(
     () => referenceText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean),
     [referenceText]
+  );
+  const completedTranscript = useMemo(
+    () => snapshot.turns
+      .filter((turn) => turn.completedAtMs !== null && turn.transcript.trim())
+      .map((turn) => turn.transcript)
+      .join(" "),
+    [snapshot.turns]
+  );
+  const sessionCer = useMemo(
+    () => referenceLines.length === 0 || !completedTranscript
+      ? null
+      : calculateKoreanCerBreakdown(
+          referenceLines.join(" "),
+          completedTranscript
+        ),
+    [completedTranscript, referenceLines]
   );
 
   useEffect(() => {
@@ -158,29 +174,33 @@ export function RealtimeWhisperSpikeApp() {
       },
       connectionTimings: snapshot.timings,
       summary,
-      turns: snapshot.turns.map((turn, index) => ({
-        turnId: turn.turnId,
-        itemId: turn.itemId,
-        speechStartedAtMs: round(turn.speechStartedAtMs),
-        firstDeltaLatencyMs: difference(
-          turn.firstDeltaAtMs,
-          turn.speechStartedAtMs
-        ),
-        commitToFinalMs: difference(turn.completedAtMs, turn.committedAtMs),
-        onsetToFinalMs: difference(
-          turn.completedAtMs,
-          turn.speechStartedAtMs
-        ),
-        partialCount: turn.partialCount,
-        transcriptLength: turn.transcript.length,
-        normalizedCer:
-          referenceLines[index] === undefined
-            ? null
-            : calculateNormalizedKoreanCer(
-                referenceLines[index],
-                turn.transcript
-              )
-      }))
+      sessionCer,
+      turns: snapshot.turns.map((turn, index) => {
+        const cer = referenceLines[index] === undefined
+          ? null
+          : calculateKoreanCerBreakdown(
+              referenceLines[index],
+              turn.transcript
+            );
+        return {
+          turnId: turn.turnId,
+          itemId: turn.itemId,
+          speechStartedAtMs: round(turn.speechStartedAtMs),
+          firstDeltaLatencyMs: difference(
+            turn.firstDeltaAtMs,
+            turn.speechStartedAtMs
+          ),
+          commitToFinalMs: difference(turn.completedAtMs, turn.committedAtMs),
+          onsetToFinalMs: difference(
+            turn.completedAtMs,
+            turn.speechStartedAtMs
+          ),
+          partialCount: turn.partialCount,
+          transcriptLength: turn.transcript.length,
+          strictCer: cer?.strictCer ?? null,
+          numberTolerantCer: cer?.numberTolerantCer ?? null
+        };
+      })
     };
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
@@ -351,6 +371,8 @@ export function RealtimeWhisperSpikeApp() {
         <Metric label="Finalization" value={formatPair(summary.commitToFinalMedianMs, summary.commitToFinalP95Ms)} note="commit → completed · median / p95" />
         <Metric label="End-to-end" value={formatPair(summary.onsetToFinalMedianMs, summary.onsetToFinalP95Ms)} note="onset → completed · median / p95" />
         <Metric label="완료 발화" value={`${summary.completedTurns}`} note={`${snapshot.turns.length}개 감지 · 표본 수 확인 필요`} />
+        <Metric label="Strict CER" value={formatPercent(sessionCer?.strictCer ?? null)} note="완료된 전체 전사 · 표기 그대로 비교" />
+        <Metric label="숫자 허용 CER" value={formatPercent(sessionCer?.numberTolerantCer ?? null)} note="2/이/두, 3/삼/세 표기 통합" />
       </section>
 
       <div className="rws-workbench">
@@ -442,7 +464,7 @@ export function RealtimeWhisperSpikeApp() {
 
           <section className="rws-panel">
             <PanelHeading eyebrow="REFERENCE" title="기준 문장" />
-            <p className="rws-helper">발화 순서대로 한 줄에 한 문장씩 입력하면 normalized CER를 로컬에서 계산합니다.</p>
+            <p className="rws-helper">발화 순서대로 한 줄에 한 문장씩 입력하면 strict CER와 숫자 표기 허용 CER를 로컬에서 계산합니다.</p>
             <textarea
               onChange={(event) => setReferenceText(event.target.value)}
               placeholder={"오늘 발표를 시작하겠습니다.\n첫 번째 핵심 내용을 설명드리겠습니다."}
@@ -474,17 +496,18 @@ export function RealtimeWhisperSpikeApp() {
                 <th>Commit → final</th>
                 <th>Onset → final</th>
                 <th>Deltas</th>
-                <th>CER</th>
+                <th>Strict CER</th>
+                <th>숫자 허용 CER</th>
                 <th>상태</th>
               </tr>
             </thead>
             <tbody>
               {snapshot.turns.length === 0 ? (
-                <tr><td className="rws-table-empty" colSpan={8}>아직 측정된 발화가 없습니다.</td></tr>
+                <tr><td className="rws-table-empty" colSpan={9}>아직 측정된 발화가 없습니다.</td></tr>
               ) : snapshot.turns.map((turn, index) => {
                 const cer = referenceLines[index] === undefined
                   ? null
-                  : calculateNormalizedKoreanCer(referenceLines[index], turn.transcript);
+                  : calculateKoreanCerBreakdown(referenceLines[index], turn.transcript);
                 return (
                   <tr key={turn.turnId}>
                     <td>#{turn.turnId}</td>
@@ -493,7 +516,8 @@ export function RealtimeWhisperSpikeApp() {
                     <td>{formatDuration(difference(turn.completedAtMs, turn.committedAtMs))}</td>
                     <td>{formatDuration(difference(turn.completedAtMs, turn.speechStartedAtMs))}</td>
                     <td>{turn.partialCount}</td>
-                    <td>{cer === null ? "—" : `${(cer * 100).toFixed(1)}%`}</td>
+                    <td>{formatPercent(cer?.strictCer ?? null)}</td>
+                    <td>{formatPercent(cer?.numberTolerantCer ?? null)}</td>
                     <td><span className={`rws-state ${turn.completedAtMs === null ? "is-pending" : "is-complete"}`}>{turn.completedAtMs === null ? "진행 중" : "확정"}</span></td>
                   </tr>
                 );
@@ -593,6 +617,10 @@ function formatDuration(value: number | null) {
 
 function formatPair(median: number | null, p95: number | null) {
   return median === null || p95 === null ? "—" : `${median} / ${p95} ms`;
+}
+
+function formatPercent(value: number | null) {
+  return value === null ? "—" : `${(value * 100).toFixed(1)}%`;
 }
 
 function formatConfidence(value: number | null) {

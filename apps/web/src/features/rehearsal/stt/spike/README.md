@@ -25,9 +25,13 @@ http://localhost:5173/gpt-realtime-whisper-spike.html?projectId=<projectId>
 - 오디오 처리: echo cancellation, noise suppression, auto gain control 요청·실제값
 - 전사: incremental delta, completed transcript, item ID, partial count
 - 지연: speech onset → first delta, commit → completed, onset → completed
-- 정확도: 사용자가 입력한 기준 문장과 final transcript 사이의 normalized Korean CER
+- 정확도: 완료된 전체 전사를 기준으로 한 strict CER와 숫자 표기 허용 CER
 
-CER는 NFC 정규화 후 공백, 문장부호, 기호를 제외한 문자 단위 편집 거리다.
+strict CER는 NFC 정규화 후 공백, 문장부호, 기호를 제외한 문자 단위 편집 거리다.
+숫자 표기 허용 CER는 한국어 단위 앞의 `3/삼/세`, `2/이/두`를 각각 같은 값으로
+정규화한다. `건/권`처럼 단위 자체를 잘못 인식한 경우는 계속 오류로 집계한다.
+세션 CER는 provider의 임의 commit 경계에 영향을 덜 받도록 완료된 item을 이어 붙여
+계산한다. 발화별 표에서는 입력한 기준 문장의 같은 순서 줄과 비교한다.
 기준 문장과 전사 원문은 브라우저 메모리에만 유지한다. JSON 내보내기는 원문 대신
 길이와 지연, CER만 포함한다. 이벤트 trace도 event type, item ID, text length만 기록한다.
 
