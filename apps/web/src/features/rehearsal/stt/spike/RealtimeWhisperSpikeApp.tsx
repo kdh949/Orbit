@@ -24,8 +24,9 @@ const phaseLabels: Record<SpikeConnectionPhase, string> = {
   idle: "대기",
   "requesting-microphone": "마이크 요청",
   "requesting-secret": "세션 발급",
-  negotiating: "WebRTC 협상",
-  connected: "연결됨",
+  negotiating: "세션 적용 중",
+  calibrating: "주변 소음 측정",
+  ready: "측정 준비 완료",
   stopping: "종료 중",
   error: "오류"
 };
@@ -35,15 +36,18 @@ export function RealtimeWhisperSpikeApp() {
     () => new URLSearchParams(window.location.search).get("projectId") ?? ""
   );
   const [delay, setDelay] = useState<OpenAiRealtimeTranscriptionDelay>("minimal");
-  const [maxCommitIntervalMs, setMaxCommitIntervalMs] = useState(1500);
+  const [maxCommitIntervalMs, setMaxCommitIntervalMs] = useState<number | null>(
+    10_000
+  );
   const [silenceCommitMs, setSilenceCommitMs] = useState(650);
-  const [speechThresholdDb, setSpeechThresholdDb] = useState(-45);
+  const [noiseThresholdMarginDb, setNoiseThresholdMarginDb] = useState(10);
   const [referenceText, setReferenceText] = useState("");
   const [snapshot, setSnapshot] = useState<RealtimeWhisperSpikeSnapshot>(
     createInitialSnapshot
   );
   const sessionRef = useRef<RealtimeWhisperSpikeSession | null>(null);
   const isRunning = snapshot.phase !== "idle" && snapshot.phase !== "error";
+  const isReady = snapshot.phase === "ready";
   const summary = useMemo(
     () => summarizeRealtimeWhisperMetrics(snapshot.turns),
     [snapshot.turns]
@@ -75,7 +79,9 @@ export function RealtimeWhisperSpikeApp() {
         delay,
         maxCommitIntervalMs,
         silenceCommitMs,
-        speechThresholdDb
+        noiseCalibrationMs: 1500,
+        noiseThresholdMarginDb,
+        speechAttackMs: 200
       },
       setSnapshot
     );
@@ -105,7 +111,9 @@ export function RealtimeWhisperSpikeApp() {
         activeDelay: snapshot.activeDelay,
         maxCommitIntervalMs,
         silenceCommitMs,
-        speechThresholdDb
+        noiseCalibrationMs: 1500,
+        noiseThresholdMarginDb,
+        speechAttackMs: 200
       },
       connectionTimings: snapshot.timings,
       summary,
@@ -154,9 +162,9 @@ export function RealtimeWhisperSpikeApp() {
           </p>
         </div>
         <div className="rws-header-status" aria-live="polite">
-          <StatusDot active={snapshot.phase === "connected"} />
+          <StatusDot active={isReady} />
           <span>{phaseLabels[snapshot.phase]}</span>
-          <strong>{snapshot.isSpeaking ? "말하는 중" : "대기 중"}</strong>
+          <strong>{readinessLabel(snapshot)}</strong>
         </div>
       </header>
 
@@ -189,10 +197,17 @@ export function RealtimeWhisperSpikeApp() {
           <span>최대 commit</span>
           <select
             disabled={isRunning}
-            onChange={(event) => setMaxCommitIntervalMs(Number(event.target.value))}
-            value={maxCommitIntervalMs}
+            onChange={(event) =>
+              setMaxCommitIntervalMs(
+                event.target.value === "disabled"
+                  ? null
+                  : Number(event.target.value)
+              )
+            }
+            value={maxCommitIntervalMs ?? "disabled"}
           >
-            {[750, 1000, 1500, 2000, 3000].map((value) => (
+            <option value="disabled">사용 안 함</option>
+            {[6000, 8000, 10000, 12000].map((value) => (
               <option key={value} value={value}>{value} ms</option>
             ))}
           </select>
@@ -210,14 +225,16 @@ export function RealtimeWhisperSpikeApp() {
           </select>
         </label>
         <label className="rws-field">
-          <span>발화 임계값</span>
+          <span>Noise margin</span>
           <select
             disabled={isRunning}
-            onChange={(event) => setSpeechThresholdDb(Number(event.target.value))}
-            value={speechThresholdDb}
+            onChange={(event) =>
+              setNoiseThresholdMarginDb(Number(event.target.value))
+            }
+            value={noiseThresholdMarginDb}
           >
-            {[-55, -50, -45, -40, -35].map((value) => (
-              <option key={value} value={value}>{value} dB</option>
+            {[8, 10, 12, 15].map((value) => (
+              <option key={value} value={value}>+{value} dB</option>
             ))}
           </select>
         </label>
@@ -233,7 +250,7 @@ export function RealtimeWhisperSpikeApp() {
           )}
           <button
             className="rws-button"
-            disabled={snapshot.phase !== "connected"}
+            disabled={!isReady}
             onClick={() => sessionRef.current?.commitNow()}
             type="button"
           >
@@ -243,6 +260,8 @@ export function RealtimeWhisperSpikeApp() {
       </section>
 
       {snapshot.error && <div className="rws-error" role="alert">{snapshot.error}</div>}
+
+      <ReadinessBanner snapshot={snapshot} />
 
       <section className="rws-metric-grid" aria-label="핵심 지연 지표">
         <Metric label="First partial" value={formatPair(summary.firstDeltaLatencyMedianMs, summary.firstDeltaLatencyP95Ms)} note="onset → 첫 delta · median / p95" />
@@ -254,7 +273,10 @@ export function RealtimeWhisperSpikeApp() {
       <div className="rws-workbench">
         <section className="rws-panel rws-live-panel">
           <PanelHeading eyebrow="LIVE TRANSCRIPT" title="실시간 전사" trailing={<span className={`rws-speaking-badge ${snapshot.isSpeaking ? "is-active" : ""}`}>{snapshot.isSpeaking ? "● 말하는 중" : "○ 침묵"}</span>} />
-          <AudioMeter rmsDb={snapshot.rmsDb} thresholdDb={speechThresholdDb} />
+          <AudioMeter
+            rmsDb={snapshot.rmsDb}
+            thresholdDb={snapshot.speechThresholdDb}
+          />
           <div className="rws-transcript-stream" aria-live="polite">
             {snapshot.transcripts.length === 0 ? (
               <div className="rws-empty">
@@ -285,12 +307,24 @@ export function RealtimeWhisperSpikeApp() {
               <StatusRow label="Data channel" value={snapshot.dataChannelState} ok={snapshot.dataChannelState === "open"} />
               <StatusRow label="Model" value={snapshot.activeModel ?? snapshot.issuedModel ?? "—"} ok={snapshot.activeModel === "gpt-realtime-whisper"} />
               <StatusRow label="Delay" value={snapshot.activeDelay ?? snapshot.issuedDelay ?? "—"} ok={snapshot.activeDelay === delay} />
+              <StatusRow
+                label="Noise floor"
+                value={formatDb(snapshot.noiseFloorDb)}
+                ok={snapshot.noiseFloorDb !== null}
+              />
+              <StatusRow
+                label="Speech threshold"
+                value={formatDb(snapshot.speechThresholdDb)}
+                ok={snapshot.speechThresholdDb !== null}
+              />
             </dl>
             <div className="rws-timing-rail">
               <Timing label="Mic" value={snapshot.timings.microphoneReadyMs} />
               <Timing label="Secret" value={snapshot.timings.clientSecretReadyMs} />
               <Timing label="SDP" value={snapshot.timings.remoteDescriptionReadyMs} />
               <Timing label="Channel" value={snapshot.timings.dataChannelOpenMs} />
+              <Timing label="Session" value={snapshot.timings.sessionUpdatedMs} />
+              <Timing label="Ready" value={snapshot.timings.calibrationReadyMs} />
             </div>
           </section>
 
@@ -391,6 +425,26 @@ function StatusDot({ active }: { active: boolean }) {
   return <span aria-hidden="true" className={`rws-status-dot ${active ? "is-active" : ""}`} />;
 }
 
+function ReadinessBanner({ snapshot }: { snapshot: RealtimeWhisperSpikeSnapshot }) {
+  const message =
+    snapshot.phase === "calibrating"
+      ? `${Math.max(snapshot.calibrationRemainingMs ?? 0, 0)}ms 동안 말하지 말고 주변 소음을 측정해 주세요.`
+      : snapshot.phase === "ready"
+        ? "설정 확인과 소음 측정이 끝났습니다. 지금 말하세요."
+        : snapshot.phase === "idle"
+          ? "측정 시작 후 준비 완료 안내가 나타날 때까지 말하지 마세요."
+          : "마이크와 Realtime 세션을 준비하고 있습니다.";
+  return (
+    <div
+      className={`rws-readiness ${snapshot.phase === "ready" ? "is-ready" : ""}`}
+      role="status"
+    >
+      <strong>{snapshot.phase === "ready" ? "지금 말하세요" : phaseLabels[snapshot.phase]}</strong>
+      <span>{message}</span>
+    </div>
+  );
+}
+
 function StatusRow(props: { label: string; value: string; ok: boolean }) {
   return <div><dt>{props.label}</dt><dd><span className={`rws-mini-dot ${props.ok ? "is-ok" : ""}`} />{props.value}</dd></div>;
 }
@@ -399,10 +453,18 @@ function Timing(props: { label: string; value: number | null }) {
   return <div><span>{props.label}</span><strong>{props.value === null ? "—" : `${props.value} ms`}</strong></div>;
 }
 
-function AudioMeter({ rmsDb, thresholdDb }: { rmsDb: number; thresholdDb: number }) {
+function AudioMeter({
+  rmsDb,
+  thresholdDb
+}: {
+  rmsDb: number;
+  thresholdDb: number | null;
+}) {
   const position = Math.max(0, Math.min(100, ((rmsDb + 80) / 80) * 100));
-  const thresholdPosition = Math.max(0, Math.min(100, ((thresholdDb + 80) / 80) * 100));
-  return <div className="rws-audio-meter" aria-label={`마이크 레벨 ${rmsDb.toFixed(1)} 데시벨`}><div className="rws-meter-track"><div className="rws-meter-fill" style={{ width: `${position}%` }} /><i style={{ left: `${thresholdPosition}%` }} /></div><span>{rmsDb.toFixed(1)} dB</span></div>;
+  const thresholdPosition = thresholdDb === null
+    ? null
+    : Math.max(0, Math.min(100, ((thresholdDb + 80) / 80) * 100));
+  return <div className="rws-audio-meter" aria-label={`마이크 레벨 ${rmsDb.toFixed(1)} 데시벨`}><div className="rws-meter-track"><div className="rws-meter-fill" style={{ width: `${position}%` }} />{thresholdPosition === null ? null : <i style={{ left: `${thresholdPosition}%` }} />}</div><span>{rmsDb.toFixed(1)} dB</span></div>;
 }
 
 function difference(end: number | null, start: number | null) {
@@ -423,6 +485,20 @@ function formatPair(median: number | null, p95: number | null) {
 
 function formatConfidence(value: number | null) {
   return value === null ? "confidence —" : `confidence ${(value * 100).toFixed(0)}%`;
+}
+
+function formatDb(value: number | null) {
+  return value === null ? "—" : `${value.toFixed(1)} dB`;
+}
+
+function readinessLabel(snapshot: RealtimeWhisperSpikeSnapshot) {
+  if (snapshot.phase === "calibrating") {
+    return "말하지 마세요";
+  }
+  if (snapshot.phase !== "ready") {
+    return "연결 대기";
+  }
+  return snapshot.isSpeaking ? "말하는 중" : "말해도 됩니다";
 }
 
 function shortId(value: string | null) {

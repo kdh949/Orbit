@@ -203,6 +203,36 @@ textarea:focus-visible {
   font-size: var(--redesign-type-body-sm-size);
 }
 
+.rws-readiness {
+  display: flex;
+  align-items: center;
+  gap: var(--redesign-space-4);
+  padding: var(--redesign-space-3) var(--redesign-space-4);
+  margin-bottom: var(--redesign-space-4);
+  border: 1px solid var(--redesign-color-warning);
+  border-radius: var(--redesign-radius);
+  background: color-mix(in srgb, var(--redesign-color-warning) 10%, var(--redesign-color-dark-surface));
+  font-size: var(--redesign-type-body-sm-size);
+}
+
+.rws-readiness strong {
+  flex: 0 0 auto;
+  color: var(--redesign-color-warning);
+}
+
+.rws-readiness span {
+  color: var(--redesign-color-disabled);
+}
+
+.rws-readiness.is-ready {
+  border-color: var(--redesign-color-success);
+  background: color-mix(in srgb, var(--redesign-color-success) 10%, var(--redesign-color-dark-surface));
+}
+
+.rws-readiness.is-ready strong {
+  color: var(--redesign-color-success);
+}
+
 .rws-metric-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -415,7 +445,7 @@ textarea:focus-visible {
 
 .rws-timing-rail {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--redesign-space-1);
   margin-top: var(--redesign-space-4);
 }

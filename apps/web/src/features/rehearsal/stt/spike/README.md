@@ -18,7 +18,9 @@ http://localhost:5173/gpt-realtime-whisper-spike.html?projectId=<projectId>
 ## 측정값
 
 - 연결: microphone, client secret, SDP answer, data channel open
-- 입력: RMS dB, 로컬 speaking 상태, silence/max-interval commit
+- 입력: RMS dB, 자동 noise floor/threshold, 안정화된 로컬 speaking 상태
+- 준비 상태: `session.updated` 설정 일치와 1.5초 무음 보정 완료 여부
+- 분할: silence 우선 commit과 선택 가능한 6~12초 safety commit
 - 전사: incremental delta, completed transcript, item ID, partial count
 - 지연: speech onset → first delta, commit → completed, onset → completed
 - 정확도: 사용자가 입력한 기준 문장과 final transcript 사이의 normalized Korean CER
@@ -30,6 +32,8 @@ CER는 NFC 정규화 후 공백, 문장부호, 기호를 제외한 문자 단위
 ## 해석 주의사항
 
 - `delay`별 비교는 같은 마이크, 같은 화자, 같은 문장, 같은 네트워크에서 반복한다.
+- `지금 말하세요`가 표시되기 전에는 말하지 않는다.
+- 주변 소음 측정 중에는 침묵을 유지한다.
 - 표본이 적을 때 p95를 일반화하지 않는다.
 - 합성 음성 결과는 회귀 비교용이며 실제 한국어 화자의 품질을 대신하지 않는다.
 - `confidence`는 API가 logprobs를 보낸 경우에만 표시된다.

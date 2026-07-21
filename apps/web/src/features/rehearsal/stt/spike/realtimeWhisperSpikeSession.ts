@@ -1,13 +1,21 @@
 import { realtimeTranscriptionClientSecretResponseSchema } from "@orbit/shared";
 import type { OpenAiRealtimeTranscriptionDelay } from "@orbit/shared";
 import type { RealtimeWhisperTurnMetric } from "./realtimeWhisperSpikeMetrics";
+import {
+  advanceSpeechDetector,
+  calculateNoiseFloorDb,
+  initialSpeechDetectorState,
+  resolveAdaptiveSpeechThresholdDb,
+  type SpeechDetectorState
+} from "./realtimeWhisperSpikeVad";
 
 export type SpikeConnectionPhase =
   | "idle"
   | "requesting-microphone"
   | "requesting-secret"
   | "negotiating"
-  | "connected"
+  | "calibrating"
+  | "ready"
   | "stopping"
   | "error";
 
@@ -16,6 +24,8 @@ export type SpikeConnectionTimings = {
   clientSecretReadyMs: number | null;
   remoteDescriptionReadyMs: number | null;
   dataChannelOpenMs: number | null;
+  sessionUpdatedMs: number | null;
+  calibrationReadyMs: number | null;
 };
 
 export type SpikeTranscript = {
@@ -44,6 +54,9 @@ export type RealtimeWhisperSpikeSnapshot = {
   isSpeaking: boolean;
   rmsDb: number;
   peakDb: number;
+  noiseFloorDb: number | null;
+  speechThresholdDb: number | null;
+  calibrationRemainingMs: number | null;
   issuedModel: string | null;
   issuedDelay: OpenAiRealtimeTranscriptionDelay | null;
   activeModel: string | null;
@@ -58,9 +71,11 @@ export type RealtimeWhisperSpikeSnapshot = {
 export type RealtimeWhisperSpikeOptions = {
   projectId: string;
   delay: OpenAiRealtimeTranscriptionDelay;
-  maxCommitIntervalMs: number;
+  maxCommitIntervalMs: number | null;
   silenceCommitMs: number;
-  speechThresholdDb: number;
+  noiseCalibrationMs: number;
+  noiseThresholdMarginDb: number;
+  speechAttackMs: number;
   deviceId?: string;
 };
 
@@ -68,7 +83,9 @@ const initialTimings: SpikeConnectionTimings = {
   microphoneReadyMs: null,
   clientSecretReadyMs: null,
   remoteDescriptionReadyMs: null,
-  dataChannelOpenMs: null
+  dataChannelOpenMs: null,
+  sessionUpdatedMs: null,
+  calibrationReadyMs: null
 };
 
 export class RealtimeWhisperSpikeSession {
@@ -84,7 +101,9 @@ export class RealtimeWhisperSpikeSession {
   private turnSequence = 0;
   private activeTurnId: number | null = null;
   private activeTurnStartedAt = 0;
-  private lastVoiceAt = 0;
+  private calibrationStartedAt: number | null = null;
+  private noiseFloorSamples: number[] = [];
+  private speechDetectorState: SpeechDetectorState = initialSpeechDetectorState;
   private readonly turnIdByItemKey = new Map<string, number>();
   private readonly transcriptByKey = new Map<string, SpikeTranscript>();
 
@@ -186,6 +205,8 @@ export class RealtimeWhisperSpikeSession {
 
   commitNow() {
     this.commitActiveTurn("manual");
+    this.speechDetectorState = initialSpeechDetectorState;
+    this.patch({ isSpeaking: false });
   }
 
   readSnapshot() {
@@ -231,29 +252,83 @@ export class RealtimeWhisperSpikeSession {
       const rmsDb = amplitudeToDb(rms);
       const peakDb = amplitudeToDb(peak);
       const now = performance.now();
-      const isSpeaking = rmsDb >= this.options.speechThresholdDb;
+      this.patch({ rmsDb, peakDb });
 
-      if (isSpeaking) {
-        this.lastVoiceAt = now;
-        if (this.activeTurnId === null) {
+      if (this.snapshot.phase === "calibrating") {
+        this.captureNoiseFloorSample(rmsDb, now);
+        return;
+      }
+
+      if (
+        this.snapshot.phase !== "ready" ||
+        this.snapshot.speechThresholdDb === null
+      ) {
+        return;
+      }
+
+      const transition = advanceSpeechDetector(this.speechDetectorState, {
+        nowMs: now,
+        rmsDb,
+        thresholdDb: this.snapshot.speechThresholdDb,
+        attackMs: this.options.speechAttackMs,
+        releaseMs: this.options.silenceCommitMs
+      });
+      this.speechDetectorState = transition.state;
+
+      if (transition.speechStartedAtMs !== null && this.activeTurnId === null) {
+        this.beginTurn(transition.speechStartedAtMs);
+      }
+      if (transition.speechEndedAtMs !== null) {
+        this.commitActiveTurn("silence");
+      }
+
+      const reachedMaxInterval =
+        this.activeTurnId !== null &&
+        this.options.maxCommitIntervalMs !== null &&
+        now - this.activeTurnStartedAt >= this.options.maxCommitIntervalMs;
+      if (reachedMaxInterval) {
+        this.commitActiveTurn("max-interval");
+        if (this.speechDetectorState.isSpeaking) {
           this.beginTurn(now);
         }
       }
 
-      if (
-        this.activeTurnId !== null &&
-        ((!isSpeaking && now - this.lastVoiceAt >= this.options.silenceCommitMs) ||
-          now - this.activeTurnStartedAt >= this.options.maxCommitIntervalMs)
-      ) {
-        this.commitActiveTurn(
-          now - this.activeTurnStartedAt >= this.options.maxCommitIntervalMs
-            ? "max-interval"
-            : "silence"
-        );
-      }
-
-      this.patch({ rmsDb, peakDb, isSpeaking });
+      this.patch({ isSpeaking: transition.state.isSpeaking });
     }, 50);
+  }
+
+  private captureNoiseFloorSample(rmsDb: number, now: number) {
+    const startedAt = this.calibrationStartedAt ?? now;
+    this.calibrationStartedAt = startedAt;
+    this.noiseFloorSamples.push(rmsDb);
+    const remainingMs = Math.max(
+      this.options.noiseCalibrationMs - (now - startedAt),
+      0
+    );
+    this.patch({ calibrationRemainingMs: Math.round(remainingMs) });
+    if (remainingMs > 0) {
+      return;
+    }
+
+    const noiseFloorDb = calculateNoiseFloorDb(this.noiseFloorSamples);
+    if (noiseFloorDb === null) {
+      void this.failSession("마이크 noise floor를 계산하지 못했습니다.");
+      return;
+    }
+    const speechThresholdDb = resolveAdaptiveSpeechThresholdDb(
+      noiseFloorDb,
+      this.options.noiseThresholdMarginDb
+    );
+    this.setTiming("calibrationReadyMs");
+    this.patch({
+      phase: "ready",
+      calibrationRemainingMs: 0,
+      noiseFloorDb,
+      speechThresholdDb
+    });
+    this.log("local.noise_calibration_completed", {
+      detail: `floor:${noiseFloorDb.toFixed(1)};threshold:${speechThresholdDb.toFixed(1)}`
+    });
   }
 
   private beginTurn(now: number) {
@@ -293,7 +368,7 @@ export class RealtimeWhisperSpikeSession {
 
   private readonly handleDataChannelOpen = () => {
     this.setTiming("dataChannelOpenMs");
-    this.patch({ phase: "connected", error: null });
+    this.patch({ error: null });
     this.publishConnectionState();
     this.dataChannel?.send(
       JSON.stringify({
@@ -361,6 +436,9 @@ export class RealtimeWhisperSpikeSession {
         activeModel: transcription.model ?? this.snapshot.activeModel,
         activeDelay: transcription.delay ?? this.snapshot.activeDelay
       });
+      if (event.type === "session.updated") {
+        this.handleSessionUpdated(transcription);
+      }
       return;
     }
 
@@ -408,6 +486,29 @@ export class RealtimeWhisperSpikeSession {
         turn?.firstDeltaAtMs ?? (isFinal ? null : now),
       ...(isFinal ? { completedAtMs: now } : {})
     });
+  }
+
+  private handleSessionUpdated(transcription: {
+    model: string | null;
+    delay: string | null;
+  }) {
+    if (!isExpectedTranscriptionConfig(transcription, this.options.delay)) {
+      void this.failSession(
+        `요청한 세션 설정이 적용되지 않았습니다. 요청: gpt-realtime-whisper/${this.options.delay}, 적용: ${transcription.model ?? "unknown"}/${transcription.delay ?? "unknown"}`
+      );
+      return;
+    }
+
+    this.setTiming("sessionUpdatedMs");
+    this.calibrationStartedAt = null;
+    this.noiseFloorSamples = [];
+    this.speechDetectorState = initialSpeechDetectorState;
+    this.patch({
+      phase: "calibrating",
+      calibrationRemainingMs: this.options.noiseCalibrationMs,
+      isSpeaking: false
+    });
+    this.log("session.configuration_verified");
   }
 
   private resolveTurnId(key: string) {
@@ -502,6 +603,19 @@ export class RealtimeWhisperSpikeSession {
     }
     this.mediaStream = null;
   }
+
+  private async failSession(message: string) {
+    await this.releaseResources();
+    this.patch({
+      phase: "error",
+      error: message,
+      isSpeaking: false,
+      peerConnectionState: "closed",
+      iceConnectionState: "closed",
+      dataChannelState: "closed"
+    });
+    this.log("spike.error", { detail: message });
+  }
 }
 
 export function createInitialSnapshot(): RealtimeWhisperSpikeSnapshot {
@@ -513,6 +627,9 @@ export function createInitialSnapshot(): RealtimeWhisperSpikeSnapshot {
     isSpeaking: false,
     rmsDb: -100,
     peakDb: -100,
+    noiseFloorDb: null,
+    speechThresholdDb: null,
+    calibrationRemainingMs: null,
     issuedModel: null,
     issuedDelay: null,
     activeModel: null,
@@ -570,4 +687,14 @@ function readConfidence(event: Record<string, unknown>) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function isExpectedTranscriptionConfig(
+  transcription: { model: string | null; delay: string | null },
+  requestedDelay: OpenAiRealtimeTranscriptionDelay
+) {
+  return (
+    transcription.model === "gpt-realtime-whisper" &&
+    transcription.delay === requestedDelay
+  );
 }
