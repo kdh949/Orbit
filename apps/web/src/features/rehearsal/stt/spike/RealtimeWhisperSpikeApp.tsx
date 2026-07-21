@@ -145,9 +145,12 @@ export function RealtimeWhisperSpikeApp() {
     const payload = {
       exportedAt: new Date().toISOString(),
       configuration: {
-        model: snapshot.activeModel ?? snapshot.issuedModel,
+        issuedModel: snapshot.issuedModel,
+        eventReportedModel: snapshot.activeModel,
         requestedDelay: delay,
-        activeDelay: snapshot.activeDelay,
+        issuedDelay: snapshot.issuedDelay,
+        eventReportedDelay: snapshot.activeDelay,
+        verification: snapshot.configurationVerification,
         maxCommitIntervalMs,
         silenceCommitMs,
         noiseCalibrationMs: 1500,
@@ -410,8 +413,12 @@ export function RealtimeWhisperSpikeApp() {
               <StatusRow label="Peer" value={snapshot.peerConnectionState} ok={snapshot.peerConnectionState === "connected"} />
               <StatusRow label="ICE" value={snapshot.iceConnectionState} ok={snapshot.iceConnectionState === "connected" || snapshot.iceConnectionState === "completed"} />
               <StatusRow label="Data channel" value={snapshot.dataChannelState} ok={snapshot.dataChannelState === "open"} />
-              <StatusRow label="Model" value={snapshot.activeModel ?? snapshot.issuedModel ?? "—"} ok={snapshot.activeModel === "gpt-realtime-whisper"} />
-              <StatusRow label="Delay" value={snapshot.activeDelay ?? snapshot.issuedDelay ?? "—"} ok={snapshot.activeDelay === delay} />
+              <StatusRow label="Issued model" value={snapshot.issuedModel ?? "—"} ok={snapshot.issuedModel === "gpt-realtime-whisper"} />
+              <StatusRow label="Event model" value={snapshot.activeModel ?? "미반환"} ok={snapshot.configurationVerification !== "pending" && (snapshot.activeModel === null || snapshot.activeModel === "gpt-realtime-whisper")} />
+              <StatusRow label="Requested delay" value={delay} ok={snapshot.issuedDelay !== null} />
+              <StatusRow label="Issued delay" value={snapshot.issuedDelay ?? "—"} ok={snapshot.issuedDelay === delay} />
+              <StatusRow label="Event delay" value={formatEventDelay(snapshot)} ok={snapshot.configurationVerification !== "pending" && (snapshot.activeDelay === null || snapshot.activeDelay === delay)} />
+              <StatusRow label="Verification" value={formatVerification(snapshot.configurationVerification)} ok={snapshot.configurationVerification !== "pending"} />
               <StatusRow
                 label="Noise floor"
                 value={formatDb(snapshot.noiseFloorDb)}
@@ -664,6 +671,27 @@ function formatAudioProcessing(audioInput: SpikeAudioInputInfo | null) {
 
 function formatBoolean(value: boolean | null) {
   return value === null ? "—" : value ? "on" : "off";
+}
+
+function formatEventDelay(snapshot: RealtimeWhisperSpikeSnapshot) {
+  if (snapshot.activeDelay !== null) {
+    return snapshot.activeDelay;
+  }
+  return snapshot.configurationVerification === "issued-confirmed-event-not-reported"
+    ? "미반환 · 발급값 사용"
+    : "미반환";
+}
+
+function formatVerification(
+  value: RealtimeWhisperSpikeSnapshot["configurationVerification"]
+) {
+  if (value === "event-confirmed") {
+    return "이벤트 확인";
+  }
+  if (value === "issued-confirmed-event-not-reported") {
+    return "발급 확인 · 이벤트 미반환";
+  }
+  return "대기";
 }
 
 function readinessLabel(snapshot: RealtimeWhisperSpikeSnapshot) {

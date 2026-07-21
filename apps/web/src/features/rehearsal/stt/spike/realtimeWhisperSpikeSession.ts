@@ -19,6 +19,11 @@ export type SpikeConnectionPhase =
   | "stopping"
   | "error";
 
+export type SpikeConfigurationVerification =
+  | "pending"
+  | "event-confirmed"
+  | "issued-confirmed-event-not-reported";
+
 export type SpikeConnectionTimings = {
   microphoneReadyMs: number | null;
   clientSecretReadyMs: number | null;
@@ -75,6 +80,7 @@ export type RealtimeWhisperSpikeSnapshot = {
   issuedDelay: OpenAiRealtimeTranscriptionDelay | null;
   activeModel: string | null;
   activeDelay: string | null;
+  configurationVerification: SpikeConfigurationVerification;
   error: string | null;
   timings: SpikeConnectionTimings;
   transcripts: SpikeTranscript[];
@@ -532,9 +538,15 @@ export class RealtimeWhisperSpikeSession {
     model: string | null;
     delay: string | null;
   }) {
-    if (!isExpectedTranscriptionConfig(transcription, this.options.delay)) {
+    const verification = verifyTranscriptionConfig({
+      issuedModel: this.snapshot.issuedModel,
+      issuedDelay: this.snapshot.issuedDelay,
+      reported: transcription,
+      requestedDelay: this.options.delay
+    });
+    if (!verification.ok) {
       void this.failSession(
-        `요청한 세션 설정이 적용되지 않았습니다. 요청: gpt-realtime-whisper/${this.options.delay}, 적용: ${transcription.model ?? "unknown"}/${transcription.delay ?? "unknown"}`
+        `요청한 세션 설정을 검증하지 못했습니다(${verification.reason}). 요청: gpt-realtime-whisper/${this.options.delay}, 발급: ${this.snapshot.issuedModel ?? "unknown"}/${this.snapshot.issuedDelay ?? "unknown"}, 이벤트: ${transcription.model ?? "not-reported"}/${transcription.delay ?? "not-reported"}`
       );
       return;
     }
@@ -545,10 +557,16 @@ export class RealtimeWhisperSpikeSession {
     this.speechDetectorState = initialSpeechDetectorState;
     this.patch({
       phase: "calibrating",
+      configurationVerification:
+        verification.delaySource === "event"
+          ? "event-confirmed"
+          : "issued-confirmed-event-not-reported",
       calibrationRemainingMs: this.options.noiseCalibrationMs,
       isSpeaking: false
     });
-    this.log("session.configuration_verified");
+    this.log("session.configuration_verified", {
+      detail: `delay-source:${verification.delaySource};event-delay:${transcription.delay ?? "not-reported"}`
+    });
   }
 
   private resolveTurnId(key: string) {
@@ -705,6 +723,7 @@ export function createInitialSnapshot(): RealtimeWhisperSpikeSnapshot {
     issuedDelay: null,
     activeModel: null,
     activeDelay: null,
+    configurationVerification: "pending",
     error: null,
     timings: { ...initialTimings },
     transcripts: [],
@@ -778,12 +797,34 @@ function toBoolean(value: unknown) {
   return typeof value === "boolean" ? value : null;
 }
 
-export function isExpectedTranscriptionConfig(
-  transcription: { model: string | null; delay: string | null },
-  requestedDelay: OpenAiRealtimeTranscriptionDelay
-) {
-  return (
-    transcription.model === "gpt-realtime-whisper" &&
-    transcription.delay === requestedDelay
-  );
+export function verifyTranscriptionConfig(input: {
+  issuedModel: string | null;
+  issuedDelay: OpenAiRealtimeTranscriptionDelay | null;
+  reported: { model: string | null; delay: string | null };
+  requestedDelay: OpenAiRealtimeTranscriptionDelay;
+}):
+  | { ok: true; delaySource: "event" | "issued" }
+  | { ok: false; reason: string } {
+  if (input.issuedModel !== "gpt-realtime-whisper") {
+    return { ok: false, reason: "issued-model-mismatch" };
+  }
+  if (input.issuedDelay !== input.requestedDelay) {
+    return { ok: false, reason: "issued-delay-mismatch" };
+  }
+  if (
+    input.reported.model !== null &&
+    input.reported.model !== "gpt-realtime-whisper"
+  ) {
+    return { ok: false, reason: "reported-model-mismatch" };
+  }
+  if (
+    input.reported.delay !== null &&
+    input.reported.delay !== input.requestedDelay
+  ) {
+    return { ok: false, reason: "reported-delay-mismatch" };
+  }
+  return {
+    ok: true,
+    delaySource: input.reported.delay === null ? "issued" : "event"
+  };
 }

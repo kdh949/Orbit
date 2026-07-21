@@ -15,7 +15,10 @@ http://localhost:5173/gpt-realtime-whisper-spike.html?projectId=<projectId>
 
 브라우저에는 장기 API key가 아닌 project-scoped ephemeral client secret만 전달된다.
 선택한 delay는 client secret 발급 시점부터 적용되며, `session.created`와
-`session.updated`에서 관찰한 유효 설정이 요청과 다르면 측정을 시작하지 않는다.
+`session.updated`가 delay를 보고하면 요청과 일치하는지 추가 검증한다. 현재 공식
+server-event schema는 delay를 응답 필드로 보장하지 않으므로, 이벤트가 delay를
+생략하면 일치하는 client-secret 발급값을 사용하고 UI에 `이벤트 미반환`으로 표시한다.
+발급값 또는 이벤트가 명시적으로 요청과 다르면 측정을 시작하지 않는다.
 
 ## 측정값
 
