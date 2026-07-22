@@ -4,7 +4,7 @@ import {
   generateDeckJobResultSchema,
   generateDeckStoredJobPayloadSchema,
 } from "@orbit/shared";
-import { ServiceUnavailableException } from "@nestjs/common";
+import { BadRequestException, ServiceUnavailableException } from "@nestjs/common";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DesignSelectionService } from "./design-selection.service";
 
@@ -74,6 +74,10 @@ const selection = {
     headingFontFamily: "Pretendard",
     bodyFontFamily: "Pretendard",
   },
+  systemDesignPackSelection: {
+    id: "executive-review",
+    version: 1,
+  },
 };
 
 describe("DesignSelectionService", () => {
@@ -121,6 +125,23 @@ describe("DesignSelectionService", () => {
     expect(
       generateDeckStoredJobPayloadSchema.parse(jobUpdate?.[1]?.[2]).coverPlan,
     ).toBeUndefined();
+    expect(
+      generateDeckStoredJobPayloadSchema.parse(jobUpdate?.[1]?.[2]).request.design
+        .stylePackId,
+    ).toBe("executive-review");
+  });
+
+  it("rejects stale system design pack versions before locking the job", async () => {
+    const dataSource = { transaction: vi.fn() };
+    const service = new DesignSelectionService(dataSource as never, logger() as never);
+
+    await expect(
+      service.select("project-target", "job-1", {
+        ...selection,
+        systemDesignPackSelection: { id: "executive-review", version: 2 },
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(dataSource.transaction).not.toHaveBeenCalled();
   });
 
   it("clones a valid cached deck and completes the existing job atomically", async () => {

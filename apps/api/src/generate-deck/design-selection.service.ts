@@ -96,6 +96,9 @@ export class DesignSelectionService {
           ...stored.request.design,
           paletteOverride: selection.paletteOverride,
           fontOverride: selection.fontOverride,
+          ...(selection.systemDesignPackSelection
+            ? { stylePackId: selection.systemDesignPackSelection.id }
+            : {}),
         },
       });
       const nextPayload = generateDeckStoredJobPayloadSchema.parse({

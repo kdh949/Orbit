@@ -484,6 +484,9 @@ async function applySelectedDesign(
         ...rawDesign,
         paletteOverride: stored.designSelection.paletteOverride,
         fontOverride: stored.designSelection.fontOverride,
+        ...(stored.designSelection.systemDesignPackSelection
+          ? { stylePackId: stored.designSelection.systemDesignPackSelection.id }
+          : {}),
       },
     },
   });

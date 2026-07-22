@@ -224,7 +224,36 @@ describe("processAiDeckPlanningStage", () => {
         return [artifactRow("content-planning", contentPayload)];
       }
       if (compact.includes("SELECT payload FROM jobs")) {
-        return [{ payload: { request: { topic: "Safe topic" } } }];
+        return [
+          {
+            payload: {
+              request: { topic: "Safe topic" },
+              designSelection: {
+                paletteOptionId: "selected",
+                paletteOverride: {
+                  primary: "#2563EB",
+                  secondary: "#0F172A",
+                  background: "#FFFFFF",
+                  surface: "#F8FAFC",
+                  muted: "#64748B",
+                  border: "#CBD5E1",
+                  text: "#0F172A",
+                  accentColor: "#F97316",
+                },
+                fontOverride: {
+                  fontId: "pretendard",
+                  name: "Pretendard",
+                  headingFontFamily: "Pretendard",
+                  bodyFontFamily: "Pretendard",
+                },
+                systemDesignPackSelection: {
+                  id: "executive-review",
+                  version: 1,
+                },
+              },
+            },
+          },
+        ];
       }
       if (compact.includes("SET status = 'failed', error_json")) {
         return [
@@ -255,6 +284,9 @@ describe("processAiDeckPlanningStage", () => {
           fetchImpl: async (_input, init) => {
             expect(JSON.parse(String(init?.body))).toMatchObject({
               preserveApprovedContent: true,
+              rawInput: {
+                design: { stylePackId: "executive-review" },
+              },
             });
             return jsonResponse(
               {
