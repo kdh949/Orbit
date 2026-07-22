@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Mapping
 from typing import Literal, Self
 from urllib.parse import urlparse
@@ -38,6 +39,8 @@ ENV_KEYS = {
     "AI_PPT_VISUAL_QA_MODEL",
     "AI_PPT_SYSTEM_DESIGN_PACKS_ENABLED",
     "AI_PPT_SYSTEM_DESIGN_PACK_ALLOWLIST",
+    "AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED",
+    "AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST",
     "OPENAI_TRANSCRIPTION_MODEL",
     "OPENAI_EMBEDDING_MODEL",
     "WHISPERX_API_URL",
@@ -117,6 +120,14 @@ class PythonWorkerConfig(BaseModel):
         default="",
         alias="AI_PPT_SYSTEM_DESIGN_PACK_ALLOWLIST",
     )
+    ai_ppt_ooxml_reference_templates_enabled: bool = Field(
+        default=False,
+        alias="AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED",
+    )
+    ai_ppt_ooxml_reference_template_allowlist: str = Field(
+        default="",
+        alias="AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST",
+    )
     openai_transcription_model: str = Field(
         alias="OPENAI_TRANSCRIPTION_MODEL", min_length=1
     )
@@ -142,6 +153,13 @@ class PythonWorkerConfig(BaseModel):
     @model_validator(mode="after")
     def validate_runtime_contract(self) -> Self:
         errors: list[str] = []
+
+        try:
+            _parse_ooxml_reference_template_allowlist(
+                self.ai_ppt_ooxml_reference_template_allowlist
+            )
+        except ValueError as error:
+            errors.append(str(error))
 
         for key in ["PYTHON_WORKER_URL", "API_BASE_URL"]:
             value = self.model_dump(by_alias=True).get(key)
@@ -196,6 +214,14 @@ class PythonWorkerConfig(BaseModel):
 
         return self
 
+    @property
+    def ooxml_reference_template_allowlist(
+        self,
+    ) -> frozenset[tuple[str, int]]:
+        return _parse_ooxml_reference_template_allowlist(
+            self.ai_ppt_ooxml_reference_template_allowlist
+        )
+
 
 def load_config(environ: Mapping[str, str] | None = None) -> PythonWorkerConfig:
     source = os.environ if environ is None else environ
@@ -229,3 +255,25 @@ def format_config_error(error: ValidationError) -> str:
 def _is_url(value: str) -> bool:
     parsed = urlparse(value)
     return bool(parsed.scheme and parsed.netloc)
+
+
+def _parse_ooxml_reference_template_allowlist(
+    value: str,
+) -> frozenset[tuple[str, int]]:
+    if value == "":
+        return frozenset()
+    entries = value.split(",")
+    pattern = re.compile(r"^([a-z0-9]+(?:-[a-z0-9]+)*)@([1-9][0-9]*)$")
+    identities: list[tuple[str, int]] = []
+    for entry in entries:
+        match = pattern.fullmatch(entry)
+        if match is None:
+            raise ValueError(
+                "AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST must contain exact template-id@version entries"
+            )
+        identities.append((match.group(1), int(match.group(2))))
+    if len(identities) != len(set(identities)):
+        raise ValueError(
+            "AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST must not contain duplicates"
+        )
+    return frozenset(identities)

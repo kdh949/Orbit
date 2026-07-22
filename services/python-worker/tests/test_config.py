@@ -80,6 +80,43 @@ def test_system_design_pack_rollout_defaults_off_and_accepts_allowlist() -> None
     )
 
 
+def test_ooxml_reference_private_catalog_rollout_is_exact_and_defaults_off() -> None:
+    default = load_config(VALID_ENV)
+    enabled = load_config(
+        {
+            **VALID_ENV,
+            "AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED": "true",
+            "AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST": (
+                "operating-review@1,simple-dark@2"
+            ),
+        }
+    )
+
+    assert default.ai_ppt_ooxml_reference_templates_enabled is False
+    assert default.ooxml_reference_template_allowlist == frozenset()
+    assert enabled.ooxml_reference_template_allowlist == frozenset(
+        {("operating-review", 1), ("simple-dark", 2)}
+    )
+
+    for invalid in [
+        "operating-review",
+        "operating-review@latest",
+        "operating-review@0",
+        "Operating-Review@1",
+        "operating-review@1,,simple-dark@1",
+    ]:
+        with pytest.raises(
+            ConfigError,
+            match="AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST",
+        ):
+            load_config(
+                {
+                    **VALID_ENV,
+                    "AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST": invalid,
+                }
+            )
+
+
 def test_ai_slide_image_review_mode_defaults_to_auto() -> None:
     config = load_config(VALID_ENV)
 

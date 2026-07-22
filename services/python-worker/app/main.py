@@ -100,10 +100,15 @@ from app.ai.ooxml_reference_templates.catalog_transport import (
     CatalogPreviewNotFoundError,
     OoxmlReferenceTemplateCatalogRuntime,
     UnconfiguredOoxmlReferenceTemplateCatalogRuntime,
+    S3ObjectClient,
+    build_private_catalog_runtime,
     require_png_preview,
 )
 from app.ai.ooxml_reference_templates.options import (
     OoxmlReferenceTemplateOptionsResponse,
+)
+from app.ai.ooxml_reference_templates.private_generation_runtime import (
+    build_private_generation_runtime,
 )
 from app.ai.visual_qa import (
     VisualQaRequest,
@@ -484,8 +489,28 @@ class RehearsalAnalyzeResponse(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    app.state.config = load_config()
+    config = load_config()
+    app.state.config = config
+    configure_ooxml_reference_template_catalog(app.state, config)
     yield
+
+
+def configure_ooxml_reference_template_catalog(
+    state: Any,
+    config: PythonWorkerConfig,
+    *,
+    client: S3ObjectClient | None = None,
+) -> None:
+    catalog = build_private_catalog_runtime(
+        config,
+        client=client,
+    )
+    state.ooxml_reference_template_catalog = catalog
+    state.ooxml_reference_generation_runtime = build_private_generation_runtime(
+        config,
+        catalog=catalog,
+        client=client,
+    )
 
 
 app = FastAPI(title="ORBIT Python Worker", version="0.1.0", lifespan=lifespan)
@@ -935,9 +960,18 @@ def design_pack_options(
 )
 def ooxml_reference_template_generation_stage(
     payload: OoxmlReferenceGenerationStageRequest,
+    request: Request,
 ) -> OoxmlReferenceGenerationStageResponse:
     try:
-        return execute_ooxml_reference_generation_stage(payload)
+        runtime = getattr(
+            request.app.state,
+            "ooxml_reference_generation_runtime",
+            None,
+        )
+        return execute_ooxml_reference_generation_stage(
+            payload,
+            runtime=runtime,
+        )
     except OoxmlReferenceStageError as error:
         raise HTTPException(
             status_code=503 if error.retryable else 409,

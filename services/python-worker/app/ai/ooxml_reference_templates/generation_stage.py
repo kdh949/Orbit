@@ -4,11 +4,18 @@ import json
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import Field, JsonValue, model_validator
+from pydantic import Field, JsonValue, ValidationError, model_validator
 
 from app.ai.ooxml_reference_templates.models import (
     OoxmlReferenceTemplateGenerationRequest,
     StrictModel,
+)
+from app.ai.ooxml_reference_templates.generation_pipeline import (
+    GenerationPipelineError,
+    execute_generation_stage,
+)
+from app.ai.ooxml_reference_templates.generation_runtime import (
+    OoxmlReferenceGenerationRuntime,
 )
 from app.ai.ooxml_reference_templates.registry import load_repository_catalog
 
@@ -50,7 +57,9 @@ class OoxmlReferenceGenerationStageRequest(StrictModel):
             or selection.version != self.template_version
         ):
             raise ValueError("stage template identity must match request selection")
-        expected = list(GENERATION_STAGE_ORDER[: GENERATION_STAGE_ORDER.index(self.stage)])
+        expected = list(
+            GENERATION_STAGE_ORDER[: GENERATION_STAGE_ORDER.index(self.stage)]
+        )
         actual = [dependency.stage for dependency in self.dependencies]
         if actual != expected:
             raise ValueError("stage dependencies must be a complete ordered prefix")
@@ -102,13 +111,44 @@ class OoxmlReferenceStageError(ValueError):
 
 def execute_ooxml_reference_generation_stage(
     payload: OoxmlReferenceGenerationStageRequest,
+    *,
+    runtime: OoxmlReferenceGenerationRuntime | None = None,
 ) -> OoxmlReferenceGenerationStageResponse:
-    """Fail closed until the exact catalog version is active and locally runnable.
+    """Execute one ordered stage without exposing private package storage details."""
 
-    The stage transport is production-wired now; source bytes remain exclusively in
-    managed storage. The remaining stage implementations are enabled only after the
-    catalog entry has approved provenance, annotations, previews, and a storage adapter.
-    """
+    if runtime is not None:
+        try:
+            result = execute_generation_stage(payload, runtime=runtime)
+            return OoxmlReferenceGenerationStageResponse(
+                stage=payload.stage,
+                template_id=payload.template_id,
+                template_version=payload.template_version,
+                source_slide_count=result.source_slide_count,
+                slot_count=result.slot_count,
+                artifact=result.artifact,
+                issue_codes=result.issue_codes,
+            )
+        except GenerationPipelineError as error:
+            raise OoxmlReferenceStageError(
+                error.code,
+                retryable=error.retryable,
+            ) from error
+        except ValidationError as error:
+            raise OoxmlReferenceStageError(
+                "OOXML_REFERENCE_STAGE_ARTIFACT_INVALID",
+                retryable=False,
+            ) from error
+        except Exception as error:
+            code = getattr(error, "code", "OOXML_REFERENCE_STAGE_FAILED")
+            if (
+                isinstance(code, str)
+                and code
+                and not code.startswith("OOXML_REFERENCE_")
+            ):
+                code = f"OOXML_REFERENCE_{code}"
+            if not isinstance(code, str) or not code.startswith("OOXML_REFERENCE_"):
+                code = "OOXML_REFERENCE_STAGE_FAILED"
+            raise OoxmlReferenceStageError(code, retryable=False) from error
 
     catalog_path = (
         Path(__file__).parents[1]
@@ -144,20 +184,31 @@ def _json_size(value: object) -> int:
 
 
 def _reject_private_locator(value: object) -> None:
+    if isinstance(value, str):
+        if value.startswith("data:") and ";base64," in value[:256].lower():
+            raise ValueError("stage artifact contains a private locator")
+        if value.startswith("UEsDB"):
+            raise ValueError("stage artifact contains a private locator")
+        return
     if isinstance(value, list):
         for item in value:
             _reject_private_locator(item)
         return
     if not isinstance(value, dict):
         return
-    forbidden = {
-        "storagekey",
-        "signedurl",
-        "rawpackagebytes",
-        "rawpackagexml",
-        "packagebase64",
-    }
     for key, item in value.items():
-        if key.lower() in forbidden:
+        normalized = "".join(
+            character for character in key.lower() if character.isalnum()
+        )
+        if (
+            "storagekey" in normalized
+            or "objectkey" in normalized
+            or "signedurl" in normalized
+            or "presignedurl" in normalized
+            or "rawpackage" in normalized
+            or "base64" in normalized
+            or "privatebinarylocator" in normalized
+            or "packagelocator" in normalized
+        ):
             raise ValueError("stage artifact contains a private locator")
         _reject_private_locator(item)
