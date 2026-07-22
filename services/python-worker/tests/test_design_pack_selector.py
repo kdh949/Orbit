@@ -49,7 +49,7 @@ def test_saved_design_preferences_win_over_default_variant() -> None:
 
 def test_unsupported_profile_uses_stable_catalog_fallback() -> None:
     selection = select_system_design_pack(
-        raw(profile="executive-report", purpose="report"),
+        raw(profile="research", purpose="teach"),
         SLIDES,
     )
 

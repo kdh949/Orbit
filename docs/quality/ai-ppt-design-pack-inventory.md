@@ -28,6 +28,12 @@ Heuristic role inventory는 `content=77`, `data=37`, `media-content=9`, `cover=7
 | Kickoff & Alignment | `kickoff-cover-01`, `kickoff-agenda-01`, `kickoff-goals-01`, `kickoff-roles-01`, `kickoff-process-01`, `kickoff-timeline-01`, `kickoff-roadmap-01`, `kickoff-schedule-01`, `kickoff-closing-01` | 9 | checked | checked | native elements | approved |
 | Editorial Insight | `editorial-cover-01`, `editorial-thesis-01`, `editorial-statement-01`, `editorial-split-01`, `editorial-evidence-01`, `editorial-trend-01`, `editorial-implication-01`, `editorial-quote-01`, `editorial-closing-01` | 9 | checked | checked | native elements | approved |
 
+## 활성 pack 구현 현황
+
+- `neutral`: active, Orbit-native 9개 layout과 deterministic selector를 제공한다.
+- `executive-review`: active, Orbit-native 8개 layout을 제공한다. KPI와 chart는 grounded typed metric만 사용하고, table과 chart는 편집 가능한 native element로 export한다.
+- `kickoff-alignment`, `editorial-insight`: 후보 정의만 승인되었으며 renderer와 golden 검증 전까지 active catalog에 포함하지 않는다.
+
 ## 검수 체크리스트
 
 - [x] source ID와 slide number를 raw inventory에 기록했다.

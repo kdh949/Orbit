@@ -1,0 +1,63 @@
+{
+  "catalogVersion": 1,
+  "packs": [
+    {
+      "id": "executive-review",
+      "version": 1,
+      "family": "executive-review",
+      "variant": "mixed",
+      "status": "active",
+      "baseStylePackId": "business-review",
+      "supportedProfiles": ["executive-report"],
+      "supportedPurposes": ["report"],
+      "selectionTags": ["executive", "report", "data"],
+      "layoutIds": ["executive-cover-01", "executive-summary-01", "executive-kpi-01", "executive-table-01", "executive-chart-01", "executive-decision-01", "executive-evidence-01", "executive-closing-01"],
+      "backgroundRhythm": "light-dominant",
+      "mediaPolicy": ["minimal", "balanced", "provided-only", "hybrid"],
+      "previewManifestId": "preview-executive-review-v1",
+      "provenance": { "source": "orbit-native", "licenseStatus": "approved" }
+    }
+  ],
+  "layouts": [
+    {
+      "layoutId": "executive-cover-01", "rendererId": "executive-cover-01", "slideRoles": ["cover"], "silhouetteId": "executive-report-cover", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 120, "itemMin": 0, "itemMax": 0 }, "dataRequirement": "none", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "subtitle", "required": false }], "previewId": "preview-executive-cover-01-v1"
+    },
+    {
+      "layoutId": "executive-summary-01", "rendererId": "executive-summary-01", "slideRoles": ["summary", "statement"], "silhouetteId": "executive-summary-band", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 160, "itemMin": 1, "itemMax": 2 }, "dataRequirement": "none", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "body", "required": true }], "previewId": "preview-executive-summary-01-v1"
+    },
+    {
+      "layoutId": "executive-kpi-01", "rendererId": "executive-kpi-01", "slideRoles": ["data"], "silhouetteId": "executive-kpi-strip", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 100, "itemMin": 2, "itemMax": 4 }, "dataRequirement": "grounded-metrics", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "metric", "required": true }, { "role": "evidence", "required": true }], "previewId": "preview-executive-kpi-01-v1"
+    },
+    {
+      "layoutId": "executive-table-01", "rendererId": "executive-table-01", "slideRoles": ["data", "content"], "silhouetteId": "executive-table-grid", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 100, "itemMin": 2, "itemMax": 5 }, "dataRequirement": "table", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "table", "required": true }, { "role": "source", "required": false }], "previewId": "preview-executive-table-01-v1"
+    },
+    {
+      "layoutId": "executive-chart-01", "rendererId": "executive-chart-01", "slideRoles": ["chart", "data"], "silhouetteId": "executive-chart-focus", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 100, "itemMin": 2, "itemMax": 4 }, "dataRequirement": "chart", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "chart", "required": true }, { "role": "source", "required": true }], "previewId": "preview-executive-chart-01-v1"
+    },
+    {
+      "layoutId": "executive-decision-01", "rendererId": "executive-decision-01", "slideRoles": ["decision", "comparison"], "silhouetteId": "executive-decision-split", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 140, "itemMin": 2, "itemMax": 4 }, "dataRequirement": "none", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "body", "required": true }], "previewId": "preview-executive-decision-01-v1"
+    },
+    {
+      "layoutId": "executive-evidence-01", "rendererId": "executive-evidence-01", "slideRoles": ["content", "statement"], "silhouetteId": "executive-evidence-split", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 160, "itemMin": 2, "itemMax": 4 }, "dataRequirement": "none", "mediaRequirement": "optional",
+      "slots": [{ "role": "title", "required": true }, { "role": "body", "required": true }, { "role": "evidence", "required": false }], "previewId": "preview-executive-evidence-01-v1"
+    },
+    {
+      "layoutId": "executive-closing-01", "rendererId": "executive-closing-01", "slideRoles": ["closing", "summary"], "silhouetteId": "executive-decision-close", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 120, "itemMin": 0, "itemMax": 3 }, "dataRequirement": "none", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "body", "required": false }], "previewId": "preview-executive-closing-01-v1"
+    }
+  ]
+}

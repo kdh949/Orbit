@@ -12,6 +12,9 @@ from app.ai.deck_generation.design_pack_registry import (
 )
 from app.ai.deck_generation.models import RawInput
 from app.ai.design_pack_layouts.neutral import select_neutral_layouts
+from app.ai.design_pack_layouts.executive_review import (
+    select_executive_review_layouts,
+)
 from app.ai.design_program import DeckDesignProgram
 
 
@@ -135,6 +138,8 @@ def select_layouts(
 ) -> list[str]:
     if pack.family == "neutral":
         return select_neutral_layouts(slides, registry)
+    if pack.family == "executive-review":
+        return select_executive_review_layouts(slides, registry)
     raise ValueError(f"unsupported design pack family: {pack.family}")
 
 
