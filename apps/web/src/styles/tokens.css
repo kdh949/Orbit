@@ -126,6 +126,14 @@
   --redesign-color-tag-purple-container: #f0eaff;
   --redesign-color-tag-red: #a43333;
   --redesign-color-tag-red-container: #ffe8e8;
+  --redesign-color-ai-ppt-preview-paper: #ffffff;
+  --redesign-color-ai-ppt-preview-outline: #d6d3d1;
+  --redesign-color-ai-ppt-preview-ink: #1c1917;
+  --redesign-color-ai-ppt-preview-neutral: #cbd5e1;
+  --redesign-color-ai-ppt-preview-default: #6846d8;
+  --redesign-color-ai-ppt-preview-executive: #2563eb;
+  --redesign-color-ai-ppt-preview-kickoff: #4f46e5;
+  --redesign-color-ai-ppt-preview-editorial: #c2410c;
 
   /* Typography — single family across all roles */
   --redesign-font-family: "Pretendard", sans-serif;

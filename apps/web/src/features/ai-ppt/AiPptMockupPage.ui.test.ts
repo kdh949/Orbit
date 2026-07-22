@@ -5,6 +5,7 @@ import {
   AiPptMockupPage,
   AiPptStyleColorPage,
 } from "./AiPptMockupPage";
+import { DesignPackOptions } from "./DesignPackOptions";
 
 describe("AI PPT wizard UI", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -82,6 +83,8 @@ describe("AI PPT wizard UI", () => {
     );
 
     expect(html).toContain("폰트");
+    expect(html).toContain("디자인 팩");
+    expect(html).toContain("AI 추천");
     expect(html).toContain("Pretendard");
     expect(html).toContain("컬러 팔레트");
     expect(html).not.toContain("ai-ppt-panel-heading");
@@ -107,4 +110,61 @@ describe("AI PPT wizard UI", () => {
     expect(html).not.toContain("Pretendard matches professional presentation tone.");
     expect(html).not.toContain("--color-primary-main");
   });
+
+  it("shows three cover and body recommendations with manual override", () => {
+    const options = [
+      option("executive-review", "executive-review", "Executive Review"),
+      option("kickoff-alignment", "kickoff-alignment", "Kickoff & Alignment"),
+      option("editorial-insight", "editorial-insight", "Editorial Insight"),
+    ] as const;
+    const html = renderToStaticMarkup(
+      createElement(DesignPackOptions, {
+        loading: false,
+        onSelect: vi.fn(),
+        options: [...options],
+        selected: { id: "kickoff-alignment", version: 1 },
+      }),
+    );
+
+    expect(html).toContain("AI 추천 1순위");
+    expect(html.match(/표지와 본문 미리보기/g)).toHaveLength(3);
+    expect(html).toContain('data-preview-id="preview-executive-review-cover"');
+    expect(html).toContain('aria-label="Kickoff &amp; Alignment 디자인 팩 선택됨"');
+    expect(html).toContain('aria-pressed="true"');
+  });
+
+  it("keeps auto mode available when recommendations fail", () => {
+    const html = renderToStaticMarkup(
+      createElement(DesignPackOptions, {
+        error: "추천을 불러오지 못했습니다.",
+        loading: false,
+        onSelect: vi.fn(),
+        options: [],
+        selected: null,
+      }),
+    );
+
+    expect(html).toContain("AI 추천 자동 모드로 계속할 수 있습니다");
+    expect(html).toContain('aria-label="AI 추천 자동 모드"');
+    expect(html).toContain('aria-pressed="true"');
+  });
 });
+
+function option(
+  id: "executive-review" | "kickoff-alignment" | "editorial-insight",
+  family: "executive-review" | "kickoff-alignment" | "editorial-insight",
+  name: string,
+) {
+  return {
+    id,
+    version: 1,
+    name,
+    family,
+    rationale: `${name} 추천 근거`,
+    preview: {
+      manifestId: `preview-${id}`,
+      coverPreviewId: `preview-${id}-cover`,
+      bodyPreviewId: `preview-${id}-body`,
+    },
+  };
+}

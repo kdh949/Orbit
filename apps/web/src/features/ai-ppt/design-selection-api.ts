@@ -1,6 +1,9 @@
 import {
   aiDeckDesignSelectionResponseSchema,
+  designPackOptionsRequestSchema,
+  designPackOptionsResponseSchema,
   generateDeckDesignSelectionSchema,
+  type DesignPackOptionsRequest,
   type GenerateDeckDesignSelection,
 } from "@orbit/shared";
 
@@ -26,6 +29,30 @@ export async function saveDesignSelection(
     headers: { "content-type": "application/json" },
     body: JSON.stringify(generateDeckDesignSelectionSchema.parse(selection)),
   });
+}
+
+export async function requestDesignPackOptions(
+  projectId: string,
+  input: DesignPackOptionsRequest,
+) {
+  const response = await fetch(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/design-pack-options`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(designPackOptionsRequestSchema.parse(input)),
+    },
+  );
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(
+      payload && typeof payload === "object" && "message" in payload
+        ? String(payload.message)
+        : "디자인 팩 추천을 불러오지 못했습니다.",
+    );
+  }
+  return designPackOptionsResponseSchema.parse(payload);
 }
 
 async function request(projectId: string, jobId: string, init: RequestInit) {

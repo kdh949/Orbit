@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildAiPptGenerateDeckPayload,
+  buildAiPptDesignSelection,
   defaultPaletteOptions,
   fetchDeckColorCustomization,
   getAiPptWizardValidationMessage,
@@ -10,6 +11,7 @@ import {
   miniSlideFontStyles,
   pollJob,
 } from "./AiPptMockupPage";
+import { recommendGenerateDeckFonts } from "@orbit/shared";
 
 const form = {
   topic: "하반기 제품 전략",
@@ -75,6 +77,28 @@ describe("AI PPT simplified input", () => {
     expect(payload.design.fontOverride?.fontId).toBe("pretendard");
     expect(payload.design).not.toHaveProperty("stylePackId");
     expect(payload.designPrompt).not.toContain("base=");
+  });
+
+  it("keeps auto pack mode optional and includes a manual override", () => {
+    const font = recommendGenerateDeckFonts("professional")[0];
+    const automatic = buildAiPptDesignSelection(
+      defaultPaletteOptions[0],
+      font,
+      "",
+      null,
+    );
+    const manual = buildAiPptDesignSelection(
+      defaultPaletteOptions[0],
+      font,
+      "",
+      { id: "executive-review", version: 1 },
+    );
+
+    expect(automatic).not.toHaveProperty("systemDesignPackSelection");
+    expect(manual.systemDesignPackSelection).toEqual({
+      id: "executive-review",
+      version: 1,
+    });
   });
 
   it("structures explicit duration and slide count from presentation content", () => {

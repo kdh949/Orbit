@@ -6,6 +6,9 @@ import type {
   GenerateDeckReferencePolicy,
   Job,
   AiDeckDesignSelectionResponse,
+  DesignPackOption,
+  GenerateDeckDesignSelection,
+  SystemDesignPackSelection,
 } from "@orbit/shared";
 import { demoIds, recommendGenerateDeckFonts } from "@orbit/shared";
 import {
@@ -53,9 +56,11 @@ import {
 import {
   generationPath,
   requestDesignSelection,
+  requestDesignPackOptions,
   saveDesignSelection,
   styleColorPath,
 } from "./design-selection-api";
+import { DesignPackOptions } from "./DesignPackOptions";
 import "./ai-ppt-mockup.css";
 
 type Tone = "professional" | "friendly" | "confident" | "concise";
@@ -463,6 +468,21 @@ export function buildAiPptGenerateDeckPayload(
   };
 }
 
+export function buildAiPptDesignSelection(
+  paletteOption: PaletteOption,
+  selectedFont: GenerateDeckFontOption,
+  designPrompt: string,
+  systemDesignPackSelection: SystemDesignPackSelection | null,
+): GenerateDeckDesignSelection {
+  return {
+    paletteOptionId: paletteOption.optionId,
+    paletteOverride: paletteOption.palette,
+    fontOverride: fontOverrideFromOption(selectedFont),
+    ...(designPrompt.trim() ? { designPrompt: designPrompt.trim() } : {}),
+    ...(systemDesignPackSelection ? { systemDesignPackSelection } : {}),
+  };
+}
+
 export function inferAiPptTimingFromContent(content: string): Pick<
   GenerateDeckRequest,
   "targetDurationMinutes" | "slideCountRange"
@@ -806,6 +826,11 @@ export function AiPptStyleColorPage(props: {
     null,
   );
   const [palettePrompt, setPalettePrompt] = useState("");
+  const [designPackOptions, setDesignPackOptions] = useState<DesignPackOption[]>([]);
+  const [selectedDesignPack, setSelectedDesignPack] =
+    useState<SystemDesignPackSelection | null>(null);
+  const [isLoadingDesignPacks, setIsLoadingDesignPacks] = useState(true);
+  const [designPackError, setDesignPackError] = useState("");
   const [isAiPaletteOpen, setIsAiPaletteOpen] = useState(false);
   const [isCustomizingPalette, setIsCustomizingPalette] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -844,6 +869,29 @@ export function AiPptStyleColorPage(props: {
           return;
         }
         setStatus("");
+        try {
+          const recommendations = await requestDesignPackOptions(
+            props.projectId,
+            {
+              topic: next.styleContext.topic,
+              purpose: "inform",
+              tone: next.styleContext.tone,
+              slideCount: 8,
+              mediaPolicy: "minimal",
+            },
+          );
+          if (!cancelled) setDesignPackOptions(recommendations.options);
+        } catch (cause) {
+          if (!cancelled) {
+            setDesignPackError(
+              cause instanceof Error
+                ? cause.message
+                : "디자인 팩 추천을 불러오지 못했습니다.",
+            );
+          }
+        } finally {
+          if (!cancelled) setIsLoadingDesignPacks(false);
+        }
       } catch (cause) {
         if (!cancelled) {
           setError(
@@ -904,12 +952,12 @@ export function AiPptStyleColorPage(props: {
       const next = await saveDesignSelection(
         props.projectId,
         props.jobId,
-        {
-          paletteOptionId: selectedPalette.optionId,
-          paletteOverride: selectedPalette.palette,
-          fontOverride: fontOverrideFromOption(selectedFont),
-          ...(palettePrompt.trim() ? { designPrompt: palettePrompt.trim() } : {}),
-        },
+        buildAiPptDesignSelection(
+          selectedPalette,
+          selectedFont,
+          palettePrompt,
+          selectedDesignPack,
+        ),
       );
       setDesignState(next);
       navigateToPath(generationPath(next.projectId, next.jobId));
@@ -930,18 +978,23 @@ export function AiPptStyleColorPage(props: {
         <main className="ai-ppt-workspace ai-ppt-workspace-single ai-ppt-context-panel">
           <section className="ai-ppt-panel">
             <StyleColorStep
+              designPackError={designPackError}
+              designPackOptions={designPackOptions}
               isAiPaletteOpen={isAiPaletteOpen}
               customPalette={customPalette}
               fontOptions={fontOptions}
               isCustomizing={isCustomizingPalette}
+              isLoadingDesignPacks={isLoadingDesignPacks}
               onCustomize={() => void customizePalette()}
               onOpenAiPalette={() => setIsAiPaletteOpen((isOpen) => !isOpen)}
               onFontSelect={setSelectedFontId}
               onPalettePromptChange={setPalettePrompt}
               onSelectPalette={setSelectedPaletteId}
+              onSelectDesignPack={setSelectedDesignPack}
               palettePrompt={palettePrompt}
               selectedFontId={selectedFont?.fontId ?? ""}
               selectedPaletteId={selectedPalette.optionId}
+              selectedDesignPack={selectedDesignPack}
             />
             {error ? (
               <p className="ai-ppt-error" role="alert">
@@ -1185,21 +1238,33 @@ function PolicyCheckbox(props: {
 }
 
 function StyleColorStep(props: {
+  designPackError: string;
+  designPackOptions: DesignPackOption[];
   isAiPaletteOpen: boolean;
   customPalette: PaletteOption | null;
   fontOptions: GenerateDeckFontOption[];
   isCustomizing: boolean;
+  isLoadingDesignPacks: boolean;
   onCustomize: () => void;
   onOpenAiPalette: () => void;
   onFontSelect: (fontId: string) => void;
   onPalettePromptChange: (value: string) => void;
   onSelectPalette: (optionId: string) => void;
+  onSelectDesignPack: (selection: SystemDesignPackSelection | null) => void;
   palettePrompt: string;
   selectedFontId: string;
   selectedPaletteId: string;
+  selectedDesignPack: SystemDesignPackSelection | null;
 }) {
   return (
     <>
+      <DesignPackOptions
+        error={props.designPackError}
+        loading={props.isLoadingDesignPacks}
+        onSelect={props.onSelectDesignPack}
+        options={props.designPackOptions}
+        selected={props.selectedDesignPack}
+      />
       <fieldset className="ai-ppt-style-fieldset">
         <legend>폰트</legend>
         <div className="ai-ppt-font-grid" role="list">
