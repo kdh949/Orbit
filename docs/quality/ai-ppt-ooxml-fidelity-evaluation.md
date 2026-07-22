@@ -3,10 +3,15 @@
 ## 현재 상태
 
 Task 8의 fidelity harness는 identity control, intended-slot mask, locked-region metric과
-structural hard gate까지 구현됐다. 다만 7개 template의 실제 identity-control baseline,
-Microsoft PowerPoint 결과와 threshold 근거는 아직 수집되지 않았다. 따라서 특정 SSIM
-점수나 종합 점수를 승인 threshold로 간주하지 않으며, Checkpoint B1/B2 및 제품 rollout을
-통과로 표시하지 않는다.
+structural hard gate까지 구현됐다. 2026-07-23에 7개 actual source 139장 identity clone의
+package warning 0, `python-pptx` reopen과 LibreOffice render checksum을 재현했다. 같은 source와
+승인 manifest로 생성한 7개 actual 8장 full-deck도 package/sequence/overflow/overlap/crop gate와
+LibreOffice 56장 render를 통과했다. template별 checksum은
+`ooxml-reference-template-reports/`에 기록한다.
+
+Microsoft PowerPoint 결과, renderer가 실제 resolve한 font checksum과 renderer별 threshold
+근거는 아직 수집되지 않았다. 따라서 특정 SSIM 점수나 종합 점수를 승인 threshold로
+간주하지 않으며, Checkpoint B1/B2/C 및 제품 rollout을 통과로 표시하지 않는다.
 
 기존 `pptx_quality.py`의 일반 SSIM 기본값 `0.95`와 System Design Pack engineering score
 `85`는 이 모드의 승인 threshold가 아니다.
@@ -104,10 +109,11 @@ report checksum, locked-region metric 분포와 structural gate 결과를 포함
 
 ## 승인 전 체크리스트
 
-- [ ] 7개 identity-control baseline과 checksum이 재현됨
+- [x] 7개 identity-control package/LibreOffice baseline과 checksum이 재현됨
 - [ ] PowerPoint와 LibreOffice renderer별 결과가 분리됨
-- [ ] known geometry/style/package drift fixture가 실패함
-- [ ] intended slot mask 밖 drift가 실패함
+- [x] known geometry/style/package drift fixture가 실패함
+- [x] intended slot mask 밖 drift가 실패함
 - [ ] threshold와 tolerance 근거가 사람 검수됨
 
-현재 위 항목은 승인 완료로 표시하지 않는다.
+PowerPoint와 threshold 항목이 남아 있으므로 전체 calibration은 `not-calibrated`,
+`applied=false`를 유지한다.
