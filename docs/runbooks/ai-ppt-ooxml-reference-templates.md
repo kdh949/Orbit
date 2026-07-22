@@ -115,8 +115,9 @@ rollback 뒤에도 이 경로를 smoke해 복구 가능성을 보존한다.
 
 ## 현재 승인 상태
 
-2026-07-22 기준 코드·fixture E2E는 통과했지만 7개 source의 private managed storage,
-승인 manifest/preview/license/font evidence, 7개 actual full-deck artifact와 정식 Microsoft
-PowerPoint 사람 검수가 없다. 따라서 모든 catalog entry는 disabled이고 제품 rollout은
-승인 보류다. 상세 상태는
+2026-07-22 기준 코드·fixture E2E와 actual-source 7개/139장 identity clone의 package
+validation 및 LibreOffice render/reopen은 통과했다. 그러나 private managed storage,
+승인 manifest/preview/license/font evidence, content-generated 7개 actual full-deck artifact와
+정식 Microsoft PowerPoint 사람 검수는 없다. 따라서 모든 catalog entry는 disabled이고
+제품 rollout은 승인 보류다. 상세 상태는
 `docs/quality/ooxml-reference-template-reports/README.md`를 따른다.

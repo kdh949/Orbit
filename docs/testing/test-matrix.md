@@ -155,11 +155,11 @@
 | Task 3 private catalog | 자동 통과, 전체 disabled | registry/catalog test | preview asset와 checksum, managed storage |
 | Task 4 annotation pipeline | 자동 통과 | annotation candidate/locator/locked inventory test | 실제 139장 annotation과 사람 승인 |
 | Checkpoint A | 승인 보류 | inventory/schema/security fixture | 승인된 manifest/preview/license/private ACL |
-| Task 5 raw clone | 자동 통과 | clone/package validator test, 10장 LibreOffice/PowerPoint reopen | 승인된 Checkpoint A |
-| Checkpoint B1 | 기술 spike 통과, 승인 보류 | 10장 relationship warning 0, source/layout diversity, pixel identity | Checkpoint A와 사람 검수 |
+| Task 5 raw clone | 자동 통과 | clone/package validator test, actual-source 7개/139장 identity clone warning 0과 LibreOffice render/reopen | 승인된 Checkpoint A와 PowerPoint reopen |
+| Checkpoint B1 | actual-source 기계 검증 통과, 승인 보류 | 7개/139장 identity clone, relationship/package warning 0, slide count 일치, LibreOffice render/reopen | Checkpoint A, PowerPoint reopen과 사람 검수 |
 | Task 6 text/image slot | 자동 통과 | text/image capacity·style·media preservation test | 실제 승인 slot fixture |
 | Task 7 materialization | 자동 통과 | Python materialization과 Worker transaction test | 실제 private storage publication |
-| Task 8 fidelity harness | 자동 통과 | identity/masked comparison과 known drift test | 7개 renderer baseline과 threshold 승인 |
+| Task 8 fidelity harness | 자동 통과 | identity/masked comparison과 known drift test, actual-source 7개 LibreOffice identity render | PowerPoint baseline, renderer별 비교와 threshold 승인 |
 | Checkpoint B2 | 자동 경로 통과, 승인 보류 | Postgres round-trip integration 6 tests, `ai-ppt-ooxml-editor-roundtrip-spike.md` | 실제 slot montage와 사람 승인 |
 | Task 9 content/sequence planner | 자동 통과 | 7-family table-driven role/capacity/evidence/repetition tests | 승인된 7개 annotation fixture |
 | Task 10 table slot | 자동 통과 | reference table replacement + 기존 table sync 26 tests | 실제 template table fixture/reopen |
