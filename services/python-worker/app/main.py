@@ -52,6 +52,11 @@ from app.ai.deck_generation.stage_runtime import (
     run_source_grounding_stage,
 )
 from app.ai.deck_generation.models import ReferencePolicy, SourceGroundingResult
+from app.ai.deck_generation.design_pack_options import (
+    DesignPackOptionsRequest,
+    DesignPackOptionsResponse,
+    generate_design_pack_options,
+)
 from app.ai.pptx_design_importer import (
     ImportedDesignAsset,
     PptxDesignImportResult,
@@ -897,6 +902,16 @@ def generate_ai_deck(
         )
     except DeckContentGenerationError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
+
+
+@app.post(
+    "/internal/ai/deck-generation/design-pack-options",
+    response_model=DesignPackOptionsResponse,
+)
+def design_pack_options(
+    payload: DesignPackOptionsRequest,
+) -> DesignPackOptionsResponse:
+    return generate_design_pack_options(payload)
 
 
 @app.post(
