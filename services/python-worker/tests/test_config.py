@@ -61,6 +61,25 @@ def test_visual_qa_model_falls_back_when_not_configured() -> None:
     assert configured.ai_ppt_visual_qa_model == "gpt-4.1-vision"
 
 
+def test_system_design_pack_rollout_defaults_off_and_accepts_allowlist() -> None:
+    default = load_config(VALID_ENV)
+    enabled = load_config(
+        {
+            **VALID_ENV,
+            "AI_PPT_SYSTEM_DESIGN_PACKS_ENABLED": "true",
+            "AI_PPT_SYSTEM_DESIGN_PACK_ALLOWLIST": (
+                "neutral-light,executive-review"
+            ),
+        }
+    )
+
+    assert default.ai_ppt_system_design_packs_enabled is False
+    assert enabled.ai_ppt_system_design_packs_enabled is True
+    assert enabled.ai_ppt_system_design_pack_allowlist == (
+        "neutral-light,executive-review"
+    )
+
+
 def test_ai_slide_image_review_mode_defaults_to_auto() -> None:
     config = load_config(VALID_ENV)
 

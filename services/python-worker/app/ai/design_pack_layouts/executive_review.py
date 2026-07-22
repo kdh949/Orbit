@@ -23,13 +23,21 @@ def select_executive_review_layouts(
     slides: list[dict[str, Any]],
     registry: SystemDesignPackRegistry,
 ) -> list[str]:
-    known = {layout.layout_id for layout in registry.layouts}
+    known = {layout.layout_id: layout for layout in registry.layouts}
     selected: list[str] = []
     usage: Counter[str] = Counter()
     for index, slide in enumerate(slides):
         candidates = executive_candidates(slide, index, len(slides))
+        compatible = [
+            candidate
+            for candidate in candidates
+            if candidate in known
+            and known[candidate].content_capacity.item_min
+            <= len(slide.get("contentItems", []))
+            <= known[candidate].content_capacity.item_max
+        ]
         layout_id = min(
-            (candidate for candidate in candidates if candidate in known),
+            compatible or [candidate for candidate in candidates if candidate in known],
             key=lambda candidate: (usage[candidate], candidate),
         )
         selected.append(layout_id)

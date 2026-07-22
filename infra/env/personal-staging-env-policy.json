@@ -29,6 +29,14 @@
       "source": "doppler-optional",
       "delivery": "code-default"
     },
+    "AI_PPT_SYSTEM_DESIGN_PACKS_ENABLED": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
+    "AI_PPT_SYSTEM_DESIGN_PACK_ALLOWLIST": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
     "AI_SLIDE_IMAGE_REVIEW_MODE": {
       "source": "repo-default",
       "delivery": "code-default"

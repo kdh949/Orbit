@@ -54,6 +54,27 @@ const validEnv = {
 };
 
 describe("ORBIT env validation", () => {
+  it("defaults System Design Pack rollout off and parses its allowlist", () => {
+    const defaults = loadOrbitConfig(validEnv, { service: "api" });
+    const enabled = loadOrbitConfig(
+      {
+        ...validEnv,
+        AI_PPT_SYSTEM_DESIGN_PACKS_ENABLED: "true",
+        AI_PPT_SYSTEM_DESIGN_PACK_ALLOWLIST:
+          "neutral-light, executive-review",
+      },
+      { service: "api" },
+    );
+
+    expect(defaults.AI_PPT_SYSTEM_DESIGN_PACKS_ENABLED).toBe(false);
+    expect(defaults.AI_PPT_SYSTEM_DESIGN_PACK_ALLOWLIST).toEqual([]);
+    expect(enabled.AI_PPT_SYSTEM_DESIGN_PACKS_ENABLED).toBe(true);
+    expect(enabled.AI_PPT_SYSTEM_DESIGN_PACK_ALLOWLIST).toEqual([
+      "neutral-light",
+      "executive-review",
+    ]);
+  });
+
   it("uses staged BullMQ execution by default and validates staged selectors", () => {
     const defaults = loadOrbitConfig(validEnv, { service: "api" });
     expect(defaults.AI_DECK_EXECUTION_MODE).toBe("bullmq");

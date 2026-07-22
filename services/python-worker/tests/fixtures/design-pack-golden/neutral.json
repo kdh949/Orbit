@@ -1,0 +1,19 @@
+{
+  "fixtureId": "neutral-general-v1",
+  "expectedPackId": "neutral-light",
+  "topic": "ORBIT 제품 개요",
+  "purpose": "inform",
+  "presentationProfile": "general-inform",
+  "mediaPolicy": "minimal",
+  "slides": [
+    { "slideType": "cover", "title": "ORBIT 제품 개요", "itemCount": 0 },
+    { "slideType": "solution", "title": "핵심 가치", "itemCount": 3 },
+    { "slideType": "comparison", "title": "전후 비교", "itemCount": 3 },
+    { "slideType": "process", "title": "작동 방식", "itemCount": 4 },
+    { "slideType": "feature-grid", "title": "주요 기능", "itemCount": 3 },
+    { "slideType": "quote", "title": "사용자 관점", "itemCount": 1 },
+    { "slideType": "solution", "title": "적용 범위", "itemCount": 2 },
+    { "slideType": "summary", "title": "다음 단계", "itemCount": 1 }
+  ],
+  "currentSilhouettes": ["cover", "split", "split", "timeline", "split", "poster", "split", "closing"]
+}

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.ai.composition_library import CompiledComposition, compile_composition
+from app.ai.composition_library import CompiledComposition
 from app.ai.design_program import DeckDesignProgram, SlideCompositionDirection
 from app.ai.deck_generation.content_planning import (
     count_speaker_note_chars,
@@ -11,6 +11,9 @@ from app.ai.deck_generation.content_planning import (
 )
 from app.ai.deck_generation.design_planning import (
     program_v2_slide_summary,
+)
+from app.ai.deck_generation.design_pack_rollout import (
+    compile_with_design_pack_rollout,
 )
 from app.ai.deck_generation.models import (
     CANVAS,
@@ -51,7 +54,7 @@ def assemble_program_v2_slide(
     direction: SlideCompositionDirection,
 ) -> dict[str, Any]:
     summary = program_v2_slide_summary(slide_plan)
-    compiled: CompiledComposition = compile_composition(
+    compiled: CompiledComposition = compile_with_design_pack_rollout(
         direction,
         summary,
         program,

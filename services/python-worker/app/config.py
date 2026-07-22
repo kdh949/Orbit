@@ -36,6 +36,8 @@ ENV_KEYS = {
     "OPENAI_API_KEY",
     "OPENAI_MODEL",
     "AI_PPT_VISUAL_QA_MODEL",
+    "AI_PPT_SYSTEM_DESIGN_PACKS_ENABLED",
+    "AI_PPT_SYSTEM_DESIGN_PACK_ALLOWLIST",
     "OPENAI_TRANSCRIPTION_MODEL",
     "OPENAI_EMBEDDING_MODEL",
     "WHISPERX_API_URL",
@@ -106,6 +108,14 @@ class PythonWorkerConfig(BaseModel):
         default=None,
         alias="AI_PPT_VISUAL_QA_MODEL",
         min_length=1,
+    )
+    ai_ppt_system_design_packs_enabled: bool = Field(
+        default=False,
+        alias="AI_PPT_SYSTEM_DESIGN_PACKS_ENABLED",
+    )
+    ai_ppt_system_design_pack_allowlist: str = Field(
+        default="",
+        alias="AI_PPT_SYSTEM_DESIGN_PACK_ALLOWLIST",
     )
     openai_transcription_model: str = Field(
         alias="OPENAI_TRANSCRIPTION_MODEL", min_length=1

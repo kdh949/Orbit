@@ -267,6 +267,8 @@ export const orbitEnvSchema = z.object({
   OPENAI_API_KEY: optionalString,
   OPENAI_MODEL: requiredString("OPENAI_MODEL"),
   AI_PPT_VISUAL_QA_MODEL: optionalString,
+  AI_PPT_SYSTEM_DESIGN_PACKS_ENABLED: booleanStringSchema.default(false),
+  AI_PPT_SYSTEM_DESIGN_PACK_ALLOWLIST: commaSeparatedStringSchema.default([]),
   OPENAI_IMAGE_MODEL: defaultedString("gpt-image-1"),
   IMAGE_PROVIDER: z.enum(["disabled", "openai"]).default("openai"),
   PUBLIC_IMAGE_PROVIDER: z.enum(["disabled", "openverse"]).default("openverse"),

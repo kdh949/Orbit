@@ -1,0 +1,21 @@
+{
+  "fixtureId": "executive-review-v1",
+  "expectedPackId": "executive-review",
+  "topic": "분기 운영 리뷰",
+  "purpose": "report",
+  "presentationProfile": "executive-report",
+  "designProfile": "executive-report",
+  "mediaPolicy": "minimal",
+  "slides": [
+    { "slideType": "cover", "title": "분기 운영 리뷰", "itemCount": 0 },
+    { "slideType": "data", "title": "핵심 KPI", "itemCount": 3, "typedMetricCount": 3 },
+    { "slideType": "data", "title": "운영 현황", "itemCount": 4 },
+    { "slideType": "chart", "title": "지표 추이", "itemCount": 3, "typedMetricCount": 3 },
+    { "slideType": "comparison", "title": "의사결정 대안", "itemCount": 3 },
+    { "slideType": "solution", "title": "실행 제안", "itemCount": 3 },
+    { "slideType": "quote", "title": "현장 근거", "itemCount": 1 },
+    { "slideType": "data", "title": "성과 확인", "itemCount": 2, "typedMetricCount": 2 },
+    { "slideType": "summary", "title": "결정 사항", "itemCount": 1 }
+  ],
+  "currentSilhouettes": ["cover", "data", "data", "data", "split", "split", "poster", "data", "closing"]
+}

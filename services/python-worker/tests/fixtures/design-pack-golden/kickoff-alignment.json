@@ -1,0 +1,20 @@
+{
+  "fixtureId": "kickoff-alignment-v1",
+  "expectedPackId": "kickoff-alignment",
+  "topic": "신규 프로젝트 킥오프와 팀 얼라인먼트",
+  "prompt": "역할, 로드맵, 일정 계획을 합의합니다.",
+  "purpose": "inform",
+  "presentationProfile": "general-inform",
+  "mediaPolicy": "minimal",
+  "slides": [
+    { "slideType": "cover", "title": "프로젝트 킥오프", "itemCount": 0 },
+    { "slideType": "process", "title": "오늘의 아젠다", "itemCount": 4 },
+    { "slideType": "solution", "title": "공동 목표", "itemCount": 3 },
+    { "slideType": "comparison", "title": "역할과 담당", "itemCount": 4 },
+    { "slideType": "process", "title": "업무 프로세스", "itemCount": 5 },
+    { "slideType": "process", "title": "핵심 로드맵", "itemCount": 4 },
+    { "slideType": "process", "title": "실행 일정", "itemCount": 6 },
+    { "slideType": "summary", "title": "다음 단계", "itemCount": 2 }
+  ],
+  "currentSilhouettes": ["cover", "timeline", "split", "split", "timeline", "timeline", "timeline", "closing"]
+}

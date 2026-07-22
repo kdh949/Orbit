@@ -1,0 +1,20 @@
+{
+  "fixtureId": "editorial-insight-v1",
+  "expectedPackId": "editorial-insight",
+  "topic": "2027 시장 동향과 고객 행동 인사이트",
+  "purpose": "inform",
+  "presentationProfile": "general-inform",
+  "designProfile": "editorial",
+  "mediaPolicy": "minimal",
+  "slides": [
+    { "slideType": "cover", "title": "시장 동향", "itemCount": 0 },
+    { "slideType": "solution", "title": "핵심 논지", "itemCount": 1 },
+    { "slideType": "data", "title": "관찰 근거", "itemCount": 3 },
+    { "slideType": "comparison", "title": "트렌드 변화", "itemCount": 3 },
+    { "slideType": "quote", "title": "현장의 목소리", "itemCount": 1 },
+    { "slideType": "solution", "title": "시사점", "itemCount": 2 },
+    { "slideType": "data", "title": "추가 근거", "itemCount": 4 },
+    { "slideType": "summary", "title": "결론", "itemCount": 2 }
+  ],
+  "currentSilhouettes": ["cover", "poster", "split", "split", "poster", "poster", "split", "closing"]
+}
