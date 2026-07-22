@@ -9,6 +9,7 @@ import {
 } from "../../canvas/text/textLayout";
 
 const editorTextOverlapWarningRatio = 0.15;
+const editorMediaOcclusionWarningRatio = 0.4;
 const editorDuplicateTextMinimumLength = 6;
 const presentationGridColumnCount = 12;
 const presentationGridColumnWidth = 118;
@@ -333,6 +334,7 @@ function getEditorSlideValidationItems(
   }
 
   items.push(...getEditorTextOverlapValidationItems(deck, slide));
+  items.push(...getEditorMediaOcclusionValidationItems(deck, slide));
   items.push(...getEditorDuplicateTextValidationItems(slide, presentationRules));
   items.push(...getEditorPresentationSlideValidationItems(deck, slide));
 
@@ -1104,6 +1106,80 @@ function getEditorTextOverlapValidationItems(
   }
 
   return items;
+}
+
+function getEditorMediaOcclusionValidationItems(
+  deck: Deck,
+  slide: Slide
+): EditorValidationItem[] {
+  const images = slide.elements.filter(
+    (element): element is Extract<DeckElement, { type: "image" }> =>
+      element.visible !== false &&
+      element.type === "image" &&
+      !["background", "decoration"].includes(element.role ?? "") &&
+      !isFullBleedElement(element)
+  );
+  const coreElements = slide.elements.filter(
+    (element) =>
+      element.visible !== false &&
+      (element.type === "chart" ||
+        element.type === "table" ||
+        (element.type === "text" &&
+          ["title", "subtitle", "body", "highlight"].includes(
+            element.role ?? ""
+          )))
+  );
+
+  return images.flatMap((image) =>
+    coreElements.flatMap((content) => {
+      if ((image.zIndex ?? 0) <= (content.zIndex ?? 0)) return [];
+      if (
+        getContentOcclusionRatio(deck, slide, image, content) <
+        editorMediaOcclusionWarningRatio
+      ) {
+        return [];
+      }
+      return [
+        {
+          elementIds: [image.elementId, content.elementId],
+          issue: "mediaOcclusion",
+          level: "warning" as const,
+          message:
+            "이미지가 핵심 콘텐츠 영역의 40% 이상을 가립니다. 이미지 위치나 크기를 조정해 주세요.",
+          severity: "warning" as const,
+          slideId: slide.slideId
+        }
+      ];
+    })
+  );
+}
+
+function getContentOcclusionRatio(
+  deck: Deck,
+  slide: Slide,
+  image: DeckElement,
+  content: DeckElement
+) {
+  const imageBounds = getElementBounds(image);
+  const contentBounds =
+    content.type === "text"
+      ? getEditorTextBounds(deck, slide, content)
+      : getElementBounds(content);
+  const contentArea = getElementArea(contentBounds);
+  if (contentArea <= 0) return 0;
+  const left = Math.max(imageBounds.x, contentBounds.x);
+  const top = Math.max(imageBounds.y, contentBounds.y);
+  const right = Math.min(
+    imageBounds.x + imageBounds.width,
+    contentBounds.x + contentBounds.width
+  );
+  const bottom = Math.min(
+    imageBounds.y + imageBounds.height,
+    contentBounds.y + contentBounds.height
+  );
+  return (
+    (Math.max(0, right - left) * Math.max(0, bottom - top)) / contentArea
+  );
 }
 
 function getEditorDuplicateTextValidationItems(

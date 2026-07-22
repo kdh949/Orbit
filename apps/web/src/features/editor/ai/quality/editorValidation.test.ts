@@ -853,6 +853,112 @@ describe("editor design-pack validation", () => {
     );
   });
 
+  it("warns when an edited image covers at least 40 percent of core content", () => {
+    const deck = structuredClone(designPackDeck);
+    const slide = deck.slides[0];
+    const body = slide.elements.find(
+      (element) => element.type === "text" && element.role === "body"
+    );
+    if (!body) throw new Error("body fixture missing");
+    slide.elements.push({
+      elementId: "el_1_user_image_overlay",
+      type: "image",
+      role: "media",
+      x: body.x,
+      y: body.y,
+      width: body.width,
+      height: body.height,
+      rotation: 0,
+      opacity: 1,
+      zIndex: body.zIndex + 1,
+      locked: false,
+      visible: true,
+      props: {
+        src: "/api/v1/projects/project_demo_1/assets/file_1/content",
+        alt: "사용자가 추가한 보안 이미지",
+        fit: "cover",
+        focusX: 0.5,
+        focusY: 0.5
+      }
+    });
+
+    expect(getEditorValidationItems(deck, slide)).toContainEqual(
+      expect.objectContaining({
+        issue: "mediaOcclusion",
+        elementIds: expect.arrayContaining([
+          "el_1_user_image_overlay",
+          body.elementId
+        ]),
+        slideId: slide.slideId
+      })
+    );
+  });
+
+  it("does not report intentional full-bleed background images", () => {
+    const deck = structuredClone(designPackDeck);
+    const slide = deck.slides[0];
+    slide.elements.push({
+      elementId: "el_1_full_bleed_background_image",
+      type: "image",
+      role: "background",
+      x: 0,
+      y: 0,
+      width: 1920,
+      height: 1080,
+      rotation: 0,
+      opacity: 1,
+      zIndex: 20,
+      locked: false,
+      visible: true,
+      props: {
+        src: "/background.png",
+        alt: "배경",
+        fit: "cover",
+        focusX: 0.5,
+        focusY: 0.5
+      }
+    });
+
+    expect(getEditorValidationItems(deck, slide)).not.toContainEqual(
+      expect.objectContaining({ issue: "mediaOcclusion" })
+    );
+  });
+
+  it("does not report an image rendered behind core content", () => {
+    const deck = structuredClone(designPackDeck);
+    const slide = deck.slides[0];
+    const title = slide.elements.find((element) => element.role === "title");
+    if (!title) throw new Error("title fixture missing");
+    slide.elements.push({
+      elementId: "el_1_image_behind_title",
+      type: "image",
+      role: "media",
+      x: title.x,
+      y: title.y,
+      width: title.width,
+      height: title.height,
+      rotation: 0,
+      opacity: 1,
+      zIndex: Math.max(0, title.zIndex - 1),
+      locked: false,
+      visible: true,
+      props: {
+        src: "/behind.png",
+        alt: "뒤쪽 이미지",
+        fit: "cover",
+        focusX: 0.5,
+        focusY: 0.5
+      }
+    });
+
+    expect(getEditorValidationItems(deck, slide)).not.toContainEqual(
+      expect.objectContaining({
+        issue: "mediaOcclusion",
+        elementIds: expect.arrayContaining(["el_1_image_behind_title"])
+      })
+    );
+  });
+
   it("keeps identical messages for distinct element targets", () => {
     const deck = structuredClone(designPackDeck);
     const slide = deck.slides[0];
