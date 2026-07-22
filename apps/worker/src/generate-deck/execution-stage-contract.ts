@@ -5,6 +5,7 @@ import {
   slideSchema,
   type AiDeckGenerationStage,
   type GenerateDeckJobResult,
+  type GenerateDeckResponse,
 } from "@orbit/shared";
 import { z } from "zod";
 
@@ -71,7 +72,11 @@ export function isCompletedSlideV2Artifact(
   return completedSlideV2ArtifactPayloadSchema.safeParse(payload).success;
 }
 
-export const qualityArtifactPayloadSchema = z
+export const qualityArtifactPayloadSchema: z.ZodType<
+  { workerPayload: GenerateDeckResponse },
+  z.ZodTypeDef,
+  { workerPayload: z.input<typeof generateDeckResponseSchema> }
+> = z
   .object({
     workerPayload: generateDeckResponseSchema,
   })

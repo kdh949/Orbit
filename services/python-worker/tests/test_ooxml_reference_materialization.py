@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 import hashlib
+import posixpath
+import zipfile
+from io import BytesIO
 from pathlib import Path
+from pathlib import PurePosixPath
+from xml.etree import ElementTree as ET
 
 import pytest
 from pptx import Presentation
+from pptx.chart.data import ChartData
+from pptx.enum.chart import XL_CHART_TYPE
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.util import Inches
 
@@ -220,3 +227,123 @@ def test_materialization_fails_closed_when_slot_locator_has_no_unique_element(
             snapshot=snapshot,
             render=False,
         )
+
+
+def test_materialization_issues_chart_capability_only_after_locator_proof(
+    tmp_path: Path,
+) -> None:
+    package_path = tmp_path / "chart-reference.pptx"
+    presentation = Presentation()
+    chart_slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+    data = ChartData()
+    data.categories = ["North", "South"]
+    data.add_series("Revenue", (10, 20))
+    chart_slide.shapes.add_chart(
+        XL_CHART_TYPE.COLUMN_CLUSTERED,
+        Inches(1),
+        Inches(1),
+        Inches(8),
+        Inches(4),
+        data,
+    )
+    presentation.slides.add_slide(presentation.slide_layouts[6])
+    presentation.save(package_path)
+
+    with zipfile.ZipFile(BytesIO(package_path.read_bytes()), "r") as package:
+        slide_part = "ppt/slides/slide1.xml"
+        slide = ET.fromstring(package.read(slide_part))
+        frame = next(node for node in slide.iter() if node.tag.endswith("graphicFrame"))
+        shape = next(node for node in frame.iter() if node.tag.endswith("cNvPr"))
+        chart_ref = next(node for node in frame.iter() if node.tag.endswith("chart"))
+        relationship_id = next(
+            value for key, value in chart_ref.attrib.items() if key.endswith("}id")
+        )
+        path = PurePosixPath(slide_part)
+        rels_part = str(path.parent / "_rels" / f"{path.name}.rels")
+        relationships = ET.fromstring(package.read(rels_part))
+        chart_relationship = next(
+            node
+            for node in relationships
+            if node.attrib.get("Id") == relationship_id
+        )
+        chart_part = posixpath.normpath(
+            posixpath.join(
+                posixpath.dirname(slide_part),
+                chart_relationship.attrib["Target"],
+            )
+        )
+        chart_path = PurePosixPath(chart_part)
+        chart_rels_part = str(
+            chart_path.parent / "_rels" / f"{chart_path.name}.rels"
+        )
+        chart_relationships = ET.fromstring(package.read(chart_rels_part))
+        workbook_relationship = next(
+            node
+            for node in chart_relationships
+            if node.attrib.get("Type", "").endswith("/package")
+        )
+        workbook_part = posixpath.normpath(
+            posixpath.join(
+                posixpath.dirname(chart_part),
+                workbook_relationship.attrib["Target"],
+            )
+        )
+        workbook_fingerprint = _sha256(package.read(workbook_part))
+
+    manifest_payload = _manifest(package_path).model_dump(by_alias=True)
+    manifest_payload["sourceSlides"][0]["capacity"] = {
+        "textSlotCount": 0,
+        "imageSlotCount": 0,
+        "tableSlotCount": 0,
+        "chartSlotCount": 1,
+    }
+    manifest_payload["sourceSlides"][0]["slots"] = [
+        {
+            "slotId": "operating-review-v1-slide-01-chart",
+            "semanticRole": "chart",
+            "contentType": "chart",
+            "required": True,
+            "locator": {
+                "slidePart": slide_part,
+                "shapeId": shape.attrib["id"],
+                "placeholderType": None,
+                "relationshipId": relationship_id,
+            },
+            "capacity": {
+                "chartType": "column",
+                "maxCategories": 2,
+                "maxSeries": 1,
+                "workbookUpdatePolicy": "atomic",
+                "workbookFingerprint": workbook_fingerprint,
+            },
+            "mutationPolicy": ["chart-data"],
+            "replacementPolicy": {"overflow": "fail"},
+        }
+    ]
+    manifest = OoxmlReferenceTemplateManifest.model_validate(manifest_payload)
+    snapshot = _snapshot().model_copy(
+        update={"source_sha256": _sha256(package_path.read_bytes())}
+    )
+
+    materialized = materialize_reference_package(
+        package_path,
+        baseline_file_id="file_reference_baseline",
+        current_file_id="file_reference_current",
+        manifest=manifest,
+        snapshot=snapshot,
+        render=False,
+    )
+
+    source = next(
+        source
+        for slide in materialized.template_blueprint["slides"]
+        for source in slide["elementSources"]
+        if source.get("elementType") == "chart"
+    )
+    assert source["sourceType"] == "chart"
+    assert source["relationshipId"] == relationship_id
+    assert source["ooxmlEditCapabilities"]["chartData"] is True
+    assert source["ooxmlEditCapabilities"]["frame"] is False
+    assert source["chartDataLocator"]["workbookFingerprint"] == (
+        workbook_fingerprint
+    )

@@ -938,6 +938,70 @@ describe("processPptxOoxmlSyncJob", () => {
     ).toHaveLength(6);
   });
 
+  it("persists the refreshed authoritative chart workbook fingerprint", async () => {
+    let savedBlueprint: Record<string, unknown> | null = null;
+    const initialBlueprint = templateBlueprint(1);
+    initialBlueprint.slides[0]!.elementSources = [chartElementSource("a")];
+    const { dataSource } = createDataSource({
+      blueprint: initialBlueprint,
+      deckElements: [chartElement()],
+      deckVersion: 2,
+      syncedVersion: 1,
+      operations: [
+        {
+          type: "update_element_props",
+          slideId: "slide_1",
+          elementId: "el_chart",
+          props: chartElement().props,
+        },
+      ],
+      onBlueprintUpdate: (blueprint) => {
+        savedBlueprint = blueprint;
+        return true;
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL) =>
+        String(input).endsWith("current.pptx")
+          ? new Response("pptx-bytes")
+          : new Response(
+              JSON.stringify({
+                ...workerResponse([
+                  {
+                    operationType: "update_element_props",
+                    slideId: "slide_1",
+                    elementId: "el_chart",
+                  },
+                ]),
+                elementSources: [chartElementSource("b")],
+              }),
+            ),
+      ),
+    );
+
+    const job = await processPptxOoxmlSyncJob(
+      dataSource,
+      storage,
+      "http://localhost:8000",
+      payload,
+    );
+
+    expect(job.status, JSON.stringify(job.error)).toBe("succeeded");
+    const savedSources = (savedBlueprint as unknown as {
+      slides: Array<{
+        elementSources: Array<{
+          elementId: string;
+          chartDataLocator?: { workbookFingerprint?: string };
+        }>;
+      }>;
+    }).slides[0]!.elementSources;
+    expect(
+      savedSources.find((source) => source.elementId === "el_chart")
+        ?.chartDataLocator?.workbookFingerprint,
+    ).toBe("b".repeat(64));
+  });
+
   it("treats a lower queued version as a no-op after a newer package is synced", async () => {
     const blueprint = templateBlueprint(3);
     blueprint.slides[0]!.elementSources = [
@@ -1914,6 +1978,74 @@ function tableElementSource(
         fingerprint: index.toString(16).padStart(64, "0"),
       }),
     ),
+  };
+}
+
+function chartElementSource(fingerprintCharacter: "a" | "b") {
+  return {
+    elementId: "el_chart",
+    elementType: "chart" as const,
+    ooxmlOrigin: "imported" as const,
+    ooxmlEditCapabilities: {
+      richText: "none" as const,
+      crop: "none" as const,
+      tableCellText: false,
+      chartData: true,
+      frame: false,
+      delete: false,
+      imageSource: false,
+    },
+    slidePart: "ppt/slides/slide1.xml",
+    shapeId: "7",
+    relationshipId: "rId3",
+    sourceType: "chart" as const,
+    writable: true,
+    chartDataLocator: {
+      chartType: "column" as const,
+      chartPart: "ppt/charts/chart1.xml",
+      workbookPart: "ppt/embeddings/Microsoft_Excel_Worksheet1.xlsx",
+      workbookFingerprint: fingerprintCharacter.repeat(64),
+      categoryFormula: "Sheet1!$A$2:$A$3",
+      series: [
+        {
+          titleFormula: "Sheet1!$B$1",
+          valueFormula: "Sheet1!$B$2:$B$3",
+        },
+        {
+          titleFormula: "Sheet1!$C$1",
+          valueFormula: "Sheet1!$C$2:$C$3",
+        },
+      ],
+    },
+  };
+}
+
+function chartElement() {
+  return {
+    elementId: "el_chart",
+    type: "chart" as const,
+    role: "chart" as const,
+    x: 100,
+    y: 100,
+    width: 900,
+    height: 450,
+    rotation: 0,
+    opacity: 1,
+    zIndex: 0,
+    locked: false,
+    visible: true,
+    ooxmlOrigin: "imported" as const,
+    props: {
+      type: "bar" as const,
+      title: "",
+      data: [
+        { label: "North", series: "Revenue", value: 11 },
+        { label: "South", series: "Revenue", value: 22 },
+        { label: "North", series: "Cost", value: 5 },
+        { label: "South", series: "Cost", value: 9 },
+      ],
+      style: {},
+    },
   };
 }
 

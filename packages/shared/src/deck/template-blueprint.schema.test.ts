@@ -158,6 +158,77 @@ describe("templateBlueprintSchema", () => {
     ).toBeUndefined();
   });
 
+  it("accepts chart data capability only with an authoritative chart/workbook locator", () => {
+    const chartSource = {
+      elementId: "el_chart_1",
+      elementType: "chart" as const,
+      ooxmlOrigin: "imported" as const,
+      ooxmlEditCapabilities: {
+        richText: "none" as const,
+        crop: "none" as const,
+        tableCellText: false,
+        chartData: true,
+      },
+      slidePart: "ppt/slides/slide1.xml",
+      shapeId: "7",
+      relationshipId: "rId3",
+      sourceType: "chart" as const,
+      writable: true,
+      chartDataLocator: {
+        chartType: "column" as const,
+        chartPart: "ppt/charts/chart1.xml",
+        workbookPart: "ppt/embeddings/Microsoft_Excel_Worksheet1.xlsx",
+        workbookFingerprint: "a".repeat(64),
+        categoryFormula: "Sheet1!$A$2:$A$3",
+        series: [
+          {
+            titleFormula: "Sheet1!$B$1",
+            valueFormula: "Sheet1!$B$2:$B$3",
+          },
+        ],
+      },
+    };
+    const parsed = templateBlueprintSchema.parse({
+      templateId: "template_chart",
+      sourceFileId: "file_chart",
+      slides: [
+        {
+          slideIndex: 1,
+          sourceSlideIndex: 1,
+          elementSources: [chartSource],
+        },
+      ],
+    });
+
+    expect(
+      parsed.slides[0].elementSources[0]?.ooxmlEditCapabilities?.chartData,
+    ).toBe(true);
+    expect(
+      parsed.slides[0].elementSources[0]?.chartDataLocator?.series,
+    ).toHaveLength(1);
+
+    for (const invalid of [
+      { ...chartSource, relationshipId: undefined },
+      { ...chartSource, chartDataLocator: undefined },
+      { ...chartSource, sourceType: "unknown" },
+      { ...chartSource, writable: false },
+    ]) {
+      expect(
+        templateBlueprintSchema.safeParse({
+          templateId: "template_chart",
+          sourceFileId: "file_chart",
+          slides: [
+            {
+              slideIndex: 1,
+              sourceSlideIndex: 1,
+              elementSources: [invalid],
+            },
+          ],
+        }).success,
+      ).toBe(false);
+    }
+  });
+
   it("rejects writable motion capability without an unambiguous slide locator", () => {
     const withoutLocator = templateBlueprintSchema.safeParse({
       templateId: "template_file_1",

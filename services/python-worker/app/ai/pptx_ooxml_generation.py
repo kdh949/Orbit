@@ -29,6 +29,10 @@ from app.ai.authored_element_rasterizer import (
     RasterizedAuthoredElement,
     rasterize_authored_element,
 )
+from app.ai.ooxml_reference_templates.chart_sync import (
+    ChartDataSyncError,
+    sync_chart_data,
+)
 from app.ai.pptx_design_importer import (
     CANVAS_HEIGHT,
     CANVAS_WIDTH,
@@ -162,6 +166,13 @@ PptxOoxmlUnsupportedReasonCode = Literal[
     "ADD_ELEMENT_TYPE_UNSUPPORTED",
     "AUTHORED_RASTER_FALLBACK_FAILED",
     "CROP_CAPABILITY_UNSAFE",
+    "CHART_CAPABILITY_UNSAFE",
+    "CHART_FORMULA_DRIFT",
+    "CHART_RELATIONSHIP_UNSAFE",
+    "CHART_STRUCTURE_UNSUPPORTED",
+    "CHART_TYPE_UNSUPPORTED",
+    "CHART_WORKBOOK_FINGERPRINT_MISMATCH",
+    "CHART_WORKBOOK_UNSUPPORTED",
     "DELETE_SLIDE_FAILED",
     "DELETE_SLIDE_LOCATOR_UNSAFE",
     "DELETE_SLIDE_RELATIONSHIP_UNSAFE",
@@ -1756,6 +1767,56 @@ def apply_sync_operation(
         props = operation.get("props")
         if not isinstance(props, dict) or not props:
             return "PROPS_FIELDS_UNSUPPORTED"
+        if source.get("elementType") == "chart":
+            try:
+                changed_entries = {
+                    part: content
+                    for part, content in package_entries.items()
+                    if part not in source_package.namelist()
+                    or content != source_package.read(part)
+                }
+                current_package = rewrite_zip(
+                    source_package,
+                    changed_entries,
+                    added_entries,
+                )
+                chart_result = sync_chart_data(
+                    current_package,
+                    source=source,
+                    props=props,
+                )
+                with zipfile.ZipFile(
+                    BytesIO(chart_result.package_bytes), "r"
+                ) as synced_package:
+                    locator = dict_value(
+                        chart_result.updated_source,
+                        "chartDataLocator",
+                    )
+                    for part in (
+                        str(locator.get("chartPart", "")),
+                        str(locator.get("workbookPart", "")),
+                    ):
+                        if part:
+                            package_entries[part] = synced_package.read(part)
+                sources[source_key] = chart_result.updated_source
+                updated_sources[source_key] = chart_result.updated_source
+                return None
+            except ChartDataSyncError as error:
+                chart_reason_codes: set[str] = {
+                    "CHART_CAPABILITY_UNSAFE",
+                    "CHART_FORMULA_DRIFT",
+                    "CHART_RELATIONSHIP_UNSAFE",
+                    "CHART_STRUCTURE_UNSUPPORTED",
+                    "CHART_TYPE_UNSUPPORTED",
+                    "CHART_WORKBOOK_FINGERPRINT_MISMATCH",
+                    "CHART_WORKBOOK_UNSUPPORTED",
+                }
+                return cast(
+                    PptxOoxmlUnsupportedReasonCode,
+                    error.code
+                    if error.code in chart_reason_codes
+                    else "CHART_STRUCTURE_UNSUPPORTED",
+                )
         source_shape_cohort_size = sum(
             1
             for candidate in sources.values()

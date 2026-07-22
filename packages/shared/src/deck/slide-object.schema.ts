@@ -62,6 +62,7 @@ export const ooxmlElementEditCapabilitiesSchema = z.object({
   richText: ooxmlRichTextEditCapabilitySchema,
   crop: ooxmlCropEditCapabilitySchema,
   tableCellText: z.boolean(),
+  chartData: z.boolean().optional(),
   frame: z.boolean().optional(),
   delete: z.boolean().optional(),
   imageSource: z.boolean().optional()

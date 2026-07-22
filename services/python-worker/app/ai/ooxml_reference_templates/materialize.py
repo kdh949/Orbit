@@ -5,6 +5,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from app.ai.ooxml_reference_templates.chart_sync import (
+    ChartDataSyncError,
+    build_chart_data_locator,
+)
+
 from app.ai.ooxml_reference_templates.models import (
     OoxmlReferenceTemplateManifest,
     OoxmlTemplateSnapshot,
@@ -124,6 +129,34 @@ def materialize_reference_package(
             )
         used_element_ids.add(element_id)
         matches[0]["writable"] = True
+        if slot.content_type == "chart":
+            matches[0]["sourceType"] = "chart"
+            try:
+                chart_locator = build_chart_data_locator(
+                    package_bytes,
+                    source=matches[0],
+                )
+            except ChartDataSyncError as error:
+                raise MaterializationError(
+                    error.code,
+                    "chart slot cannot prove an authoritative workbook mapping",
+                ) from error
+            if chart_locator["chartType"] != slot.capacity.chart_type:
+                raise MaterializationError(
+                    "CHART_TYPE_UNSUPPORTED",
+                    "materialized chart type differs from the approved slot",
+                )
+            matches[0]["chartDataLocator"] = chart_locator
+            capabilities = matches[0].get("ooxmlEditCapabilities")
+            if not isinstance(capabilities, dict):
+                capabilities = {
+                    "richText": "none",
+                    "crop": "none",
+                    "tableCellText": False,
+                }
+            capabilities["chartData"] = True
+            capabilities["frame"] = False
+            matches[0]["ooxmlEditCapabilities"] = capabilities
         matching_elements[0]["locked"] = False
         policies.append(
             {

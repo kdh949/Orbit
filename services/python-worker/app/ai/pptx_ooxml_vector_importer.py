@@ -748,7 +748,13 @@ def append_graphic_frame(
             locked=locked,
         )
         if element:
-            source["type"] = "unknown"
+            source["type"] = "chart"
+            relationship_id = attr_by_local_name(
+                first_local_descendant(frame_element, "chart"),
+                "id",
+            )
+            if relationship_id:
+                source["relationshipId"] = relationship_id
             elements.append(element)
             slot_sources[str(element["elementId"])] = source
             return

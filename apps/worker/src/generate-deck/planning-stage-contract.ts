@@ -2,6 +2,7 @@ import {
   deckShellSchema,
   generateDeckResponseSchema,
   type AiDeckGenerationStage,
+  type GenerateDeckResponse,
 } from "@orbit/shared";
 import { z } from "zod";
 
@@ -47,7 +48,19 @@ export const designPlanningArtifactPayloadSchema = z
   .object({ designPlan: jsonObjectSchema })
   .strict();
 
-const legacyLayoutCompileArtifactPayloadSchema = z
+const legacyLayoutCompileArtifactPayloadSchema: z.ZodType<
+  {
+    layoutResult: Record<string, unknown>;
+    visualRequirements: Record<string, unknown>;
+    workerPayload: GenerateDeckResponse;
+  },
+  z.ZodTypeDef,
+  {
+    layoutResult: Record<string, unknown>;
+    visualRequirements: Record<string, unknown>;
+    workerPayload: z.input<typeof generateDeckResponseSchema>;
+  }
+> = z
   .object({
     layoutResult: jsonObjectSchema,
     visualRequirements: jsonObjectSchema,

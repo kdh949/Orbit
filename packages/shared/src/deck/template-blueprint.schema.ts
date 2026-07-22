@@ -135,6 +135,26 @@ export const templateTableCellLocatorsSchema = z
     }
   });
 
+export const templateChartDataSeriesLocatorSchema = z
+  .object({
+    titleFormula: z.string().trim().min(1).max(512),
+    valueFormula: z.string().trim().min(1).max(512),
+  })
+  .strict();
+
+export const templateChartDataLocatorSchema = z
+  .object({
+    chartType: z.enum(["bar", "column", "line", "pie", "doughnut"]),
+    chartPart: z.string().regex(/^ppt\/charts\/chart[^/]+\.xml$/),
+    workbookPart: z
+      .string()
+      .regex(/^ppt\/embeddings\/[^/]+\.xlsx$/i),
+    workbookFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+    categoryFormula: z.string().trim().min(1).max(512),
+    series: z.array(templateChartDataSeriesLocatorSchema).min(1).max(100),
+  })
+  .strict();
+
 export const templateElementSourceSchema = z
   .object({
     elementId: deckElementIdSchema,
@@ -150,12 +170,14 @@ export const templateElementSourceSchema = z
       "layout",
       "master",
       "table",
+      "chart",
       "image",
       "shape",
       "unknown",
     ]),
     writable: z.boolean(),
     tableCellLocators: templateTableCellLocatorsSchema.optional(),
+    chartDataLocator: templateChartDataLocatorSchema.optional(),
     fallbackMode: z.literal("rasterized").optional(),
     fallbackReason: z.string().min(1).optional(),
   })
@@ -206,6 +228,24 @@ export const templateElementSourceSchema = z
         });
       }
     }
+    if (source.ooxmlEditCapabilities?.chartData === true) {
+      const hasAuthoritativeChartSource =
+        source.elementType === "chart" &&
+        source.ooxmlOrigin === "imported" &&
+        source.sourceType === "chart" &&
+        source.writable &&
+        source.relationshipId !== undefined &&
+        source.fallbackReason === undefined &&
+        source.chartDataLocator !== undefined;
+      if (!hasAuthoritativeChartSource) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "chart data capability requires an authoritative imported chart/workbook source",
+          path: ["ooxmlEditCapabilities", "chartData"],
+        });
+      }
+    }
     if (
       source.tableCellLocators &&
       (source.sourceType !== "table" ||
@@ -215,6 +255,16 @@ export const templateElementSourceSchema = z
         code: z.ZodIssueCode.custom,
         message: "table cell locators require a table source",
         path: ["tableCellLocators"],
+      });
+    }
+    if (
+      source.chartDataLocator &&
+      (source.sourceType !== "chart" || source.elementType !== "chart")
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "chart data locator requires a chart source",
+        path: ["chartDataLocator"],
       });
     }
   });
