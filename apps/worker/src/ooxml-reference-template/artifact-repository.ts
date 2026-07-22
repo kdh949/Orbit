@@ -47,10 +47,33 @@ const slideRenderPayloadSchema = z
     renderAssetFileId: z.string().trim().min(1).max(200),
   })
   .strict();
+const generatedAssetRefSchema = z
+  .object({
+    fileId: z.string().regex(/^[A-Za-z0-9_-]{1,200}$/),
+    originalName: z
+      .string()
+      .trim()
+      .min(1)
+      .max(255)
+      .refine((value) => !/[\\/]/.test(value)),
+    size: z.number().int().nonnegative(),
+  })
+  .strict();
 const renderValidationPayloadSchema = z
   .object({
-    fidelityReport: ooxmlTemplateFidelityReportSchema,
-    warningCodes: z
+    data: z
+      .object({
+        fidelityReport: ooxmlTemplateFidelityReportSchema,
+        renderAssets: z.array(generatedAssetRefSchema).max(500),
+      })
+      .strict(),
+    metrics: z
+      .object({
+        sourceSlideCount: z.number().int().nonnegative().max(500),
+        slotCount: z.number().int().nonnegative().max(10_000),
+      })
+      .strict(),
+    issueCodes: z
       .array(z.string().regex(/^OOXML_REFERENCE_[A-Z0-9_]+$/))
       .max(500),
   })

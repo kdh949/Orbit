@@ -175,7 +175,75 @@ describe("OoxmlReferenceTemplateArtifactRepository", () => {
     ).rejects.toThrow();
     expect(query).not.toHaveBeenCalled();
   });
+
+  it("stores the processor-wrapped render-validation artifact", async () => {
+    const renderIdentity = {
+      ...identity,
+      stage: "render-validation" as const,
+    };
+    const renderPayload = {
+      data: {
+        fidelityReport: passedFidelityReport(),
+        renderAssets: [
+          {
+            fileId: "file-render-001",
+            originalName: "slide-001.png",
+            size: 1024,
+          },
+        ],
+      },
+      metrics: { sourceSlideCount: 1, slotCount: 2 },
+      issueCodes: [],
+    };
+    const query = vi.fn(async () => [
+      artifactRow({
+        stage: renderIdentity.stage,
+        payload_json: renderPayload,
+      }),
+    ]);
+    const repository = new OoxmlReferenceTemplateArtifactRepository({ query });
+
+    await expect(
+      repository.storeSucceeded(renderIdentity, renderPayload),
+    ).resolves.toMatchObject({
+      ...renderIdentity,
+      payload: renderPayload,
+    });
+  });
+
+  it("rejects the obsolete direct render-validation payload", async () => {
+    const query = vi.fn();
+    const repository = new OoxmlReferenceTemplateArtifactRepository({ query });
+
+    await expect(
+      repository.storeSucceeded(
+        { ...identity, stage: "render-validation" },
+        { fidelityReport: passedFidelityReport(), warningCodes: [] },
+      ),
+    ).rejects.toThrow();
+    expect(query).not.toHaveBeenCalled();
+  });
 });
+
+function passedFidelityReport() {
+  return {
+    status: "passed",
+    structuralGate: { passed: true, issueCodes: [] },
+    identityControl: {
+      status: "passed",
+      evaluatedSlideCount: 1,
+      packageWarningCount: 0,
+      lockedGeometryDriftCount: 0,
+    },
+    generatedComparison: {
+      status: "passed",
+      evaluatedSlideCount: 1,
+      lockedRegionDriftCount: 0,
+      slotOverflowCount: 0,
+    },
+    warningCodes: [],
+  };
+}
 
 function artifactRow(overrides: Record<string, unknown> = {}) {
   return {
