@@ -451,6 +451,51 @@ export const ooxmlReferenceTemplateGenerationJobResultSchema = z
   })
   .strict();
 
+export const ooxmlReferenceTemplateOptionSchema = z
+  .object({
+    templateId: ooxmlReferenceTemplateIdSchema,
+    version: z.number().int().positive(),
+    name: z.string().trim().min(1).max(120),
+    description: z.string().trim().min(1).max(500),
+    preview: z
+      .object({
+        coverAssetId: z.string().trim().min(1).max(128),
+        bodyAssetId: z.string().trim().min(1).max(128)
+      })
+      .strict(),
+    editableRanges: z
+      .array(
+        z
+          .object({
+            contentType: z.enum(["text", "image", "table", "chart"]),
+            mutationPolicy: ooxmlTemplateSlotMutationSchema,
+            slotCount: z.number().int().positive().max(500)
+          })
+          .strict()
+      )
+      .min(1)
+      .max(4)
+  })
+  .strict();
+
+export const ooxmlReferenceTemplateOptionsResponseSchema = z
+  .object({
+    options: z.array(ooxmlReferenceTemplateOptionSchema).max(100)
+  })
+  .strict()
+  .superRefine((response, ctx) => {
+    const identities = response.options.map(
+      (option) => `${option.templateId}@${option.version}`
+    );
+    if (new Set(identities).size !== identities.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["options"],
+        message: "template option identities must be unique"
+      });
+    }
+  });
+
 export const ooxmlReferenceTemplatePreviewResponseSchema = z
   .object({
     jobId: z.string().trim().min(1),
@@ -542,6 +587,12 @@ export type OoxmlReferenceTemplateGenerationJobPayload = z.infer<
 >;
 export type OoxmlReferenceTemplateGenerationJobResult = z.infer<
   typeof ooxmlReferenceTemplateGenerationJobResultSchema
+>;
+export type OoxmlReferenceTemplateOption = z.infer<
+  typeof ooxmlReferenceTemplateOptionSchema
+>;
+export type OoxmlReferenceTemplateOptionsResponse = z.infer<
+  typeof ooxmlReferenceTemplateOptionsResponseSchema
 >;
 export type OoxmlReferenceTemplatePreviewResponse = z.infer<
   typeof ooxmlReferenceTemplatePreviewResponseSchema

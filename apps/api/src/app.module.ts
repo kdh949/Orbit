@@ -31,6 +31,7 @@ import { SlidePracticeModule } from "./slide-practice/slide-practice.module";
 import { SlideQuestionGuidesModule } from "./slide-question-guides/slide-question-guides.module";
 import { CommunityTemplatesModule } from "./community-templates/community-templates.module";
 import { OoxmlReferenceTemplateGenerationsModule } from "./ooxml-reference-template-generations/ooxml-reference-template-generations.module";
+import { OoxmlReferenceTemplatesModule } from "./ooxml-reference-templates/ooxml-reference-templates.module";
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { OoxmlReferenceTemplateGenerationsModule } from "./ooxml-reference-templ
     GenerateDeckModule,
     PptxOoxmlGenerationsModule,
     OoxmlReferenceTemplateGenerationsModule,
+    OoxmlReferenceTemplatesModule,
     JobsModule,
     PresentationSessionsModule,
     ActivitiesModule,

@@ -5,6 +5,7 @@ import {
   ooxmlReferenceTemplateGenerationJobPayloadSchema,
   ooxmlReferenceTemplateGenerationRequestSchema,
   ooxmlReferenceTemplateManifestSchema,
+  ooxmlReferenceTemplateOptionsResponseSchema,
   ooxmlReferenceTemplatePreviewResponseSchema,
   ooxmlSourceSlideSchema,
   ooxmlTemplateFidelityReportSchema,
@@ -575,6 +576,50 @@ describe("OOXML reference template schemas are strict", () => {
   ])("rejects unknown fields", (schema, payload) => {
     expect(
       schema.safeParse({ ...payload, unexpectedContractField: true }).success
+    ).toBe(false);
+  });
+});
+
+describe("ooxmlReferenceTemplateOptionsResponseSchema", () => {
+  const option = {
+    templateId: "operating-review",
+    version: 1,
+    name: "Operating Review",
+    description: "운영 지표와 실행 과제 보고",
+    preview: { coverAssetId: "cover", bodyAssetId: "body" },
+    editableRanges: [
+      {
+        contentType: "text",
+        mutationPolicy: "text-content",
+        slotCount: 4
+      }
+    ]
+  };
+
+  it("exposes public metadata and opaque preview asset IDs only", () => {
+    expect(
+      ooxmlReferenceTemplateOptionsResponseSchema.parse({ options: [option] })
+    ).toEqual({ options: [option] });
+    expect(
+      ooxmlReferenceTemplateOptionsResponseSchema.safeParse({
+        options: [
+          {
+            ...option,
+            preview: {
+              ...option.preview,
+              signedUrl: "https://private.invalid/cover"
+            }
+          }
+        ]
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects duplicate template versions", () => {
+    expect(
+      ooxmlReferenceTemplateOptionsResponseSchema.safeParse({
+        options: [option, option]
+      }).success
     ).toBe(false);
   });
 });

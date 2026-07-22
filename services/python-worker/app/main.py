@@ -96,6 +96,15 @@ from app.ai.ooxml_reference_templates.generation_stage import (
     OoxmlReferenceStageError,
     execute_ooxml_reference_generation_stage,
 )
+from app.ai.ooxml_reference_templates.catalog_transport import (
+    CatalogPreviewNotFoundError,
+    OoxmlReferenceTemplateCatalogRuntime,
+    UnconfiguredOoxmlReferenceTemplateCatalogRuntime,
+    require_png_preview,
+)
+from app.ai.ooxml_reference_templates.options import (
+    OoxmlReferenceTemplateOptionsResponse,
+)
 from app.ai.visual_qa import (
     VisualQaRequest,
     VisualQaResponse,
@@ -934,6 +943,62 @@ def ooxml_reference_template_generation_stage(
             status_code=503 if error.retryable else 409,
             detail={"code": error.code, "retryable": error.retryable},
         ) from error
+
+
+@app.get(
+    "/internal/ai/ooxml-reference-templates/options",
+    response_model=OoxmlReferenceTemplateOptionsResponse,
+)
+def ooxml_reference_template_options(
+    request: Request,
+) -> OoxmlReferenceTemplateOptionsResponse:
+    return _ooxml_reference_catalog_runtime(request).list_options()
+
+
+@app.get(
+    "/internal/ai/ooxml-reference-templates/{template_id}/versions/{version}/previews/{asset_id}"
+)
+def ooxml_reference_template_preview(
+    template_id: str,
+    version: int,
+    asset_id: str,
+    request: Request,
+) -> Response:
+    if (
+        not template_id
+        or version < 1
+        or not asset_id
+        or len(template_id) > 200
+        or len(asset_id) > 128
+    ):
+        raise HTTPException(status_code=404, detail="Preview not found.")
+    try:
+        content = require_png_preview(
+            _ooxml_reference_catalog_runtime(request).read_preview(
+                template_id,
+                version,
+                asset_id,
+            )
+        )
+    except CatalogPreviewNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Preview not found.") from error
+    return Response(
+        content=content,
+        media_type="image/png",
+        headers={
+            "cache-control": "private, max-age=300",
+            "x-content-type-options": "nosniff",
+        },
+    )
+
+
+def _ooxml_reference_catalog_runtime(
+    request: Request,
+) -> OoxmlReferenceTemplateCatalogRuntime:
+    runtime = getattr(request.app.state, "ooxml_reference_template_catalog", None)
+    if runtime is None:
+        runtime = UnconfiguredOoxmlReferenceTemplateCatalogRuntime()
+    return cast(OoxmlReferenceTemplateCatalogRuntime, runtime)
 
 
 @app.post(
