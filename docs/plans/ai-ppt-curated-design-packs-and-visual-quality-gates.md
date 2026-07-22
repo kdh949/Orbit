@@ -871,7 +871,7 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 - [x] `pnpm --filter @orbit/web test -- AiPptMockupPage`
 - [x] desktop/mobile에서 pack card, 선택 상태, error fallback 확인
-- [ ] `/createdeck → 생성 → editor` smoke 통과
+- [x] `/createdeck → 생성 → editor` smoke 통과
 
 **Dependencies:** Task 17
 
@@ -882,6 +882,7 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 - `apps/web/src/features/ai-ppt/AiPptMockupPage.ui.test.ts`
 - `apps/web/src/features/ai-ppt/DesignPackOptions.tsx`
 - `apps/web/src/features/ai-ppt/design-selection-api.ts`
+- `tests/e2e/ai-ppt-design-pack-smoke.spec.ts`
 
 **Estimated scope:** M
 
