@@ -4,7 +4,6 @@ import {
   generateDeckJobResultSchema,
   generateDeckResponseSchema,
   generateDeckStoredJobPayloadSchema,
-  generateDeckVisualIssueCodeSchema,
   jobErrorSchema,
   jobSchema,
   jobStatusSchema,
@@ -703,7 +702,7 @@ async function executeV2ImageSlide(
       projectId: input.message.projectId,
       onRepairProgress: async () => undefined,
       emitEvent: (event, fields) => emit(input.eventLogger, event, fields),
-      maxRepairAttempts: 0,
+      maxRepairAttempts: 2,
     });
     if (!visual.passed) {
       throw new StageTerminalError(
@@ -1030,66 +1029,12 @@ function rebaseSlideShardIssuePath(path: string, slideOrder: number) {
 async function executeRenderedVisualQuality(
   input: Parameters<typeof executeStage>[0],
 ): Promise<AiDeckExecutionArtifactPayload> {
-  const layout = layoutCompileArtifactPayloadSchema.parse(
-    (
-      await new AiDeckPlanningArtifactRepository(input.dataSource).getByStage(
-        input.message,
-        "layout-compile",
-      )
-    ).payload,
-  );
   const artifact = await new AiDeckExecutionArtifactRepository(
     input.dataSource,
   ).get(input.message, input.inputRef, "semantic-quality");
   let workerPayload = qualityArtifactPayloadSchema.parse(
     artifact.payload,
   ).workerPayload;
-  if (isLayoutCompileV2Artifact(layout)) {
-    const visualQaUnavailable = workerPayload.warnings.some((warning) =>
-      warning.includes("Rendered Visual QA was unavailable"),
-    );
-    const visualIssues = allValidationIssues(workerPayload.validation).flatMap(
-      (issue) => {
-        const code = generateDeckVisualIssueCodeSchema.safeParse(issue.code);
-        const slideOrder = slideOrderFromIssuePath(issue.path);
-        return code.success
-          ? [{ code: code.data, ...(slideOrder ? { slideOrder } : {}) }]
-          : [];
-      },
-    );
-    workerPayload = generateDeckResponseSchema.parse({
-      ...workerPayload,
-      deck: withGenerationQualityMetadata(
-        workerPayload.deck,
-        workerPayload.validation,
-        visualQaUnavailable ? "unavailable" : "advisory",
-      ),
-      diagnostics: {
-        ...workerPayload.diagnostics,
-        validationIssueCount: allValidationIssues(workerPayload.validation).length,
-        visualQaStatus: visualQaUnavailable
-          ? "unavailable"
-          : visualIssues.length > 0
-            ? "advisory"
-            : "passed",
-        warningCodes: visualQaUnavailable || visualIssues.length > 0
-          ? unique([
-              ...workerPayload.diagnostics.warningCodes,
-              visualQaUnavailable
-                ? "GENERATE_DECK_VISUAL_QA_UNAVAILABLE"
-                : "GENERATE_DECK_VISUAL_ADVISORY",
-            ])
-          : workerPayload.diagnostics.warningCodes,
-        visualIssueCodes: visualIssues.map((issue) => issue.code),
-        visualIssueSlideOrders: unique(
-          visualIssues.flatMap((issue) =>
-            issue.slideOrder ? [issue.slideOrder] : [],
-          ),
-        ).sort((left, right) => left - right),
-      },
-    });
-    return qualityArtifactPayloadSchema.parse({ workerPayload });
-  }
   try {
     const outcome = await runRenderedVisualQuality({
       dataSource: input.dataSource,
@@ -1106,7 +1051,7 @@ async function executeRenderedVisualQuality(
       projectId: input.message.projectId,
       onRepairProgress: async () => undefined,
       emitEvent: (event, fields) => emit(input.eventLogger, event, fields),
-      ...(isLayoutCompileV2Artifact(layout) ? { maxRepairAttempts: 0 } : {}),
+      maxRepairAttempts: 2,
     });
     const diagnostics = {
       ...renderedVisualQualityDiagnostics(outcome, workerPayload.diagnostics),
@@ -1178,11 +1123,6 @@ async function executeRenderedVisualQuality(
     });
     return qualityArtifactPayloadSchema.parse({ workerPayload });
   }
-}
-
-function slideOrderFromIssuePath(path: string): number | undefined {
-  const match = /^slides\.(\d+)/.exec(path);
-  return match ? Number(match[1]) + 1 : undefined;
 }
 
 async function completeStage(

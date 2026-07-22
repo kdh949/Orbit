@@ -81,6 +81,7 @@ export type RenderedVisualQualityOutcome = {
   warnings: string[];
   reviewAttempts: number;
   repairAttempts: number;
+  safeRemapAttempted: boolean;
   issues: VisualQaIssue[];
 };
 
@@ -150,6 +151,7 @@ export async function runRenderedVisualQuality(input: {
   const warnings: string[] = [];
   let reviewAttempts = 1;
   let repairAttempts = 0;
+  let safeRemapAttempted = false;
   let reviewed: Awaited<ReturnType<typeof requestVisualReview>>;
   try {
     reviewed = await requestVisualReview(
@@ -277,6 +279,7 @@ export async function runRenderedVisualQuality(input: {
         warnings,
         reviewAttempts,
         repairAttempts,
+        safeRemapAttempted,
         issues: review.issues,
       };
     }
@@ -304,13 +307,85 @@ export async function runRenderedVisualQuality(input: {
     emitVisualReviewEvent(input, deck, review, reviewAttempts);
   }
 
+  if (!review.passed) {
+    const remapActions = safeLayoutRemapActions(deck, review.issues);
+    if (remapActions.length > 0) {
+      safeRemapAttempted = true;
+      let remapped: Awaited<ReturnType<typeof requestVisualRepair>>;
+      try {
+        remapped = await requestVisualRepair(
+          input.pythonWorkerUrl,
+          deck,
+          remapActions,
+          [],
+        );
+      } catch (error) {
+        throw unavailableVisualQaError(
+          error,
+          reviewAttempts,
+          repairAttempts,
+          deck,
+          validation,
+          warnings,
+        );
+      }
+      deck = remapped.deck;
+      validation = applyPostVisualRepairValidation({
+        deck,
+        validation: remapped.validation,
+        enforcesHybridMediaBudget: input.enforcesHybridMediaBudget,
+      });
+      warnings.push(...remapped.warnings);
+      input.emitEvent("ai-ppt.visual-safe-remap.applied", {
+        jobId: input.jobId,
+        projectId: input.projectId,
+        deckId: deck.deckId,
+        actionTypes: remapActions.map((action) => action.action),
+        slideCount: remapActions.length,
+      });
+      if (hasBlockingQualityGateIssues(validation)) {
+        return {
+          passed: false,
+          deck,
+          validation,
+          warnings,
+          reviewAttempts,
+          repairAttempts,
+          safeRemapAttempted,
+          issues: review.issues,
+        };
+      }
+      reviewAttempts += 1;
+      try {
+        reviewed = await requestVisualReview(
+          input.dataSource,
+          input.storage,
+          input.pythonWorkerUrl,
+          deck,
+        );
+      } catch (error) {
+        throw unavailableVisualQaError(
+          error,
+          reviewAttempts,
+          repairAttempts,
+          deck,
+          validation,
+          warnings,
+        );
+      }
+      review = reviewed.review;
+      warnings.push(...reviewed.warnings);
+      emitVisualReviewEvent(input, deck, review, reviewAttempts);
+    }
+  }
+
   const policy = evaluateVisualQualityPolicy({
     validation,
     visualQaStatus: review.passed ? "passed" : "failed",
     visualIssueCodes: review.issues.map((issue) => issue.code),
     repairAttempts,
     maxRepairAttempts: input.maxRepairAttempts ?? maxVisualRepairAttempts,
-    safeRemapAttempted: false,
+    safeRemapAttempted,
   });
   return {
     passed: policy.publicationAllowed,
@@ -319,8 +394,34 @@ export async function runRenderedVisualQuality(input: {
     warnings,
     reviewAttempts,
     repairAttempts,
+    safeRemapAttempted,
     issues: review.issues,
   };
+}
+
+function safeLayoutRemapActions(
+  deck: Deck,
+  issues: readonly VisualQaIssue[],
+): GenerateDeckVisualRepairAction[] {
+  const slideOrders = [...new Set(issues.map((issue) => issue.slideOrder))];
+  return slideOrders.flatMap((slideOrder) => {
+    const slide = deck.slides[slideOrder - 1];
+    if (!slide) return [];
+    const compositionId =
+      slideOrder === 1
+        ? "cover-classic-corporate"
+        : slideOrder === deck.slides.length
+          ? "cta-closing"
+          : "editorial-split";
+    return [
+      generateDeckVisualRepairActionSchema.parse({
+        action: "changeComposition",
+        slideId: slide.slideId,
+        compositionId,
+        reason: "Remap unresolved P1 issues to an approved safe layout.",
+      }),
+    ];
+  });
 }
 
 async function requestVisualReview(

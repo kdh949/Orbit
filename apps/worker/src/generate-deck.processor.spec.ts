@@ -590,7 +590,7 @@ describe("processGenerateDeckJob", () => {
     );
 
     expect(job.status).toBe("failed");
-    expect(repairCount).toBe(2);
+    expect(repairCount).toBe(3);
     expect(job.result).toMatchObject({
       validation: {
         passed: false,
@@ -604,7 +604,7 @@ describe("processGenerateDeckJob", () => {
       },
       diagnostics: {
         visualQaStatus: "failed",
-        visualReviewAttempts: 3,
+        visualReviewAttempts: 4,
         visualRepairAttempts: 2,
         visualIssueCodes: ["BALANCE_WEAK", "BALANCE_WEAK", "BALANCE_WEAK"],
         visualIssueSlideOrders: [1, 2, 3],
@@ -648,7 +648,7 @@ describe("processGenerateDeckJob", () => {
     expect(job.status).toBe("failed");
     expect(job.error?.code).toBe("GENERATE_DECK_QUALITY_GATE_FAILED");
     expect(job.progress).toBe(90);
-    expect(repairCount).toBe(2);
+    expect(repairCount).toBe(3);
     expect(job.result).toMatchObject({
       validation: {
         passed: false,
@@ -658,7 +658,7 @@ describe("processGenerateDeckJob", () => {
       },
       diagnostics: {
         visualQaStatus: "failed",
-        visualReviewAttempts: 3,
+        visualReviewAttempts: 4,
         visualRepairAttempts: 2,
         visualIssueCodes: ["IMAGE_CONTENT_MISMATCH"]
       }
@@ -666,6 +666,55 @@ describe("processGenerateDeckJob", () => {
     expect(
       query.mock.calls.some(([sql]) => String(sql).includes("INSERT INTO decks"))
     ).toBe(false);
+  });
+
+  it("publishes after the bounded repair budget falls back to a safe layout", async () => {
+    const deck = programV2Deck();
+    const query = dynamicJobQuery();
+    const repairBodies: Array<Record<string, unknown>> = [];
+    let reviewCount = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: unknown, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/ai/generate-deck")) {
+          return generateDeckResponse(deck);
+        }
+        if (url.endsWith("/ai/review-deck-visuals")) {
+          reviewCount += 1;
+          return reviewCount < 4
+            ? visualFailureResponse("BALANCE_WEAK")
+            : visualPassResponse();
+        }
+        if (url.endsWith("/ai/repair-deck-visuals")) {
+          repairBodies.push(JSON.parse(String(init?.body)));
+          return visualRepairResponse(deck);
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      })
+    );
+
+    const job = await processGenerateDeckJob(
+      { query } as unknown as DataSource,
+      storage,
+      "http://localhost:8000",
+      programV2Payload()
+    );
+
+    expect(job.status).toBe("succeeded");
+    expect(job.result?.diagnostics).toMatchObject({
+      visualQaStatus: "passed",
+      visualReviewAttempts: 4,
+      visualRepairAttempts: 2
+    });
+    expect(repairBodies).toHaveLength(3);
+    expect(repairBodies.at(-1)?.actions).toEqual([
+      expect.objectContaining({
+        action: "changeComposition",
+        compositionId: "cover-classic-corporate",
+        slideId: "slide_1"
+      })
+    ]);
   });
 
   it("converts an unresolved optional image to a no-media composition", async () => {
@@ -1855,6 +1904,7 @@ describe("processGenerateDeckJob", () => {
           }
           if (url.endsWith("/ai/repair-deck-visuals")) {
             repairRequest();
+            return visualRepairResponse(deck);
           }
           throw new Error(`Unexpected URL: ${url}`);
         })
@@ -1876,10 +1926,11 @@ describe("processGenerateDeckJob", () => {
 
       expect(outcome).toMatchObject({
         passed: false,
-        reviewAttempts: 1,
-        repairAttempts: 0
+        reviewAttempts: 2,
+        repairAttempts: 0,
+        safeRemapAttempted: true
       });
-      expect(repairRequest).not.toHaveBeenCalled();
+      expect(repairRequest).toHaveBeenCalledTimes(1);
     });
 
     it("reapplies the current publication upsert and Job result on recall", async () => {
