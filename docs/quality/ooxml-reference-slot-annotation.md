@@ -1,0 +1,140 @@
+# OOXML reference source slide/slot annotation specification
+
+## 상태
+
+이 문서는 Task 4 구현을 위한 검수 초안이다. 7개 원본과 annotation 범위에 대한 사람
+승인은 아직 없으며 Checkpoint A도 통과하지 않았다. manifest를 작성했거나 자동 테스트가
+통과했다는 사실만으로 template을 `active`로 승인하지 않는다.
+
+원본 PPTX, 원문 XML, source filename/절대 경로, preview/render binary, font와 storage
+key는 Git·manifest·로그에 넣지 않는다. repository에는 승인 가능한 strict annotation과
+checksum만 둔다.
+
+## Spike template 선정
+
+security/provenance gate를 통과한 candidate만 비교한다. 선정은 입력 순서와 전체 slide
+수에 의존하지 않고 다음 tuple을 사용한다.
+
+1. 8, 9, 10장 각각을 구성할 수 있는지, cover와 closing이 있는지 확인한다.
+2. `supportedLocatorCoverage` 내림차순
+3. `roleCoverage` 내림차순
+4. `capacityEligibleSlideCount` 내림차순
+5. eligible unique source slide 수 내림차순
+6. 최종 tie-break는 `templateId`, `version` 오름차순
+
+`supportedLocatorCoverage`의 분자는 stable locator와 허용 mutation을 모두 가진 direct
+slide text/image/table/chart object 수다. 분모는 decoration을 제외한 content-bearing
+candidate object 수다. unsupported SmartArt와 animation은 분모에는 남겨 source의 지원
+가능성을 과대평가하지 않지만 editable slot에는 포함하지 않는다. 선정 report에는 위
+수치, cover/closing, role별 eligible count, capacity 실패 code와 `[8, 9, 10]` 가능 여부를
+기록한다. 단순 `slideCount`는 ranking criterion이 아니다.
+
+8~10장 spike annotation은 cover 1장과 closing 1장을 필수로 하고, 나머지 source에서
+agenda/statement/summary와 metric/comparison/chart/table/process/timeline/team-role/evidence
+중 fixture가 요구하는 role 및 capacity를 만족해야 한다. 같은 source/layout의 인접 반복은
+허용하지 않는다.
+
+## Source slide 형식
+
+각 `sourceSlides[]` entry는 다음 strict field만 가진다.
+
+- `sourceSlideId`: template version 안에서 유일한 stable ID
+- `sourceSlidePart`: `ppt/slides/slideN.xml`
+- `sourceOrder`: presentation의 1-based order
+- `semanticRole`: shared 계약의 source role enum
+- `relationships`: `layoutPart`, `masterPart`, `themePart`
+- `capacity`: content type별 editable slot count
+- `previewId`
+- `lockedInventorySha256`: non-slot relationship/shape inventory checksum
+- `slots`: 이 slide에 속한 editable slot만 포함
+
+source ID, part, order는 각각 유일해야 한다. relationship identity와 locked checksum은
+실제 package와 일치해야 하며 caller가 제공한 path/index를 신뢰하지 않는다.
+
+## Slot manifest 형식
+
+```json
+{
+  "slotId": "operating-review-v1-slide-07-body",
+  "semanticRole": "body",
+  "contentType": "text",
+  "required": true,
+  "locator": {
+    "slidePart": "ppt/slides/slide7.xml",
+    "shapeId": "12",
+    "placeholderType": "body",
+    "relationshipId": null
+  },
+  "capacity": {
+    "maxChars": 220,
+    "maxLines": 7,
+    "maxParagraphs": 5,
+    "maxBulletDepth": 2
+  },
+  "mutationPolicy": ["text-content"],
+  "replacementPolicy": { "overflow": "fail" }
+}
+```
+
+- 모든 content type은 `slotId`, semantic/content role, required 여부, locator, capacity,
+  mutation policy와 overflow policy를 명시한다.
+- locator는 positional index가 아니라 `slidePart + shapeId + relationshipId` identity다.
+  slot ID와 locator tuple은 manifest 전체에서 중복될 수 없다.
+- locator의 slide part는 부모 source slide와 같아야 한다. image/chart는 authoritative
+  relationship ID가 필수다.
+- text는 max chars/lines/paragraphs/bullet depth, image는 aspect ratio/crop/alpha/mask,
+  table은 fixed grid/merge policy/editable cell fingerprint, chart는 supported chart type과
+  category/series 및 embedded workbook fingerprint를 기록한다.
+- 허용 mutation은 각각 `text-content`, `image-source`, `table-cell-text`, `chart-data`뿐이다.
+  frame 좌표, 크기, rotation, zIndex, shape geometry와 style mutation은 없다.
+- capacity count는 실제 `slots[]`와 일치해야 하며 overflow는 fail-closed한다.
+- unknown field, raw XML/text, local path, signed URL, storage key는 거부한다.
+
+## Editable slot 제외 규칙
+
+다음 object는 slot으로 annotation하지 않고 locked inventory에만 포함한다.
+
+- 장식용 shape, background와 non-content visual
+- slide master와 slide layout의 모든 object
+- unsupported SmartArt/diagram
+- animation/timing 대상 object
+- external workbook/media relationship, OLE, embedded package와 linked content
+- stable direct locator 또는 bounded mutation policy를 만들 수 없는 object
+
+제외 object를 slot locator로 지정하면 각각 stable issue code로 validation을 실패시킨다.
+도구가 조용히 authored fallback slot을 만들거나 System Design Pack으로 전환해서는 안 된다.
+
+## 사람 검수 규칙
+
+- source-slide catalog와 montage에서 cover/closing 및 8~10장 role 흐름을 확인한다.
+- editable mask가 실제 content object만 포함하고 decoration/master/layout을 침범하지
+  않는지 확인한다.
+- 각 slot의 semantic role과 한국어 capacity를 실제 교체 문구로 검토한다.
+- table/chart locator와 embedded workbook policy를 package reopen으로 확인한다.
+- source checksum, manifest checksum, font/provenance 승인 상태를 확인한다.
+
+위 검수 결과와 승인자/시각이 기록되기 전에는 사람 승인 항목을 체크하지 않으며,
+Checkpoint A 또는 spike rollout을 `passed`로 표시하지 않는다.
+
+## 검수 artifact 생성
+
+annotation draft가 준비되면 원본이나 preview binary를 repository에 복사하지 않고 다음
+명령으로 strict locator와 locked inventory를 검증한다.
+
+```bash
+cd services/python-worker
+uv run python scripts/annotate_ooxml_reference_template.py \
+  --source <private-reference.pptx> \
+  --manifest <private-annotation.json> \
+  --catalog-output <private-output>/source-slide-catalog.json \
+  --preview-directory <private-rendered-slide-pngs> \
+  --montage-output <private-output>/source-slide-montage.png
+```
+
+catalog에는 source slide ID, semantic role, preview ID, slot ID와 checksum만 기록한다.
+source path, 원문 text, raw XML, render binary는 기록하지 않는다. preview가 하나라도 없거나
+path-bounded preview ID가 아니면 montage 생성은 실패한다.
+
+현재 repository에는 승인된 7개 annotation draft와 preview baseline이 없으므로 실제 spike
+template 선정 결과 및 montage는 아직 생성되지 않았다. 자동 fixture 검증은 도구의 선정
+순서와 8~10장 catalog/montage 생성을 확인하지만 사람 승인을 대신하지 않는다.
