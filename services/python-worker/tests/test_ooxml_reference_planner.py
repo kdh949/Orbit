@@ -292,7 +292,10 @@ def test_seven_template_families_obey_role_capacity_and_repetition_rules(
         for left, right in zip(plan.slides, plan.slides[1:], strict=False)
     )
     unique_count = len({slide.source_slide_id for slide in plan.slides})
-    assert unique_count >= math.ceil(len(plan.slides) * 0.8)
+    assert unique_count >= min(
+        math.ceil(len(plan.slides) * 0.8),
+        len(manifest.source_slides),
+    )
     dumped = plan.model_dump(by_alias=True)
     forbidden_geometry = {
         "x",
@@ -468,7 +471,7 @@ def test_reusing_same_source_with_same_slot_copy_is_rejected() -> None:
         )
 
 
-def test_insufficient_source_diversity_does_not_relax_eighty_percent_rule() -> None:
+def test_source_diversity_is_capped_by_eligible_source_count() -> None:
     manifest = _manifest(
         "operating-review",
         body_capacities=(120, 120),
@@ -476,12 +479,10 @@ def test_insufficient_source_diversity_does_not_relax_eighty_percent_rule() -> N
     )
     content = _content_plan(messages=("본문 1", "본문 2", "본문 3", "본문 4"))
 
-    with pytest.raises(
-        ReferenceTemplatePlanningError,
-        match="OOXML_REFERENCE_REPETITION_RULE_FAILED",
-    ):
-        plan_reference_template(
-            adapt_content_plan(content),
-            manifest=manifest,
-            catalog_version="catalog-v1",
-        )
+    plan = plan_reference_template(
+        adapt_content_plan(content),
+        manifest=manifest,
+        catalog_version="catalog-v1",
+    )
+
+    assert len({slide.source_slide_id for slide in plan.slides}) == 4

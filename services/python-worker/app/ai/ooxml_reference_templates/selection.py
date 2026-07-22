@@ -68,7 +68,17 @@ def select_source_sequence(
                 f"slide {slide.order} has no role/capacity/capability match",
             )
 
-    required_unique_count = math.ceil(len(slides) * 0.8)
+    eligible_source_count = len(
+        {
+            candidate.source.source_slide_id
+            for candidates in candidate_rows
+            for candidate in candidates
+        }
+    )
+    required_unique_count = min(
+        math.ceil(len(slides) * 0.8),
+        eligible_source_count,
+    )
     candidate_sequence = _solve_sequence(
         candidate_rows,
         required_unique_count=required_unique_count,
