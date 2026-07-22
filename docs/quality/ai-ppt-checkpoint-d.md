@@ -16,6 +16,7 @@
 | publication P0/P1 | 네 family 모두 P0 0건, P1 0건 | 통과 |
 | rollout fallback | 전역 off, pack allowlist 제외, invalid native layout에서 `program-v2` 복귀 | 통과 |
 | 로컬 Compose | API liveness/readiness, Python health, Web 200, Worker ready | 통과 |
+| full-deck render | Docker Noto CJK + LibreOffice에서 33 PNG, 4 montage, 4 PPTX; warning/P0/P1 0 | 통과 |
 | selector latency | 고정 fixture 네 건 모두 1ms 미만 | 참고값 |
 | 전체 생성 p95 | provider 포함 full-deck 표본 미수집 | 미측정 |
 | current 대비 blind preference | 사람 평가 미수행 | 미측정 |

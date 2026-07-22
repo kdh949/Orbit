@@ -385,14 +385,14 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] fixture가 `BALANCE_WEAK`, 낮은 contrast 또는 빈 영역 불균형 중 현재 확인된 문제를 재현한다.
-- [ ] 8장 생성 결과의 composition sequence와 validation summary를 snapshot으로 고정한다.
-- [ ] 외부 provider 없이 CI에서 재현 가능하다.
+- [x] fixture가 `BALANCE_WEAK`, 낮은 contrast 또는 빈 영역 불균형 중 현재 확인된 문제를 재현한다.
+- [x] 8장 생성 결과의 composition sequence와 validation summary를 snapshot으로 고정한다.
+- [x] 외부 provider 없이 CI에서 재현 가능하다.
 
 **Verification:**
 
-- [ ] `pnpm --filter @orbit/worker test -- generate-deck`
-- [ ] `cd services/python-worker && uv run pytest tests/test_visual_qa.py tests/test_composition_library.py`
+- [x] `pnpm --filter @orbit/worker test -- generate-deck`
+- [x] `cd services/python-worker && uv run pytest tests/test_visual_qa.py tests/test_composition_library.py`
 
 **Dependencies:** None
 
@@ -411,14 +411,14 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] unresolved P0가 있으면 `passed=false`다.
-- [ ] P1은 repair/remap이 남아 있는 동안 publication으로 진행하지 않는다.
-- [ ] P2만 남은 approved layout 결과만 advisory publication이 가능하다.
+- [x] unresolved P0가 있으면 `passed=false`다.
+- [x] P1은 repair/remap이 남아 있는 동안 publication으로 진행하지 않는다.
+- [x] P2만 남은 approved layout 결과만 advisory publication이 가능하다.
 
 **Verification:**
 
-- [ ] `pnpm --filter @orbit/worker test -- rendered-visual-quality`
-- [ ] P0, P1, P2, Vision unavailable 조합에 대한 table-driven test 통과
+- [x] `pnpm --filter @orbit/worker test -- rendered-visual-quality`
+- [x] P0, P1, P2, Vision unavailable 조합에 대한 table-driven test 통과
 
 **Dependencies:** Task 1
 
@@ -437,15 +437,15 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] P1 slide는 최대 2회의 repair를 실행한다.
-- [ ] final stage가 slide PNG 전체와 montage를 새로 검토한다.
-- [ ] final review 실패 Deck은 `decks` 테이블에 publication되지 않는다.
+- [x] P1 slide는 최대 2회의 repair를 실행한다.
+- [x] final stage가 slide PNG 전체와 montage를 새로 검토한다.
+- [x] final review 실패 Deck은 `decks` 테이블에 publication되지 않는다.
 
 **Verification:**
 
-- [ ] `pnpm --filter @orbit/worker test -- execution-stage.processor`
-- [ ] repair success, repair exhausted, provider unavailable, fencing lost 회귀 테스트 통과
-- [ ] `AI_DECK_EXECUTION_MODE=pg` 로컬 smoke에서 diagnostics에 review/repair 횟수가 기록됨
+- [x] `pnpm --filter @orbit/worker test -- execution-stage.processor`
+- [x] repair success, repair exhausted, provider unavailable, fencing lost 회귀 테스트 통과
+- [x] `AI_DECK_EXECUTION_MODE=pg` 로컬 smoke에서 diagnostics에 review/repair 횟수가 기록됨
 
 **Dependencies:** Task 2
 
@@ -465,14 +465,14 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] image와 핵심 content element의 교차 면적이 기준을 넘으면 warning이 생성된다.
-- [ ] decoration과 의도된 full-bleed background는 false positive가 아니다.
-- [ ] 사용자 편집은 자동 취소되지 않는다.
+- [x] image와 핵심 content element의 교차 면적이 기준을 넘으면 warning이 생성된다.
+- [x] decoration과 의도된 full-bleed background는 false positive가 아니다.
+- [x] 사용자 편집은 자동 취소되지 않는다.
 
 **Verification:**
 
-- [ ] `pnpm --filter @orbit/web test -- editorValidation`
-- [ ] 기준 보안 슬라이드와 유사한 overlay fixture가 warning을 생성함
+- [x] `pnpm --filter @orbit/web test -- editorValidation`
+- [x] 기준 보안 슬라이드와 유사한 overlay fixture가 warning을 생성함
 
 **Dependencies:** None
 
@@ -485,10 +485,10 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 #### Checkpoint A: 발행 안전성
 
-- [ ] `validation.passed=false`인 P0/P1 Deck이 성공 발행되지 않는다.
-- [ ] staged 경로에서 실제 repair 또는 safe remap이 관찰된다.
-- [ ] final whole-deck review가 diagnostics에 남는다.
-- [ ] 편집기 image 가림 경고가 생성 결과와 사용자 편집을 구분한다.
+- [x] `validation.passed=false`인 P0/P1 Deck이 성공 발행되지 않는다.
+- [x] staged 경로에서 실제 repair 또는 safe remap이 관찰된다.
+- [x] final whole-deck review가 diagnostics에 남는다.
+- [x] 편집기 image 가림 경고가 생성 결과와 사용자 편집을 구분한다.
 
 ### Phase 1: System Design Pack foundation
 
@@ -498,14 +498,14 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] unknown field, duplicate layout ID, invalid capacity, 미승인 provenance를 거부한다.
-- [ ] 기존 Deck은 새 optional snapshot 없이 계속 parse된다.
-- [ ] TypeScript와 Python fixture가 동일 manifest를 통과하거나 거부한다.
+- [x] unknown field, duplicate layout ID, invalid capacity, 미승인 provenance를 거부한다.
+- [x] 기존 Deck은 새 optional snapshot 없이 계속 parse된다.
+- [x] TypeScript와 Python fixture가 동일 manifest를 통과하거나 거부한다.
 
 **Verification:**
 
-- [ ] `pnpm --filter @orbit/shared test`
-- [ ] `cd services/python-worker && uv run pytest tests/test_design_pack_registry.py`
+- [x] `pnpm --filter @orbit/shared test`
+- [x] `cd services/python-worker && uv run pytest tests/test_design_pack_registry.py`
 
 **Dependencies:** Checkpoint A
 
@@ -525,14 +525,14 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] 각 후보 slide에 source, slide number, role, silhouette, Korean capacity, license status가 기록된다.
-- [ ] `licenseStatus != approved`인 layout은 active pack에 포함할 수 없다.
-- [ ] 원본 plugin cache 절대 경로가 product manifest에 저장되지 않는다.
+- [x] 각 후보 slide에 source, slide number, role, silhouette, Korean capacity, license status가 기록된다.
+- [x] `licenseStatus != approved`인 layout은 active pack에 포함할 수 없다.
+- [x] 원본 plugin cache 절대 경로가 product manifest에 저장되지 않는다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_design_pack_ingest.py`
-- [ ] 7개 레퍼런스의 inventory report 생성
+- [x] `cd services/python-worker && uv run pytest tests/test_design_pack_ingest.py`
+- [x] 7개 레퍼런스의 inventory report 생성
 - [ ] 30~40개 1차 후보에 대한 사람 검수 체크리스트 완료
 
 **Dependencies:** Task 5
@@ -552,15 +552,15 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] 8장 general/inform Deck이 Neutral pack만 사용해 완성된다.
-- [ ] 최소 4개 silhouette를 사용하고 인접 반복이 없다.
-- [ ] light/dark variant에서 한글 overflow와 contrast P0가 0건이다.
+- [x] 8장 general/inform Deck이 Neutral pack만 사용해 완성된다.
+- [x] 최소 4개 silhouette를 사용하고 인접 반복이 없다.
+- [x] light/dark variant에서 한글 overflow와 contrast P0가 0건이다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_neutral_design_pack.py tests/test_composition_library.py`
-- [ ] PNG montage와 PPTX export fixture 검수
-- [ ] 기존 `brandlogy-modern` program-v2 회귀 테스트 통과
+- [x] `cd services/python-worker && uv run pytest tests/test_neutral_design_pack.py tests/test_composition_library.py`
+- [x] PNG montage와 PPTX export fixture 검수
+- [x] 기존 `brandlogy-modern` program-v2 회귀 테스트 통과
 
 **Dependencies:** Tasks 5, 6
 
@@ -580,15 +580,15 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] auto mode 요청은 특정 style pack을 강제로 덮어쓰지 않는다.
-- [ ] 선택 결과와 deterministic fallback이 Deck snapshot/diagnostics에 기록된다.
-- [ ] 명시적 Saved Design Pack 또는 사용자 선택은 auto selector보다 우선한다.
+- [x] auto mode 요청은 특정 style pack을 강제로 덮어쓰지 않는다.
+- [x] 선택 결과와 deterministic fallback이 Deck snapshot/diagnostics에 기록된다.
+- [x] 명시적 Saved Design Pack 또는 사용자 선택은 auto selector보다 우선한다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_design_pack_selector.py`
-- [ ] `pnpm --filter @orbit/web test -- AiPptMockupPage`
-- [ ] 같은 입력과 catalog version은 같은 fallback 결과를 생성함
+- [x] `cd services/python-worker && uv run pytest tests/test_design_pack_selector.py`
+- [x] `pnpm --filter @orbit/web test -- AiPptMockupPage`
+- [x] 같은 입력과 catalog version은 같은 fallback 결과를 생성함
 
 **Dependencies:** Task 7
 
@@ -604,9 +604,9 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 #### Checkpoint B: 자동 선택 MVP
 
-- [ ] `/createdeck` topic-only 요청이 Neutral pack을 자동 선택할 수 있다.
-- [ ] 기존 public GenerateDeck request에서 제거된 selector field를 복구하지 않는다.
-- [ ] 생성 Deck이 선택 pack/version/layout provenance를 재현 가능하게 기록한다.
+- [x] `/createdeck` topic-only 요청이 Neutral pack을 자동 선택할 수 있다.
+- [x] 기존 public GenerateDeck request에서 제거된 selector field를 복구하지 않는다.
+- [x] 생성 Deck이 선택 pack/version/layout provenance를 재현 가능하게 기록한다.
 - [ ] 기준 Deck보다 blind comparison에서 과반 이상 선호된다.
 
 ### Phase 2: 의미·스타일 정합성과 pack 확장
@@ -617,14 +617,14 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] 일반 날짜·순번·기간 숫자는 자동 metric 승격되지 않는다.
-- [ ] metric은 value, unit, label, sourceRef를 모두 추적한다.
-- [ ] `,...`, `...`, `TBD`가 visible 핵심 text로 발행되지 않는다.
+- [x] 일반 날짜·순번·기간 숫자는 자동 metric 승격되지 않는다.
+- [x] metric은 value, unit, label, sourceRef를 모두 추적한다.
+- [x] `,...`, `...`, `TBD`가 visible 핵심 text로 발행되지 않는다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_composition_library.py tests/test_generate_deck_contract.py`
-- [ ] qualitative slide가 `metric-poster`를 선택하지 않는 회귀 테스트 통과
+- [x] `cd services/python-worker && uv run pytest tests/test_composition_library.py tests/test_generate_deck_contract.py`
+- [x] qualitative slide가 `metric-poster`를 선택하지 않는 회귀 테스트 통과
 
 **Dependencies:** Task 5
 
@@ -644,14 +644,14 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] visible accent가 2개를 초과하지 않는다.
-- [ ] 사용되지 않는 고채도 primary가 최종 snapshot에 남지 않는다.
-- [ ] browser/editor와 PPTX render의 주요 줄바꿈 차이가 허용 범위 안이다.
+- [x] visible accent가 2개를 초과하지 않는다.
+- [x] 사용되지 않는 고채도 primary가 최종 snapshot에 남지 않는다.
+- [x] browser/editor와 PPTX render의 주요 줄바꿈 차이가 허용 범위 안이다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_design_program.py tests/test_pptx_quality.py`
-- [ ] light/dark Korean typography golden fixture 통과
+- [x] `cd services/python-worker && uv run pytest tests/test_design_program.py tests/test_pptx_quality.py`
+- [x] light/dark Korean typography golden fixture 통과
 
 **Dependencies:** Task 5
 
@@ -671,14 +671,14 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] executive-report/report 입력이 Executive Review pack을 선택한다.
-- [ ] 근거 없는 chart를 만들지 않고 table/chart slot capacity를 준수한다.
-- [ ] 8~10장 경영 보고 golden deck이 P0/P1 없이 통과한다.
+- [x] executive-report/report 입력이 Executive Review pack을 선택한다.
+- [x] 근거 없는 chart를 만들지 않고 table/chart slot capacity를 준수한다.
+- [x] 8~10장 경영 보고 golden deck이 P0/P1 없이 통과한다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_executive_review_design_pack.py`
-- [ ] 표·차트가 포함된 PPTX export 및 LibreOffice render 검수
+- [x] `cd services/python-worker && uv run pytest tests/test_executive_review_design_pack.py`
+- [x] 표·차트가 포함된 PPTX export 및 LibreOffice render 검수
 
 **Dependencies:** Tasks 8, 9, 10
 
@@ -698,14 +698,14 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] kickoff, alignment, project plan 입력이 해당 pack을 선택한다.
-- [ ] 3~6개 milestone과 role item이 overflow 없이 배치된다.
-- [ ] timeline과 process가 인접 반복되지 않는다.
+- [x] kickoff, alignment, project plan 입력이 해당 pack을 선택한다.
+- [x] 3~6개 milestone과 role item이 overflow 없이 배치된다.
+- [x] timeline과 process가 인접 반복되지 않는다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_kickoff_alignment_design_pack.py`
-- [ ] 8장 kickoff golden deck의 PNG montage와 PPTX export 검수
+- [x] `cd services/python-worker && uv run pytest tests/test_kickoff_alignment_design_pack.py`
+- [x] 8장 kickoff golden deck의 PNG montage와 PPTX export 검수
 
 **Dependencies:** Tasks 8, 10
 
@@ -725,14 +725,14 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] editorial profile과 시장 인사이트 입력이 해당 pack을 선택한다.
-- [ ] 한 슬라이드에 primary claim 하나만 강조한다.
-- [ ] 대형 문장 layout이 실제 evidence가 없는 metric layout으로 변환되지 않는다.
+- [x] editorial profile과 시장 인사이트 입력이 해당 pack을 선택한다.
+- [x] 한 슬라이드에 primary claim 하나만 강조한다.
+- [x] 대형 문장 layout이 실제 evidence가 없는 metric layout으로 변환되지 않는다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_editorial_insight_design_pack.py`
-- [ ] market trend golden deck의 montage와 PPTX export 검수
+- [x] `cd services/python-worker && uv run pytest tests/test_editorial_insight_design_pack.py`
+- [x] market trend golden deck의 montage와 PPTX export 검수
 
 **Dependencies:** Tasks 8, 9, 10
 
@@ -748,10 +748,10 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 #### Checkpoint C: 네 가지 pack 품질 승인
 
-- [ ] Neutral, Executive Review, Kickoff & Alignment, Editorial Insight golden deck 통과
-- [ ] 각 8~10장 덱에서 silhouette 4종 이상, 인접 동일 silhouette 0건
-- [ ] overlap, overflow, contrast, unresolved media P0 0건
-- [ ] full-deck Vision score 85 이상 또는 P1 0건
+- [x] Neutral, Executive Review, Kickoff & Alignment, Editorial Insight golden deck 통과
+- [x] 각 8~10장 덱에서 silhouette 4종 이상, 인접 동일 silhouette 0건
+- [x] overlap, overflow, contrast, unresolved media P0 0건
+- [x] full-deck Vision score 85 이상 또는 P1 0건
 - [ ] 현재 기준 결과 대비 blind preference 70% 이상
 
 ### Phase 3: 사용자 선택과 운영 rollout
@@ -762,13 +762,13 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] 응답은 정확히 3개 이하의 versioned pack 후보를 반환한다.
-- [ ] disabled·unlicensed pack은 반환하지 않는다.
-- [ ] provider 실패 시 deterministic shortlist를 반환한다.
+- [x] 응답은 정확히 3개 이하의 versioned pack 후보를 반환한다.
+- [x] disabled·unlicensed pack은 반환하지 않는다.
+- [x] provider 실패 시 deterministic shortlist를 반환한다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_design_pack_options.py`
+- [x] `cd services/python-worker && uv run pytest tests/test_design_pack_options.py`
 
 **Dependencies:** Checkpoint C
 
@@ -786,13 +786,13 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] unknown field와 구조적으로 잘못된 pack ID/version을 거부한다.
-- [ ] selection field 생략은 auto mode이며 명시한 ID/version은 immutable catalog entry와 일치해야 한다.
-- [ ] 기존 request와 Deck은 새 optional field 없이 계속 parse된다.
+- [x] unknown field와 구조적으로 잘못된 pack ID/version을 거부한다.
+- [x] selection field 생략은 auto mode이며 명시한 ID/version은 immutable catalog entry와 일치해야 한다.
+- [x] 기존 request와 Deck은 새 optional field 없이 계속 parse된다.
 
 **Verification:**
 
-- [ ] `pnpm --filter @orbit/shared test`
+- [x] `pnpm --filter @orbit/shared test`
 
 **Dependencies:** Task 14
 
@@ -812,13 +812,13 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] API가 Python 응답을 shared schema로 검증한다.
-- [ ] timeout·invalid provider payload를 명시적 오류 또는 deterministic fallback으로 정규화한다.
-- [ ] 인증·project 경계와 기존 GenerateDeck Job 계약을 침범하지 않는다.
+- [x] API가 Python 응답을 shared schema로 검증한다.
+- [x] timeout·invalid provider payload를 명시적 오류 또는 deterministic fallback으로 정규화한다.
+- [x] 인증·project 경계와 기존 GenerateDeck Job 계약을 침범하지 않는다.
 
 **Verification:**
 
-- [ ] `pnpm --filter @orbit/api test -- design-pack-options`
+- [x] `pnpm --filter @orbit/api test -- design-pack-options`
 
 **Dependencies:** Tasks 14, 15
 
@@ -837,14 +837,14 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] field 생략은 auto mode이고 기존 palette/font 선택 흐름이 유지된다.
-- [ ] stale, disabled 또는 catalog에 없는 pack ID/version을 저장 시 거부한다.
-- [ ] design-planning이 시작된 뒤 다른 pack으로 변경하면 기존 conflict 정책을 유지한다.
+- [x] field 생략은 auto mode이고 기존 palette/font 선택 흐름이 유지된다.
+- [x] stale, disabled 또는 catalog에 없는 pack ID/version을 저장 시 거부한다.
+- [x] design-planning이 시작된 뒤 다른 pack으로 변경하면 기존 conflict 정책을 유지한다.
 
 **Verification:**
 
-- [ ] `pnpm --filter @orbit/api test -- design-selection`
-- [ ] `pnpm --filter @orbit/worker test -- planning-stage.processor`
+- [x] `pnpm --filter @orbit/api test -- design-selection`
+- [x] `pnpm --filter @orbit/worker test -- planning-stage.processor`
 
 **Dependencies:** Tasks 15, 16
 
@@ -863,14 +863,14 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] 기본값은 `AI 추천`이며 사용자가 아무것도 고르지 않아도 생성 가능하다.
-- [ ] 사용자가 pack을 고르면 해당 ID/version이 생성 결과 snapshot과 일치한다.
-- [ ] preview 실패 시 auto mode로 안전하게 계속할 수 있다.
+- [x] 기본값은 `AI 추천`이며 사용자가 아무것도 고르지 않아도 생성 가능하다.
+- [x] 사용자가 pack을 고르면 해당 ID/version이 생성 결과 snapshot과 일치한다.
+- [x] preview 실패 시 auto mode로 안전하게 계속할 수 있다.
 
 **Verification:**
 
-- [ ] `pnpm --filter @orbit/web test -- AiPptMockupPage`
-- [ ] desktop/mobile에서 pack card, 선택 상태, error fallback 확인
+- [x] `pnpm --filter @orbit/web test -- AiPptMockupPage`
+- [x] desktop/mobile에서 pack card, 선택 상태, error fallback 확인
 - [ ] `/createdeck → 생성 → editor` smoke 통과
 
 **Dependencies:** Task 17
@@ -891,17 +891,17 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 **Acceptance criteria:**
 
-- [ ] 네 가지 presentation family별 고정 golden brief가 있다.
-- [ ] current와 new 결과를 같은 rubric으로 비교하는 report가 생성된다.
-- [ ] pack별 enable/disable과 safe fallback이 가능하다.
+- [x] 네 가지 presentation family별 고정 golden brief가 있다.
+- [x] current와 new 결과를 같은 rubric으로 비교하는 report가 생성된다.
+- [x] pack별 enable/disable과 safe fallback이 가능하다.
 
 **Verification:**
 
-- [ ] `pnpm build`, `pnpm lint`, `pnpm test`
-- [ ] `cd services/python-worker && uv run ruff check . && uv run mypy app && uv run pytest`
-- [ ] `node infra/scripts/check-env.mjs`
-- [ ] `docker compose config`
-- [ ] local Docker Compose에서 liveness/readiness 및 4개 golden smoke 통과
+- [x] `pnpm build`, `pnpm lint`, `pnpm test`
+- [x] `cd services/python-worker && uv run ruff check . && uv run mypy app && uv run pytest`
+- [x] `node infra/scripts/check-env.mjs`
+- [x] `docker compose config`
+- [x] local Docker Compose에서 liveness/readiness 및 4개 golden smoke 통과
 
 **Dependencies:** Tasks 11, 12, 13, 18
 
@@ -917,12 +917,12 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 #### Checkpoint D: 제품 적용 승인
 
-- [ ] 4개 family 모두 자동 선택과 수동 override가 동작한다.
+- [x] 4개 family 모두 자동 선택과 수동 override가 동작한다.
 - [ ] current 대비 blind preference 70% 이상이다.
 - [ ] “추가 편집 없이 발표 가능” 평균 4/5 이상이다.
-- [ ] P0 publication 0건, P1 advisory publication 0건이다.
+- [x] P0 publication 0건, P1 advisory publication 0건이다.
 - [ ] p95 생성 시간 증가가 승인된 예산 안이다.
-- [ ] rollout flag를 끄면 기존 program-v2 안전 경로로 복귀한다.
+- [x] rollout flag를 끄면 기존 program-v2 안전 경로로 복귀한다.
 
 ### Phase 4: 선택적 OOXML template mode spike
 
@@ -1042,16 +1042,16 @@ whole-deck review는 rhythm, layout repetition, typography consistency, palette 
 
 이 계획은 다음 조건을 모두 만족할 때 완료된다.
 
-- [ ] 네 가지 System Design Pack family가 versioned catalog로 운영된다.
-- [ ] AI auto selector와 사용자 override가 동일한 snapshot 계약을 사용한다.
-- [ ] 8~10장 덱에서 최소 4개 silhouette를 사용하고 인접 반복이 없다.
-- [ ] overlap, overflow, contrast, required media P0가 0건이다.
-- [ ] P1이 남은 결과는 publication되지 않는다.
-- [ ] final whole-deck review와 PPTX render 검증이 실행된다.
+- [x] 네 가지 System Design Pack family가 versioned catalog로 운영된다.
+- [x] AI auto selector와 사용자 override가 동일한 snapshot 계약을 사용한다.
+- [x] 8~10장 덱에서 최소 4개 silhouette를 사용하고 인접 반복이 없다.
+- [x] overlap, overflow, contrast, required media P0가 0건이다.
+- [x] P1이 남은 결과는 publication되지 않는다.
+- [x] final whole-deck review와 PPTX render 검증이 실행된다.
 - [ ] 네 가지 golden deck이 visual score 85 이상이다.
 - [ ] 현재 기준 대비 blind preference 70% 이상이다.
 - [ ] “추가 편집 없이 발표 가능” 평균 4/5 이상이다.
-- [ ] `docs/contracts.md`, 관련 test matrix와 운영 runbook이 실제 구현에 맞게 갱신된다.
+- [x] `docs/contracts.md`, 관련 test matrix와 운영 runbook이 실제 구현에 맞게 갱신된다.
 
 ## 16. 관련 문서
 

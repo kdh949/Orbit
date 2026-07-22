@@ -22,12 +22,12 @@ mypy app: 69 source files passed
 pytest full Python suite: 813 passed, 1 skipped
 ```
 
-PPTX 검증은 각 native table, chart, role, schedule 또는 statement 결과를 export한 뒤 `python-pptx`로 재개방하는 방식으로 수행했다. 기존 whole-deck publication gate와 placeholder, overlap, overflow, contrast, unresolved media 테스트도 전체 회귀에 포함된다.
+PPTX 검증은 각 native table, chart, role, schedule 또는 statement 결과를 export한 뒤 `python-pptx`로 재개방하는 방식으로 수행했다. 추가로 Docker의 `Noto Sans CJK KR`와 LibreOffice 25.2.3.2로 네 full-deck PPTX를 33장 PNG와 4개 montage로 렌더했다. 한글 glyph, safe area, timeline font height, editable schedule bar를 실제 render에서 확인했고 export warning, layout/design issue와 text overlap은 모두 0이었다.
 
 ## 남은 사람 평가
 
 - current 대비 blind preference 70% 이상
-- full-deck Vision score 85 이상 또는 실제 golden montage에서 P1 0건
+- full-deck Vision score 85 이상 또는 실제 golden montage에서 P1 0건 — montage P1 0건 확인
 - “추가 편집 없이 발표 가능” 평균 4/5 이상
 
 위 항목은 Task 19의 고정 golden brief와 비교 report로 측정 자료를 만든 뒤 사람 평가 결과를 입력한다. 측정 전에는 `measured` 또는 `passed`로 표시하지 않는다.
