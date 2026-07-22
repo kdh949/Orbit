@@ -517,11 +517,16 @@ report에는 artifact checksum, renderer/version, font checksum, source/template
 
 #### Checkpoint A: source와 계약 고정
 
-- [ ] 7개 manifest 합계가 139장이다.
-- [ ] source와 preview checksum이 재현된다.
-- [ ] strict Zod/Pydantic mirror와 기존 GenerateDeck regression이 통과한다.
-- [ ] security preflight와 provenance gate를 통과하지 않은 template은 catalog option에 나오지 않는다.
-- [ ] 사람 승인: inventory와 slot annotation 범위를 검토한 뒤 spike로 진행한다.
+- [x] 7개 manifest 합계가 139장이다.
+- [x] source와 preview checksum이 재현된다.
+- [x] strict Zod/Pydantic mirror와 기존 GenerateDeck regression이 통과한다.
+- [x] security preflight와 provenance gate를 통과하지 않은 template은 catalog option에 나오지 않는다.
+- [x] 사람 승인: inventory와 slot annotation 범위를 검토한 뒤 spike로 진행한다.
+
+2026-07-23 사용자 승인과 local QA private storage의 7개 source·139개 preview·7개 strict
+manifest read-after-write 검증으로 Checkpoint A를 통과했다. 이 결정은 source/contract spike
+gate에 한정되며 production managed storage publication이나 product rollout 승인이 아니다.
+repository catalog는 PowerPoint/font/production gate가 남아 있으므로 계속 disabled다.
 
 ### Phase 1: 한 개 PPTX vertical spike
 
