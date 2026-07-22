@@ -780,7 +780,7 @@ def _cover_structured_report(
     period = _cover_value(slide, "reportPeriod")
     label = _cover_value(slide, "documentLabel")
     rail_text = _contrasting_text_color(style.focal, "#FFFFFF")
-    title = _text(order, "title", "title", title_text, 645, 235, 1160, 250, 6, style.text, _cover_title_size(title_text, style.cover_size, 1160), "bold", style.heading_font, vertical="middle", line_height=1.05)
+    title = _text(order, "title", "title", title_text, 645, 235, 1155, 250, 6, style.text, _cover_title_size(title_text, style.cover_size, 1155), "bold", style.heading_font, vertical="middle", line_height=1.05)
     elements = [
         _background(order, style),
         _rect(order, "report_rail", "decoration", 0, 0, 525, 1080, 2, style.focal),
@@ -1773,7 +1773,7 @@ def _timeline(
                     x,
                     index_y,
                     width,
-                    56,
+                    64,
                     5,
                     marker_color,
                     52 if count <= 4 else 44,

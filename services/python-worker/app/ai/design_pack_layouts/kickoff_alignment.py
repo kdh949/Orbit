@@ -269,7 +269,7 @@ def editable_bar(
 ) -> dict[str, Any]:
     return {
         "elementId": f"el_{order}_kickoff_schedule_bar_{index + 1}",
-        "type": "shape",
+        "type": "rect",
         "role": "decoration",
         "x": x,
         "y": y,
@@ -280,5 +280,10 @@ def editable_bar(
         "zIndex": 4,
         "locked": False,
         "visible": True,
-        "props": {"shape": "roundRect", "fill": fill, "radius": 16},
+        "props": {
+            "fill": fill,
+            "stroke": "transparent",
+            "strokeWidth": 0,
+            "borderRadius": 16,
+        },
     }

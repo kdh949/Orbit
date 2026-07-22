@@ -16,7 +16,7 @@ LAYOUT_TO_COMPOSITION = {
     "editorial-evidence-01": "editorial-split",
     "editorial-trend-01": "feature-comparison",
     "editorial-implication-01": "statement-poster",
-    "editorial-quote-01": "statement-poster",
+    "editorial-quote-01": "cover-classic-corporate",
     "editorial-closing-01": "cta-closing",
 }
 

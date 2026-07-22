@@ -42,8 +42,12 @@ class GoldenSlide(StrictModel):
 
 
 class DesignPackGoldenBrief(StrictModel):
-    fixture_id: str = Field(alias="fixtureId", min_length=1)
-    expected_pack_id: str = Field(alias="expectedPackId", min_length=1)
+    fixture_id: str = Field(
+        alias="fixtureId", pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    )
+    expected_pack_id: str = Field(
+        alias="expectedPackId", pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    )
     topic: str = Field(min_length=1)
     prompt: str = ""
     purpose: Purpose

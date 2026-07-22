@@ -44,7 +44,11 @@ def test_role_and_schedule_support_three_to_six_native_items() -> None:
         )
 
         assert sum(element["type"] == "text" for element in role.elements) >= count
-        assert sum(element["type"] == "shape" for element in schedule.elements) == count
+        assert sum(
+            element["type"] == "rect"
+            and "_kickoff_schedule_bar_" in element["elementId"]
+            for element in schedule.elements
+        ) == count
         response = export_deck_pptx(
             DeckPptxExportRequest(deck=export_deck([role.elements, schedule.elements]))
         )
