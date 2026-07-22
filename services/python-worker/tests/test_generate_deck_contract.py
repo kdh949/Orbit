@@ -31,6 +31,7 @@ from app.ai.deck_generation.content_planning import (
     deduplicate_speaker_notes_across_slides,
     ensure_profile_closing_action,
     generate_content_plan_with_llm,
+    grounded_typed_metrics_for_slide,
     merge_grounded_repair_notes,
     message_duplicates_content_items,
     normalize_design_pack_slide_title,
@@ -61,6 +62,7 @@ from app.ai.deck_generation.layout_compiler import (
 )
 from app.ai.deck_generation.models import (
     AgentOutput,
+    CriticalFact,
     DeckContentGenerationError,
     GenerateDeckRequest,
     GenerateDeckResponse,
@@ -120,6 +122,68 @@ def test_program_v2_golden_request_contract() -> None:
 
     assert request.design.media_policy == "hybrid"
     assert request.slide_count_range.min == request.slide_count_range.max == 10
+
+
+def test_grounded_typed_metric_tracks_value_unit_label_and_source() -> None:
+    raw_input = analyze_input(
+        GenerateDeckRequest(projectId="project_demo_1", topic="전환율 42%")
+    )
+    raw_input.source_records = initial_source_records(raw_input)
+    raw_input.critical_facts = [
+        CriticalFact(
+            factId="fact-conversion",
+            kind="metric",
+            canonicalText="전환율은 42%입니다",
+            value="42",
+            unit="%",
+            sourceRefs=["topic:brief"],
+        )
+    ]
+    slide = SlidePlan(
+        order=2,
+        slide_type="data",
+        title="전환율",
+        message="전환율은 42%입니다",
+        speaker_notes="전환율 근거를 설명합니다.",
+        keywords=[],
+        evidence=[],
+        content_items=[
+            GeneratedContentItem(contentItemId="metric-1", text="전환율 42%")
+        ],
+        source_refs=["topic:brief"],
+    )
+
+    assert [
+        metric.model_dump(by_alias=True)
+        for metric in grounded_typed_metrics_for_slide(raw_input, slide)
+    ] == [
+        {
+            "value": "42",
+            "unit": "%",
+            "label": "전환율은 42%입니다",
+            "sourceRef": "topic:brief",
+        }
+    ]
+
+
+@pytest.mark.parametrize("placeholder", ["TBD", "핵심 메시지...", "근거,..."])
+def test_visible_core_placeholder_text_is_blocking(placeholder: str) -> None:
+    deck = generate_deck(
+        GenerateDeckRequest(projectId="project_demo_1", topic="Placeholder gate")
+    ).deck
+    title = next(
+        element
+        for element in deck["slides"][0]["elements"]
+        if element["role"] == "title"
+    )
+    title["props"]["text"] = placeholder
+
+    issues = [
+        issue for issue in validate_design(deck) if issue.code == "PLACEHOLDER_TEXT_VISIBLE"
+    ]
+
+    assert len(issues) == 1
+    assert issues[0].blocking is True
 
 
 @pytest.mark.parametrize(

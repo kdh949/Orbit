@@ -114,6 +114,12 @@ type DeckValidationInput = {
         confidence: number;
         usedInSlideId: string;
       }>;
+      typedMetrics?: Array<{
+        value: string;
+        unit: string;
+        label: string;
+        sourceRef: string;
+      }>;
       timingPlan?: {
         charsPerMinute?: number;
         speakingTimeRatio?: number;
@@ -400,6 +406,34 @@ describe("deckSchema validation", () => {
       selectionFallbackUsed: false,
       layoutIds: ["neutral-content-01"],
       layoutCatalogVersion: 1
+    };
+
+    expectValidDeck(deck);
+  });
+
+  it("accepts a grounded typed metric in slide AI notes", () => {
+    const deck = createValidDeck();
+    deck.slides[0].aiNotes = {
+      emphasisPoints: [],
+      sourceEvidence: [],
+      sourceLedger: [
+        {
+          claim: "전환율은 42%입니다",
+          source: "사용자 입력",
+          sourceType: "topic",
+          sourceId: "topic:brief",
+          confidence: 1,
+          usedInSlideId: deck.slides[0].slideId
+        }
+      ],
+      typedMetrics: [
+        {
+          value: "42",
+          unit: "%",
+          label: "전환율",
+          sourceRef: "topic:brief"
+        }
+      ]
     };
 
     expectValidDeck(deck);

@@ -901,6 +901,8 @@ AI 덱 생성은 사용자 입력과 참고자료 fileId를 받아 비동기 Job
 - `stylePackId`, `visualIntent`, `mediaIntent` 같은 생성 입력·중간 필드는 최종 `DeckSchema`에 저장하지 않는다. 선택된 program-v2 구조는 slide별 `aiNotes.compositionPlan`과 Deck의 `metadata.designProgramSnapshot`으로 추적한다.
 - 생성 결과의 디자인은 새 배열 없이 기존 `deck.theme`, `slide.style`, `slide.elements`, chart props, `slide.animations`에 매핑한다.
 - Python worker는 source data가 없는 chart 숫자를 임의 생성하지 않는다. program-v2에서 숫자 근거가 없는 `chart` intent는 `feature-grid` 의미로 재분류해 native editable element로 구성하며 chart element를 만들지 않는다. 근거 있는 수치는 curated data composition의 editable text/shape로 표현한다.
+- `metric-poster`와 `kpi-strip-evidence`는 일반 숫자 문자열이 아니라 `slide.aiNotes.typedMetrics[]`의 grounded fact만 사용한다. 각 item은 non-empty `value`, `unit`, `label`, `sourceRef`를 가지며 `sourceRef`는 같은 slide의 `sourceLedger[].sourceId`를 참조해야 한다. 날짜, 순번, 기간 숫자는 `kind=metric`인 critical fact가 아니면 metric으로 승격하지 않는다.
+- title, subtitle, body, highlight, metric, evidence role의 visible text가 `TBD`, `...`, `,...`, `…`로 끝나면 `PLACEHOLDER_TEXT_VISIBLE` blocking issue이며 발행할 수 없다.
 - `validation.designIssues`는 overflow, contrast, collision, safe area, density, placeholder media 같은 issue를 담는다. issue가 하나라도 있으면 `validation.passed=false`이며, repair 이후 blocking issue가 없으면 worker는 non-blocking issue를 `validation`에 남기고 Deck을 저장한다. validation issue 전체를 `warnings`에 일괄 중복하지 않는다. Python diagnostics가 명시적으로 승격한 issue·summary와 validation과 독립적으로 생성된 generation/provider/repair warning만 `warnings`에 기록한다.
 - `monolith` worker는 Python 응답을 shared `generateDeckResponseSchema`와 `deckSchema`로 검증한 뒤 `decks`에 저장하고 job result에 `{ deckId, deck, warnings, validation, diagnostics }`을 저장한다.
 

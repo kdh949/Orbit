@@ -126,6 +126,9 @@ def program_v2_ai_notes(
                 and direction.asset_role == "evidence"
             ),
         ),
+        "typedMetrics": [
+            metric.model_dump(by_alias=True) for metric in slide_plan.typed_metrics
+        ],
         "timingPlan": design_pack_timing_plan(raw_input, slide_plan),
         "compositionPlan": {
             "compositionId": direction.composition_id,

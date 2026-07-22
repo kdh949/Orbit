@@ -710,6 +710,7 @@ def validate_content(deck: dict[str, Any]) -> list[ValidationIssue]:
             )
         )
         issues.extend(validate_slide_source_ledger(slide, slide_index))
+        issues.extend(validate_slide_typed_metrics(slide, slide_index))
         issues.extend(validate_slide_visual_slot(slide, slide_index))
     issues.extend(
         validate_deck_timing_summary(
@@ -720,6 +721,37 @@ def validate_content(deck: dict[str, Any]) -> list[ValidationIssue]:
     if presentation_rules:
         issues.extend(validate_speaker_notes_repetition(deck))
     return issues
+
+
+def validate_slide_typed_metrics(
+    slide: dict[str, Any],
+    slide_index: int,
+) -> list[ValidationIssue]:
+    ai_notes = slide.get("aiNotes", {})
+    if not isinstance(ai_notes, dict):
+        return []
+    typed_metrics = ai_notes.get("typedMetrics", [])
+    if not isinstance(typed_metrics, list):
+        return []
+    source_ledger = ai_notes.get("sourceLedger", [])
+    if not isinstance(source_ledger, list):
+        source_ledger = []
+    source_ids = {
+        item.get("sourceId")
+        for item in source_ledger
+        if isinstance(item, dict)
+    }
+    return [
+        ValidationIssue(
+            code="TYPED_METRIC_SOURCE_INVALID",
+            scope="slide",
+            blocking=True,
+            path=f"slides.{slide_index}.aiNotes.typedMetrics.{metric_index}.sourceRef",
+            message="Typed metric은 sourceLedger의 근거를 참조해야 합니다.",
+        )
+        for metric_index, metric in enumerate(typed_metrics)
+        if not isinstance(metric, dict) or metric.get("sourceRef") not in source_ids
+    ]
 
 
 def validate_speaker_notes_repetition(
@@ -974,6 +1006,16 @@ def validate_design(deck: dict[str, Any]) -> list[ValidationIssue]:
                     )
                 )
             if element["type"] == "text":
+                if is_placeholder_like_core_text(element):
+                    issues.append(
+                        ValidationIssue(
+                            code="PLACEHOLDER_TEXT_VISIBLE",
+                            scope="element",
+                            blocking=True,
+                            path=f"slides.{slide_index}.elements.{element_index}.props.text",
+                            message="발행 가능한 핵심 text에 placeholder 표현이 남아 있습니다.",
+                        )
+                    )
                 if is_text_overflowing(element) or is_short_label_text_box_too_narrow(
                     element
                 ):
@@ -1033,6 +1075,20 @@ def validate_design(deck: dict[str, Any]) -> list[ValidationIssue]:
                 )
     issues.extend(validate_design_pack_layout_diversity(deck))
     return issues
+
+
+def is_placeholder_like_core_text(element: dict[str, Any]) -> bool:
+    if element.get("role") not in {
+        "title",
+        "subtitle",
+        "body",
+        "highlight",
+        "metric",
+        "evidence",
+    }:
+        return False
+    text = str(element.get("props", {}).get("text", "")).strip()
+    return bool(re.search(r"(?:\bTBD\b|,?\.{3}|,…|…)$", text, re.IGNORECASE))
 
 
 def validate_design_pack_layout_diversity(

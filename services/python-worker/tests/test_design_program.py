@@ -818,6 +818,7 @@ def test_program_v2_design_and_layout_stages_compile_canonical_backgrounds() -> 
         "sourceEvidence",
         "visualPlan",
         "sourceLedger",
+        "typedMetrics",
         "timingPlan",
         "compositionPlan",
     ]

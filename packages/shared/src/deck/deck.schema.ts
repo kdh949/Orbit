@@ -310,12 +310,20 @@ export const slideCompositionPlanSchema = z.object({
   requiredAsset: z.boolean()
 });
 
+export const slideTypedMetricSchema = z.object({
+  value: z.string().trim().min(1),
+  unit: z.string().trim().min(1),
+  label: z.string().trim().min(1),
+  sourceRef: z.string().trim().min(1)
+});
+
 export const slideAiNotesSchema = z
   .object({
     emphasisPoints: z.array(z.string().min(1)).default([]),
     sourceEvidence: z.array(slideSourceEvidenceSchema).default([]),
     visualPlan: slideVisualPlanSchema.optional(),
     sourceLedger: z.array(slideSourceLedgerSchema).optional(),
+    typedMetrics: z.array(slideTypedMetricSchema).optional(),
     timingPlan: slideTimingPlanSchema.optional(),
     compositionPlan: slideCompositionPlanSchema.optional()
   })

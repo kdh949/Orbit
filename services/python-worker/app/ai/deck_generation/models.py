@@ -717,6 +717,15 @@ class GeneratedContentItem(BaseModel):
     text: str = Field(min_length=1)
 
 
+class TypedMetric(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
+
+    value: str = Field(min_length=1)
+    unit: str = Field(min_length=1)
+    label: str = Field(min_length=1)
+    source_ref: str = Field(alias="sourceRef", min_length=1)
+
+
 class GeneratedSlideContent(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -855,6 +864,7 @@ class SlidePlan(BaseModel):
     target_spoken_seconds: int = 0
     target_speaker_notes_chars: int = 0
     content_items: list[GeneratedContentItem] = Field(default_factory=list)
+    typed_metrics: list[TypedMetric] = Field(default_factory=list, alias="typedMetrics")
     source_refs: list[str] = Field(default_factory=list)
     obligation_refs: list[str] = Field(default_factory=list, alias="obligationRefs")
     cover_content: CoverContent | None = Field(default=None, alias="coverContent")

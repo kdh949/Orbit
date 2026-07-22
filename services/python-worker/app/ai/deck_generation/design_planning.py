@@ -613,6 +613,9 @@ def program_v2_slide_summary(
         "title": slide_plan.title,
         "message": slide_plan.message,
         "contentItems": content_items,
+        "typedMetrics": [
+            metric.model_dump(by_alias=True) for metric in slide_plan.typed_metrics
+        ],
         "slideType": slide_plan.slide_type,
         "visualIntent": slide_plan.visual_intent.model_dump(by_alias=True),
         "mediaIntent": slide_plan.media_intent.model_dump(),

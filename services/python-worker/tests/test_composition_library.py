@@ -63,6 +63,18 @@ def slide_payload(slide_type: str, item_count: int) -> dict[str, Any]:
     }
 
 
+def typed_metrics(count: int = 1) -> list[dict[str, str]]:
+    return [
+        {
+            "value": str(20 + index),
+            "unit": "%",
+            "label": f"근거 지표 {index}",
+            "sourceRef": f"source:{index}",
+        }
+        for index in range(1, count + 1)
+    ]
+
+
 @pytest.mark.parametrize("composition_id", list(COMPOSITION_SPECS))
 def test_each_composition_compiles_editable_elements(composition_id: str) -> None:
     spec = COMPOSITION_SPECS[composition_id]
@@ -81,9 +93,12 @@ def test_each_composition_compiles_editable_elements(composition_id: str) -> Non
     }
     design_program = program([direction])
 
+    payload = slide_payload(slide_type, item_count)
+    if composition_id in {"metric-poster", "kpi-strip-evidence"}:
+        payload["typedMetrics"] = typed_metrics(2)
     compiled = compile_composition(
         design_program.slides[0],
-        slide_payload(slide_type, item_count),
+        payload,
         design_program,
     )
 
@@ -786,7 +801,7 @@ def test_process_label_without_sequence_semantics_uses_feature_composition() -> 
     }
 
 
-def test_release_facts_mislabeled_as_process_use_data_composition() -> None:
+def test_release_date_mislabeled_as_process_does_not_use_metric_composition() -> None:
     slides = [
         slide_payload("cover", 1),
         {
@@ -835,7 +850,7 @@ def test_release_facts_mislabeled_as_process_use_data_composition() -> None:
 
     normalized = normalize_design_program(candidate, slides, media_policy="minimal")
 
-    assert normalized.slides[1].composition_id in {
+    assert normalized.slides[1].composition_id not in {
         "metric-poster",
         "kpi-strip-evidence",
     }
@@ -1729,7 +1744,7 @@ def test_two_item_comparison_uses_asymmetric_contrasting_statement_panels() -> N
     assert all(element["props"]["fontSize"] >= 38 for element in body)
 
 
-def test_metric_poster_requires_numeric_evidence() -> None:
+def test_metric_poster_requires_grounded_typed_metric() -> None:
     qualitative = slide_payload("data", 2)
     qualitative["contentItems"] = [
         {"contentItemId": "item-a", "text": "긴장감 있는 전투"},
@@ -1737,14 +1752,25 @@ def test_metric_poster_requires_numeric_evidence() -> None:
     ]
     numeric = slide_payload("data", 2)
     numeric["contentItems"][0]["text"] = "2026년 7월 23일 출시"
+    grounded = slide_payload("data", 2)
+    grounded["typedMetrics"] = typed_metrics()
 
     assert content_supports_composition("metric-poster", qualitative) is False
-    assert content_supports_composition("metric-poster", numeric) is True
+    assert content_supports_composition("metric-poster", numeric) is False
+    assert content_supports_composition("metric-poster", grounded) is True
 
 
-def test_metric_poster_promotes_complete_korean_date() -> None:
+def test_metric_poster_renders_value_and_unit_from_typed_metric() -> None:
     slide = slide_payload("data", 2)
     slide["contentItems"][0]["text"] = "2026년 7월 23일 출시"
+    slide["typedMetrics"] = [
+        {
+            "value": "42",
+            "unit": "%",
+            "label": "전환율",
+            "sourceRef": "source:metric",
+        }
+    ]
     design_program = program(
         [
             {
@@ -1770,13 +1796,14 @@ def test_metric_poster_promotes_complete_korean_date() -> None:
         if element["elementId"].endswith("_metric")
     )
 
-    assert metric["props"]["text"] == "2026년 7월 23일"
+    assert metric["props"]["text"] == "42 %"
     assert metric["width"] == 1396
     assert metric["props"]["lineHeight"] == 1.2
 
 
 def test_duplicate_kpi_strip_uses_full_height_primary_frames() -> None:
     slide = slide_payload("data", 4)
+    slide["typedMetrics"] = typed_metrics(4)
     slide["contentItems"] = [
         {
             "contentItemId": f"kpi-{index}",
@@ -1818,6 +1845,7 @@ def test_duplicate_kpi_strip_uses_full_height_primary_frames() -> None:
 
 def test_two_item_kpi_strip_uses_filled_asymmetric_focal_fields() -> None:
     slide = slide_payload("data", 2)
+    slide["typedMetrics"] = typed_metrics(2)
     slide["message"] = "\n".join(item["text"] for item in slide["contentItems"])
     design_program = program(
         [

@@ -33,6 +33,7 @@ from app.ai.deck_generation.models import (
     SpeakerNotesRepairPlan,
     SourceRecord,
     StylePromptContext,
+    TypedMetric,
 )
 from app.ai.deck_generation.content_fact_quality import (
     apply_explicit_user_placements,
@@ -2355,6 +2356,7 @@ def plan_deck_content(
 
     outline = plan_presentation(raw_input)
     slide_plans = plan_slides(raw_input, outline)
+    slide_plans = attach_grounded_typed_metrics(raw_input, slide_plans)
     slide_plans = apply_timing_to_slide_plans(raw_input, slide_plans)
     slide_plans = compact_program_v2_content_items(slide_plans)
     slide_plans = normalize_program_v2_action_titles(slide_plans)
@@ -2931,6 +2933,10 @@ def compose_slide_detail_with_llm(
             "visual_intent": generated.visual_intent,
             "media_intent": generated.media_intent,
             "content_items": content_items,
+            "typed_metrics": grounded_typed_metrics_for_slide(
+                raw_input,
+                target.model_copy(update={"content_items": content_items}),
+            ),
         },
     )
 
@@ -2959,6 +2965,7 @@ def plan_content(
             cover.cover_content,
             cover,
         )
+    slide_plans = attach_grounded_typed_metrics(raw_input, slide_plans)
     return ContentPlan(
         outline=outline,
         slidePlans=slide_plans,
@@ -2967,6 +2974,59 @@ def plan_content(
         repairAttempted=raw_input.repair_attempted,
         repairReasonCodes=list(raw_input.repair_reason_codes),
     )
+
+
+def attach_grounded_typed_metrics(
+    raw_input: RawInput,
+    slide_plans: list[SlidePlan],
+) -> list[SlidePlan]:
+    for slide_plan in slide_plans:
+        slide_plan.typed_metrics = grounded_typed_metrics_for_slide(
+            raw_input,
+            slide_plan,
+        )
+    return slide_plans
+
+
+def grounded_typed_metrics_for_slide(
+    raw_input: RawInput,
+    slide_plan: SlidePlan,
+) -> list[TypedMetric]:
+    available_source_ids = {
+        source.source_id
+        for source in (raw_input.source_records or initial_source_records(raw_input))
+    }
+    slide_source_ids = set(slide_plan.source_refs)
+    visible_text = normalize_structural_content_text(
+        " ".join(
+            [
+                slide_plan.title,
+                slide_plan.message,
+                *[item.text for item in slide_plan.content_items],
+            ]
+        )
+    )
+    metrics: list[TypedMetric] = []
+    for fact in raw_input.critical_facts:
+        if fact.kind != "metric" or not fact.value.strip() or not fact.unit.strip():
+            continue
+        grounded_refs = [
+            source_ref
+            for source_ref in fact.source_refs
+            if source_ref in available_source_ids and source_ref in slide_source_ids
+        ]
+        normalized_value = normalize_structural_content_text(fact.value)
+        if not grounded_refs or normalized_value not in visible_text:
+            continue
+        metrics.append(
+            TypedMetric(
+                value=fact.value,
+                unit=fact.unit,
+                label=fact.canonical_text,
+                sourceRef=grounded_refs[0],
+            )
+        )
+    return metrics
 
 
 def repair_content_plan_with_llm(

@@ -2454,14 +2454,11 @@ def content_supports_composition(
     composition_id: CompositionId,
     slide: dict[str, Any],
 ) -> bool:
-    items = _items(slide)
+    typed_metrics = _typed_metrics(slide)
     if composition_id == "kpi-strip-evidence":
-        return sum(bool(re.search(r"\d", value)) for _, value in items) >= 2
+        return len(typed_metrics) >= 2
     if composition_id == "metric-poster":
-        metric_text = " ".join(
-            [str(slide.get("message", "")), *[value for _, value in items]]
-        )
-        return bool(re.search(r"\d", metric_text))
+        return bool(typed_metrics)
     if composition_id == "cover-research-author":
         cover = _cover_content(slide)
         return bool(cover.get("presenterName") and cover.get("profileImageAssetId"))
@@ -2502,6 +2499,13 @@ def compile_composition(
     if not spec.min_items <= item_count <= spec.max_items:
         raise CompositionCompileError(
             f"{direction.composition_id} does not support {item_count} content items"
+        )
+    if direction.composition_id in {
+        "metric-poster",
+        "kpi-strip-evidence",
+    } and not content_supports_composition(direction.composition_id, slide):
+        raise CompositionCompileError(
+            f"{direction.composition_id} requires grounded typed content"
         )
     if direction.variant not in spec.variants:
         raise CompositionCompileError(
@@ -2995,18 +2999,28 @@ def _editorial_field_colors(style: Style) -> tuple[str, str, str, str]:
 
 
 def _metric_value(slide: dict[str, Any], items: list[tuple[str, str]]) -> str:
-    values = [str(slide.get("message", "")), *(value for _, value in items)]
-    for value in values:
-        date_match = re.search(
-            r"\d{4}\s*년(?:\s*\d{1,2}\s*월)?(?:\s*\d{1,2}\s*일)?",
-            value,
+    del items
+    metrics = _typed_metrics(slide)
+    if not metrics:
+        raise CompositionCompileError("metric-poster requires a grounded typed metric")
+    metric = metrics[0]
+    return f"{metric['value']} {metric['unit']}".strip()
+
+
+def _typed_metrics(slide: dict[str, Any]) -> list[dict[str, str]]:
+    metrics = slide.get("typedMetrics", [])
+    if not isinstance(metrics, list):
+        return []
+    required = ("value", "unit", "label", "sourceRef")
+    return [
+        metric
+        for metric in metrics
+        if isinstance(metric, dict)
+        and all(
+            isinstance(metric.get(key), str) and metric[key].strip()
+            for key in required
         )
-        if date_match:
-            return " ".join(date_match.group(0).split())
-        match = re.search(r"(?:\d[\d,.]*\s?(?:%|만|억|배|명|개|월|일|년)?)", value)
-        if match:
-            return match.group(0)
-    return textwrap.shorten(str(slide.get("message", "")), width=24, placeholder="...")
+    ]
 
 
 def _media_caption(slide: dict[str, Any]) -> str:
