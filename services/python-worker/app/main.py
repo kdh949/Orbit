@@ -90,6 +90,12 @@ from app.ai.pptx_png_zip_export import (
     PptxPngZipExportResponse,
     export_pptx_png_zip,
 )
+from app.ai.ooxml_reference_templates.generation_stage import (
+    OoxmlReferenceGenerationStageRequest,
+    OoxmlReferenceGenerationStageResponse,
+    OoxmlReferenceStageError,
+    execute_ooxml_reference_generation_stage,
+)
 from app.ai.visual_qa import (
     VisualQaRequest,
     VisualQaResponse,
@@ -912,6 +918,22 @@ def design_pack_options(
     payload: DesignPackOptionsRequest,
 ) -> DesignPackOptionsResponse:
     return generate_design_pack_options(payload)
+
+
+@app.post(
+    "/internal/ai/ooxml-reference-template-generation/stage",
+    response_model=OoxmlReferenceGenerationStageResponse,
+)
+def ooxml_reference_template_generation_stage(
+    payload: OoxmlReferenceGenerationStageRequest,
+) -> OoxmlReferenceGenerationStageResponse:
+    try:
+        return execute_ooxml_reference_generation_stage(payload)
+    except OoxmlReferenceStageError as error:
+        raise HTTPException(
+            status_code=503 if error.retryable else 409,
+            detail={"code": error.code, "retryable": error.retryable},
+        ) from error
 
 
 @app.post(

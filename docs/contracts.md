@@ -1230,6 +1230,12 @@ OOXML reference template generation은 historical `ai-template-deck-generation`�
 
 processor의 bounded stage는 `reference-extract-file`, `source-grounding`, `content-planning`, `template-planning`, `package-generation`, `render-validation`, `materialization`, `publication`이다. 공통 Job error의 optional `failedStage`는 기존 AI deck stage 또는 이 전용 stage 중 하나만 허용한다.
 
+Worker는 각 Python stage를 `/internal/ai/ooxml-reference-template-generation/stage`의 strict `{ jobId, projectId, stage, templateId, templateVersion, request, dependencies }` request로 실행한다. `dependencies`는 앞선 stage의 완전한 ordered prefix만 허용하며 성공 artifact는 `(jobId, projectId, stage, shardKey)`로 immutable 저장한다. retry는 저장된 prefix를 재사용한다. stage response는 matching template/stage identity, source slide/slot count, bounded `OOXML_REFERENCE_*` issue code와 1 MiB 이하 JSON artifact만 반환한다. raw package/XML, base64, signed URL, storage key와 provider 응답은 response·artifact·로그에서 거부한다.
+
+`materialization` artifact는 Deck, TemplateBlueprint, template snapshot, public file ID/name/size, quality report와 bounded Job result만 저장한다. project storage key는 Worker의 deterministic `projects/{projectId}/ooxml-reference-generations/{generationId}/{fileId}/{encodedOriginalName}` 규칙으로 메모리에서 복원하며 artifact에 기록하지 않는다. `publication`은 fidelity `passed`와 structural gate 성공 이후에만 기존 atomic materialization transaction으로 package/render asset, Deck, TemplateBlueprint와 parent Job success를 함께 반영한다. 어느 stage든 실패하면 bounded error만 기록하며 partial Deck 또는 System Design Pack fallback을 만들지 않는다.
+
+업무 이벤트 이름은 `ooxml-reference-template.job.enqueued`, `.job.started`, `.stage.succeeded`, `.stage.failed`, `.job.succeeded`, `.job.failed`를 사용한다. 허용 필드는 Job/project/template identity, template version, stage, source slide/slot count, issue code와 retryable뿐이다.
+
 생성된 Deck은 technical origin을 나타내는 `metadata.sourceType="import"`, AI 생성 사실을 나타내는 `metadata.generatedBy="ai"`와 optional `metadata.ooxmlReferenceTemplateSnapshot`을 사용한다. 이 metadata snapshot은 catalog ID/version, source checksum과 generation ID만 포함한다. 기존 `metadata.createdFrom.designReferences`는 빈 배열을 유지한다.
 
 생성 instance의 `TemplateBlueprint`는 optional `referenceTemplateSnapshot`과 `slotEditPolicies[]`를 가질 수 있다. 각 policy는 unique slot ID와 writable imported `elementId`, content type에 맞는 mutation policy, `frameLocked=true`를 요구한다. 이 필드가 없는 기존 import blueprint는 동일하게 parse되고 편집 capability도 바뀌지 않는다. catalog manifest 자체는 `template_blueprints` 테이블에 저장하지 않는다.

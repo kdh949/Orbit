@@ -49,7 +49,7 @@ describe("OoxmlReferenceTemplateGenerationsService", () => {
     });
     expect(logger.info).toHaveBeenCalledWith(
       {
-        event: "ooxml_reference_template.generation.enqueued",
+        event: "ooxml-reference-template.job.enqueued",
         jobId: "job-reference-1",
         projectId: "project-a",
         templateId: "operating-review",
@@ -141,7 +141,7 @@ describe("OoxmlReferenceTemplateGenerationsService", () => {
     });
     expect(logger.error).toHaveBeenCalledWith(
       {
-        event: "ooxml_reference_template.generation.enqueue_failed",
+        event: "ooxml-reference-template.job.failed",
         jobId: "job-reference-1",
         projectId: "project-a",
         templateId: "operating-review",

@@ -67,7 +67,7 @@ export class OoxmlReferenceTemplateGenerationsService {
       });
       this.logger.info(
         {
-          event: "ooxml_reference_template.generation.enqueued",
+          event: "ooxml-reference-template.job.enqueued",
           jobId: queuedJob.jobId,
           projectId,
           templateId: selection.templateId,
@@ -87,7 +87,7 @@ export class OoxmlReferenceTemplateGenerationsService {
       });
       this.logger.error(
         {
-          event: "ooxml_reference_template.generation.enqueue_failed",
+          event: "ooxml-reference-template.job.failed",
           jobId: queuedJob.jobId,
           projectId,
           templateId: selection.templateId,

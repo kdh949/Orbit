@@ -5,6 +5,8 @@ import {
   generateDeckStagedCoordinatorJobName,
   pptxOoxmlGenerationQueueName,
   pptxOoxmlSyncQueueName,
+  ooxmlReferenceTemplateGenerationJobName,
+  ooxmlReferenceTemplateGenerationQueueName,
   redisConnectionOptions,
   referenceExtractJobName,
   referenceExtractQueueName,
@@ -58,6 +60,7 @@ import { createImageAssetRuntime } from "./image-providers";
 import { serializeLogError } from "./logging";
 import { processPptxOoxmlGenerationJob } from "./pptx-ooxml-generation.processor";
 import { processPptxOoxmlSyncJob } from "./pptx-ooxml-sync.processor";
+import { processOoxmlReferenceTemplateGenerationJob } from "./ooxml-reference-template-generation.processor";
 import { processReferenceExtractJob } from "./reference-extract.processor";
 import { RedisRehearsalTranscriptCache } from "./rehearsal-transcript-cache";
 import { processRehearsalSemanticEvaluationJob } from "./rehearsal-semantic-evaluation.processor";
@@ -97,6 +100,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
     speakerNotesSuggestionQueueName,
     pptxOoxmlGenerationQueueName,
     pptxOoxmlSyncQueueName,
+    ooxmlReferenceTemplateGenerationQueueName,
     workerHealthCheckQueueName,
     focusedPracticeAnalysisQueueName,
     slidePracticeAnalysisQueueName,
@@ -508,6 +512,33 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
             this.config.PYTHON_WORKER_URL,
             job.data,
           ),
+      },
+      {
+        queueName: ooxmlReferenceTemplateGenerationQueueName,
+        handler: (job) => {
+          if (job.name !== ooxmlReferenceTemplateGenerationJobName) {
+            throw new Error(`Unsupported BullMQ job name: ${job.name}`);
+          }
+          return processOoxmlReferenceTemplateGenerationJob(
+            this.dataSource,
+            this.config.PYTHON_WORKER_URL,
+            job.data,
+            {
+              eventSink: {
+                info: (event) =>
+                  this.logger.info(
+                    event,
+                    "OOXML reference template generation event.",
+                  ),
+                error: (event) =>
+                  this.logger.error(
+                    event,
+                    "OOXML reference template generation event.",
+                  ),
+              },
+            },
+          );
+        },
       },
       {
         queueName: workerHealthCheckQueueName,

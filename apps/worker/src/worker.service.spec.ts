@@ -3,6 +3,8 @@ import {
   generateDeckQueueName,
   generateDeckStagedCoordinatorJobName,
   pptxOoxmlGenerationQueueName,
+  ooxmlReferenceTemplateGenerationJobName,
+  ooxmlReferenceTemplateGenerationQueueName,
   referenceExtractJobName,
   referenceExtractQueueName,
   aiDeckResearchContentQueueName,
@@ -67,6 +69,7 @@ const processors = vi.hoisted(() => ({
   executionStage: vi.fn<(...args: unknown[]) => Promise<Job | void>>(
     async () => undefined,
   ),
+  ooxmlReferenceTemplate: vi.fn(async () => orbitJob("succeeded")),
 }));
 
 const maintenance = vi.hoisted(() => ({
@@ -164,6 +167,10 @@ vi.mock("./generate-deck/planning-stage.processor", () => ({
 vi.mock("./generate-deck/execution-stage.processor", () => ({
   processAiDeckExecutionStage: processors.executionStage,
 }));
+vi.mock("./ooxml-reference-template-generation.processor", () => ({
+  processOoxmlReferenceTemplateGenerationJob:
+    processors.ooxmlReferenceTemplate,
+}));
 vi.mock("./generate-deck/stage-dispatcher", () => ({
   dispatchAiDeckGenerationStages: maintenance.dispatch,
 }));
@@ -254,6 +261,7 @@ describe("WorkerService queue subscriptions", () => {
     expect(bullMq.queues).toContain(generateDeckQueueName);
     expect(bullMq.queues).toContain(referenceExtractQueueName);
     expect(bullMq.queues).toContain(pptxOoxmlGenerationQueueName);
+    expect(bullMq.queues).toContain(ooxmlReferenceTemplateGenerationQueueName);
     expect(bullMq.queues).toContain(aiDeckResearchContentQueueName);
     expect(bullMq.queues).toContain(aiDeckDesignLayoutQueueName);
     expect(bullMq.queues).toContain(aiDeckImageQueueName);
@@ -264,6 +272,22 @@ describe("WorkerService queue subscriptions", () => {
       concurrency: 2,
     });
     expect(bullMq.options.get(referenceExtractQueueName)).not.toHaveProperty("concurrency");
+
+    const ooxmlReferenceHandler = requiredHandler(
+      ooxmlReferenceTemplateGenerationQueueName,
+    );
+    await ooxmlReferenceHandler(
+      bullJob(ooxmlReferenceTemplateGenerationJobName, {
+        jobId: "job-ooxml-reference-1",
+        projectId: "project-a",
+      }),
+    );
+    expect(processors.ooxmlReferenceTemplate).toHaveBeenCalledWith(
+      expect.anything(),
+      configState.PYTHON_WORKER_URL,
+      expect.objectContaining({ jobId: "job-ooxml-reference-1" }),
+      expect.objectContaining({ eventSink: expect.any(Object) }),
+    );
 
     await service.onModuleDestroy();
   });
