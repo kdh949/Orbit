@@ -1234,6 +1234,8 @@ OOXML reference template generation은 historical `ai-template-deck-generation`�
 
 authenticated catalog API는 `GET /api/v1/ooxml-reference-templates`에서 verified active+allowlisted template의 ID/version/name/description, opaque cover/body preview asset ID와 content type별 mutation policy/slot count만 반환한다. `GET /api/v1/ooxml-reference-templates/{templateId}/versions/{version}/previews/{assetId}`는 인증 후 internal Python catalog에서 읽은 10 MiB 이하 PNG bytes만 `private` cache로 proxy한다. signed URL, storage key, source path/checksum과 원본 파일명은 public response나 로그에 포함하지 않는다. disabled, missing preview, checksum drift 또는 managed storage runtime 미구성 template은 option에서 제외하고 preview를 `404`로 닫는다.
 
+제품 rollout은 server-side `AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED`와 쉼표로 구분한 exact `AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST=template-id@version,...`을 모두 적용한다. global off면 catalog와 새 generation API는 `503`으로 fail-closed하고 runtime config의 `ooxmlReferenceTemplatesEnabled=false`만 browser에 공개한다. allowlist 자체는 browser에 공개하지 않는다. global on에서 allowlist에 없는 catalog option은 숨기며 해당 exact version의 preview와 새 generation은 `503`으로 거부한다. 이 gate는 새 catalog 조회/Job 생성에만 적용한다. 이미 enqueue된 전용 Job과 generation preview, 기존 reference Deck의 제한 편집, sync와 current-package export는 rollback 후에도 계속 동작하며 Job/Deck/source 삭제나 System Design Pack fallback을 수행하지 않는다.
+
 generation polling은 authenticated project-read endpoint `GET /api/v1/projects/{projectId}/ooxml-reference-template-generations/{generationId}/preview`를 사용한다. content planning outline과 `slide-render` artifact를 읽기 전용으로 조회하고 1번부터 끊김 없는 completed prefix만 반환하며 `editable=false`를 고정한다. out-of-order render는 앞선 순서가 도착할 때까지 노출하지 않는다. Job success라도 bounded result의 `deckId`와 같은 project의 canonical Deck ID가 일치하지 않으면 editor-ready로 전환하지 않고 `OOXML_REFERENCE_PUBLICATION_IDENTITY_MISMATCH`로 fail-closed한다. raw artifact, prompt/provider response, slot content plan, XML과 storage locator는 preview response에 포함하지 않는다.
 
 processor의 bounded stage는 `reference-extract-file`, `source-grounding`, `content-planning`, `template-planning`, `package-generation`, `render-validation`, `materialization`, `publication`이다. 공통 Job error의 optional `failedStage`는 기존 AI deck stage 또는 이 전용 stage 중 하나만 허용한다.
@@ -2563,6 +2565,7 @@ P0 담당자는 아래 계약과 `p0-core-contract.fixtures.json`을 단일 원�
 - `POST /api/v1/projects/:projectId/design-agent/image-generations`는 현재 Deck의 `deckId`, `slideId`, `baseVersion`과 사용자 `prompt`를 받아 내부 전용 `design-image-generation` Job을 만든다.
 - 성공한 Job의 `result`는 `fileId`, `projectId`, `purpose: "design-asset"`, `url`, `mimeType`, `width`, `height`, 원본 `prompt`, `aspectRatio`를 포함한다.
 - 생성 이미지는 적용 전에 프로젝트 asset으로 저장한다. 에디터는 결과 확인 후 최신 Deck version을 기준으로 별도의 `image` 요소 추가 patch를 적용한다.
+
 # Slide transcript snapshots
 
 `POST /api/v1/rehearsals/:runId/audio/complete`는 선택적으로

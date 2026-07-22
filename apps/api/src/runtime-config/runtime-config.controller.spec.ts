@@ -48,7 +48,7 @@ const validEnv = {
   DEMO_WORKSPACE_ID: "workspace_demo_1",
   DEMO_PROJECT_ID: "project_demo_1",
   DEMO_DECK_ID: "deck_demo_1",
-  DEMO_SESSION_ID: "session_demo_1"
+  DEMO_SESSION_ID: "session_demo_1",
 };
 
 describe("RuntimeConfigController", () => {
@@ -69,6 +69,7 @@ describe("RuntimeConfigController", () => {
       challengeQnaEnabled: false,
       slidePracticeEnabled: false,
       slideQuestionGuidesEnabled: false,
+      ooxmlReferenceTemplatesEnabled: false,
     });
   });
 });

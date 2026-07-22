@@ -29,6 +29,7 @@ describe("OoxmlReferenceTemplateGenerationsService", () => {
       jobs,
       accessibleProjects(),
       enqueue,
+      enabledRollout(),
       logger as never,
     );
 
@@ -66,6 +67,7 @@ describe("OoxmlReferenceTemplateGenerationsService", () => {
       jobs,
       accessibleProjects(),
       enqueue,
+      enabledRollout(),
       { info: vi.fn(), error: vi.fn() } as never,
     );
 
@@ -91,6 +93,7 @@ describe("OoxmlReferenceTemplateGenerationsService", () => {
       jobs,
       accessibleProjects(),
       enqueue,
+      enabledRollout(),
       { info: vi.fn(), error: vi.fn() } as never,
     );
 
@@ -124,6 +127,7 @@ describe("OoxmlReferenceTemplateGenerationsService", () => {
       vi.fn(async () => {
         throw sensitiveFailure;
       }),
+      enabledRollout(),
       logger as never,
     );
 
@@ -152,6 +156,24 @@ describe("OoxmlReferenceTemplateGenerationsService", () => {
     );
     expect(JSON.stringify(logger.error.mock.calls)).not.toContain("do-not-log");
   });
+
+  it("rejects a disabled exact template version before creating a job", async () => {
+    const jobs = { create: vi.fn(), update: vi.fn() } as unknown as JobsService;
+    const enqueue = vi.fn();
+    const service = new OoxmlReferenceTemplateGenerationsService(
+      jobs,
+      accessibleProjects(),
+      enqueue,
+      { enabled: true, allowlist: new Set(["operating-review@2"]) },
+      { info: vi.fn(), error: vi.fn() } as never,
+    );
+
+    await expect(
+      service.createGeneration("project-a", validRequest()),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(jobs.create).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
+  });
 });
 
 function validRequest() {
@@ -179,6 +201,13 @@ function accessibleProjects() {
   return {
     getAccessibleProject: vi.fn(async () => ({ projectId: "project-a" })),
   } as unknown as ProjectsService;
+}
+
+function enabledRollout() {
+  return {
+    enabled: true,
+    allowlist: new Set(["operating-review@1"]),
+  };
 }
 
 function queuedJob(): Job {

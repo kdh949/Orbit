@@ -157,6 +157,22 @@ Focused Practice나 Challenge Q&A를 켜려면 Adaptive core도 켜야 한다. p
 
 `DEMO_AI_DECK_CACHE_ENABLED=true`는 시연용 AI PPT 캐시 재생을 켠다. 이때 `DEMO_AI_DECK_SOURCE_PROJECT_ID`에는 검수 완료 덱이 저장된 source project를, `DEMO_AI_DECK_TRIGGER_TOPIC`에는 시연 입력 문구를 설정해야 한다. 기능은 `APP_ENV`가 `DEMO_FIXTURE_ENV_ALLOWLIST`에 있고 요청 사용자가 `DEMO_USER_ID`이며, 공백을 정규화한 topic이 trigger와 정확히 일치할 때만 동작한다. production에서는 시작 단계에서 활성화를 거부한다.
 
+## AI PPT OOXML reference template rollout
+
+```txt
+AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED=false
+AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST=
+```
+
+OOXML reference mode는 기본적으로 닫혀 있다. global flag를 켜도 allowlist의 exact
+`template-id@version`만 catalog와 새 generation에 노출한다. 여러 항목은 쉼표로
+구분하며 ID-only, `@latest`, `@0`, 대문자와 빈 중간 항목을 허용하지 않는다. allowlist는
+server-only이고 browser runtime config에는 global availability boolean만 공개한다.
+
+flag/allowlist rollback은 새 노출과 새 Job 생성만 닫는다. 이미 enqueue된 Job,
+generation preview와 기존 reference Deck의 sync/export는 계속 동작한다. 자세한 절차는
+`docs/runbooks/ai-ppt-ooxml-reference-templates.md`를 따른다.
+
 ## Demo ID
 
 Demo ID 기반 기능은 아래 값을 사용한다.

@@ -37,6 +37,14 @@
       "source": "repo-default",
       "delivery": "compose"
     },
+    "AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
+    "AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST": {
+      "source": "doppler-optional",
+      "delivery": "compose"
+    },
     "AI_SLIDE_IMAGE_REVIEW_MODE": {
       "source": "repo-default",
       "delivery": "code-default"

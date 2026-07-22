@@ -2,11 +2,36 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   buildOoxmlReferenceTemplateGenerationRequest,
+  requestOoxmlReferenceRuntimeAvailability,
   requestOoxmlReferenceTemplateOptions,
 } from "./ooxml-reference-template-api";
 
 describe("OOXML reference template API", () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  it("reads only the public runtime availability flag", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            liveSttEngine: "web-speech",
+            adaptiveRehearsalCoachEnabled: false,
+            focusedPracticeEnabled: false,
+            challengeQnaEnabled: false,
+            slidePracticeEnabled: false,
+            slideQuestionGuidesEnabled: false,
+            ooxmlReferenceTemplatesEnabled: true,
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    await expect(requestOoxmlReferenceRuntimeAvailability()).resolves.toBe(
+      true,
+    );
+  });
 
   it("builds a separate exact-version request without generic design selectors", () => {
     const request = buildOoxmlReferenceTemplateGenerationRequest({

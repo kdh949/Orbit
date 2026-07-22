@@ -9,6 +9,7 @@ describe("runtimeConfigResponseSchema", () => {
     challengeQnaEnabled: false,
     slidePracticeEnabled: true,
     slideQuestionGuidesEnabled: true,
+    ooxmlReferenceTemplatesEnabled: false,
   };
 
   it("accepts browser live STT engines exposed by runtime config", () => {

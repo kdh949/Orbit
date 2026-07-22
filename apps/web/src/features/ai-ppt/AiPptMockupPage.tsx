@@ -66,6 +66,7 @@ import { OoxmlReferenceTemplateOptions } from "./OoxmlReferenceTemplateOptions";
 import {
   buildOoxmlReferenceTemplateGenerationRequest,
   ooxmlReferenceGenerationPath,
+  requestOoxmlReferenceRuntimeAvailability,
   requestOoxmlReferenceTemplateOptions,
   startOoxmlReferenceTemplateGeneration,
 } from "./ooxml-reference-template-api";
@@ -531,6 +532,7 @@ export function AiPptMockupPage() {
   const [form, setForm] = useState(initialAiPptWizardState);
   const [generationMode, setGenerationMode] =
     useState<GenerationMode>("recommended");
+  const [referenceModeEnabled, setReferenceModeEnabled] = useState(false);
   const [referenceTemplateOptions, setReferenceTemplateOptions] = useState<
     OoxmlReferenceTemplateOption[]
   >([]);
@@ -564,6 +566,28 @@ export function AiPptMockupPage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void requestOoxmlReferenceRuntimeAvailability()
+      .then((enabled) => {
+        if (!cancelled) setReferenceModeEnabled(enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setReferenceModeEnabled(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (referenceModeEnabled || generationMode !== "ooxml-reference") return;
+    setGenerationMode("recommended");
+    setReferenceTemplateOptions([]);
+    setSelectedReferenceTemplate(null);
+    setReferenceTemplateError("");
+  }, [generationMode, referenceModeEnabled]);
 
   useEffect(() => {
     if (generationMode !== "ooxml-reference") return;
@@ -838,6 +862,7 @@ export function AiPptMockupPage() {
           <section className="ai-ppt-panel">
             <GenerationModePicker
               mode={generationMode}
+              referenceModeEnabled={referenceModeEnabled}
               onChange={(mode) => {
                 setGenerationMode(mode);
                 setError("");
@@ -913,6 +938,7 @@ export function AiPptMockupPage() {
 export function GenerationModePicker(props: {
   mode: GenerationMode;
   onChange: (mode: GenerationMode) => void;
+  referenceModeEnabled: boolean;
 }) {
   return (
     <fieldset className="ai-ppt-generation-mode">
@@ -927,15 +953,17 @@ export function GenerationModePicker(props: {
           <strong>AI 추천 디자인</strong>
           <span>내용에 맞는 디자인 팩, 폰트와 색상을 추천합니다.</span>
         </button>
-        <button
-          aria-pressed={props.mode === "ooxml-reference"}
-          className={props.mode === "ooxml-reference" ? "selected" : ""}
-          onClick={() => props.onChange("ooxml-reference")}
-          type="button"
-        >
-          <strong>원본 템플릿 충실도</strong>
-          <span>승인된 PPTX 원본의 레이아웃과 스타일을 그대로 사용합니다.</span>
-        </button>
+        {props.referenceModeEnabled ? (
+          <button
+            aria-pressed={props.mode === "ooxml-reference"}
+            className={props.mode === "ooxml-reference" ? "selected" : ""}
+            onClick={() => props.onChange("ooxml-reference")}
+            type="button"
+          >
+            <strong>원본 템플릿 충실도</strong>
+            <span>승인된 PPTX 원본의 레이아웃과 스타일을 그대로 사용합니다.</span>
+          </button>
+        ) : null}
       </div>
     </fieldset>
   );

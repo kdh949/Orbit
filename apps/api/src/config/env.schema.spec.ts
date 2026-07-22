@@ -1,4 +1,8 @@
-import { loadOrbitConfig, OrbitConfigError } from "@orbit/config";
+import {
+  isOoxmlReferenceTemplateAllowed,
+  loadOrbitConfig,
+  OrbitConfigError,
+} from "@orbit/config";
 import { describe, expect, it } from "vitest";
 
 const validEnv = {
@@ -73,6 +77,37 @@ describe("ORBIT env validation", () => {
       "neutral-light",
       "executive-review",
     ]);
+  });
+
+  it("defaults OOXML reference rollout off and matches exact template versions", () => {
+    const defaults = loadOrbitConfig(validEnv, { service: "api" });
+    const enabled = loadOrbitConfig(
+      {
+        ...validEnv,
+        AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED: "true",
+        AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST:
+          "operating-review@1,neutral-light@2",
+      },
+      { service: "api" },
+    );
+
+    expect(defaults.AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED).toBe(false);
+    expect(defaults.AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST).toEqual([]);
+    expect(
+      isOoxmlReferenceTemplateAllowed(enabled, "operating-review", 1),
+    ).toBe(true);
+    expect(
+      isOoxmlReferenceTemplateAllowed(enabled, "operating-review", 2),
+    ).toBe(false);
+    expect(() =>
+      loadOrbitConfig(
+        {
+          ...validEnv,
+          AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST: "operating-review",
+        },
+        { service: "api" },
+      ),
+    ).toThrow("AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST");
   });
 
   it("uses staged BullMQ execution by default and validates staged selectors", () => {

@@ -3,8 +3,18 @@ import {
   ooxmlReferenceTemplateOptionsResponseSchema,
   type OoxmlReferenceTemplateOptionsResponse,
 } from "@orbit/shared";
-import { Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
+import {
+  Inject,
+  Injectable,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import { z } from "zod";
+import {
+  assertOoxmlReferenceTemplateRolloutAllowed,
+  isOoxmlReferenceTemplateRolloutAllowed,
+  OOXML_REFERENCE_TEMPLATE_ROLLOUT,
+  type OoxmlReferenceTemplateRollout,
+} from "./ooxml-reference-template-rollout";
 
 const previewAssetIdSchema = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
 
@@ -22,17 +32,29 @@ export class OoxmlReferenceTemplatesService {
   constructor(
     @Inject(OOXML_REFERENCE_TEMPLATE_PYTHON_URL)
     private readonly pythonWorkerUrl: string,
+    @Inject(OOXML_REFERENCE_TEMPLATE_ROLLOUT)
+    private readonly rollout: OoxmlReferenceTemplateRollout,
   ) {}
 
   async listOptions(): Promise<OoxmlReferenceTemplateOptionsResponse> {
+    assertOoxmlReferenceTemplateRolloutAllowed(this.rollout);
     const response = await requestPython(
       this.pythonWorkerUrl,
       "/internal/ai/ooxml-reference-templates/options",
     );
     try {
-      return ooxmlReferenceTemplateOptionsResponseSchema.parse(
+      const parsed = ooxmlReferenceTemplateOptionsResponseSchema.parse(
         await response.json(),
       );
+      return {
+        options: parsed.options.filter((option) =>
+          isOoxmlReferenceTemplateRolloutAllowed(
+            this.rollout,
+            option.templateId,
+            option.version,
+          ),
+        ),
+      };
     } catch {
       throw unavailable();
     }
@@ -45,6 +67,11 @@ export class OoxmlReferenceTemplatesService {
   ): Promise<OoxmlReferenceTemplatePreview> {
     const templateId = ooxmlReferenceTemplateIdSchema.parse(rawTemplateId);
     const version = z.coerce.number().int().positive().parse(rawVersion);
+    assertOoxmlReferenceTemplateRolloutAllowed(
+      this.rollout,
+      templateId,
+      version,
+    );
     const assetId = previewAssetIdSchema.parse(rawAssetId);
     const response = await requestPython(
       this.pythonWorkerUrl,
@@ -73,9 +100,7 @@ async function requestPython(
     response = await fetch(
       new URL(
         path,
-        pythonWorkerUrl.endsWith("/")
-          ? pythonWorkerUrl
-          : `${pythonWorkerUrl}/`,
+        pythonWorkerUrl.endsWith("/") ? pythonWorkerUrl : `${pythonWorkerUrl}/`,
       ),
       { signal: AbortSignal.timeout(30_000) },
     );

@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { JobsModule } from "../jobs/jobs.module";
 import { ProjectsModule } from "../projects/projects.module";
+import { OoxmlReferenceTemplatesModule } from "../ooxml-reference-templates/ooxml-reference-templates.module";
 import { OoxmlReferenceTemplateGenerationsController } from "./ooxml-reference-template-generations.controller";
 import { OoxmlReferenceTemplatePreviewController } from "./ooxml-reference-template-preview.controller";
 import { OoxmlReferenceTemplatePreviewService } from "./ooxml-reference-template-preview.service";
@@ -12,7 +13,12 @@ import {
 } from "./ooxml-reference-template-generations.service";
 
 @Module({
-  imports: [AuthModule, JobsModule, ProjectsModule],
+  imports: [
+    AuthModule,
+    JobsModule,
+    ProjectsModule,
+    OoxmlReferenceTemplatesModule,
+  ],
   controllers: [
     OoxmlReferenceTemplateGenerationsController,
     OoxmlReferenceTemplatePreviewController,

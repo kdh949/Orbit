@@ -10,6 +10,7 @@ export const runtimeConfigResponseSchema = z
     challengeQnaEnabled: z.boolean(),
     slidePracticeEnabled: z.boolean(),
     slideQuestionGuidesEnabled: z.boolean(),
+    ooxmlReferenceTemplatesEnabled: z.boolean(),
   })
   .strict();
 

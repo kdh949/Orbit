@@ -45,6 +45,51 @@ describe("OoxmlReferenceTemplatesService", () => {
       });
   });
 
+  it("fails closed when the global rollout is disabled", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      service({ enabled: false, allowlist: new Set() }).listOptions(),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("filters options by exact template ID and version", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            options: [
+              {
+                templateId: "operating-review",
+                version: 1,
+                name: "Operating Review",
+                description: "운영 지표와 실행 과제 보고",
+                preview: { coverAssetId: "cover", bodyAssetId: "body" },
+                editableRanges: [
+                  {
+                    contentType: "text",
+                    mutationPolicy: "text-content",
+                    slotCount: 4,
+                  },
+                ],
+              },
+            ],
+          }),
+        ),
+      ),
+    );
+
+    await expect(
+      service({
+        enabled: true,
+        allowlist: new Set(["operating-review@2"]),
+      }).listOptions(),
+    ).resolves.toEqual({ options: [] });
+  });
+
   it("fails closed when the catalog leaks a storage locator", async () => {
     vi.stubGlobal(
       "fetch",
@@ -119,6 +164,14 @@ describe("OoxmlReferenceTemplatesService", () => {
   });
 });
 
-function service(): OoxmlReferenceTemplatesService {
-  return new OoxmlReferenceTemplatesService("http://python-worker:8000");
+function service(
+  rollout = {
+    enabled: true,
+    allowlist: new Set(["operating-review@1"]),
+  },
+): OoxmlReferenceTemplatesService {
+  return new OoxmlReferenceTemplatesService(
+    "http://python-worker:8000",
+    rollout,
+  );
 }

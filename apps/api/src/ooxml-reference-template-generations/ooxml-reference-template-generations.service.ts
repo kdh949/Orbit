@@ -16,6 +16,11 @@ import { z } from "zod";
 import { parseRequest } from "../common/zod-request";
 import { JobsService } from "../jobs/jobs.service";
 import { ProjectsService } from "../projects/projects.service";
+import {
+  assertOoxmlReferenceTemplateRolloutAllowed,
+  OOXML_REFERENCE_TEMPLATE_ROLLOUT,
+  type OoxmlReferenceTemplateRollout,
+} from "../ooxml-reference-templates/ooxml-reference-template-rollout";
 
 export const OOXML_REFERENCE_TEMPLATE_GENERATION_ENQUEUE_JOB =
   "OOXML_REFERENCE_TEMPLATE_GENERATION_ENQUEUE_JOB";
@@ -39,6 +44,8 @@ export class OoxmlReferenceTemplateGenerationsService {
     private readonly projectsService: ProjectsService,
     @Inject(OOXML_REFERENCE_TEMPLATE_GENERATION_ENQUEUE_JOB)
     private readonly enqueueGeneration: OoxmlReferenceTemplateGenerationEnqueueJob,
+    @Inject(OOXML_REFERENCE_TEMPLATE_ROLLOUT)
+    private readonly rollout: OoxmlReferenceTemplateRollout,
     @InjectPinoLogger(OoxmlReferenceTemplateGenerationsService.name)
     private readonly logger: PinoLogger,
   ) {}
@@ -50,6 +57,11 @@ export class OoxmlReferenceTemplateGenerationsService {
       body,
     );
     const selection = requireUserTemplateSelection(request);
+    assertOoxmlReferenceTemplateRolloutAllowed(
+      this.rollout,
+      selection.templateId,
+      selection.version,
+    );
     const queuedJob = await this.jobsService.create({
       projectId,
       type: "ooxml-reference-template-generation",

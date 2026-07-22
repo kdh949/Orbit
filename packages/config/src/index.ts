@@ -99,6 +99,15 @@ const commaSeparatedStringSchema = z.preprocess((value) => {
   return String(value).split(",").map((item) => item.trim()).filter(Boolean);
 }, z.array(z.string().min(1)));
 
+const ooxmlReferenceTemplateAllowlistSchema = commaSeparatedStringSchema.pipe(
+  z.array(
+    z.string().regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*@[1-9][0-9]*$/,
+      "OOXML reference template allowlist entries must use template-id@version"
+    )
+  )
+);
+
 const requiredUrl = (name: string) =>
   requiredString(name).pipe(z.string().url(`${name} must be a valid URL`));
 
@@ -269,6 +278,9 @@ export const orbitEnvSchema = z.object({
   AI_PPT_VISUAL_QA_MODEL: optionalString,
   AI_PPT_SYSTEM_DESIGN_PACKS_ENABLED: booleanStringSchema.default(false),
   AI_PPT_SYSTEM_DESIGN_PACK_ALLOWLIST: commaSeparatedStringSchema.default([]),
+  AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED: booleanStringSchema.default(false),
+  AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST:
+    ooxmlReferenceTemplateAllowlistSchema.default([]),
   OPENAI_IMAGE_MODEL: defaultedString("gpt-image-1"),
   IMAGE_PROVIDER: z.enum(["disabled", "openai"]).default("openai"),
   PUBLIC_IMAGE_PROVIDER: z.enum(["disabled", "openverse"]).default("openverse"),
@@ -445,6 +457,19 @@ export type OrbitConfig = z.infer<typeof orbitEnvSchema>;
 
 export function isAdaptiveCoachingProjectAllowed(config: OrbitConfig, projectId: string) {
   return config.ADAPTIVE_COACHING_PROJECT_ALLOWLIST.includes("*") || config.ADAPTIVE_COACHING_PROJECT_ALLOWLIST.includes(projectId);
+}
+
+export function isOoxmlReferenceTemplateAllowed(
+  config: OrbitConfig,
+  templateId: string,
+  version: number
+): boolean {
+  return (
+    config.AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED &&
+    config.AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST.includes(
+      `${templateId}@${version}`
+    )
+  );
 }
 
 export interface LoadOrbitConfigOptions {

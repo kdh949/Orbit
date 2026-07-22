@@ -273,6 +273,7 @@ test("selects a curated design pack and hands the generated deck to the editor",
           challengeQnaEnabled: false,
           slidePracticeEnabled: false,
           slideQuestionGuidesEnabled: false,
+          ooxmlReferenceTemplatesEnabled: false,
         },
       });
       return;

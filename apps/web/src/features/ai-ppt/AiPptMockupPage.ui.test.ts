@@ -44,7 +44,9 @@ describe("AI PPT wizard UI", () => {
     expect(html).toContain("이미지 구성");
     expect(html).toContain("AI 이미지 사용");
     expect(html.match(/type="checkbox"/g)).toHaveLength(2);
-    expect(html.match(/<label class="ai-ppt-policy-checkbox">/g)).toHaveLength(2);
+    expect(html.match(/<label class="ai-ppt-policy-checkbox">/g)).toHaveLength(
+      2,
+    );
     expect(html).not.toContain('aria-haspopup="menu"');
     expect(html).toContain("입력한 내용만 사용합니다");
     expect(html).toContain("이미지 없이 도형과 타이포 중심으로 구성합니다");
@@ -56,7 +58,7 @@ describe("AI PPT wizard UI", () => {
     expect(html).not.toContain('name="slides"');
     expect(html).not.toContain(">References<");
     expect(html).toContain("AI 추천 디자인");
-    expect(html).toContain("원본 템플릿 충실도");
+    expect(html).not.toContain("원본 템플릿 충실도");
     expect(html).toContain('aria-pressed="true"');
   });
 
@@ -65,6 +67,7 @@ describe("AI PPT wizard UI", () => {
       createElement(GenerationModePicker, {
         mode: "ooxml-reference",
         onChange: vi.fn(),
+        referenceModeEnabled: true,
       }),
     );
 
@@ -124,7 +127,9 @@ describe("AI PPT wizard UI", () => {
     expect(html).not.toContain("ai-ppt-palette-card-footer");
     expect(html).not.toContain("ai-ppt-palette-mockup-header");
     expect(html).not.toContain("ai-ppt-palette-mockup-footer");
-    expect(html).not.toContain("Pretendard matches professional presentation tone.");
+    expect(html).not.toContain(
+      "Pretendard matches professional presentation tone.",
+    );
     expect(html).not.toContain("--color-primary-main");
   });
 
@@ -146,7 +151,9 @@ describe("AI PPT wizard UI", () => {
     expect(html).toContain("AI 추천 1순위");
     expect(html.match(/표지와 본문 미리보기/g)).toHaveLength(3);
     expect(html).toContain('data-preview-id="preview-executive-review-cover"');
-    expect(html).toContain('aria-label="Kickoff &amp; Alignment 디자인 팩 선택됨"');
+    expect(html).toContain(
+      'aria-label="Kickoff &amp; Alignment 디자인 팩 선택됨"',
+    );
     expect(html).toContain('aria-pressed="true"');
   });
 

@@ -2,12 +2,22 @@ import {
   jobSchema,
   ooxmlReferenceTemplatePreviewResponseSchema,
   ooxmlReferenceTemplateOptionsResponseSchema,
+  runtimeConfigResponseSchema,
   type Job,
   type OoxmlReferenceTemplateGenerationRequest,
   type OoxmlReferenceTemplateOption,
   type OoxmlReferenceTemplateOptionsResponse,
   type OoxmlReferenceTemplatePreviewResponse,
 } from "@orbit/shared";
+
+export async function requestOoxmlReferenceRuntimeAvailability(): Promise<boolean> {
+  const response = await fetch("/api/v1/runtime-config", {
+    credentials: "include",
+  });
+  if (!response.ok) return false;
+  return runtimeConfigResponseSchema.parse(await response.json())
+    .ooxmlReferenceTemplatesEnabled;
+}
 
 export async function requestOoxmlReferenceTemplateOptions(): Promise<OoxmlReferenceTemplateOptionsResponse> {
   const response = await fetch("/api/v1/ooxml-reference-templates", {
