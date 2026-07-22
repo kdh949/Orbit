@@ -7,7 +7,11 @@ import {
   publishAtomically,
 } from "./execution-stage.processor";
 import { completedSlideV2ArtifactPayloadSchema } from "./execution-stage-contract";
-import { createTestDeck } from "./test-deck.fixture";
+import {
+  createTestDeck,
+  createVisualQualityBaselineFixture,
+  visualQualityBaselineSnapshot,
+} from "./test-deck.fixture";
 
 const now = "2026-07-16T00:00:00.000Z";
 const artifactId = "2e42f833-a1ca-47d0-a410-d25ca9ba4d2e";
@@ -115,6 +119,24 @@ describe("mergeSlideValidations", () => {
     expect(validation.presentationIssues).toEqual([
       expect.objectContaining({ code: "CTA_MISSING", path: "slides.2" }),
     ]);
+  });
+});
+
+describe("visual quality baseline fixture", () => {
+  it("freezes the failing eight-slide composition and validation summary", () => {
+    const { deck, validation } = createVisualQualityBaselineFixture();
+
+    expect(deck.metadata.designProgramSnapshot?.compositionIds).toEqual(
+      visualQualityBaselineSnapshot.compositionSequence,
+    );
+    expect(deck.slides).toHaveLength(8);
+    expect({
+      passed: validation.passed,
+      layoutIssueCount: validation.layoutIssues.length,
+      contentIssueCount: validation.contentIssues.length,
+      designIssueCodes: validation.designIssues.map((issue) => issue.code),
+      presentationIssueCount: validation.presentationIssues.length,
+    }).toEqual(visualQualityBaselineSnapshot.validationSummary);
   });
 });
 
