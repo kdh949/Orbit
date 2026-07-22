@@ -141,3 +141,30 @@
 | ORBIT-213 | ORBIT-55 export/suggestions | export/report tests |
 | ORBIT-215 | ORBIT-58 PR checks | workflow and smoke test |
 | ORBIT-219 | ORBIT-59 privacy retention | API/Python privacy regression tests |
+
+## AI PPT OOXML reference fidelity mode
+
+이 표의 `자동 통과`는 해당 구현 task의 fixture/contract 검증 상태이며 checkpoint 승인과
+동일하지 않다. private managed storage, 승인된 annotation, 실제 7개 full-deck artifact와
+사람 검수가 필요한 항목은 자동 테스트가 통과해도 `승인 보류`로 유지한다.
+
+| 범위 | 현재 상태 | 자동 검증 앵커 | 남은 승인 증거 |
+| --- | --- | --- | --- |
+| Task 1 source inventory/security | 자동 통과 | `test_ooxml_reference_inventory.py`와 실제 7개 source dry-run | private storage upload/ACL과 권리 승인 |
+| Task 2 strict 공통 계약 | 자동 통과 | shared Zod/Python mirror contract test | 없음 |
+| Task 3 private catalog | 자동 통과, 전체 disabled | registry/catalog test | preview asset와 checksum, managed storage |
+| Task 4 annotation pipeline | 자동 통과 | annotation candidate/locator/locked inventory test | 실제 139장 annotation과 사람 승인 |
+| Checkpoint A | 승인 보류 | inventory/schema/security fixture | 승인된 manifest/preview/license/private ACL |
+| Task 5 raw clone | 자동 통과 | clone/package validator test, 10장 LibreOffice/PowerPoint reopen | 승인된 Checkpoint A |
+| Checkpoint B1 | 기술 spike 통과, 승인 보류 | 10장 relationship warning 0, source/layout diversity, pixel identity | Checkpoint A와 사람 검수 |
+| Task 6 text/image slot | 자동 통과 | text/image capacity·style·media preservation test | 실제 승인 slot fixture |
+| Task 7 materialization | 자동 통과 | Python materialization과 Worker transaction test | 실제 private storage publication |
+| Task 8 fidelity harness | 자동 통과 | identity/masked comparison과 known drift test | 7개 renderer baseline과 threshold 승인 |
+| Checkpoint B2 | 자동 경로 통과, 승인 보류 | Postgres round-trip integration 6 tests, `ai-ppt-ooxml-editor-roundtrip-spike.md` | 실제 slot montage와 사람 승인 |
+| Task 9 content/sequence planner | 자동 통과 | 7-family table-driven role/capacity/evidence/repetition tests | 승인된 7개 annotation fixture |
+| Task 10 table slot | 자동 통과 | reference table replacement + 기존 table sync 26 tests | 실제 template table fixture/reopen |
+| Task 11a chart package replacement | 자동 통과 | chart/workbook atomic replacement test, PowerPoint/LibreOffice fixture reopen | 실제 template chart montage와 사람 검수 |
+| Task 14 Python option projection | 자동 통과, API 미연결 | options + registry 18 tests | Task 13 Job과 authenticated API/preview 연결 |
+
+최종 gate는 계획 문서의 전체 검증 매트릭스를 따른다. LibreOffice 결과를 Microsoft
+PowerPoint QA로 대체하지 않으며, `not-run` 환경 증거를 `passed`로 승격하지 않는다.
