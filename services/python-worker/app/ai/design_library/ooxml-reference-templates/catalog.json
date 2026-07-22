@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "templates": [
+    {
+      "templateId": "simple-light",
+      "version": 1,
+      "status": "disabled",
+      "sourceFormat": "pptx",
+      "sourceSha256": "2ae8105571f68403f438458cd51e6ad14f0d989c7af64239e280437a4ac2a633",
+      "slideCount": 26,
+      "name": "Simple Light",
+      "description": "밝은 배경의 중립적인 범용 프레젠테이션",
+      "preview": {
+        "coverPreviewId": "cover",
+        "coverPreviewSha256": null,
+        "bodyPreviewId": "body",
+        "bodyPreviewSha256": null
+      },
+      "provenance": {
+        "authorizationStatus": "pending",
+        "inventoryVersion": 1
+      },
+      "activationBlockers": [
+        "SOURCE_AUTHORIZATION_PENDING",
+        "SOURCE_SLIDE_ANNOTATION_MISSING",
+        "COVER_BODY_PREVIEW_BASELINE_MISSING",
+        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
+      ]
+    },
+    {
+      "templateId": "simple-dark",
+      "version": 1,
+      "status": "disabled",
+      "sourceFormat": "pptx",
+      "sourceSha256": "042ef2fcb8726524a1e773e3c73bf8b8c10b98f67ae675eb01c4501b9365a897",
+      "slideCount": 26,
+      "name": "Simple Dark",
+      "description": "어두운 배경의 중립적인 범용 프레젠테이션",
+      "preview": {
+        "coverPreviewId": "cover",
+        "coverPreviewSha256": null,
+        "bodyPreviewId": "body",
+        "bodyPreviewSha256": null
+      },
+      "provenance": {
+        "authorizationStatus": "pending",
+        "inventoryVersion": 1
+      },
+      "activationBlockers": [
+        "SOURCE_AUTHORIZATION_PENDING",
+        "SOURCE_SLIDE_ANNOTATION_MISSING",
+        "COVER_BODY_PREVIEW_BASELINE_MISSING",
+        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
+      ]
+    },
+    {
+      "templateId": "operating-review",
+      "version": 1,
+      "status": "disabled",
+      "sourceFormat": "pptx",
+      "sourceSha256": "ec2084d143a4d52857cc06c24129abbb45c45d04b90cca06e319ac26d3cadd4f",
+      "slideCount": 31,
+      "name": "Operating Review",
+      "description": "운영 지표와 실행 과제를 위한 경영 보고 프레젠테이션",
+      "preview": {
+        "coverPreviewId": "cover",
+        "coverPreviewSha256": null,
+        "bodyPreviewId": "body",
+        "bodyPreviewSha256": null
+      },
+      "provenance": {
+        "authorizationStatus": "pending",
+        "inventoryVersion": 1
+      },
+      "activationBlockers": [
+        "SOURCE_AUTHORIZATION_PENDING",
+        "SOURCE_SLIDE_ANNOTATION_MISSING",
+        "COVER_BODY_PREVIEW_BASELINE_MISSING",
+        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
+      ]
+    },
+    {
+      "templateId": "business-review",
+      "version": 1,
+      "status": "disabled",
+      "sourceFormat": "pptx",
+      "sourceSha256": "595b9a314c7e8e9b5f22180e7c7db167afba2437c8623d57e3f9dbc20af392c1",
+      "slideCount": 14,
+      "name": "Business Review",
+      "description": "사업 성과와 의사결정을 위한 경영 리뷰 프레젠테이션",
+      "preview": {
+        "coverPreviewId": "cover",
+        "coverPreviewSha256": null,
+        "bodyPreviewId": "body",
+        "bodyPreviewSha256": null
+      },
+      "provenance": {
+        "authorizationStatus": "pending",
+        "inventoryVersion": 1
+      },
+      "activationBlockers": [
+        "SOURCE_AUTHORIZATION_PENDING",
+        "SOURCE_SLIDE_ANNOTATION_MISSING",
+        "COVER_BODY_PREVIEW_BASELINE_MISSING",
+        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
+      ]
+    },
+    {
+      "templateId": "project-kickoff",
+      "version": 1,
+      "status": "disabled",
+      "sourceFormat": "pptx",
+      "sourceSha256": "b1b15cb0c23ad524f9832749ec31b775719bae2bdba897de9c9d8556ca00a44c",
+      "slideCount": 12,
+      "name": "Project Kickoff",
+      "description": "프로젝트 목표와 실행 계획을 정렬하는 킥오프 프레젠테이션",
+      "preview": {
+        "coverPreviewId": "cover",
+        "coverPreviewSha256": null,
+        "bodyPreviewId": "body",
+        "bodyPreviewSha256": null
+      },
+      "provenance": {
+        "authorizationStatus": "pending",
+        "inventoryVersion": 1
+      },
+      "activationBlockers": [
+        "SOURCE_AUTHORIZATION_PENDING",
+        "SOURCE_SLIDE_ANNOTATION_MISSING",
+        "COVER_BODY_PREVIEW_BASELINE_MISSING",
+        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
+      ]
+    },
+    {
+      "templateId": "team-alignment",
+      "version": 1,
+      "status": "disabled",
+      "sourceFormat": "pptx",
+      "sourceSha256": "72b9f23a07bfd679cde36757acb11ec99900b4be0f5d393a5b4e8c6fdce4286d",
+      "slideCount": 24,
+      "name": "Team Alignment",
+      "description": "팀 역할과 우선순위를 정렬하는 협업 프레젠테이션",
+      "preview": {
+        "coverPreviewId": "cover",
+        "coverPreviewSha256": null,
+        "bodyPreviewId": "body",
+        "bodyPreviewSha256": null
+      },
+      "provenance": {
+        "authorizationStatus": "pending",
+        "inventoryVersion": 1
+      },
+      "activationBlockers": [
+        "SOURCE_AUTHORIZATION_PENDING",
+        "SOURCE_SLIDE_ANNOTATION_MISSING",
+        "COVER_BODY_PREVIEW_BASELINE_MISSING",
+        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
+      ]
+    },
+    {
+      "templateId": "market-trends-report",
+      "version": 1,
+      "status": "disabled",
+      "sourceFormat": "pptx",
+      "sourceSha256": "52396c3a70dc11d35989bb4e3f9a96d2c728c5eba8a1aad96920cfe24cff59fa",
+      "slideCount": 6,
+      "name": "Market Trends Report",
+      "description": "시장 변화와 시사점을 전달하는 에디토리얼 프레젠테이션",
+      "preview": {
+        "coverPreviewId": "cover",
+        "coverPreviewSha256": null,
+        "bodyPreviewId": "body",
+        "bodyPreviewSha256": null
+      },
+      "provenance": {
+        "authorizationStatus": "pending",
+        "inventoryVersion": 1
+      },
+      "activationBlockers": [
+        "SOURCE_AUTHORIZATION_PENDING",
+        "SOURCE_SLIDE_ANNOTATION_MISSING",
+        "COVER_BODY_PREVIEW_BASELINE_MISSING",
+        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
+      ]
+    }
+  ]
+}

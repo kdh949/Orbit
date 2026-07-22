@@ -231,7 +231,9 @@ class OoxmlReferenceCanvas(StrictModel):
 
 class OoxmlReferencePreview(StrictModel):
     cover_preview_id: Annotated[str, Field(min_length=1, max_length=128)]
+    cover_preview_sha256: Sha256
     body_preview_id: Annotated[str, Field(min_length=1, max_length=128)]
+    body_preview_sha256: Sha256
 
 
 class OoxmlReferenceProvenance(StrictModel):

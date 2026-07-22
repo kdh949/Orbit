@@ -1219,7 +1219,7 @@ OOXML reference template generation은 historical `ai-template-deck-generation`�
 
 공통 계약은 `packages/shared/src/deck/ooxml-reference-template.schema.ts`를 원본으로 사용하고 Python은 `services/python-worker/app/ai/ooxml_reference_templates/models.py`에서 strict Pydantic mirror를 유지한다.
 
-- `OoxmlReferenceTemplateManifest`는 immutable `templateId`, positive `version`, source SHA-256, canvas, preview ID, source slide와 허용 slot annotation, provenance만 저장한다. source filename/path, raw XML, source text, binary, signed URL과 storage key는 저장하지 않는다.
+- `OoxmlReferenceTemplateManifest`는 immutable `templateId`, positive `version`, source SHA-256, canvas, cover/body preview ID와 SHA-256, source slide와 허용 slot annotation, provenance만 저장한다. source filename/path, raw XML, source text, binary, signed URL과 storage key는 저장하지 않는다.
 - active manifest는 `authorizationStatus=approved`, cover/closing role과 하나 이상의 editable slot을 요구한다. source slide/part, slot ID와 authoritative locator는 catalog 안에서 유일해야 한다.
 - `OoxmlTemplateSelection`의 `mode=user`는 exact template ID/version을 모두 요구한다. `mode=auto`는 pinned template 필드를 받지 않으며 `/createdeck`의 첫 rollout에서는 사용하지 않는다.
 - `OoxmlReferenceTemplateGenerationRequest`는 topic, prompt, target duration, slide count range, audience/purpose/tone, reference policy/file ID와 template selection만 받는 별도 strict root request다. palette/font override, System Design Pack selector와 `TemplateBlueprint` instance ID를 받지 않는다.

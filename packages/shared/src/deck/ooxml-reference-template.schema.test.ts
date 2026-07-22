@@ -67,7 +67,12 @@ const createManifest = (overrides: Record<string, unknown> = {}) => ({
   },
   name: "Operating Review",
   description: "경영 보고와 KPI 중심",
-  preview: { coverPreviewId: "cover", bodyPreviewId: "body" },
+  preview: {
+    coverPreviewId: "cover",
+    coverPreviewSha256: sha256,
+    bodyPreviewId: "body",
+    bodyPreviewSha256: sha256
+  },
   sourceSlides: [
     createSourceSlide(),
     createSourceSlide({

@@ -258,7 +258,9 @@ export const ooxmlReferenceTemplateManifestSchema = z
     preview: z
       .object({
         coverPreviewId: z.string().trim().min(1).max(128),
-        bodyPreviewId: z.string().trim().min(1).max(128)
+        coverPreviewSha256: ooxmlReferenceSha256Schema,
+        bodyPreviewId: z.string().trim().min(1).max(128),
+        bodyPreviewSha256: ooxmlReferenceSha256Schema
       })
       .strict(),
     sourceSlides: z.array(ooxmlSourceSlideSchema).min(1).max(500),
