@@ -873,6 +873,80 @@ describe("pptxOoxmlGeneration schemas", () => {
     ).toEqual([]);
   });
 
+  it("accepts optional reference template snapshot and slot edit policies while keeping legacy blueprints readable", () => {
+    const blueprint = templateBlueprintSchema.parse({
+      templateId: "template_job_1",
+      sourceFileId: "file_generation_baseline",
+      sourcePackageFileId: "file_generation_baseline",
+      currentPackageFileId: "file_generation_current",
+      referenceTemplateSnapshot: {
+        catalogTemplateId: "operating-review",
+        catalogTemplateVersion: 1,
+        sourceSha256: "a".repeat(64),
+        sourceSlideIds: ["cover-01"],
+        slotAssignmentCount: 1,
+      },
+      slotEditPolicies: [
+        {
+          slotId: "operating-review-v1-slide-01-title",
+          elementId: "el_title",
+          mutationPolicy: ["text-content"],
+          frameLocked: true,
+        },
+      ],
+      slides: [
+        {
+          slideId: "slide_cover",
+          slideIndex: 1,
+          sourceSlideIndex: 1,
+          sourceSlidePart: "ppt/slides/slide1.xml",
+          ooxmlOrigin: "imported",
+          elementSources: [
+            {
+              elementId: "el_title",
+              elementType: "text",
+              ooxmlOrigin: "imported",
+              ooxmlEditCapabilities: {
+                richText: "full",
+                crop: "none",
+                tableCellText: false,
+                frame: false,
+                delete: false,
+                imageSource: false,
+              },
+              slidePart: "ppt/slides/slide1.xml",
+              shapeId: "2",
+              sourceType: "placeholder",
+              writable: true,
+            },
+          ],
+          slots: [],
+        },
+      ],
+    });
+
+    expect(blueprint.referenceTemplateSnapshot).toMatchObject({
+      catalogTemplateId: "operating-review",
+      sourceSlideIds: ["cover-01"],
+    });
+    expect(blueprint.slotEditPolicies).toEqual([
+      {
+        slotId: "operating-review-v1-slide-01-title",
+        elementId: "el_title",
+        mutationPolicy: ["text-content"],
+        frameLocked: true,
+      },
+    ]);
+
+    const legacy = templateBlueprintSchema.parse({
+      templateId: "template_legacy",
+      sourceFileId: "file_legacy",
+      slides: [{ slideIndex: 1, sourceSlideIndex: 1 }],
+    });
+    expect(legacy.referenceTemplateSnapshot).toBeUndefined();
+    expect(legacy.slotEditPolicies).toEqual([]);
+  });
+
   it("recovers legacy slide mappings from deck order without parsing slide IDs", () => {
     const blueprint = templateBlueprintSchema.parse({
       templateId: "template_file_1",

@@ -44,6 +44,8 @@ export * from "./deck/id.schema";
 export * from "./deck/keyword-occurrences";
 export * from "./deck/patch.schema";
 export * from "./deck/pptx-ooxml-generation.schema";
+export * from "./deck/ooxml-reference-template-common.schema";
+export * from "./deck/ooxml-reference-template.schema";
 export * from "./deck/ppt-advisor.schema";
 export * from "./deck/reference-extraction.schema";
 export * from "./deck/saved-design-pack.schema";

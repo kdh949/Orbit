@@ -30,6 +30,12 @@ type DeckValidationInput = {
         slideOrder?: number;
       }>;
     };
+    ooxmlReferenceTemplateSnapshot?: {
+      catalogTemplateId: string;
+      catalogTemplateVersion: number;
+      sourceSha256: string;
+      generationId: string;
+    };
     designProgramSnapshot?: {
       version: string;
       visualConcept: string;
@@ -1698,6 +1704,42 @@ describe("deckSchema validation", () => {
     const result = deckSchema.parse(deck);
 
     expect(result.metadata.createdFrom?.designReferences).toEqual([]);
+  });
+
+  it("accepts a bounded OOXML reference template snapshot without changing legacy metadata", () => {
+    const deck = createValidDeck();
+    deck.metadata = {
+      ...deck.metadata,
+      sourceType: "import",
+      generatedBy: "ai",
+      ooxmlReferenceTemplateSnapshot: {
+        catalogTemplateId: "operating-review",
+        catalogTemplateVersion: 1,
+        sourceSha256: "a".repeat(64),
+        generationId: "job_ooxml_reference_1"
+      },
+      createdFrom: {
+        topic: "2026 하반기 운영 리뷰",
+        references: []
+      }
+    };
+
+    const parsed = deckSchema.parse(deck);
+
+    expect(parsed.metadata).toMatchObject({
+      sourceType: "import",
+      generatedBy: "ai",
+      ooxmlReferenceTemplateSnapshot: {
+        catalogTemplateId: "operating-review",
+        catalogTemplateVersion: 1,
+        generationId: "job_ooxml_reference_1"
+      }
+    });
+    expect(parsed.metadata.createdFrom?.designReferences).toEqual([]);
+    expect(
+      deckSchema.parse(createValidDeck()).metadata
+        .ooxmlReferenceTemplateSnapshot
+    ).toBeUndefined();
   });
 
   it("keeps historical AI metadata design references readable", () => {

@@ -1146,7 +1146,7 @@ API:
 - Job type: `pptx-ooxml-generation`
 - Queue name: `pptx-ooxml-generation`
 
-Worker는 Python `/ai/pptx-ooxml-generation`에 multipart `file_id`, `file`만 전달한다. 이 경로는 OpenAI client나 다른 LLM provider를 호출하지 않고 업로드된 PPTX의 package bytes와 원본 문구를 보존한 채 visual tree와 mapping을 추출한다. `/ai/pptx-ooxml-apply-slot-texts`는 등록하지 않는다. TemplateBlueprint의 slot metadata는 OOXML source mapping과 후속 sync를 위한 정보이며 AI 문구 생성 입력이 아니다.
+Worker는 Python `/ai/pptx-ooxml-generation`에 multipart `file_id`, `file`만 전달한다. 이 경로는 OpenAI client나 다른 LLM provider를 호출하지 않고 업로드된 PPTX의 package bytes와 원본 문구를 보존한 채 visual tree와 mapping을 추출한다. `/ai/pptx-ooxml-apply-slot-texts`는 등록하지 않는다. 이 사용자 업로드 import 경계에서 TemplateBlueprint의 slot metadata는 OOXML source mapping과 후속 sync를 위한 정보이며 AI 문구 생성 입력이 아니다. 별도 `ooxml-reference-template-generation` 경계만 versioned catalog manifest의 허용 slot에 content를 배정할 수 있으며 기존 import endpoint의 의미를 바꾸지 않는다.
 
 Job result:
 
@@ -1212,6 +1212,25 @@ OOXML importer는 지원되는 fade transition과 main-sequence entrance effect�
 신규 AI PPT 생성은 `/createdeck`의 `generate-deck` `program-v2` 경로만 사용한다. `TemplateBlueprint`, `template_blueprints` 테이블, `purpose: "pptx-import"`, Python `/design/import-pptx`, PPTX OOXML generation/sync/export 경로는 활성 PPTX round-trip 계약이므로 이 레거시 제거 범위에 포함하지 않는다.
 
 PR 4의 personal staging 자동 배포는 완료됐다. #339 종료 전 배포 환경의 `ai-template-deck-generation` queue와 관련 DB에 queued/running 잔여 Job이 0인지 읽기 전용으로 확인해야 한다.
+
+## OOXML reference template generation contract
+
+OOXML reference template generation은 historical `ai-template-deck-generation`을 복구하지 않는 별도 제품 경계다. 일반 `GenerateDeckRequest`에는 `generationMode`, `templateBlueprintId`, `designReferences`, `slidePresetId`나 다른 recipe-v1 selector를 추가하지 않는다. 이 계약의 runtime endpoint, active Job type과 queue는 전용 processor가 연결되는 단계에서만 활성화하며, 그 전에는 schema와 private catalog만 존재한다.
+
+공통 계약은 `packages/shared/src/deck/ooxml-reference-template.schema.ts`를 원본으로 사용하고 Python은 `services/python-worker/app/ai/ooxml_reference_templates/models.py`에서 strict Pydantic mirror를 유지한다.
+
+- `OoxmlReferenceTemplateManifest`는 immutable `templateId`, positive `version`, source SHA-256, canvas, preview ID, source slide와 허용 slot annotation, provenance만 저장한다. source filename/path, raw XML, source text, binary, signed URL과 storage key는 저장하지 않는다.
+- active manifest는 `authorizationStatus=approved`, cover/closing role과 하나 이상의 editable slot을 요구한다. source slide/part, slot ID와 authoritative locator는 catalog 안에서 유일해야 한다.
+- `OoxmlTemplateSelection`의 `mode=user`는 exact template ID/version을 모두 요구한다. `mode=auto`는 pinned template 필드를 받지 않으며 `/createdeck`의 첫 rollout에서는 사용하지 않는다.
+- `OoxmlReferenceTemplateGenerationRequest`는 topic, prompt, target duration, slide count range, audience/purpose/tone, reference policy/file ID와 template selection만 받는 별도 strict root request다. palette/font override, System Design Pack selector와 `TemplateBlueprint` instance ID를 받지 않는다.
+- `OoxmlTemplateSnapshot`은 catalog ID/version, source checksum, 선택한 source slide ID와 assignment count만 저장한다. 상세 slot content/locator는 project-private artifact와 `TemplateBlueprint`에만 저장한다.
+- Job result와 preview는 bounded ID, fidelity status, warning/issue code와 render asset ID만 노출한다. preview는 `editable=false`이고 1번부터 연속된 completed prefix만 반환한다.
+
+생성된 Deck은 technical origin을 나타내는 `metadata.sourceType="import"`, AI 생성 사실을 나타내는 `metadata.generatedBy="ai"`와 optional `metadata.ooxmlReferenceTemplateSnapshot`을 사용한다. 이 metadata snapshot은 catalog ID/version, source checksum과 generation ID만 포함한다. 기존 `metadata.createdFrom.designReferences`는 빈 배열을 유지한다.
+
+생성 instance의 `TemplateBlueprint`는 optional `referenceTemplateSnapshot`과 `slotEditPolicies[]`를 가질 수 있다. 각 policy는 unique slot ID와 writable imported `elementId`, content type에 맞는 mutation policy, `frameLocked=true`를 요구한다. 이 필드가 없는 기존 import blueprint는 동일하게 parse되고 편집 capability도 바뀌지 않는다. catalog manifest 자체는 `template_blueprints` 테이블에 저장하지 않는다.
+
+reference generation은 private catalog 원본을 변경하지 않는다. 완성 package의 immutable baseline, mutable current package와 render asset은 project `design-asset`으로 분리하고 기존 OOXML importer, sync와 export 경로를 사용한다. generation 실패는 System Design Pack으로 fallback하거나 partial Deck을 publication하지 않는다.
 
 ## PPTX OOXML sync contract
 

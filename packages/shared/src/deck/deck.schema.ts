@@ -21,6 +21,7 @@ import { semanticCueSchema } from "./semantic-cue.schema";
 import { slideActionSchema } from "./slide-action.schema";
 import { deckElementSchema, ooxmlOriginSchema } from "./slide-object.schema";
 import { savedDesignPackSnapshotSchema } from "./saved-design-pack.schema";
+import { ooxmlReferenceDeckSnapshotSchema } from "./ooxml-reference-template-common.schema";
 import { themeColorSchema, themeSchema } from "./theme.schema";
 
 export const deckSourceTypeSchema = z.enum(["manual", "import", "ai"]);
@@ -121,6 +122,7 @@ export const deckMetadataSchema = z.object({
   tone: aiDeckToneSchema.optional(),
   presentationProfile: aiDeckPresentationProfileSchema.optional(),
   generationQuality: deckGenerationQualitySchema.optional(),
+  ooxmlReferenceTemplateSnapshot: ooxmlReferenceDeckSnapshotSchema.optional(),
   designPackSnapshot: z.lazy(() => savedDesignPackSnapshotSchema).optional(),
   designProgramSnapshot: deckDesignProgramSnapshotSchema.optional(),
   createdFrom: deckCreatedFromSchema.optional()

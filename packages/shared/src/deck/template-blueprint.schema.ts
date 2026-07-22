@@ -11,6 +11,10 @@ import {
   ooxmlElementEditCapabilitiesSchema,
   ooxmlOriginSchema,
 } from "./slide-object.schema";
+import {
+  ooxmlTemplateSlotMutationSchema,
+  ooxmlTemplateSnapshotSchema,
+} from "./ooxml-reference-template-common.schema";
 
 export const templateBlueprintIdSchema = z
   .string()
@@ -225,6 +229,15 @@ export const templateBlueprintSlotSchema = z.object({
   source: templateSlotSourceSchema,
 });
 
+export const referenceTemplateSlotEditPolicySchema = z
+  .object({
+    slotId: z.string().trim().min(1).max(160),
+    elementId: deckElementIdSchema,
+    mutationPolicy: z.array(ooxmlTemplateSlotMutationSchema).min(1).max(4),
+    frameLocked: z.literal(true),
+  })
+  .strict();
+
 export const templateBlueprintSlideSchema = z
   .object({
     slideId: deckSlideIdSchema.optional(),
@@ -286,9 +299,57 @@ export const templateBlueprintSchema = z
     currentPackageFileId: z.string().min(1).optional(),
     ooxmlSyncedDeckVersion: z.number().int().positive().optional(),
     logicalGroupElementIds: z.array(deckElementIdSchema).default([]),
+    referenceTemplateSnapshot: ooxmlTemplateSnapshotSchema.optional(),
+    slotEditPolicies: z
+      .array(referenceTemplateSlotEditPolicySchema)
+      .max(10_000)
+      .default([]),
     slides: z.array(templateBlueprintSlideSchema).min(1),
   })
   .superRefine((blueprint, ctx) => {
+    const policySlotIds = new Set<string>();
+    const policyElementIds = new Set<string>();
+    const elementSources = new Map(
+      blueprint.slides.flatMap((slide) =>
+        slide.elementSources.map((source) => [source.elementId, source] as const),
+      ),
+    );
+    blueprint.slotEditPolicies.forEach((policy, policyIndex) => {
+      if (policySlotIds.has(policy.slotId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "reference template slot policy IDs must be unique",
+          path: ["slotEditPolicies", policyIndex, "slotId"],
+        });
+      }
+      policySlotIds.add(policy.slotId);
+      if (policyElementIds.has(policy.elementId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "reference template slot policy elements must be unique",
+          path: ["slotEditPolicies", policyIndex, "elementId"],
+        });
+      }
+      policyElementIds.add(policy.elementId);
+      const source = elementSources.get(policy.elementId);
+      if (!source || !source.writable) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "reference template slot policies require writable element sources",
+          path: ["slotEditPolicies", policyIndex, "elementId"],
+        });
+      }
+    });
+    if (
+      blueprint.slotEditPolicies.length > 0 &&
+      blueprint.referenceTemplateSnapshot === undefined
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "slot edit policies require a reference template snapshot",
+        path: ["referenceTemplateSnapshot"],
+      });
+    }
     const sourceSlidePartCounts = new Map<string, number>();
     blueprint.slides.forEach((slide) => {
       if (!slide.sourceSlidePart) return;
@@ -428,6 +489,9 @@ export type TemplateSlotReplaceMode = z.infer<
   typeof templateSlotReplaceModeSchema
 >;
 export type TemplateBlueprintSlot = z.infer<typeof templateBlueprintSlotSchema>;
+export type ReferenceTemplateSlotEditPolicy = z.infer<
+  typeof referenceTemplateSlotEditPolicySchema
+>;
 export type TemplateElementSource = z.infer<typeof templateElementSourceSchema>;
 export type TemplateTableCellLocator = z.infer<
   typeof templateTableCellLocatorSchema
