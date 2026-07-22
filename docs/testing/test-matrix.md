@@ -168,8 +168,8 @@ full-deck artifact와 남은 사람 검수가 필요한 항목은 자동 테스�
 | Task 10 table slot | 자동 통과 | reference table replacement + 기존 table sync 26 tests | 실제 template table fixture/reopen |
 | Task 11a chart package replacement | 자동 통과 | chart/workbook atomic replacement test, PowerPoint/LibreOffice fixture reopen | 실제 template chart montage와 사람 검수 |
 | Task 11b chart targeted sync | 자동 통과 | chart data patch → workbook/chart atomic sync/reopen test | 실제 template chart slot 편집 artifact |
-| Task 12 7-template 확장 | 실제 generation/PowerPoint artifact 대기 | 승인 provenance/preview checksum을 가진 disabled 7-template catalog와 family planner fixture | 7개 8~10장 full-deck, production publication, font와 PowerPoint QA |
-| Checkpoint C | 승인 보류 | planner/materializer/package fixture | 7개 template별 8~10장 full-deck와 montage/report |
+| Task 12 7-template 확장 | 7개 actual 8장 generation 자동 검증 통과 | package warning·overflow·overlap·crop 0, LibreOffice 56장 render와 template별 checksum/montage/report | production publication, actual source slot edit, font와 PowerPoint QA |
+| Checkpoint C | 승인 보류 | 7개 actual full-deck의 sequence/package/LibreOffice gate 통과 | PowerPoint render/reopen, actual slot sync/reopen과 사람 검수 |
 | Task 13 별도 Job/API/Worker | 자동 통과 | shared Job/queue, authenticated API, stage processor, atomic publication/fidelity gate test | private artifact storage smoke |
 | Task 14 catalog/preview API | 자동 통과, repository 전체 disabled | catalog projection/auth/checksum/preview-missing test와 Python option projection | QA active manifest/allowlist smoke와 production publication |
 | Task 15 generation preview polling | 자동 통과 | completed-prefix, read-only, failed/ready transition API test | actual generated preview artifact |
