@@ -4,6 +4,8 @@ import { AuthModule } from "../auth/auth.module";
 import { JobsModule } from "../jobs/jobs.module";
 import { ProjectsModule } from "../projects/projects.module";
 import { OoxmlReferenceTemplateGenerationsController } from "./ooxml-reference-template-generations.controller";
+import { OoxmlReferenceTemplatePreviewController } from "./ooxml-reference-template-preview.controller";
+import { OoxmlReferenceTemplatePreviewService } from "./ooxml-reference-template-preview.service";
 import {
   OOXML_REFERENCE_TEMPLATE_GENERATION_ENQUEUE_JOB,
   OoxmlReferenceTemplateGenerationsService,
@@ -11,9 +13,13 @@ import {
 
 @Module({
   imports: [AuthModule, JobsModule, ProjectsModule],
-  controllers: [OoxmlReferenceTemplateGenerationsController],
+  controllers: [
+    OoxmlReferenceTemplateGenerationsController,
+    OoxmlReferenceTemplatePreviewController,
+  ],
   providers: [
     OoxmlReferenceTemplateGenerationsService,
+    OoxmlReferenceTemplatePreviewService,
     {
       provide: OOXML_REFERENCE_TEMPLATE_GENERATION_ENQUEUE_JOB,
       useValue: enqueueOoxmlReferenceTemplateGenerationJob,
