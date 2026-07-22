@@ -30,6 +30,7 @@ import { ChallengeQnaModule } from "./challenge-qna/challenge-qna.module";
 import { SlidePracticeModule } from "./slide-practice/slide-practice.module";
 import { SlideQuestionGuidesModule } from "./slide-question-guides/slide-question-guides.module";
 import { CommunityTemplatesModule } from "./community-templates/community-templates.module";
+import { OoxmlReferenceTemplateGenerationsModule } from "./ooxml-reference-template-generations/ooxml-reference-template-generations.module";
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { CommunityTemplatesModule } from "./community-templates/community-templa
     ExtractModule,
     GenerateDeckModule,
     PptxOoxmlGenerationsModule,
+    OoxmlReferenceTemplateGenerationsModule,
     JobsModule,
     PresentationSessionsModule,
     ActivitiesModule,
