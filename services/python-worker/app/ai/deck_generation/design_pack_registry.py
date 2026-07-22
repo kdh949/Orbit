@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -159,3 +161,30 @@ class SystemDesignPackRegistry(StrictModel):
         ):
             raise ValueError("pack references an unknown layout ID")
         return self
+
+
+def load_design_pack_registry(path: Path) -> SystemDesignPackRegistry:
+    return SystemDesignPackRegistry.model_validate_json(
+        path.read_text(encoding="utf-8")
+    )
+
+
+def load_design_pack_catalog(directory: Path) -> SystemDesignPackRegistry:
+    documents = [
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in sorted(directory.glob("*.json"))
+    ]
+    if not documents:
+        raise ValueError("design pack catalog is empty")
+    catalog_versions = {document.get("catalogVersion") for document in documents}
+    if len(catalog_versions) != 1:
+        raise ValueError("design pack catalog versions do not match")
+    return SystemDesignPackRegistry.model_validate(
+        {
+            "catalogVersion": catalog_versions.pop(),
+            "packs": [pack for document in documents for pack in document["packs"]],
+            "layouts": [
+                layout for document in documents for layout in document["layouts"]
+            ],
+        }
+    )
