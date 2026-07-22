@@ -17,6 +17,7 @@ import {
   savedDesignPackSelectionSchema,
   savedDesignPackSnapshotSchema
 } from "./saved-design-pack.schema";
+import { systemDesignPackSelectionSchema } from "./design-pack-options.schema";
 import { themeColorSchema } from "./theme.schema";
 
 export const generateDeckTemplateSchema = z.enum([
@@ -162,6 +163,7 @@ export const generateDeckDesignSelectionSchema = z
     paletteOverride: generateDeckPaletteOverrideSchema.required(),
     fontOverride: generateDeckFontOverrideSchema,
     designPrompt: z.string().trim().max(500).optional(),
+    systemDesignPackSelection: systemDesignPackSelectionSchema.optional(),
   })
   .strict();
 

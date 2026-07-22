@@ -6,6 +6,7 @@ import {
   deckColorOptionRequestSchema,
   deckColorOptionsResponseSchema,
   generateDeckDiagnosticsSchema,
+  generateDeckDesignSelectionSchema,
   generateDeckJobResultSchema,
   generateDeckRequestSchema,
   generateDeckResponseSchema,
@@ -353,6 +354,49 @@ describe("generateDeckRequestSchema", () => {
       generateDeckRequestSchema.safeParse({
         topic: "AI 덱 생성",
         slideCountRange: { min: 8, max: 5 }
+      }).success
+    ).toBe(false);
+  });
+});
+
+describe("generateDeckDesignSelectionSchema system pack", () => {
+  const baseSelection = {
+    paletteOptionId: "brandlogy-blue",
+    paletteOverride: {
+      primary: "#2563EB",
+      secondary: "#0F766E",
+      background: "#FFFFFF",
+      surface: "#F8FAFC",
+      muted: "#64748B",
+      border: "#CBD5E1",
+      text: "#0F172A",
+      accentColor: "#2563EB"
+    },
+    fontOverride: {
+      fontId: "pretendard",
+      name: "Pretendard",
+      headingFontFamily: "Pretendard",
+      bodyFontFamily: "Pretendard"
+    }
+  };
+
+  it("keeps omitted systemDesignPackSelection as auto mode", () => {
+    const parsed = generateDeckDesignSelectionSchema.parse(baseSelection);
+
+    expect(parsed.systemDesignPackSelection).toBeUndefined();
+  });
+
+  it("accepts a current immutable pack and rejects stale versions", () => {
+    expect(
+      generateDeckDesignSelectionSchema.parse({
+        ...baseSelection,
+        systemDesignPackSelection: { id: "executive-review", version: 1 }
+      }).systemDesignPackSelection
+    ).toEqual({ id: "executive-review", version: 1 });
+    expect(
+      generateDeckDesignSelectionSchema.safeParse({
+        ...baseSelection,
+        systemDesignPackSelection: { id: "executive-review", version: 2 }
       }).success
     ).toBe(false);
   });

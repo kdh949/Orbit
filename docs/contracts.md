@@ -2163,6 +2163,8 @@ E2E 시작점은 로그인부터가 아니라 임시 사용자 기반 프로젝�
 
 ## AI PPT 2차 Design-Pack 계약 메모
 
+- 생성 전 디자인 추천은 인증된 API가 Python 내부 design-pack options 경계를 호출하고 `catalogVersion`, 최대 3개의 `{ id, version, name, family, rationale, preview }`, `fallbackUsed`만 공개한다. 전체 manifest, source 경로, license 내부 정보는 공개하지 않는다. `preview`는 `{ manifestId, coverPreviewId, bodyPreviewId }`다.
+- `generateDeckDesignSelectionSchema.systemDesignPackSelection`은 optional이다. 생략하면 auto mode이며, 명시하면 shared immutable catalog에 등록된 정확한 `id@version`만 저장한다. 현재 v1 허용값은 `neutral-light@1`, `neutral-dark@1`, `executive-review@1`, `kickoff-alignment@1`, `editorial-insight@1`이다. unknown ID, stale version, extra field는 거부한다.
 - `/createdeck` 요청은 선택적으로 `design.fontOverride`, 확장된 `design.mediaPolicy`, `design.referencePolicy`, `visualPlanPolicy`, `referencePolicy`, `references`, `referenceFileIds`, `referenceKeywords`, `referenceContext`, `officialAssetFileIds`를 보낼 수 있다. `officialAssetFileIds`는 일반 참고 자료와 분리된 사용자 제공 공식 이미지를 가리킨다. selector field 없이 모든 요청을 내부 `design-pack + program-v2` 경로로 실행한다.
 - generated slide의 `aiNotes`는 `visualPlan`과 `sourceLedger`를 포함할 수 있다. 이는 검토/추적용 메타데이터이며, 최종 디자인 표현은 계속 `theme`, `slide.style`, `slide.elements`, chart props, `animations`가 담당한다.
 - validation issue는 `{ code, scope, severity, blocking, path, message }` 구조를 사용한다. 기존 응답의 호환성을 위해 `code`, `severity`, `blocking`은 기본값을 허용하지만 새 design-pack 결과는 모든 필드를 명시한다.

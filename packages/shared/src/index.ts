@@ -37,6 +37,7 @@ export * from "./deck/deck-export.schema";
 export * from "./deck/deck.schema";
 export * from "./deck/design-agent.schema";
 export * from "./deck/design-image-generation.schema";
+export * from "./deck/design-pack-options.schema";
 export * from "./deck/font-catalog";
 export * from "./deck/generate-deck.schema";
 export * from "./deck/id.schema";
