@@ -43,6 +43,11 @@ type DeckValidationInput = {
       imageStyle: string;
       surfaceStyle: string;
       compositionIds: string[];
+      designPackId?: string;
+      designPackVersion?: number;
+      selectionMode?: string;
+      layoutIds?: string[];
+      layoutCatalogVersion?: number;
     };
     createdFrom?: {
       topic: string;
@@ -366,6 +371,31 @@ describe("deckSchema validation", () => {
         assetRole: "evidence",
         requiredAsset: true
       }
+    };
+
+    expectValidDeck(deck);
+  });
+
+  it("accepts optional system design pack provenance in a program snapshot", () => {
+    const deck = createValidDeck();
+    deck.metadata.designProgramSnapshot = {
+      version: "program-v2",
+      visualConcept: "Neutral Korean report",
+      paletteRoles: { dominant: "#FFFFFF", focal: "#2563EB" },
+      typography: {
+        headingFont: "Pretendard",
+        bodyFont: "Pretendard",
+        typeScale: { title: 56, body: 22 }
+      },
+      backgroundSequence: ["light"],
+      imageStyle: "Optional evidence media",
+      surfaceStyle: "Flat neutral surfaces",
+      compositionIds: ["editorial-split"],
+      designPackId: "neutral-light",
+      designPackVersion: 1,
+      selectionMode: "auto",
+      layoutIds: ["neutral-content-01"],
+      layoutCatalogVersion: 1
     };
 
     expectValidDeck(deck);

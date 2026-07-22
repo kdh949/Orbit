@@ -73,7 +73,12 @@ export const deckDesignProgramSnapshotSchema = z.object({
   backgroundSequence: z.array(deckCompositionBackgroundModeSchema).min(1),
   imageStyle: z.string().trim().min(1),
   surfaceStyle: z.string().trim().min(1),
-  compositionIds: z.array(deckCompositionIdSchema).min(1)
+  compositionIds: z.array(deckCompositionIdSchema).min(1),
+  designPackId: z.string().trim().min(1).optional(),
+  designPackVersion: z.number().int().positive().optional(),
+  selectionMode: z.enum(["auto", "user"]).optional(),
+  layoutIds: z.array(z.string().trim().min(1)).optional(),
+  layoutCatalogVersion: z.number().int().positive().optional()
 });
 
 export const deckCreatedFromReferenceSchema = z.object({

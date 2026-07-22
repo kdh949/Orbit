@@ -46,6 +46,7 @@ export * from "./deck/pptx-ooxml-generation.schema";
 export * from "./deck/ppt-advisor.schema";
 export * from "./deck/reference-extraction.schema";
 export * from "./deck/saved-design-pack.schema";
+export * from "./deck/system-design-pack.schema";
 export * from "./deck/semantic-qa";
 export * from "./deck/smart-art-layout.schema";
 export * from "./deck/semantic-cue.schema";

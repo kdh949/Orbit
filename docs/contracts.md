@@ -914,6 +914,21 @@ AI 덱 생성은 사용자 입력과 참고자료 fileId를 받아 비동기 Job
 - `apps/worker/src/generate-deck/pipeline.ts`: asset, semantic quality, rendered visual quality, publication 동기 orchestration
 - `apps/worker/src/generate-deck/publication.ts`: 최종 Deck와 Job result 저장
 
+### System Design Pack 내부 계약
+
+System Design Pack은 플랫폼이 관리하는 immutable/versioned catalog이며 사용자 preference overlay인 Saved Design Pack과 분리한다. registry는 strict `catalogVersion`, `packs`, `layouts` 구조를 사용하며 unknown field, 중복 layout ID, 잘못된 content capacity와 active pack의 미승인 provenance를 거부한다.
+
+- pack은 `id`, `version`, `family`, `variant`, `status`, 지원 profile/purpose/media policy, 허용 `layoutIds`, background rhythm, preview와 provenance를 가진다.
+- layout은 `layoutId`, `rendererId`, slide role, `silhouetteId`, background mode, content capacity, data/media requirement, slot과 preview를 가진다.
+- active pack의 `provenance.licenseStatus`는 반드시 `approved`여야 하며 repository manifest에는 plugin cache 절대 경로를 저장하지 않는다.
+- 기존 Deck은 새 필드 없이 parse된다. System Design Pack 결과는 기존 `metadata.designProgramSnapshot`에 optional `designPackId`, `designPackVersion`, `selectionMode`, `layoutIds`, `layoutCatalogVersion`을 추가해 재현한다.
+- public GenerateDeck request에 `templateBlueprintId`, `designReferences`, recipe-v1 selector를 복구하지 않는다.
+
+구현 위치:
+
+- `packages/shared/src/deck/system-design-pack.schema.ts`
+- `services/python-worker/app/ai/deck_generation/design_pack_registry.py`
+
 ### Saved Design Pack 계약
 
 Saved Design Pack은 `/createdeck`의 Session Design Pack을 시스템 preset 또는 사용자 단위로 재사용하기 위한 Preference Rule 저장 계약이다.
