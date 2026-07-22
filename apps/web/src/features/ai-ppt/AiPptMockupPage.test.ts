@@ -73,6 +73,8 @@ describe("AI PPT simplified input", () => {
       evaluatorLensRef: { lensId: "general-novice", revision: 1 },
     });
     expect(payload.design.fontOverride?.fontId).toBe("pretendard");
+    expect(payload.design).not.toHaveProperty("stylePackId");
+    expect(payload.designPrompt).not.toContain("base=");
   });
 
   it("structures explicit duration and slide count from presentation content", () => {

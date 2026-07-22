@@ -8,12 +8,14 @@ from app.ai.deck_generation.models import (
     ValidationIssue,
     ValidationResult,
 )
+from app.ai.design_program import DeckDesignProgram
 
 
 def generate_deck_diagnostics(
     raw_input: RawInput,
     validation: ValidationResult,
     unique_core_layout_count: int,
+    design_program: DeckDesignProgram | None = None,
 ) -> GenerateDeckDiagnostics:
     source_records = raw_input.source_records
     uploaded_source_ids = {
@@ -47,6 +49,20 @@ def generate_deck_diagnostics(
         uniqueCoreLayoutCount=unique_core_layout_count,
         validationIssueCount=validation_issue_count,
         warningCodes=raw_input.warning_codes,
+        designPackId=(design_program.design_pack_id if design_program else None),
+        designPackVersion=(
+            design_program.design_pack_version if design_program else None
+        ),
+        designPackSelectionMode=(
+            design_program.selection_mode if design_program else None
+        ),
+        designPackLayoutIds=(design_program.layout_ids or [] if design_program else []),
+        designPackCatalogVersion=(
+            design_program.layout_catalog_version if design_program else None
+        ),
+        designPackFallbackUsed=(
+            design_program.selection_fallback_used if design_program else None
+        ),
     )
 
 
@@ -105,6 +121,7 @@ def assemble_generation_diagnostics(
             stage_input.raw_input,
             stage_input.validation,
             stage_input.unique_core_layout_count,
+            stage_input.design_program,
         ),
     )
 

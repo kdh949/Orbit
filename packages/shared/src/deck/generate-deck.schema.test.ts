@@ -417,6 +417,25 @@ describe("generateDeckDiagnosticsSchema", () => {
     });
   });
 
+  it("accepts reproducible system design pack selection diagnostics", () => {
+    expect(
+      generateDeckDiagnosticsSchema.parse({
+        designPackId: "neutral-light",
+        designPackVersion: 1,
+        designPackSelectionMode: "auto",
+        designPackLayoutIds: ["neutral-cover-01", "neutral-closing-01"],
+        designPackCatalogVersion: 1,
+        designPackFallbackUsed: false,
+      }),
+    ).toMatchObject({
+      designPackId: "neutral-light",
+      designPackVersion: 1,
+      designPackSelectionMode: "auto",
+      designPackCatalogVersion: 1,
+      designPackFallbackUsed: false,
+    });
+  });
+
   it("rejects unknown research limitation codes", () => {
     expect(
       generateDeckDiagnosticsSchema.safeParse({

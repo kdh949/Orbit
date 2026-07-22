@@ -77,6 +77,8 @@ export const deckDesignProgramSnapshotSchema = z.object({
   designPackId: z.string().trim().min(1).optional(),
   designPackVersion: z.number().int().positive().optional(),
   selectionMode: z.enum(["auto", "user"]).optional(),
+  selectionReason: z.string().trim().min(1).optional(),
+  selectionFallbackUsed: z.boolean().optional(),
   layoutIds: z.array(z.string().trim().min(1)).optional(),
   layoutCatalogVersion: z.number().int().positive().optional()
 });

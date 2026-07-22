@@ -2521,7 +2521,7 @@ def compile_composition(
 
 
 def design_program_snapshot(program: DeckDesignProgram) -> dict[str, Any]:
-    return {
+    snapshot: dict[str, Any] = {
         "version": program.version,
         "visualConcept": program.visual_concept,
         "paletteRoles": program.palette_roles.model_dump(),
@@ -2531,6 +2531,19 @@ def design_program_snapshot(program: DeckDesignProgram) -> dict[str, Any]:
         "surfaceStyle": program.surface_style,
         "compositionIds": [slide.composition_id for slide in program.slides],
     }
+    optional_fields = {
+        "designPackId": program.design_pack_id,
+        "designPackVersion": program.design_pack_version,
+        "selectionMode": program.selection_mode,
+        "selectionReason": program.selection_reason,
+        "selectionFallbackUsed": program.selection_fallback_used,
+        "layoutIds": program.layout_ids,
+        "layoutCatalogVersion": program.layout_catalog_version,
+    }
+    snapshot.update(
+        {key: value for key, value in optional_fields.items() if value is not None}
+    )
+    return snapshot
 
 
 def _supports(composition_id: CompositionId, slide_type: str, item_count: int) -> bool:

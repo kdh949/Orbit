@@ -20,6 +20,10 @@ from app.ai.deck_generation.content_planning import (
     ensure_profile_closing_action,
     has_any,
 )
+from app.ai.deck_generation.design_pack_selector import (
+    apply_design_pack_selection,
+    select_system_design_pack,
+)
 from app.ai.deck_generation.models import (
     DeckContentGenerationError,
     DesignPlan,
@@ -1816,6 +1820,8 @@ def plan_design(
             media_budget=4,
             preserve_slide_types=preserve_approved_content,
         )
+        selection = select_system_design_pack(raw_input, slide_summaries)
+        program = apply_design_pack_selection(program, selection)
     except (CompositionCompileError, DesignProgramError) as error:
         raise DeckContentGenerationError(str(error)) from error
     return DesignPlan(

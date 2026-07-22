@@ -944,7 +944,17 @@ def test_program_v2_golden_pipeline_contract() -> None:
     assert response.warnings == [
         "참고자료 없이 topic-only generation으로 생성했습니다."
     ]
-    assert response.diagnostics.model_dump(by_alias=True) == {
+    diagnostics = response.diagnostics.model_dump(by_alias=True)
+    assert diagnostics.pop("designPackId") == "neutral-dark"
+    assert diagnostics.pop("designPackVersion") == 1
+    assert diagnostics.pop("designPackSelectionMode") == "auto"
+    assert diagnostics.pop("designPackCatalogVersion") == 1
+    assert diagnostics.pop("designPackFallbackUsed") is False
+    selected_layouts = diagnostics.pop("designPackLayoutIds")
+    assert len(selected_layouts) == len(deck["slides"])
+    assert selected_layouts[0] == "neutral-cover-01"
+    assert selected_layouts[-1] == "neutral-closing-01"
+    assert diagnostics == {
         "referencePolicy": "user-input-only",
         "uploadedSourceCount": 0,
         "webSourceCount": 0,

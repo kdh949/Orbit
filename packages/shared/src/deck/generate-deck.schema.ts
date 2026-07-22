@@ -466,7 +466,13 @@ export const generateDeckDiagnosticsSchema = z
     visualReviewAttempts: z.number().int().nonnegative().optional(),
     visualRepairAttempts: z.number().int().nonnegative().optional(),
     visualIssueCodes: z.array(generateDeckVisualIssueCodeSchema).optional(),
-    visualIssueSlideOrders: z.array(z.number().int().positive()).optional()
+    visualIssueSlideOrders: z.array(z.number().int().positive()).optional(),
+    designPackId: z.string().trim().min(1).optional(),
+    designPackVersion: z.number().int().positive().optional(),
+    designPackSelectionMode: z.enum(["auto", "user"]).optional(),
+    designPackLayoutIds: z.array(z.string().trim().min(1)).optional(),
+    designPackCatalogVersion: z.number().int().positive().optional(),
+    designPackFallbackUsed: z.boolean().optional()
   })
   .strict()
   .default({});

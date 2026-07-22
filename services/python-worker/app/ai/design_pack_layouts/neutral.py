@@ -35,8 +35,14 @@ def select_neutral_layouts(
             layout_id
             for layout_id in candidates
             if layout_id in layouts
-            and content_fits(slide, layouts[layout_id].content_capacity.item_min,
-                             layouts[layout_id].content_capacity.item_max)
+            and (
+                layout_id in {"neutral-cover-01", "neutral-closing-01"}
+                or content_fits(
+                    slide,
+                    layouts[layout_id].content_capacity.item_min,
+                    layouts[layout_id].content_capacity.item_max,
+                )
+            )
         ]
         if not compatible:
             compatible = ["neutral-content-01"]
@@ -71,7 +77,8 @@ def candidate_layouts(
         return ("neutral-timeline-01", "neutral-content-01")
     if slide_type in {"data", "chart"} and slide.get("typedMetrics"):
         return ("neutral-metric-01", "neutral-content-01")
-    if slide.get("mediaIntent", {}).get("needed"):
+    media_intent = slide.get("mediaIntent", {})
+    if media_intent.get("needed") or media_intent.get("kind") not in {None, "none"}:
         return ("neutral-media-split-01", "neutral-content-01")
     return (
         "neutral-content-01",

@@ -166,6 +166,31 @@ class DeckDesignProgram(BaseModel):
     image_style: str = Field(alias="imageStyle", min_length=1)
     surface_style: str = Field(alias="surfaceStyle", min_length=1)
     slides: list[SlideCompositionDirection] = Field(min_length=1)
+    design_pack_id: str | None = Field(default=None, alias="designPackId", min_length=1)
+    design_pack_version: int | None = Field(
+        default=None,
+        alias="designPackVersion",
+        ge=1,
+    )
+    selection_mode: Literal["auto", "user"] | None = Field(
+        default=None,
+        alias="selectionMode",
+    )
+    selection_reason: str | None = Field(
+        default=None,
+        alias="selectionReason",
+        min_length=1,
+    )
+    selection_fallback_used: bool | None = Field(
+        default=None,
+        alias="selectionFallbackUsed",
+    )
+    layout_ids: list[str] | None = Field(default=None, alias="layoutIds")
+    layout_catalog_version: int | None = Field(
+        default=None,
+        alias="layoutCatalogVersion",
+        ge=1,
+    )
 
     @model_validator(mode="after")
     def keep_background_sequence_aligned(self) -> DeckDesignProgram:

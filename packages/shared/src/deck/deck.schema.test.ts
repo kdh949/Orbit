@@ -46,6 +46,8 @@ type DeckValidationInput = {
       designPackId?: string;
       designPackVersion?: number;
       selectionMode?: string;
+      selectionReason?: string;
+      selectionFallbackUsed?: boolean;
       layoutIds?: string[];
       layoutCatalogVersion?: number;
     };
@@ -394,6 +396,8 @@ describe("deckSchema validation", () => {
       designPackId: "neutral-light",
       designPackVersion: 1,
       selectionMode: "auto",
+      selectionReason: "deterministic-compatible-match",
+      selectionFallbackUsed: false,
       layoutIds: ["neutral-content-01"],
       layoutCatalogVersion: 1
     };

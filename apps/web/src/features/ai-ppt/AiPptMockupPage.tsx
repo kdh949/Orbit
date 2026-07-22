@@ -79,7 +79,7 @@ export type AiPptWizardState = {
   allowAiImages: boolean;
 };
 
-const stylePackId = "brandlogy-modern";
+const paletteStylePackId = "brandlogy-modern";
 const defaultFontMood = "professional trustworthy Korean sans font";
 const officialImageMimeTypes = new Set([
   "image/jpeg",
@@ -426,7 +426,6 @@ export function buildAiPptGenerateDeckPayload(
       `palette=${paletteOption.optionId}`,
       `font=${selectedFont.name}`,
       `mediaPolicy=${mediaPolicy}`,
-      `base=${stylePackId}`,
     ].join("; "),
     brief: {
       audienceText: state.audience.trim(),
@@ -442,7 +441,6 @@ export function buildAiPptGenerateDeckPayload(
       tone: state.tone,
     },
     design: {
-      stylePackId,
       visualRhythm: "clean",
       densityTarget: "medium",
       mediaPolicy,
@@ -877,7 +875,7 @@ export function AiPptStyleColorPage(props: {
         topic: styleContext.topic,
         instruction,
         basePalette: selectedPalette.palette,
-        stylePackId,
+        stylePackId: paletteStylePackId,
         tone: styleContext.tone,
       });
       const option = { ...response.option, optionId: "ai-custom" };

@@ -1057,6 +1057,27 @@ class GenerateDeckDiagnostics(BaseModel):
         default_factory=list,
         alias="visualIssueSlideOrders",
     )
+    design_pack_id: str | None = Field(default=None, alias="designPackId")
+    design_pack_version: int | None = Field(
+        default=None, alias="designPackVersion", ge=1
+    )
+    design_pack_selection_mode: Literal["auto", "user"] | None = Field(
+        default=None,
+        alias="designPackSelectionMode",
+    )
+    design_pack_layout_ids: list[str] = Field(
+        default_factory=list,
+        alias="designPackLayoutIds",
+    )
+    design_pack_catalog_version: int | None = Field(
+        default=None,
+        alias="designPackCatalogVersion",
+        ge=1,
+    )
+    design_pack_fallback_used: bool | None = Field(
+        default=None,
+        alias="designPackFallbackUsed",
+    )
 
 
 class GenerationDiagnosticsInput(BaseModel):
@@ -1067,6 +1088,10 @@ class GenerationDiagnosticsInput(BaseModel):
     generated_slide_count: int = Field(alias="generatedSlideCount", ge=0)
     unique_core_layout_count: int = Field(alias="uniqueCoreLayoutCount", ge=0)
     agent_warnings: list[str] = Field(alias="agentWarnings")
+    design_program: DeckDesignProgram | None = Field(
+        default=None,
+        alias="designProgram",
+    )
 
 
 class GenerationDiagnosticsResult(BaseModel):

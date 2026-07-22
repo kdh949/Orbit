@@ -139,6 +139,7 @@ class DeckGenerationOrchestrator:
                     {core_geometry_fingerprint(slide) for slide in body_slides}
                 ),
                 agentWarnings=self.agent_warnings(),
+                designProgram=design_plan.design_program,
             )
         )
         return GenerateDeckResponse(
