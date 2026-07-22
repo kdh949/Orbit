@@ -6,6 +6,7 @@ import {
   jobSchema,
   jobTypeSchema,
   publicCreatableJobTypeSchema,
+  ooxmlReferenceTemplateGenerationStageSchema,
 } from "./job.schema";
 
 describe("jobTypeSchema", () => {
@@ -19,6 +20,29 @@ describe("jobTypeSchema", () => {
     expect(jobTypeSchema.parse("pptx-ooxml-generation")).toBe(
       "pptx-ooxml-generation",
     );
+  });
+
+  it("keeps OOXML reference generation active but behind its dedicated API", () => {
+    const type = "ooxml-reference-template-generation";
+
+    expect(historicalJobTypeSchema.parse(type)).toBe(type);
+    expect(jobTypeSchema.parse(type)).toBe(type);
+    expect(activeJobTypeSchema.parse(type)).toBe(type);
+    expect(publicCreatableJobTypeSchema.safeParse(type).success).toBe(false);
+    expect(
+      jobSchema.parse({
+        jobId: "job-ooxml-reference-1",
+        projectId: "project-a",
+        type,
+        status: "queued",
+        progress: 0,
+        message: "queued",
+        result: null,
+        error: null,
+        createdAt: "2026-07-22T00:00:00.000Z",
+        updatedAt: "2026-07-22T00:00:00.000Z",
+      }).type,
+    ).toBe(type);
   });
 
   it("keeps legacy job types readable but blocks active and public creation", () => {
@@ -46,6 +70,30 @@ describe("jobTypeSchema", () => {
 
   it("accepts PPTX OOXML sync jobs", () => {
     expect(jobTypeSchema.parse("pptx-ooxml-sync")).toBe("pptx-ooxml-sync");
+  });
+
+  it("accepts bounded OOXML reference generation failure stages", () => {
+    for (const stage of ooxmlReferenceTemplateGenerationStageSchema.options) {
+      expect(
+        jobSchema.parse({
+          jobId: `job-ooxml-reference-${stage}`,
+          projectId: "project-a",
+          type: "ooxml-reference-template-generation",
+          status: "failed",
+          progress: 50,
+          message: "failed",
+          result: null,
+          error: {
+            code: "OOXML_REFERENCE_STAGE_FAILED",
+            message: "stage failed",
+            failedStage: stage,
+            retryable: true,
+          },
+          createdAt: "2026-07-22T00:00:00.000Z",
+          updatedAt: "2026-07-22T00:00:00.000Z",
+        }).error?.failedStage,
+      ).toBe(stage);
+    }
   });
 
   it("accepts rehearsal semantic evaluation retry jobs", () => {

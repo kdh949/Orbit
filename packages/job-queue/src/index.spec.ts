@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { deckSchema, generateDeckRequestSchema } from "@orbit/shared";
+import {
+  deckSchema,
+  generateDeckRequestSchema,
+  ooxmlReferenceTemplateGenerationRequestSchema,
+} from "@orbit/shared";
 import {
   InMemoryJobQueue,
   aiDeckDesignLayoutQueueName,
@@ -14,6 +18,7 @@ import {
   enqueueSemanticCueExtractionJob,
   enqueuePptxOoxmlGenerationJob,
   enqueuePptxOoxmlSyncJob,
+  enqueueOoxmlReferenceTemplateGenerationJob,
   enqueueRehearsalSttJob,
   enqueueRehearsalSemanticEvaluationJob,
   enqueueWorkerHealthCheckJob,
@@ -27,6 +32,8 @@ import {
   pptxOoxmlGenerationQueueName,
   pptxOoxmlSyncJobName,
   pptxOoxmlSyncQueueName,
+  ooxmlReferenceTemplateGenerationJobName,
+  ooxmlReferenceTemplateGenerationQueueName,
   referenceExtractQueueName,
   rehearsalSemanticEvaluationJobName,
   rehearsalSemanticEvaluationQueueName,
@@ -450,6 +457,95 @@ describe("enqueuePptxOoxmlGenerationJob", () => {
       expect.objectContaining({ jobId: "job-1", attempts: 5 })
     );
     expect(queueMock.close).toHaveBeenCalled();
+  });
+});
+
+describe("enqueueOoxmlReferenceTemplateGenerationJob", () => {
+  const request = ooxmlReferenceTemplateGenerationRequestSchema.parse({
+    topic: "2026 하반기 운영 리뷰",
+    slideCountRange: { min: 8, max: 10 },
+    templateSelection: {
+      mode: "user",
+      templateId: "operating-review",
+      version: 1,
+    },
+  });
+
+  it("adds a strict payload to the dedicated queue with canonical options", async () => {
+    await enqueueOoxmlReferenceTemplateGenerationJob({
+      driver: "bullmq",
+      redisUrl: "redis://localhost:6379",
+      jobId: "job-ooxml-reference-1",
+      projectId: "project-a",
+      request,
+    });
+
+    expect(queueMock.Queue).toHaveBeenCalledWith(
+      ooxmlReferenceTemplateGenerationQueueName,
+      {
+        connection: expect.objectContaining({ host: "localhost", port: 6379 }),
+      },
+    );
+    expect(queueMock.add).toHaveBeenCalledWith(
+      ooxmlReferenceTemplateGenerationJobName,
+      {
+        jobId: "job-ooxml-reference-1",
+        projectId: "project-a",
+        request: expect.objectContaining({
+          topic: "2026 하반기 운영 리뷰",
+          targetDurationMinutes: 10,
+          referenceFileIds: [],
+        }),
+      },
+      {
+        jobId: "job-ooxml-reference-1",
+        attempts: 5,
+        removeOnComplete: 1000,
+        removeOnFail: 1000,
+      },
+    );
+    expect(ooxmlReferenceTemplateGenerationQueueName).toBe(
+      "ooxml-reference-template-generation",
+    );
+    expect(ooxmlReferenceTemplateGenerationJobName).toBe(
+      "ooxml-reference-template-generation",
+    );
+    expect(JSON.stringify(queueMock.add.mock.calls)).not.toMatch(
+      /sourceText|rawPackageXml|storageKey|signedUrl/i,
+    );
+    expect(queueMock.close).toHaveBeenCalled();
+  });
+
+  it("rejects an invalid request before opening the queue", async () => {
+    await expect(
+      enqueueOoxmlReferenceTemplateGenerationJob({
+        driver: "bullmq",
+        redisUrl: "redis://localhost:6379",
+        jobId: "job-ooxml-reference-invalid",
+        projectId: "project-a",
+        request: {
+          ...request,
+          design: { palette: "forbidden" },
+        } as never,
+      }),
+    ).rejects.toThrow();
+
+    expect(queueMock.Queue).not.toHaveBeenCalled();
+    expect(queueMock.add).not.toHaveBeenCalled();
+  });
+
+  it("keeps the SQS adapter explicitly unsupported", async () => {
+    await expect(
+      enqueueOoxmlReferenceTemplateGenerationJob({
+        driver: "sqs",
+        redisUrl: "redis://localhost:6379",
+        jobId: "job-ooxml-reference-sqs",
+        projectId: "project-a",
+        request,
+      }),
+    ).rejects.toThrow("SqsJobQueue adapter is not implemented yet.");
+
+    expect(queueMock.Queue).not.toHaveBeenCalled();
   });
 });
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ooxmlReferenceTemplateGenerationJobResultSchema,
+  ooxmlReferenceTemplateGenerationJobPayloadSchema,
   ooxmlReferenceTemplateGenerationRequestSchema,
   ooxmlReferenceTemplateManifestSchema,
   ooxmlReferenceTemplatePreviewResponseSchema,
@@ -360,6 +361,52 @@ describe("OOXML reference template selection and generation contracts", () => {
 });
 
 describe("OOXML reference template result and preview contracts", () => {
+  it("accepts a strict identifier-and-request generation job payload", () => {
+    const payload = ooxmlReferenceTemplateGenerationJobPayloadSchema.parse({
+      jobId: "job_ooxml_reference_1",
+      projectId: "project_1",
+      request: {
+        topic: "2026 하반기 운영 리뷰",
+        slideCountRange: { min: 8, max: 10 },
+        templateSelection: {
+          mode: "user",
+          templateId: "operating-review",
+          version: 1,
+        },
+      },
+    });
+
+    expect(payload.request.templateSelection).toEqual({
+      mode: "user",
+      templateId: "operating-review",
+      version: 1,
+    });
+    expect(payload).not.toHaveProperty("sourceText");
+  });
+
+  it.each([
+    { unexpectedContractField: true },
+    { sourceText: "private source" },
+    { rawPackageXml: "<xml />" },
+  ])("rejects private or unknown generation job payload fields", (extra) => {
+    expect(
+      ooxmlReferenceTemplateGenerationJobPayloadSchema.safeParse({
+        jobId: "job_ooxml_reference_1",
+        projectId: "project_1",
+        request: {
+          topic: "운영 리뷰",
+          slideCountRange: { min: 8, max: 10 },
+          templateSelection: {
+            mode: "user",
+            templateId: "operating-review",
+            version: 1,
+          },
+        },
+        ...extra,
+      }).success,
+    ).toBe(false);
+  });
+
   it("accepts a bounded reproducibility snapshot and fidelity report", () => {
     expect(ooxmlTemplateSnapshotSchema.safeParse(templateSnapshot).success).toBe(
       true

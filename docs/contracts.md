@@ -1215,7 +1215,7 @@ PR 4의 personal staging 자동 배포는 완료됐다. #339 종료 전 배포 �
 
 ## OOXML reference template generation contract
 
-OOXML reference template generation은 historical `ai-template-deck-generation`을 복구하지 않는 별도 제품 경계다. 일반 `GenerateDeckRequest`에는 `generationMode`, `templateBlueprintId`, `designReferences`, `slidePresetId`나 다른 recipe-v1 selector를 추가하지 않는다. 이 계약의 runtime endpoint, active Job type과 queue는 전용 processor가 연결되는 단계에서만 활성화하며, 그 전에는 schema와 private catalog만 존재한다.
+OOXML reference template generation은 historical `ai-template-deck-generation`을 복구하지 않는 별도 제품 경계다. 일반 `GenerateDeckRequest`에는 `generationMode`, `templateBlueprintId`, `designReferences`, `slidePresetId`나 다른 recipe-v1 selector를 추가하지 않는다. active Job type, queue name과 job name은 모두 `ooxml-reference-template-generation`이다. generic `POST /api/v1/jobs`의 `publicCreatableJobTypeSchema`에는 이 type을 넣지 않으며, strict 전용 request를 검증하는 authenticated project endpoint만 Job을 생성하고 enqueue한다.
 
 공통 계약은 `packages/shared/src/deck/ooxml-reference-template.schema.ts`를 원본으로 사용하고 Python은 `services/python-worker/app/ai/ooxml_reference_templates/models.py`에서 strict Pydantic mirror를 유지한다.
 
@@ -1223,8 +1223,11 @@ OOXML reference template generation은 historical `ai-template-deck-generation`�
 - active manifest는 `authorizationStatus=approved`, cover/closing role과 하나 이상의 editable slot을 요구한다. source slide/part, slot ID와 authoritative locator는 catalog 안에서 유일해야 한다.
 - `OoxmlTemplateSelection`의 `mode=user`는 exact template ID/version을 모두 요구한다. `mode=auto`는 pinned template 필드를 받지 않으며 `/createdeck`의 첫 rollout에서는 사용하지 않는다.
 - `OoxmlReferenceTemplateGenerationRequest`는 topic, prompt, target duration, slide count range, audience/purpose/tone, reference policy/file ID와 template selection만 받는 별도 strict root request다. palette/font override, System Design Pack selector와 `TemplateBlueprint` instance ID를 받지 않는다.
+- BullMQ payload는 strict `{ jobId, projectId, request }`만 허용한다. source text, raw package/XML, storage key와 signed URL을 queue payload나 로그에 넣지 않는다. SQS adapter는 구현 전까지 명시적으로 실패한다.
 - `OoxmlTemplateSnapshot`은 catalog ID/version, source checksum, 선택한 source slide ID와 assignment count만 저장한다. 상세 slot content/locator는 project-private artifact와 `TemplateBlueprint`에만 저장한다.
 - Job result와 preview는 bounded ID, fidelity status, warning/issue code와 render asset ID만 노출한다. preview는 `editable=false`이고 1번부터 연속된 completed prefix만 반환한다.
+
+processor의 bounded stage는 `reference-extract-file`, `source-grounding`, `content-planning`, `template-planning`, `package-generation`, `render-validation`, `materialization`, `publication`이다. 공통 Job error의 optional `failedStage`는 기존 AI deck stage 또는 이 전용 stage 중 하나만 허용한다.
 
 생성된 Deck은 technical origin을 나타내는 `metadata.sourceType="import"`, AI 생성 사실을 나타내는 `metadata.generatedBy="ai"`와 optional `metadata.ooxmlReferenceTemplateSnapshot`을 사용한다. 이 metadata snapshot은 catalog ID/version, source checksum과 generation ID만 포함한다. 기존 `metadata.createdFrom.designReferences`는 빈 배열을 유지한다.
 

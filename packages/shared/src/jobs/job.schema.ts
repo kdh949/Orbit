@@ -21,6 +21,7 @@ export const historicalJobTypeSchema = z.enum([
   "design-image-generation",
   "pptx-ooxml-generation",
   "pptx-ooxml-sync",
+  "ooxml-reference-template-generation",
   "worker-health-check",
   "rehearsal-stt",
   "presentation-analysis",
@@ -65,10 +66,26 @@ export const publicCreatableJobTypeSchema = z.enum([
   "report-pdf-export",
 ]);
 
+export const ooxmlReferenceTemplateGenerationStageSchema = z.enum([
+  "reference-extract-file",
+  "source-grounding",
+  "content-planning",
+  "template-planning",
+  "package-generation",
+  "render-validation",
+  "materialization",
+  "publication",
+]);
+
+export const jobFailedStageSchema = z.union([
+  aiDeckGenerationStageSchema,
+  ooxmlReferenceTemplateGenerationStageSchema,
+]);
+
 export const jobErrorSchema = z.object({
   code: z.string().min(1),
   message: z.string().min(1),
-  failedStage: aiDeckGenerationStageSchema.optional(),
+  failedStage: jobFailedStageSchema.optional(),
   retryable: z.boolean().optional(),
   syncCapabilityVersion: z.number().int().positive().optional(),
 });
@@ -92,4 +109,7 @@ export type JobType = z.infer<typeof jobTypeSchema>;
 export type ActiveJobType = z.infer<typeof activeJobTypeSchema>;
 export type InternalCoachingJobType = z.infer<typeof internalCoachingJobTypeSchema>;
 export type PublicCreatableJobType = z.infer<typeof publicCreatableJobTypeSchema>;
+export type OoxmlReferenceTemplateGenerationStage = z.infer<
+  typeof ooxmlReferenceTemplateGenerationStageSchema
+>;
 export type JobError = z.infer<typeof jobErrorSchema>;

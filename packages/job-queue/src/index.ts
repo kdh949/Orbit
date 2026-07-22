@@ -20,6 +20,7 @@ import {
   slideQuestionGuideJobPayloadSchema,
   designImageGenerationJobPayloadSchema,
   activityResponseRetentionJobPayloadSchema,
+  ooxmlReferenceTemplateGenerationJobPayloadSchema,
   nowIso,
   type Deck,
   type DeckExportFormat,
@@ -33,6 +34,7 @@ import {
   type PresentationAnalysisJobPayload,
   type DesignImageGenerationJobPayload,
   type ActivityResponseRetentionJobPayload,
+  type OoxmlReferenceTemplateGenerationJobPayload,
 } from "@orbit/shared";
 import { Queue } from "bullmq";
 
@@ -96,6 +98,10 @@ export const pptxOoxmlGenerationQueueName = "pptx-ooxml-generation";
 export const pptxOoxmlGenerationJobName = "pptx-ooxml-generation";
 export const pptxOoxmlSyncQueueName = "pptx-ooxml-sync";
 export const pptxOoxmlSyncJobName = "pptx-ooxml-sync";
+export const ooxmlReferenceTemplateGenerationQueueName =
+  "ooxml-reference-template-generation";
+export const ooxmlReferenceTemplateGenerationJobName =
+  "ooxml-reference-template-generation";
 export const workerHealthCheckQueueName = "worker-health-check";
 export const workerHealthCheckJobName = "worker-health-check";
 export const activityResponseRetentionQueueName = "activity-response-retention";
@@ -284,6 +290,15 @@ export interface EnqueuePptxOoxmlGenerationJobInput extends PptxOoxmlGenerationB
   driver: "bullmq" | "sqs";
   redisUrl: string;
 }
+
+export type OoxmlReferenceTemplateGenerationBullMqPayload =
+  OoxmlReferenceTemplateGenerationJobPayload;
+
+export type EnqueueOoxmlReferenceTemplateGenerationJobInput =
+  OoxmlReferenceTemplateGenerationBullMqPayload & {
+    driver: "bullmq" | "sqs";
+    redisUrl: string;
+  };
 
 export interface PptxOoxmlSyncBullMqPayload {
   jobId: string;
@@ -774,6 +789,33 @@ export async function enqueuePptxOoxmlGenerationJob(
         projectId: input.projectId,
         request: input.request,
       } satisfies PptxOoxmlGenerationBullMqPayload,
+      canonicalJobOptions(input.jobId),
+    );
+  } finally {
+    await queue.close();
+  }
+}
+
+export async function enqueueOoxmlReferenceTemplateGenerationJob(
+  input: EnqueueOoxmlReferenceTemplateGenerationJobInput,
+): Promise<void> {
+  if (input.driver === "sqs") {
+    throw new Error("SqsJobQueue adapter is not implemented yet.");
+  }
+
+  const payload = ooxmlReferenceTemplateGenerationJobPayloadSchema.parse({
+    jobId: input.jobId,
+    projectId: input.projectId,
+    request: input.request,
+  });
+  const queue = new Queue(ooxmlReferenceTemplateGenerationQueueName, {
+    connection: redisConnectionOptions(input.redisUrl),
+  });
+
+  try {
+    await queue.add(
+      ooxmlReferenceTemplateGenerationJobName,
+      payload,
       canonicalJobOptions(input.jobId),
     );
   } finally {

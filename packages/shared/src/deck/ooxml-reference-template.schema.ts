@@ -387,6 +387,14 @@ export const ooxmlReferenceTemplateGenerationRequestSchema = z
   })
   .strict();
 
+export const ooxmlReferenceTemplateGenerationJobPayloadSchema = z
+  .object({
+    jobId: z.string().trim().min(1),
+    projectId: z.string().trim().min(1),
+    request: ooxmlReferenceTemplateGenerationRequestSchema,
+  })
+  .strict();
+
 const ooxmlFidelityStatusSchema = z.enum([
   "not-run",
   "passed",
@@ -528,6 +536,9 @@ export type OoxmlTemplateFidelityReport = z.infer<
 >;
 export type OoxmlReferenceTemplateGenerationRequest = z.infer<
   typeof ooxmlReferenceTemplateGenerationRequestSchema
+>;
+export type OoxmlReferenceTemplateGenerationJobPayload = z.infer<
+  typeof ooxmlReferenceTemplateGenerationJobPayloadSchema
 >;
 export type OoxmlReferenceTemplateGenerationJobResult = z.infer<
   typeof ooxmlReferenceTemplateGenerationJobResultSchema
