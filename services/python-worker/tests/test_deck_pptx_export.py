@@ -138,6 +138,47 @@ def test_export_deck_pptx_clips_text_to_its_fixed_frame() -> None:
     assert body_pr.get("wrap") == "square"
 
 
+def test_export_deck_pptx_sets_korean_east_asian_typeface() -> None:
+    deck = image_deck()
+    deck["theme"] = {
+        "backgroundColor": "#FFFFFF",
+        "fontFamily": "Gmarket Sans",
+        "typography": {
+            "bodyFontFamily": "Gmarket Sans",
+            "fallbackFontFamily": "Arial",
+            "fontWidthFactor": 1.18,
+            "lineHeight": 1.18,
+        },
+    }
+    deck["slides"][0]["elements"] = [
+        {
+            "elementId": "el_korean_text",
+            "type": "text",
+            "x": 120,
+            "y": 180,
+            "width": 640,
+            "height": 160,
+            "zIndex": 1,
+            "visible": True,
+            "props": {
+                "text": "한글 줄바꿈 기준",
+                "fontFamily": "Gmarket Sans",
+                "fontSize": 40,
+                "fontWeight": "bold",
+                "lineHeight": 1.18,
+            },
+        }
+    ]
+
+    binary = export_binary(deck)
+
+    with ZipFile(BytesIO(binary)) as archive:
+        slide_root = ET.fromstring(archive.read("ppt/slides/slide1.xml"))
+    east_asian = slide_root.find(f".//{{{DRAWING_NS}}}ea")
+    assert east_asian is not None
+    assert east_asian.get("typeface") == "Gmarket Sans"
+
+
 def export_binary(deck: dict[str, Any]) -> bytes:
     response = export_deck_pptx(DeckPptxExportRequest(deck=deck))
     return base64.b64decode(response.content_base64)

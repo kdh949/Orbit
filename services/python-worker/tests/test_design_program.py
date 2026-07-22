@@ -10,6 +10,8 @@ from app.ai.composition_library import (
     COMPOSITION_SPECS,
     compile_composition,
     normalize_design_program,
+    reconcile_design_program_palette,
+    visible_element_colors,
 )
 from app.ai.design_program import (
     ArtDirectorContext,
@@ -184,6 +186,71 @@ def test_program_v2_palette_keeps_focal_and_secondary_roles_distinct() -> None:
 
     assert themed.palette_roles.focal == "#2563EB"
     assert themed.palette_roles.secondary == "#22D3EE"
+
+
+def test_final_palette_snapshot_drops_unused_primary_and_limits_visible_accents() -> None:
+    design_program = DeckDesignProgram.model_validate(valid_program())
+    design_program.palette_roles.focal = "#FF0066"
+    design_program.palette_roles.secondary = "#06B6D4"
+    slides = [
+        {
+            "elements": [
+                {
+                    "visible": True,
+                    "opacity": 1,
+                    "props": {"color": "#111827", "fill": "#06B6D4"},
+                },
+            ]
+        }
+    ]
+
+    reconciled = reconcile_design_program_palette(design_program, slides)
+    visible = visible_element_colors(slides)
+
+    assert "#FF0066" not in visible
+    assert reconciled.palette_roles.focal == "#06B6D4"
+    assert reconciled.palette_roles.focal in visible
+
+    crowded_slides = [
+        {
+            "elements": [
+                {
+                    "visible": True,
+                    "opacity": 1,
+                    "props": {
+                        "color": "#FF0066",
+                        "fill": "#06B6D4",
+                        "stroke": "#FF8A00",
+                    },
+                }
+            ]
+        }
+    ]
+    reconcile_design_program_palette(design_program, crowded_slides)
+    crowded_colors = visible_element_colors(crowded_slides)
+    assert crowded_colors <= {"#FF0066", "#06B6D4"}
+
+
+def test_program_typography_resolves_korean_font_metrics() -> None:
+    themed = apply_program_v2_design_tokens(
+        DeckDesignProgram.model_validate(valid_program()),
+        {
+            "backgroundColor": "#FFFFFF",
+            "textColor": "#111827",
+            "accentColor": "#2563EB",
+            "fontFamily": "Gmarket Sans",
+            "palette": {"surface": "#F3F4F6", "secondary": "#06B6D4"},
+            "typography": {
+                "headingFontFamily": "Gmarket Sans",
+                "bodyFontFamily": "Gmarket Sans",
+                "fallbackFontFamily": "Arial",
+            },
+        },
+    )
+
+    assert themed.typography.font_width_factor == 1.18
+    assert themed.typography.line_height == 1.18
+    assert themed.typography.pptx_font_family == "Gmarket Sans"
 
 
 def test_program_v2_compiles_empty_cover_and_closing_content_items() -> None:

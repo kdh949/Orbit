@@ -19,7 +19,11 @@ export const themeTypographySchema = z
     titleSize: z.number().finite().positive().default(56),
     headingSize: z.number().finite().positive().default(40),
     bodySize: z.number().finite().positive().default(24),
-    captionSize: z.number().finite().positive().default(16)
+    captionSize: z.number().finite().positive().default(16),
+    fallbackFontFamily: z.string().min(1).optional(),
+    pptxFontFamily: z.string().min(1).optional(),
+    fontWidthFactor: z.number().finite().min(0.8).max(1.4).optional(),
+    lineHeight: z.number().finite().min(1).max(1.6).optional()
   })
   .default({});
 

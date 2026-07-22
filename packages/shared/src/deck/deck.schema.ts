@@ -68,7 +68,11 @@ export const deckDesignProgramSnapshotSchema = z.object({
   typography: z.object({
     headingFont: z.string().trim().min(1),
     bodyFont: z.string().trim().min(1),
-    typeScale: z.record(z.number().finite().positive())
+    typeScale: z.record(z.number().finite().positive()),
+    fallbackFontFamily: z.string().trim().min(1).optional(),
+    pptxFontFamily: z.string().trim().min(1).optional(),
+    fontWidthFactor: z.number().finite().min(0.8).max(1.4).optional(),
+    lineHeight: z.number().finite().min(1).max(1.6).optional()
   }),
   backgroundSequence: z.array(deckCompositionBackgroundModeSchema).min(1),
   imageStyle: z.string().trim().min(1),

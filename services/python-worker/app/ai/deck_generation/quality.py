@@ -29,6 +29,7 @@ from app.ai.deck_generation.layout_compiler import (
     core_geometry_fingerprint,
     is_canvas_background_element,
 )
+from app.ai.korean_typography import resolve_korean_typography
 from app.ai.deck_generation.models import (
     CANVAS,
     DesignConstraints,
@@ -1260,14 +1261,12 @@ def is_short_label_text_box_too_narrow(element: dict[str, Any]) -> bool:
 
 
 def font_width_factor_from_element(element: dict[str, Any]) -> float:
-    font_family = str(element.get("props", {}).get("fontFamily", "")).casefold()
-    if "gmarket" in font_family:
-        return 1.18
-    if "nanumsquareround" in font_family or "gowun" in font_family:
-        return 1.1
-    if "noto sans kr" in font_family:
-        return 1.04
-    return 1.0
+    props = element.get("props", {})
+    declared = props.get("fontWidthFactor")
+    return resolve_korean_typography(
+        str(props.get("fontFamily", "Pretendard")),
+        width_factor=float(declared) if isinstance(declared, int | float) else None,
+    ).width_factor
 
 
 def is_low_contrast_text(element: dict[str, Any], background_color: str) -> bool:

@@ -38,6 +38,10 @@ type DeckValidationInput = {
         headingFont: string;
         bodyFont: string;
         typeScale: Record<string, number>;
+        fallbackFontFamily?: string;
+        pptxFontFamily?: string;
+        fontWidthFactor?: number;
+        lineHeight?: number;
       };
       backgroundSequence: string[];
       imageStyle: string;

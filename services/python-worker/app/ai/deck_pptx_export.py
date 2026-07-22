@@ -18,6 +18,7 @@ from pptx.util import Inches, Pt
 from pydantic import BaseModel, Field
 
 from app.ai.pptx_motion import apply_generic_slide_motion
+from app.ai.korean_typography import resolve_korean_typography
 
 
 DECK_UNITS_PER_INCH = 144
@@ -390,12 +391,21 @@ def apply_paragraph_style(paragraph: Any, props: dict[str, Any]) -> None:
 
 def apply_font(font: Any, props: dict[str, Any], deck: dict[str, Any]) -> None:
     theme = deck.get("theme", {})
-    font.name = str(
+    typography = theme.get("typography", {})
+    font_family = str(
         props.get("fontFamily")
         or theme.get("fontFamily")
-        or theme.get("typography", {}).get("bodyFontFamily")
+        or typography.get("bodyFontFamily")
         or "Pretendard"
     )
+    metrics = resolve_korean_typography(
+        font_family,
+        fallback_family=str(typography.get("fallbackFontFamily", "Arial")),
+        width_factor=typography.get("fontWidthFactor"),
+        line_height=typography.get("lineHeight"),
+    )
+    font.name = metrics.pptx_font_family
+    apply_east_asian_typeface(font._element, metrics.pptx_font_family)
     font.size = Pt(
         float(props.get("fontSize", 24))
         * POINTS_PER_INCH
@@ -415,6 +425,16 @@ def apply_font(font: Any, props: dict[str, Any], deck: dict[str, Any]) -> None:
         run_properties.set("baseline", "-25000")
     else:
         run_properties.attrib.pop("baseline", None)
+
+
+def apply_east_asian_typeface(run_properties: Any, font_family: str) -> None:
+    east_asian = run_properties.find(
+        "{http://schemas.openxmlformats.org/drawingml/2006/main}ea"
+    )
+    if east_asian is None:
+        east_asian = OxmlElement("a:ea")
+        run_properties.append(east_asian)
+    east_asian.set("typeface", font_family)
 
 
 def append_run_diagnostics(

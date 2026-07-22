@@ -138,6 +138,18 @@ class ProgramTypography(BaseModel):
     heading_font: str = Field(alias="headingFont")
     body_font: str = Field(alias="bodyFont")
     type_scale: dict[str, int] = Field(alias="typeScale")
+    fallback_font_family: str = Field(
+        default="Arial",
+        alias="fallbackFontFamily",
+    )
+    pptx_font_family: str | None = Field(default=None, alias="pptxFontFamily")
+    font_width_factor: float = Field(
+        default=1.0,
+        alias="fontWidthFactor",
+        ge=0.8,
+        le=1.4,
+    )
+    line_height: float = Field(default=1.15, alias="lineHeight", ge=1, le=1.6)
 
 
 class SlideCompositionDirection(BaseModel):

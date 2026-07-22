@@ -4,7 +4,10 @@ from datetime import date
 import re
 from typing import Any
 
-from app.ai.composition_library import design_program_snapshot
+from app.ai.composition_library import (
+    design_program_snapshot,
+    reconcile_design_program_palette,
+)
 from app.ai.deck_generation.content_planning import (
     choose_slide_count,
     plan_content,
@@ -378,9 +381,11 @@ def build_deck_from_layout(
         },
     }
     metadata["presentationProfile"] = raw_input.presentation_profile
-    metadata["designProgramSnapshot"] = design_program_snapshot(
-        design_plan.design_program
+    snapshot_program = reconcile_design_program_palette(
+        design_plan.design_program,
+        slides,
     )
+    metadata["designProgramSnapshot"] = design_program_snapshot(snapshot_program)
 
     return {
         "deckId": f"deck_ai_{safe_token(raw_input.project_id)}",

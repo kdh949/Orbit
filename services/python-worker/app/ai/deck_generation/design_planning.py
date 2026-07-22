@@ -15,6 +15,7 @@ from app.ai.design_program import (
     ProgramTypography,
     create_design_program,
 )
+from app.ai.korean_typography import resolve_korean_typography
 from app.ai.deck_generation.content_planning import (
     compact_dense_speaker_notes,
     ensure_profile_closing_action,
@@ -768,19 +769,31 @@ def apply_program_v2_design_tokens(
             program.palette_roles.secondary,
         ),
     )
+    heading_font = str(
+        typography.get("headingFontFamily", theme.get("fontFamily", "Pretendard"))
+    )
+    body_font = str(
+        typography.get("bodyFontFamily", theme.get("fontFamily", "Pretendard"))
+    )
+    metrics = resolve_korean_typography(
+        body_font,
+        fallback_family=str(typography.get("fallbackFontFamily", "Arial")),
+        width_factor=typography.get("fontWidthFactor"),
+        line_height=typography.get("lineHeight"),
+    )
     updated.typography = ProgramTypography(
-        headingFont=str(
-            typography.get("headingFontFamily", theme.get("fontFamily", "Inter"))
-        ),
-        bodyFont=str(
-            typography.get("bodyFontFamily", theme.get("fontFamily", "Inter"))
-        ),
+        headingFont=heading_font,
+        bodyFont=body_font,
         typeScale={
             "cover": max(72, int(typography.get("titleSize", 60))),
             "title": max(56, int(typography.get("headingSize", 40))),
             "body": max(32, int(typography.get("bodySize", 22))),
             "caption": max(24, int(typography.get("captionSize", 14))),
         },
+        fallbackFontFamily=metrics.fallback_family,
+        pptxFontFamily=metrics.pptx_font_family,
+        fontWidthFactor=metrics.width_factor,
+        lineHeight=metrics.line_height,
     )
     return updated
 
@@ -1181,6 +1194,8 @@ def apply_font_override(
     )
     typography["lineHeight"] = font_override.line_height
     typography["fontWidthFactor"] = font_override.width_factor
+    typography["fallbackFontFamily"] = font_override.fallback_family
+    typography["pptxFontFamily"] = font_override.body_font_family
     typography["overflowRisk"] = font_override.overflow_risk
     theme["typography"] = typography
     theme["fontFamily"] = font_override.body_font_family

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import colorsys
 import re
 import textwrap
 from collections import Counter
@@ -14,6 +15,7 @@ from app.ai.design_program import (
     DeckDesignProgram,
     SlideCompositionDirection,
 )
+from app.ai.korean_typography import resolve_korean_typography
 
 
 MediaRequirement = Literal["none", "optional", "required"]
@@ -143,6 +145,7 @@ def _text(
     line_height: float = 1.2,
     content_item_ids: list[str] | None = None,
 ) -> Element:
+    font_metrics = resolve_korean_typography(font)
     element: Element = {
         "elementId": _id(order, name),
         "type": "text",
@@ -159,6 +162,7 @@ def _text(
         "props": {
             "text": value,
             "fontFamily": font,
+            "fontWidthFactor": font_metrics.width_factor,
             "fontSize": size,
             "fontWeight": weight,
             "color": color,
@@ -2548,6 +2552,101 @@ def design_program_snapshot(program: DeckDesignProgram) -> dict[str, Any]:
         {key: value for key, value in optional_fields.items() if value is not None}
     )
     return snapshot
+
+
+def reconcile_design_program_palette(
+    program: DeckDesignProgram,
+    slides: list[dict[str, Any]],
+) -> DeckDesignProgram:
+    allowed_accents = [program.palette_roles.focal, program.palette_roles.secondary]
+    base_roles = {
+        program.palette_roles.dominant.casefold(),
+        program.palette_roles.surface.casefold(),
+        program.palette_roles.text.casefold(),
+    }
+    used_colors = visible_element_colors(slides)
+    extra_accents = sorted(
+        color
+        for color in used_colors
+        if is_high_saturation_color(color)
+        and color.casefold() not in base_roles
+        and color.casefold() not in {value.casefold() for value in allowed_accents}
+    )
+    if extra_accents:
+        replacements = {
+            color.casefold(): min(
+                allowed_accents,
+                key=lambda allowed: color_distance(color, allowed),
+            )
+            for color in extra_accents
+        }
+        replace_element_colors(slides, replacements)
+        used_colors = visible_element_colors(slides)
+
+    updated = program.model_copy(deep=True)
+    used_lookup = {color.casefold() for color in used_colors}
+    used_accents = [
+        color for color in allowed_accents if color.casefold() in used_lookup
+    ]
+    fallback_role = used_accents[0] if used_accents else program.palette_roles.text
+    if (
+        is_high_saturation_color(updated.palette_roles.focal)
+        and updated.palette_roles.focal.casefold() not in used_lookup
+    ):
+        updated.palette_roles.focal = fallback_role
+    if (
+        is_high_saturation_color(updated.palette_roles.secondary)
+        and updated.palette_roles.secondary.casefold() not in used_lookup
+    ):
+        updated.palette_roles.secondary = fallback_role
+    return updated
+
+
+def visible_element_colors(slides: list[dict[str, Any]]) -> set[str]:
+    colors: set[str] = set()
+    for slide in slides:
+        for element in slide.get("elements", []):
+            if not element.get("visible", True) or float(element.get("opacity", 1)) <= 0:
+                continue
+            collect_hex_colors(element.get("props", {}), colors)
+    return colors
+
+
+def collect_hex_colors(value: Any, colors: set[str]) -> None:
+    if isinstance(value, dict):
+        for item in value.values():
+            collect_hex_colors(item, colors)
+    elif isinstance(value, list):
+        for item in value:
+            collect_hex_colors(item, colors)
+    elif isinstance(value, str) and re.fullmatch(r"#[0-9A-Fa-f]{6}", value):
+        colors.add(value.upper())
+
+
+def replace_element_colors(value: Any, replacements: dict[str, str]) -> None:
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if isinstance(item, str) and item.casefold() in replacements:
+                value[key] = replacements[item.casefold()]
+            else:
+                replace_element_colors(item, replacements)
+    elif isinstance(value, list):
+        for item in value:
+            replace_element_colors(item, replacements)
+
+
+def is_high_saturation_color(color: str) -> bool:
+    if not re.fullmatch(r"#[0-9A-Fa-f]{6}", color):
+        return False
+    red, green, blue = (int(color[index : index + 2], 16) / 255 for index in (1, 3, 5))
+    _, saturation, value = colorsys.rgb_to_hsv(red, green, blue)
+    return saturation >= 0.45 and value >= 0.35
+
+
+def color_distance(left: str, right: str) -> int:
+    left_rgb = [int(left[index : index + 2], 16) for index in (1, 3, 5)]
+    right_rgb = [int(right[index : index + 2], 16) for index in (1, 3, 5)]
+    return sum(abs(a - b) for a, b in zip(left_rgb, right_rgb, strict=True))
 
 
 def _supports(composition_id: CompositionId, slide_type: str, item_count: int) -> bool:

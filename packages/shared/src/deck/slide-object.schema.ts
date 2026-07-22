@@ -194,6 +194,7 @@ export const textElementPropsSchema = z
     paragraphs: z.array(textElementParagraphSchema).optional(),
     bodyInset: textElementBodyInsetSchema.optional(),
     fontFamily: z.string().min(1).optional(),
+    fontWidthFactor: z.number().finite().min(0.8).max(1.4).optional(),
     fontSize: z.number().finite().positive().default(24),
     fontWeight: textFontWeightSchema.default("normal"),
     italic: z.boolean().optional(),
