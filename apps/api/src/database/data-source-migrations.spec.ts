@@ -24,6 +24,8 @@ describe("database migration registry", () => {
     ).toBeLessThan(
       migrationNames.indexOf("AddCommunityCategoriesAndTags2026072107000"),
     );
-    expect(latest).toBe("AddCommunityCategoriesAndTags2026072107000");
+    expect(latest).toBe(
+      "CreateOoxmlReferenceTemplateGenerationArtifacts2026072201000",
+    );
   });
 });

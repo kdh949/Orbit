@@ -72,6 +72,7 @@ import { AddUserDisplayNames2026072104000 } from "./migrations/2026072104000-Add
 import { AddCommunityTemplateEngagement2026072105000 } from "./migrations/2026072105000-AddCommunityTemplateEngagement";
 import { AddCommunityTemplateGovernance2026072106000 } from "./migrations/2026072106000-AddCommunityTemplateGovernance";
 import { AddCommunityCategoriesAndTags2026072107000 } from "./migrations/2026072107000-AddCommunityCategoriesAndTags";
+import { CreateOoxmlReferenceTemplateGenerationArtifacts2026072201000 } from "./migrations/2026072201000-CreateOoxmlReferenceTemplateGenerationArtifacts";
 
 loadDotenv({ path: "../../.env.local" });
 loadDotenv({ path: ".env.local" });
@@ -156,6 +157,7 @@ export const databaseOptions: DataSourceOptions = {
     AddCommunityTemplateEngagement2026072105000,
     AddCommunityTemplateGovernance2026072106000,
     AddCommunityCategoriesAndTags2026072107000,
+    CreateOoxmlReferenceTemplateGenerationArtifacts2026072201000,
   ],
   migrationsTableName: "typeorm_migrations",
   synchronize: false,

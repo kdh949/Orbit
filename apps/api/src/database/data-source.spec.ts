@@ -42,6 +42,26 @@ describe("databaseOptions", () => {
     ).toBe(true);
   });
 
+  it("registers the OOXML reference generation artifact migration", () => {
+    const migrations = Array.isArray(databaseOptions.migrations)
+      ? databaseOptions.migrations
+      : [];
+    const names = migrations.map((migration) =>
+      typeof migration === "function" ? migration.name : "",
+    );
+
+    expect(names).toContain(
+      "CreateOoxmlReferenceTemplateGenerationArtifacts2026072201000",
+    );
+    expect(
+      names.indexOf(
+        "CreateOoxmlReferenceTemplateGenerationArtifacts2026072201000",
+      ),
+    ).toBeGreaterThan(
+      names.indexOf("AddCommunityCategoriesAndTags2026072107000"),
+    );
+  });
+
   it("registers the rehearsal audio retention migration", () => {
     const migrations = Array.isArray(databaseOptions.migrations)
       ? databaseOptions.migrations
