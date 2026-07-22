@@ -705,6 +705,12 @@ async function executeV2ImageSlide(
       emitEvent: (event, fields) => emit(input.eventLogger, event, fields),
       maxRepairAttempts: 0,
     });
+    if (!visual.passed) {
+      throw new StageTerminalError(
+        "GENERATE_DECK_SLIDE_VISUAL_QUALITY_GATE_FAILED",
+        "Generated slide did not pass rendered visual quality review.",
+      );
+    }
     finalizedDeck = visual.deck;
     finalizedValidation = visual.issues.length > 0
       ? withVisualIssues(visual.validation, visual.issues)
@@ -1109,6 +1115,15 @@ async function executeRenderedVisualQuality(
     const validation = outcome.issues.length > 0
       ? withVisualIssues(outcome.validation, outcome.issues)
       : outcome.validation;
+    if (!outcome.passed) {
+      throw qualityGateError(
+        "GENERATE_DECK_VISUAL_QUALITY_GATE_FAILED",
+        workerPayload,
+        outcome.deck,
+        validation,
+        [...workerPayload.warnings, ...outcome.warnings],
+      );
+    }
     workerPayload = generateDeckResponseSchema.parse({
       ...workerPayload,
       deck: withGenerationQualityMetadata(

@@ -395,6 +395,29 @@ export async function processGenerateDeckPipeline(input: {
     validation = visualOutcome.issues.length > 0
       ? withVisualIssues(visualOutcome.validation, visualOutcome.issues)
       : visualOutcome.validation;
+    if (!visualOutcome.passed) {
+      emitEvent("ai-ppt.visual-gate.failed", {
+        jobId: input.jobId,
+        projectId: input.projectId,
+        deckId: deck.deckId,
+        issueCount: visualOutcome.issues.length,
+        stage: "rendered-visual-quality",
+      });
+      return failGenerateDeckQualityGate(
+        input.dataSource,
+        input.jobId,
+        {
+          ...input.workerPayload,
+          diagnostics: renderedVisualQualityDiagnostics(
+            visualOutcome,
+            diagnostics,
+          ),
+        },
+        deck,
+        validation,
+        [...input.workerPayload.warnings, ...imageWarnings, ...visualOutcome.warnings],
+      );
+    }
     deck = withGenerationQualityMetadata(
       deck,
       validation,

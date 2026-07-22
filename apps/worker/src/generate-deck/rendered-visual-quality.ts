@@ -22,6 +22,7 @@ import {
   applyPostVisualRepairValidation,
   hasBlockingQualityGateIssues,
 } from "./semantic-quality";
+import { evaluateVisualQualityPolicy } from "./visual-quality-policy";
 
 const pythonVisualRepairActionSchema = z.object({
   action: generateDeckVisualRepairActionTypeSchema,
@@ -303,23 +304,16 @@ export async function runRenderedVisualQuality(input: {
     emitVisualReviewEvent(input, deck, review, reviewAttempts);
   }
 
-  const passed = visualReviewMeetsAcceptanceThreshold(review);
-  if (passed && !review.passed) {
-    warnings.push(
-      `Vision QA accepted ${review.issues.length} advisory issue(s) after bounded repair.`,
-    );
-    input.emitEvent("ai-ppt.visual-gate.advisory-accepted", {
-      jobId: input.jobId,
-      projectId: input.projectId,
-      deckId: deck.deckId,
-      issueCodes: review.issues.map((issue) => issue.code),
-      affectedSlideCount: new Set(
-        review.issues.map((issue) => issue.slideOrder),
-      ).size,
-    });
-  }
+  const policy = evaluateVisualQualityPolicy({
+    validation,
+    visualQaStatus: review.passed ? "passed" : "failed",
+    visualIssueCodes: review.issues.map((issue) => issue.code),
+    repairAttempts,
+    maxRepairAttempts: input.maxRepairAttempts ?? maxVisualRepairAttempts,
+    safeRemapAttempted: false,
+  });
   return {
-    passed,
+    passed: policy.publicationAllowed,
     deck,
     validation,
     warnings,
@@ -404,12 +398,6 @@ function emitVisualReviewEvent(
     passed: review.passed,
     issueCodes: review.issues.map((issue) => issue.code),
   });
-}
-
-function visualReviewMeetsAcceptanceThreshold(
-  _review: NormalizedVisualQaReview,
-) {
-  return true;
 }
 
 function unavailableVisualQaError(

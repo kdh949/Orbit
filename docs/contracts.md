@@ -970,7 +970,8 @@ Saved Design Pack은 `/createdeck`의 Session Design Pack을 시스템 preset �
 - `repair-deck-visuals`는 repair 이후 Deck과 결정론적 `validation`을 함께 반환한다. 선택 이미지가 해소되지 않은 slide는 `dropOptionalMediaSlideIds`로 전달하며, `requiredAsset=false`인 경우에만 호환 가능한 no-media composition으로 재컴파일한다.
 - Node Worker는 저장된 image asset을 Vision 검토 요청에만 data URL로 주입하며, 원본 Deck JSON의 project asset URL은 유지한다.
 - 시각 검토는 최초 1회와 최대 2회의 bounded repair 후 재검토로 제한한다. repair가 새 이미지 슬롯을 만들면 해당 slide만 asset을 다시 해소한다.
-- rendered Visual QA의 모든 issue는 code와 영향 slide 수에 관계없이 advisory이며 Deck 발행을 차단하지 않는다. `program-v2`는 각 image-slide shard에서 Vision QA를 한 번만 수행하고 동기 repair는 하지 않으며, 그 결과를 validation에 보존한다. 마지막 전체 Deck Vision 재검사는 생략한 뒤 이를 `metadata.generationQuality`와 diagnostics로 집계한다. 렌더 또는 Vision provider를 사용할 수 없더라도 구조적으로 유효한 Deck은 `visualQaStatus="unavailable"` warning과 함께 발행한다. unresolved placeholder, schema 위반, 누락된 slide artifact처럼 편집 가능한 Deck 자체를 만들 수 없는 계약 오류는 QA 결과가 아니므로 terminal로 유지한다.
+- 시각 acceptance policy는 deterministic P0, rendered P1, advisory P2를 구분한다. blocking validation issue인 P0는 즉시 terminal이며, rendered Vision issue인 P1은 bounded repair와 safe remap으로 해소되기 전에는 발행하지 않는다. repair 예산과 remap을 모두 소진한 뒤 P1이 남은 Deck은 Job을 실패 처리하고 `decks`에 저장하지 않는다.
+- non-blocking media budget 같은 deterministic issue와 승인된 layout에서 `standard` QA로 실행한 Vision provider unavailable만 P2 advisory로 발행할 수 있다. Saved Design Pack의 `qaStrictness="strict"`이면 Vision provider unavailable도 실패 처리한다. unresolved placeholder, schema 위반, 누락된 slide artifact처럼 편집 가능한 Deck 자체를 만들 수 없는 계약 오류는 항상 terminal이다.
 - `AI_PPT_VISUAL_QA_MODEL`이 비어 있으면 `OPENAI_MODEL`을 사용한다. Vision QA를 실행할 수 없으면 `program-v2`를 `recipe-v1`로 fallback하지 않는다.
 
 구현 위치:

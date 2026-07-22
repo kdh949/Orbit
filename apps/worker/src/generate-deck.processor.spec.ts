@@ -560,7 +560,7 @@ describe("processGenerateDeckJob", () => {
     ]);
   });
 
-  it("publishes a four-slide deck when advisory issues remain on three slides", async () => {
+  it("blocks a four-slide deck when P1 issues remain on three slides", async () => {
     const deck = programV2DeckWithSlideCount(4);
     const query = dynamicJobQuery();
     let repairCount = 0;
@@ -589,7 +589,7 @@ describe("processGenerateDeckJob", () => {
       programV2Payload()
     );
 
-    expect(job.status).toBe("succeeded");
+    expect(job.status).toBe("failed");
     expect(repairCount).toBe(2);
     expect(job.result).toMatchObject({
       validation: {
@@ -603,21 +603,20 @@ describe("processGenerateDeckJob", () => {
         ),
       },
       diagnostics: {
-        visualQaStatus: "advisory",
+        visualQaStatus: "failed",
         visualReviewAttempts: 3,
         visualRepairAttempts: 2,
         visualIssueCodes: ["BALANCE_WEAK", "BALANCE_WEAK", "BALANCE_WEAK"],
         visualIssueSlideOrders: [1, 2, 3],
-        warningCodes: ["GENERATE_DECK_VISUAL_ADVISORY"]
-      },
-      warnings: [expect.stringContaining("advisory issue")]
+        warningCodes: []
+      }
     });
     expect(
       query.mock.calls.some(([sql]) => String(sql).includes("INSERT INTO decks"))
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it("publishes a twice-repaired visual issue as an advisory", async () => {
+  it("blocks a visual issue that remains after two repairs", async () => {
     const deck = programV2Deck();
     const query = dynamicJobQuery();
     let repairCount = 0;
@@ -646,9 +645,9 @@ describe("processGenerateDeckJob", () => {
       programV2Payload()
     );
 
-    expect(job.status).toBe("succeeded");
-    expect(job.error).toBeNull();
-    expect(job.progress).toBe(100);
+    expect(job.status).toBe("failed");
+    expect(job.error?.code).toBe("GENERATE_DECK_QUALITY_GATE_FAILED");
+    expect(job.progress).toBe(90);
     expect(repairCount).toBe(2);
     expect(job.result).toMatchObject({
       validation: {
@@ -658,7 +657,7 @@ describe("processGenerateDeckJob", () => {
         ]
       },
       diagnostics: {
-        visualQaStatus: "advisory",
+        visualQaStatus: "failed",
         visualReviewAttempts: 3,
         visualRepairAttempts: 2,
         visualIssueCodes: ["IMAGE_CONTENT_MISMATCH"]
@@ -666,7 +665,7 @@ describe("processGenerateDeckJob", () => {
     });
     expect(
       query.mock.calls.some(([sql]) => String(sql).includes("INSERT INTO decks"))
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("converts an unresolved optional image to a no-media composition", async () => {
@@ -1829,7 +1828,7 @@ describe("processGenerateDeckJob", () => {
       ]);
     });
 
-    it("keeps a visual issue without repair actions as an advisory", async () => {
+    it("keeps a visual issue without repair actions out of publication", async () => {
       const deck = programV2Deck();
       const repairRequest = vi.fn();
       vi.stubGlobal(
@@ -1876,7 +1875,7 @@ describe("processGenerateDeckJob", () => {
       });
 
       expect(outcome).toMatchObject({
-        passed: true,
+        passed: false,
         reviewAttempts: 1,
         repairAttempts: 0
       });
