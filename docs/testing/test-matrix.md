@@ -175,7 +175,8 @@
 | Checkpoint D1 | 부분 통과, 승인 보류 | AI 추천 회귀와 reference UI/API 자동 test | enabled exact template checksum snapshot과 actual preview/editor transition |
 | Task 18 slot-only editor/API policy | 자동 통과 | toolbar/canvas/keyboard/drop gate, API patch/PUT bypass 409, 일반 Deck 회귀 | 제한 편집 UX 사람 검수 |
 | Task 19 sync freshness/export gate | 자동 통과 | API/Worker 101 tests, PostgreSQL+Python round-trip 7 tests, reference text edit→warning 0→current package export→re-import | 실제 7-template PowerPoint/LibreOffice reopen |
-| Checkpoint D2 | 승인 보류 | product path 단위/통합 fixture | 전체 E2E, 7개 fidelity artifact, actual PowerPoint와 사람 승인 |
+| Task 20 flag/runbook/E2E | 자동 통과 | exact `template-id@version` config/API test, flag off/on `/createdeck` Playwright 2 tests, generation→제한 편집→sync gate→export mock product path | local Compose flag on actual source smoke와 운영 지표 관찰 |
+| Checkpoint D2 | 부분 통과, 승인 보류 | `/createdeck` fixture E2E, flag off/allowlist rollback 계약, Task 19 PostgreSQL+Python actual package round-trip | 7개 actual full-deck artifact, PowerPoint/LibreOffice reopen, 기존 전체 regression과 사람 승인 |
 
 최종 gate는 계획 문서의 전체 검증 매트릭스를 따른다. LibreOffice 결과를 Microsoft
 PowerPoint QA로 대체하지 않으며, `not-run` 환경 증거를 `passed`로 승격하지 않는다.

@@ -1015,15 +1015,15 @@ report에는 artifact checksum, renderer/version, font checksum, source/template
 
 **Acceptance criteria:**
 
-- [ ] global off면 reference mode와 catalog endpoint가 unavailable이고 AI 추천 경로만 보인다.
-- [ ] allowlist는 template ID/version 단위이며 disable이 진행 중/기존 Deck의 sync/export를 깨뜨리지 않는다.
-- [ ] 운영 지표와 rollback이 Job/Deck 삭제나 source overwrite 없이 수행된다.
+- [x] global off면 reference mode와 catalog endpoint가 unavailable이고 AI 추천 경로만 보인다.
+- [x] allowlist는 template ID/version 단위이며 disable이 진행 중/기존 Deck의 sync/export를 깨뜨리지 않는다.
+- [x] 운영 지표와 rollback이 Job/Deck 삭제나 source overwrite 없이 수행된다.
 
 **Verification:**
 
-- [ ] `tests/e2e/ai-ppt-ooxml-reference-template.spec.ts`
-- [ ] `node infra/scripts/check-env.mjs`와 `docker compose config`
-- [ ] local Compose liveness/readiness와 flag on/off smoke
+- [x] `tests/e2e/ai-ppt-ooxml-reference-template.spec.ts`
+- [x] `node infra/scripts/check-env.mjs`와 `docker compose config`
+- [x] local Compose liveness/readiness와 flag on/off smoke
 
 **Dependencies:** Tasks 17, 19
 

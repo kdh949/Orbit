@@ -2,10 +2,11 @@
 
 ## 현재 상태
 
-이 문서는 Task 8의 fidelity harness를 구현하기 위한 초안이다. 7개 template의 실제
-identity-control baseline, Microsoft PowerPoint 결과와 threshold 근거는 아직 수집되지
-않았다. 따라서 특정 SSIM 점수나 종합 점수를 승인 threshold로 간주하지 않으며,
-Checkpoint B1/B2 및 제품 rollout을 통과로 표시하지 않는다.
+Task 8의 fidelity harness는 identity control, intended-slot mask, locked-region metric과
+structural hard gate까지 구현됐다. 다만 7개 template의 실제 identity-control baseline,
+Microsoft PowerPoint 결과와 threshold 근거는 아직 수집되지 않았다. 따라서 특정 SSIM
+점수나 종합 점수를 승인 threshold로 간주하지 않으며, Checkpoint B1/B2 및 제품 rollout을
+통과로 표시하지 않는다.
 
 기존 `pptx_quality.py`의 일반 SSIM 기본값 `0.95`와 System Design Pack engineering score
 `85`는 이 모드의 승인 threshold가 아니다.
