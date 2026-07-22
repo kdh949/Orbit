@@ -8,6 +8,7 @@ import { PresentationBriefsModule } from "../presentation-briefs/presentation-br
 import { AiDeckPreviewController } from "./ai-deck-preview.controller";
 import { AiDeckPreviewService } from "./ai-deck-preview.service";
 import { DeckColorOptionsController } from "./deck-color-options.controller";
+import { DeckDesignPackOptionsController } from "./deck-design-pack-options.controller";
 import { GenerateDeckController } from "./generate-deck.controller";
 import { GenerateDeckService } from "./generate-deck.service";
 import { DesignSelectionController } from "./design-selection.controller";
@@ -25,6 +26,7 @@ import { DesignSelectionService } from "./design-selection.service";
   controllers: [
     AiDeckPreviewController,
     DeckColorOptionsController,
+    DeckDesignPackOptionsController,
     DesignSelectionController,
     GenerateDeckController,
   ],

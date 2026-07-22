@@ -8,11 +8,14 @@ import {
   deckColorCustomizationResponseSchema,
   deckColorOptionRequestSchema,
   deckColorOptionsResponseSchema,
+  designPackOptionsRequestSchema,
+  designPackOptionsResponseSchema,
   generateDeckRequestSchema,
   generateDeckStartResponseSchema,
   generateDeckStoredJobPayloadSchema,
   type DeckColorCustomizationResponse,
-  type DeckColorOptionsResponse
+  type DeckColorOptionsResponse,
+  type DesignPackOptionsResponse
 } from "@orbit/shared";
 import { loadOrbitConfig } from "@orbit/config";
 import {
@@ -193,6 +196,46 @@ export class GenerateDeckService {
         error instanceof Error
           ? error.message
           : "Python worker returned invalid color options."
+      );
+    }
+  }
+
+  async createDesignPackOptions(
+    body: unknown
+  ): Promise<DesignPackOptionsResponse> {
+    const request = parseRequest(designPackOptionsRequestSchema, body);
+    let response: Response;
+
+    try {
+      response = await fetch(
+        workerUrl(
+          this.config.PYTHON_WORKER_URL,
+          "/internal/ai/deck-generation/design-pack-options"
+        ),
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(request),
+          signal: AbortSignal.timeout(10_000)
+        }
+      );
+    } catch {
+      throw new ServiceUnavailableException(
+        "AI design pack recommendations are temporarily unavailable."
+      );
+    }
+
+    if (!response.ok) {
+      throw new ServiceUnavailableException(
+        "AI design pack recommendation provider failed."
+      );
+    }
+
+    try {
+      return designPackOptionsResponseSchema.parse(await response.json());
+    } catch {
+      throw new InternalServerErrorException(
+        "Python worker returned invalid design pack recommendations."
       );
     }
   }
