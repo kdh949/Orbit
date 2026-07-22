@@ -1575,7 +1575,7 @@
 .ai-ppt-generation-mode button.selected,
 .ai-ppt-generation-mode button:focus-visible {
   border-color: var(--redesign-color-primary);
-  box-shadow: 0 0 0 2px var(--redesign-color-primary-container);
+  box-shadow: var(--redesign-shadow-outline-primary-subtle);
 }
 
 .ai-ppt-generation-mode button span,
@@ -1616,7 +1616,7 @@
 }
 
 .ai-ppt-reference-template-grid > button.selected {
-  box-shadow: 0 0 0 1px var(--redesign-color-primary);
+  box-shadow: var(--redesign-shadow-outline-primary);
 }
 
 .ai-ppt-reference-template-previews {

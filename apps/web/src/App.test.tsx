@@ -232,6 +232,23 @@ describe("App shell routing", () => {
     ).toBe(false);
   });
 
+  it("parses the dedicated OOXML reference generation route", () => {
+    expect(
+      getRoute("/projects/project_1/ooxml-reference-generations/job_1")
+    ).toEqual({
+      name: "ooxml-reference-generation",
+      projectId: "project_1",
+      jobId: "job_1"
+    });
+    expect(
+      shouldRenderAppFrame({
+        name: "ooxml-reference-generation",
+        projectId: "project_1",
+        jobId: "job_1"
+      })
+    ).toBe(false);
+  });
+
   it("renders the production AI PPT wizard from the createdeck route", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(authMeQueryKey, {

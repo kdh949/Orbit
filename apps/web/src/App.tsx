@@ -44,6 +44,7 @@ import {
   AiPptStyleColorPage,
 } from "./features/ai-ppt/AiPptMockupPage";
 import { AiDeckGenerationPage } from "./features/ai-ppt/AiDeckGenerationPage";
+import { OoxmlReferenceGenerationPage } from "./features/ai-ppt/OoxmlReferenceGenerationPage";
 import { DeckVersionHistoryPage } from "./features/editor/history/DeckVersionHistoryPage";
 import {
   OrbitMockupFlow,
@@ -93,6 +94,7 @@ export type Route =
   | { name: "activity-results"; projectId: string; sessionId: string }
   | { name: "story-style-color"; projectId: string; jobId: string }
   | { name: "ai-deck-generation"; projectId: string; jobId: string }
+  | { name: "ooxml-reference-generation"; projectId: string; jobId: string }
   | { name: "project-request"; projectId: string }
   | { name: "audience-session"; sessionId: string }
   | { name: "audience-activity"; sessionId: string; activityId: string }
@@ -528,6 +530,17 @@ export function getRoute(pathname?: string, search?: string): Route {
       };
     }
 
+    const ooxmlReferenceGenerationMatch = normalized.match(
+      /^\/projects\/([^/]+)\/ooxml-reference-generations\/([^/]+)$/,
+    );
+    if (ooxmlReferenceGenerationMatch) {
+      return {
+        name: "ooxml-reference-generation",
+        projectId: decodeURIComponent(ooxmlReferenceGenerationMatch[1]),
+        jobId: decodeURIComponent(ooxmlReferenceGenerationMatch[2]),
+      };
+    }
+
     const projectMatch = normalized.match(/^\/project\/([^/]+)$/);
     if (projectMatch) {
       return {
@@ -772,6 +785,7 @@ export function shouldRenderAppFrame(route: Route) {
     route.name !== "design-system" &&
     route.name !== "mockup" &&
     route.name !== "project-editor" &&
+    route.name !== "ooxml-reference-generation" &&
     route.name !== "activity-preview" &&
     route.name !== "presentation" &&
     route.name !== "present" &&
@@ -885,6 +899,14 @@ function renderRoute(route: Route, user?: AuthUser) {
   if (route.name === "ai-deck-generation") {
     return (
       <AiDeckGenerationPage
+        jobId={route.jobId}
+        projectId={route.projectId}
+      />
+    );
+  }
+  if (route.name === "ooxml-reference-generation") {
+    return (
+      <OoxmlReferenceGenerationPage
         jobId={route.jobId}
         projectId={route.projectId}
       />

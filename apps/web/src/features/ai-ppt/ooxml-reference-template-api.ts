@@ -1,10 +1,12 @@
 import {
   jobSchema,
+  ooxmlReferenceTemplatePreviewResponseSchema,
   ooxmlReferenceTemplateOptionsResponseSchema,
   type Job,
   type OoxmlReferenceTemplateGenerationRequest,
   type OoxmlReferenceTemplateOption,
   type OoxmlReferenceTemplateOptionsResponse,
+  type OoxmlReferenceTemplatePreviewResponse,
 } from "@orbit/shared";
 
 export async function requestOoxmlReferenceTemplateOptions(): Promise<OoxmlReferenceTemplateOptionsResponse> {
@@ -46,6 +48,22 @@ export async function startOoxmlReferenceTemplateGeneration(
     throw new Error("원본 템플릿 생성 응답이 올바르지 않습니다.");
   }
   return jobSchema.parse(payload.job);
+}
+
+export async function requestOoxmlReferenceTemplatePreview(
+  projectId: string,
+  jobId: string,
+): Promise<OoxmlReferenceTemplatePreviewResponse> {
+  const response = await fetch(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/ooxml-reference-template-generations/${encodeURIComponent(jobId)}/preview`,
+    { credentials: "include" },
+  );
+  if (!response.ok) {
+    throw new Error("원본 템플릿 생성 상태를 불러오지 못했습니다.");
+  }
+  return ooxmlReferenceTemplatePreviewResponseSchema.parse(
+    await response.json(),
+  );
 }
 
 export function buildOoxmlReferenceTemplateGenerationRequest(input: {
