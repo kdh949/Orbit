@@ -1,5 +1,6 @@
 import {
   deckSchema,
+  ooxmlReferenceTemplateGenerationJobResultSchema,
   ooxmlTemplateSnapshotSchema,
   qualityReportSchema,
   templateBlueprintSchema,
@@ -11,19 +12,28 @@ import {
 import type { DataSource, EntityManager } from "typeorm";
 import { z } from "zod";
 
-const packageAssetSchema = z
+const designAssetBaseSchema = z
   .object({
     fileId: z.string().min(1),
     storageKey: z.string().min(1),
     originalName: z.string().min(1),
-    mimeType: z.literal(
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    ),
     size: z.number().int().nonnegative(),
   })
   .strict();
 
-type PackageAsset = z.infer<typeof packageAssetSchema>;
+const packageAssetSchema = designAssetBaseSchema.extend({
+  mimeType: z.literal(
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ),
+});
+
+const renderAssetSchema = designAssetBaseSchema.extend({
+  mimeType: z.literal("image/png"),
+});
+
+type DesignAsset =
+  | z.infer<typeof packageAssetSchema>
+  | z.infer<typeof renderAssetSchema>;
 
 export type OoxmlReferenceMaterializationPublication = {
   projectId: string;
@@ -33,6 +43,8 @@ export type OoxmlReferenceMaterializationPublication = {
   templateSnapshot: unknown;
   baselinePackage: unknown;
   currentPackage: unknown;
+  renderAssets?: unknown[];
+  jobResult?: unknown;
   qualityReport: unknown;
 };
 
@@ -50,6 +62,9 @@ export async function publishOoxmlReferenceMaterialization(
   );
   const baselinePackage = packageAssetSchema.parse(input.baselinePackage);
   const currentPackage = packageAssetSchema.parse(input.currentPackage);
+  const renderAssets = z.array(renderAssetSchema).max(500).parse(
+    input.renderAssets ?? [],
+  );
   if (baselinePackage.fileId === currentPackage.fileId) {
     throw new Error("baseline and current package file IDs must be distinct");
   }
@@ -62,10 +77,35 @@ export async function publishOoxmlReferenceMaterialization(
     referenceTemplateSnapshot: templateSnapshot,
   });
   const qualityReport = qualityReportSchema.parse(input.qualityReport);
+  const jobResult = input.jobResult
+    ? ooxmlReferenceTemplateGenerationJobResultSchema.parse(input.jobResult)
+    : null;
+  if (jobResult) {
+    const expectedRenderFileIds = renderAssets.map((asset) => asset.fileId);
+    if (
+      jobResult.deckId !== deck.deckId ||
+      jobResult.templateId !== templateBlueprint.templateId ||
+      jobResult.currentPackageFileId !== currentPackage.fileId ||
+      JSON.stringify(jobResult.templateSnapshot) !== JSON.stringify(templateSnapshot) ||
+      JSON.stringify(jobResult.renderAssetFileIds) !==
+        JSON.stringify(expectedRenderFileIds)
+    ) {
+      throw new Error("generation result does not match publication identity");
+    }
+    if (
+      jobResult.fidelityReport.status !== "passed" ||
+      !jobResult.fidelityReport.structuralGate.passed
+    ) {
+      throw new Error("generation fidelity gate must pass before publication");
+    }
+  }
 
   await dataSource.transaction(async (manager) => {
     await insertPackageAsset(manager, input.projectId, baselinePackage);
     await insertPackageAsset(manager, input.projectId, currentPackage);
+    for (const renderAsset of renderAssets) {
+      await insertPackageAsset(manager, input.projectId, renderAsset);
+    }
     await insertDeck(manager, deck);
     await insertTemplateBlueprint(
       manager,
@@ -74,6 +114,14 @@ export async function publishOoxmlReferenceMaterialization(
       templateBlueprint,
       qualityReport,
     );
+    if (jobResult) {
+      await publishParentJobSuccess(
+        manager,
+        input.projectId,
+        input.generationId,
+        jobResult,
+      );
+    }
   });
   eventSink?.info({
     event: "ooxml_reference_materialization_published",
@@ -84,6 +132,31 @@ export async function publishOoxmlReferenceMaterialization(
     baselineFileId: baselinePackage.fileId,
     currentFileId: currentPackage.fileId,
   });
+}
+
+async function publishParentJobSuccess(
+  manager: EntityManager,
+  projectId: string,
+  jobId: string,
+  result: z.infer<typeof ooxmlReferenceTemplateGenerationJobResultSchema>,
+): Promise<void> {
+  const rows = await manager.query(
+    `
+      UPDATE jobs
+      SET status = 'succeeded', progress = 100,
+          message = 'OOXML reference template generation completed.',
+          result = $3, error = NULL, updated_at = now()
+      WHERE job_id = $1 AND project_id = $2
+        AND type = 'ooxml-reference-template-generation'
+        AND status IN ('queued', 'running')
+      RETURNING job_id
+    `,
+    [jobId, projectId, result],
+  );
+  const queryRows = Array.isArray(rows) && Array.isArray(rows[0]) ? rows[0] : rows;
+  if (!Array.isArray(queryRows) || queryRows.length !== 1) {
+    throw new Error("generation parent Job is not publishable");
+  }
 }
 
 function materializedDeck(
@@ -112,7 +185,7 @@ function materializedDeck(
 async function insertPackageAsset(
   manager: EntityManager,
   projectId: string,
-  asset: PackageAsset,
+  asset: DesignAsset,
 ): Promise<void> {
   await manager.query(
     `

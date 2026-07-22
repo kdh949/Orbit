@@ -92,6 +92,7 @@ type PublishedState = {
   projectAssets: Map<string, unknown>;
   decks: Map<string, unknown>;
   blueprints: Map<string, unknown>;
+  jobs: Map<string, unknown>;
 };
 
 function transactionalRepository(options: { failBlueprint?: boolean } = {}) {
@@ -99,6 +100,7 @@ function transactionalRepository(options: { failBlueprint?: boolean } = {}) {
     projectAssets: new Map(),
     decks: new Map(),
     blueprints: new Map(),
+    jobs: new Map(),
   };
   const transaction = vi.fn(
     async (
@@ -110,6 +112,7 @@ function transactionalRepository(options: { failBlueprint?: boolean } = {}) {
         projectAssets: new Map(state.projectAssets),
         decks: new Map(state.decks),
         blueprints: new Map(state.blueprints),
+        jobs: new Map(state.jobs),
       };
       const manager = {
         query: vi.fn(async (sql: string, params: unknown[]) => {
@@ -125,6 +128,10 @@ function transactionalRepository(options: { failBlueprint?: boolean } = {}) {
             }
             pending.blueprints.set(String(params[0]), params[4]);
           }
+          if (sql.includes("UPDATE jobs")) {
+            pending.jobs.set(String(params[0]), params[2]);
+            return [{ job_id: params[0] }];
+          }
           return [];
         }),
       };
@@ -132,6 +139,7 @@ function transactionalRepository(options: { failBlueprint?: boolean } = {}) {
       state.projectAssets = pending.projectAssets;
       state.decks = pending.decks;
       state.blueprints = pending.blueprints;
+      state.jobs = pending.jobs;
       return result;
     },
   );
@@ -249,5 +257,94 @@ describe("publishOoxmlReferenceMaterialization", () => {
     expect(repository.state.projectAssets.size).toBe(0);
     expect(repository.state.decks.size).toBe(0);
     expect(repository.state.blueprints.size).toBe(0);
+    expect(repository.state.jobs.size).toBe(0);
+  });
+
+  it("publishes render assets and the bounded parent Job result in the same transaction", async () => {
+    const repository = transactionalRepository();
+    const input = publicationInput();
+    const renderAsset = {
+      fileId: "file_reference_render_1",
+      storageKey: "projects/project_1/design-assets/render-1.png",
+      originalName: "render-1.png",
+      mimeType: "image/png",
+      size: 2048,
+    };
+    const jobResult = {
+      deckId: input.deck.deckId,
+      templateId: input.templateBlueprint.templateId,
+      currentPackageFileId: input.currentPackage.fileId,
+      renderAssetFileIds: [renderAsset.fileId],
+      templateSnapshot,
+      fidelityReport: {
+        status: "passed",
+        structuralGate: { passed: true, issueCodes: [] },
+        identityControl: {
+          status: "not-run",
+          evaluatedSlideCount: 0,
+          packageWarningCount: 0,
+          lockedGeometryDriftCount: 0,
+        },
+        generatedComparison: {
+          status: "not-run",
+          evaluatedSlideCount: 0,
+          lockedRegionDriftCount: 0,
+          slotOverflowCount: 0,
+        },
+        warningCodes: [],
+      },
+      warningCodes: [],
+    };
+
+    await publishOoxmlReferenceMaterialization(repository.dataSource, {
+      ...input,
+      renderAssets: [renderAsset],
+      jobResult,
+    });
+
+    expect(repository.transaction).toHaveBeenCalledTimes(1);
+    expect(repository.state.projectAssets.size).toBe(3);
+    expect(repository.state.jobs.get(input.generationId)).toEqual(jobResult);
+  });
+
+  it("does not start publication when the fidelity gate is not passed", async () => {
+    const repository = transactionalRepository();
+    const input = publicationInput();
+    const jobResult = {
+      deckId: input.deck.deckId,
+      templateId: input.templateBlueprint.templateId,
+      currentPackageFileId: input.currentPackage.fileId,
+      renderAssetFileIds: [],
+      templateSnapshot,
+      fidelityReport: {
+        status: "not-run",
+        structuralGate: { passed: false, issueCodes: [] },
+        identityControl: {
+          status: "not-run",
+          evaluatedSlideCount: 0,
+          packageWarningCount: 0,
+          lockedGeometryDriftCount: 0,
+        },
+        generatedComparison: {
+          status: "not-run",
+          evaluatedSlideCount: 0,
+          lockedRegionDriftCount: 0,
+          slotOverflowCount: 0,
+        },
+        warningCodes: ["OOXML_REFERENCE_FIDELITY_ENVIRONMENT_INCOMPLETE"],
+      },
+      warningCodes: [],
+    };
+
+    await expect(
+      publishOoxmlReferenceMaterialization(repository.dataSource, {
+        ...input,
+        renderAssets: [],
+        jobResult,
+      }),
+    ).rejects.toThrow("fidelity gate");
+
+    expect(repository.transaction).not.toHaveBeenCalled();
+    expect(repository.state.projectAssets.size).toBe(0);
   });
 });
