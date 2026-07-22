@@ -32,6 +32,11 @@ import { useEditorShellUiStore } from "./editorShellUiStore";
 import { beginHorizontalPaneResize } from "./utils/beginHorizontalPaneResize";
 import { canEditSlideCanvas } from "./utils/slideEditingPolicy";
 import {
+  canEditReferenceSlotContent,
+  findReferenceTemplateUiViolation,
+  isReferenceTemplateDeck,
+} from "../reference-template/referenceTemplateEditPolicy";
+import {
   getAnimationMutationDisabledReason,
   getTransitionMutationDisabledReason
 } from "./utils/motionEditingPolicy";
@@ -425,7 +430,7 @@ export function EditorShell(props: { projectId?: string }) {
     retry: false
   });
   const autoSlideQuestionGuides = useAutoSlideQuestionGuides({
-    canGenerate: canMutateDeck,
+    canGenerate: canMutateDeck && !isReferenceTemplateDeck(deckQuery.data),
     persistedDeck: deckQuery.data,
     projectId,
   });
@@ -490,7 +495,9 @@ export function EditorShell(props: { projectId?: string }) {
     projectId,
     refetchDeck: async () => {
       await deckQuery.refetch();
-    }
+    },
+    validatePatch: (candidateDeck, patch) =>
+      findReferenceTemplateUiViolation(candidateDeck, patch)?.reason ?? null,
   });
   const {
     deck,
@@ -502,6 +509,8 @@ export function EditorShell(props: { projectId?: string }) {
     saveState,
     undoStack
   } = editorDocumentState;
+  const referenceTemplateMode = isReferenceTemplateDeck(deck);
+  const canMutateDeckStructure = canMutateDeck && !referenceTemplateMode;
   const {
     pendingPatchInputsRef,
     persistedBaseDeckRef,
@@ -1137,7 +1146,7 @@ export function EditorShell(props: { projectId?: string }) {
   }
 
   function handleSafeTextOverflowRepair(onlyElementIds?: readonly string[]) {
-    if (!canMutateDeck) return;
+    if (!canMutateDeckStructure) return;
 
     const activeDeck = workingDeckRef.current;
     const result = createSafeTextOverflowRepair({
@@ -1270,7 +1279,7 @@ export function EditorShell(props: { projectId?: string }) {
     !isCropEditing &&
     !isCustomShapeEditingSelection &&
     canAcceptCanvasImageDrop({
-      canMutateDeck,
+      canMutateDeck: canMutateDeckStructure,
       hasBlockingDialog: hasBlockingEditorDialog,
       hasCurrentSlide: Boolean(currentSlide),
       inlineTextEditing: Boolean(editingElementId),
@@ -1416,7 +1425,7 @@ export function EditorShell(props: { projectId?: string }) {
   }
 
   function handleDuplicateSlide(slideId: string) {
-    if (!canMutateDeck || !commitSpeakerNotesDraftIfDirty()) return;
+    if (!canMutateDeckStructure || !commitSpeakerNotesDraftIfDirty()) return;
 
     let duplicateSlideId: string | null = null;
     const committed = commitPatch((currentDeck) => {
@@ -1438,7 +1447,7 @@ export function EditorShell(props: { projectId?: string }) {
 
   function handleDeleteSlide(slideId: string) {
     const activeDeck = workingDeckRef.current;
-    if (!canMutateDeck || activeDeck.slides.length <= 1) return;
+    if (!canMutateDeckStructure || activeDeck.slides.length <= 1) return;
 
     const nextSelectedSlideId = resolveSelectedSlideIdAfterDelete({
       deletedSlideId: slideId,
@@ -1470,7 +1479,7 @@ export function EditorShell(props: { projectId?: string }) {
   }
 
   function handleReorderSlides(orderedSlideIds: readonly string[]) {
-    if (!canMutateDeck) return;
+    if (!canMutateDeckStructure) return;
     const committed = commitPatch((currentDeck) =>
       createSlideRailReorderPatch(currentDeck, orderedSlideIds)
     );
@@ -1576,7 +1585,7 @@ export function EditorShell(props: { projectId?: string }) {
 
   function startImageCrop() {
     if (
-      !canMutateDeck ||
+      !canMutateDeckStructure ||
       !selectedElement ||
       !imageCropActionState.enabled
     ) {
@@ -1790,7 +1799,7 @@ export function EditorShell(props: { projectId?: string }) {
   }, [currentSlide, selectedElement]);
 
   function handleDistributeSelection(axis: DistributeAxis) {
-    if (!currentSlide || !canMutateDeck) return;
+    if (!currentSlide || !canMutateDeckStructure) return;
     const patch = createDistributeSelectionPatch(
       workingDeckRef.current,
       currentSlide,
@@ -1801,7 +1810,7 @@ export function EditorShell(props: { projectId?: string }) {
   }
 
   function handleAlignSelection(alignment: SelectionAlignment) {
-    if (!currentSlide || !canMutateDeck) return;
+    if (!currentSlide || !canMutateDeckStructure) return;
     const patch = createAlignSelectionPatch(
       workingDeckRef.current,
       currentSlide,
@@ -1859,12 +1868,19 @@ export function EditorShell(props: { projectId?: string }) {
         ),
       selectedKeywordLabel: selectedKeyword?.text ?? null,
       showIds,
-      theme: deck.theme
+      theme: deck.theme,
+      referenceContentOnly: referenceTemplateMode,
     };
 
     return (
       <SelectionInspector
-        canEdit={canMutateDeck && canEditCurrentSlideCanvas}
+        canEdit={
+          canMutateDeck &&
+          canEditCurrentSlideCanvas &&
+          (!referenceTemplateMode ||
+            !selectedElement ||
+            canEditReferenceSlotContent(deck, selectedElement))
+        }
         elementControls={
           selectedElement ? (
             <EditorSelectionProperties
@@ -1881,10 +1897,12 @@ export function EditorShell(props: { projectId?: string }) {
           <MultiSelectionQuickBar
             canAlign={
               selectionInspectorModel.selectedCount >= 2 &&
+              !referenceTemplateMode &&
               selectedElements.every((element) => !element.locked)
             }
             canDistribute={
               selectionInspectorModel.selectedCount >= 3 &&
+              !referenceTemplateMode &&
               selectedElements.every((element) => !element.locked)
             }
             selectedCount={selectionInspectorModel.selectedCount}
@@ -1912,7 +1930,7 @@ export function EditorShell(props: { projectId?: string }) {
   }
 
   useEditorKeyboardShortcuts({
-    canMutateDeck,
+    canMutateDeck: canMutateDeckStructure,
     canPasteImage: imageDropEnabled,
     copiedElementRef,
     editingElementId,
@@ -1979,7 +1997,7 @@ export function EditorShell(props: { projectId?: string }) {
           activePresentationAction={activePresentationAction}
           activeTopMenu={activeTopMenu}
           canManageShare={canManageShare}
-          canMutateDeck={canMutateDeck}
+          canMutateDeck={canMutateDeckStructure}
           canOpenAudienceLink={canOpenAudienceLink}
           canStartPresentation={canStartPresentation}
           canvas={deck.canvas}
@@ -2168,7 +2186,7 @@ export function EditorShell(props: { projectId?: string }) {
           />
         ) : (
           <SlideNavigatorPane
-            canMutate={canMutateDeck}
+            canMutate={canMutateDeckStructure}
             deck={deck}
             isCollapsed={isSlidesPaneCollapsed}
             items={slideRailItems}
@@ -2201,11 +2219,11 @@ export function EditorShell(props: { projectId?: string }) {
             <EditorToolbar
               canZoomIn={stageScale < maximumManualEditorZoom}
               canZoomOut={stageScale > minimumManualEditorZoom}
-              canMutate={canMutateDeck}
+              canMutate={canMutateDeckStructure}
               canUseCurrentSlide={canEditCurrentSlideCanvas}
               compactSelectionTrigger={
                 isCompactEditorLayout &&
-                canMutateDeck &&
+                canMutateDeckStructure &&
                 selectionInspectorModel.selectedCount > 0 ? (
                   <button
                     aria-controls="editor-selection-inspector-pane"
@@ -2289,10 +2307,12 @@ export function EditorShell(props: { projectId?: string }) {
             deck={deck}
             editableCanvasProps={{
               customShapeEditElementId,
-                disableInteractions:
+              disableInteractions:
                   isPlayingCurrentSlideAnimations || isSlideRehearsalActive,
               editingElementId,
-              imageCropElementId: canMutateDeck ? imageCropElementId : null,
+              frameEditingDisabled: referenceTemplateMode,
+              imageCropElementId:
+                canMutateDeckStructure ? imageCropElementId : null,
               elementStates: animationPreviewElementStates,
               insertTool,
               selectedElementIds,
@@ -2374,7 +2394,7 @@ export function EditorShell(props: { projectId?: string }) {
               />
             ) : (
               <SpeakerNotesPanel
-                canGenerateQuestionGuides={canMutateDeck}
+                canGenerateQuestionGuides={canMutateDeckStructure}
                 celebrationSessionId={practiceCelebrationSessionId}
                 contentRef={speakerNotesContentRef}
                 currentSlide={currentSlide}
@@ -2548,7 +2568,7 @@ export function EditorShell(props: { projectId?: string }) {
               />
             ) : renderSelectionInspector()
           }
-          canRepairValidation={canMutateDeck}
+          canRepairValidation={canMutateDeckStructure}
           editorValidationItems={presentedEditorValidationItems}
           iconLibrary={
             <IconLibrarySidePanel
@@ -2622,7 +2642,7 @@ export function EditorShell(props: { projectId?: string }) {
           onChange={handlePptxFileInputChange}
         />
       </main>
-      {canMutateDeck && isDeleteUndoToastOpen ? (
+      {canMutateDeckStructure && isDeleteUndoToastOpen ? (
         <EditorUndoToast
           message="슬라이드가 삭제되었습니다"
           onClose={() => setIsDeleteUndoToastOpen(false)}
@@ -2637,6 +2657,20 @@ export function EditorShell(props: { projectId?: string }) {
         isChartMenuOpen={isChartMenuOpen}
         isImageUploadPending={isImageUploadPending}
         isShapeMenuOpen={isShapeMenuOpen}
+        referenceContentOnly={referenceTemplateMode}
+        referenceImageReplaceEnabled={
+          !referenceTemplateMode ||
+          canEditReferenceSlotContent(
+            deck,
+            elementContextMenu && "elementId" in elementContextMenu
+              ? deck.slides
+                  .find((slide) => slide.slideId === elementContextMenu.slideId)
+                  ?.elements.find(
+                    (element) => element.elementId === elementContextMenu.elementId,
+                  )
+              : null,
+          )
+        }
         onCloseChartMenu={() => setIsChartMenuOpen(false)}
         onCloseElementContextMenu={() => setElementContextMenu(null)}
         onCloseShapeMenu={() => setIsShapeMenuOpen(false)}

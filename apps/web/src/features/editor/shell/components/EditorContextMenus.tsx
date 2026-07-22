@@ -46,6 +46,8 @@ export function EditorContextMenus(props: {
   isChartMenuOpen: boolean;
   isImageUploadPending: boolean;
   isShapeMenuOpen: boolean;
+  referenceContentOnly?: boolean;
+  referenceImageReplaceEnabled?: boolean;
   onCloseChartMenu: () => void;
   onCloseElementContextMenu: () => void;
   onCloseShapeMenu: () => void;
@@ -103,7 +105,7 @@ export function EditorContextMenus(props: {
 
   return (
     <>
-      {props.isChartMenuOpen && props.chartMenuPosition
+      {!props.referenceContentOnly && props.isChartMenuOpen && props.chartMenuPosition
         ? createPortal(
             <div className="shape-menu-overlay" onMouseDown={props.onCloseChartMenu}>
               <div
@@ -123,7 +125,7 @@ export function EditorContextMenus(props: {
           )
         : null}
 
-      {props.isShapeMenuOpen && props.shapeMenuPosition
+      {!props.referenceContentOnly && props.isShapeMenuOpen && props.shapeMenuPosition
         ? createPortal(
             <div className="shape-menu-overlay" onMouseDown={props.onCloseShapeMenu}>
               <div
@@ -166,7 +168,17 @@ export function EditorContextMenus(props: {
                 }}
                 onMouseDown={(event) => event.stopPropagation()}
               >
-                {elementContextMenu.type === "table-cell" ? (
+                {props.referenceContentOnly && elementContextMenu.type !== "image" ? (
+                  <button
+                    aria-disabled="true"
+                    className="element-context-menu-item"
+                    disabled
+                    role="menuitem"
+                    type="button"
+                  >
+                    원본 slot 콘텐츠만 편집할 수 있습니다.
+                  </button>
+                ) : elementContextMenu.type === "table-cell" ? (
                   <TableContextMenuItems
                     disabledReasons={elementContextMenu.actionDisabledReasons}
                     onAction={requestTableAction}
@@ -174,7 +186,15 @@ export function EditorContextMenus(props: {
                 ) : elementContextMenu.type === "image" ? (
                   <button
                     className="element-context-menu-item"
-                    disabled={props.isImageUploadPending}
+                    disabled={
+                      props.isImageUploadPending ||
+                      props.referenceImageReplaceEnabled === false
+                    }
+                    title={
+                      props.referenceImageReplaceEnabled === false
+                        ? "편집 가능한 이미지 slot이 아닙니다."
+                        : undefined
+                    }
                     role="menuitem"
                     type="button"
                     onClick={() =>

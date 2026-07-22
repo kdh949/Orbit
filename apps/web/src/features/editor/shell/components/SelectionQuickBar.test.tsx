@@ -6,6 +6,43 @@ import { SelectionQuickBar } from "./SelectionQuickBar";
 import { useEditorShellUiStore } from "../editorShellUiStore";
 
 describe("SelectionQuickBar", () => {
+  it("hides frame, style, and animation controls in reference content-only mode", () => {
+    const deck = createDemoDeck();
+    const slide = deck.slides[0]!;
+    const element = slide.elements.find((candidate) => candidate.elementId === "el_1") ?? null;
+    const html = renderToString(
+      <SelectionQuickBar
+        animations={[]}
+        animationDiagnostics={validateSlideAnimations(slide, "el_1")}
+        canCreateAnimation={false}
+        canvas={deck.canvas}
+        customShapeEditActive={false}
+        element={element}
+        referenceContentOnly
+        selectedKeywordLabel={null}
+        showIds={false}
+        slide={slide}
+        theme={deck.theme}
+        onChangeFrame={vi.fn()}
+        onChangeProps={vi.fn()}
+        onChangeSlideStyle={vi.fn()}
+        onChangeTheme={vi.fn()}
+        onConvertChartToTable={vi.fn()}
+        onDeleteAnimation={vi.fn()}
+        onOpenAnimationEditor={vi.fn()}
+        onToggleCustomShapeClosed={vi.fn()}
+        onToggleCustomShapeEdit={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("slot의 콘텐츠만 편집");
+    expect(html).not.toContain("위치");
+    expect(html).not.toContain("레이아웃");
+    expect(html).not.toContain("외형");
+    expect(html).not.toContain("텍스트 맞춤 축소");
+    expect(html).not.toContain("숨기기");
+  });
+
   it("keeps animation editing out of the visual property controls", () => {
     const deck = createDemoDeck();
     const slide = {

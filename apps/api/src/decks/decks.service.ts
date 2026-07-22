@@ -88,6 +88,11 @@ import { InjectPinoLogger, PinoLogger } from "nestjs-pino";
 import { DataSource, EntityManager } from "typeorm";
 import { ZodError } from "zod";
 import { JobsService } from "../jobs/jobs.service";
+import {
+  findReferencePatchViolation,
+  findReferenceReplacementViolation,
+  type ReferenceEditPolicyViolation,
+} from "./ooxml-reference-edit-policy";
 import { serializeLogError } from "../logging";
 
 type DeckRow = {
@@ -474,6 +479,9 @@ export class DecksService {
     let syncInput: PptxOoxmlSyncJobInput | null = null;
     const response = await this.dataSource.transaction(async (manager) => {
       const updatedAt = nowIso();
+      const requestedDeck = removeLegacyAiGeneratedTitleAnimations(
+        request.deck,
+      );
       const deckRow = await this.findProjectDeckRowForUpdate(
         manager,
         projectId,
@@ -524,11 +532,15 @@ export class DecksService {
           currentDeck.deckId,
           currentDeck,
         );
+        assertReferenceMutationAllowed(
+          findReferenceReplacementViolation(
+            currentDeck,
+            requestedDeck,
+            templateBlueprint?.blueprint,
+          ),
+        );
       }
 
-      const requestedDeck = removeLegacyAiGeneratedTitleAnimations(
-        request.deck,
-      );
       const replacement =
         currentDeck && templateBlueprint
           ? createOoxmlReplacement(currentDeck, requestedDeck, updatedAt)
@@ -638,6 +650,19 @@ export class DecksService {
       }
 
       const updatedAt = nowIso();
+      const templateBlueprint = await this.findOoxmlTemplateBlueprint(
+        manager,
+        projectId,
+        currentDeck.deckId,
+        currentDeck,
+      );
+      assertReferenceMutationAllowed(
+        findReferencePatchViolation(
+          currentDeck,
+          templateBlueprint?.blueprint,
+          request.patch.operations,
+        ),
+      );
       const applyResult = applyDeckPatch(currentDeck, request.patch, {
         createdAt: updatedAt,
       });
@@ -647,12 +672,6 @@ export class DecksService {
       }
 
       await this.insertPatchLog(manager, projectId, applyResult.changeRecord);
-      const templateBlueprint = await this.findOoxmlTemplateBlueprint(
-        manager,
-        projectId,
-        applyResult.deck.deckId,
-        currentDeck,
-      );
       const shouldCheckpoint =
         !templateBlueprint &&
         (Boolean(request.snapshotReason) ||
@@ -2238,6 +2257,23 @@ function throwDeckApiException(
   } satisfies DeckApiError);
 
   throw new HttpException(error, status);
+}
+
+function assertReferenceMutationAllowed(
+  violation: ReferenceEditPolicyViolation | null,
+): void {
+  if (!violation) return;
+  throwDeckApiException(
+    "OOXML_REFERENCE_MUTATION_BLOCKED",
+    HttpStatus.CONFLICT,
+    "Reference-template Decks only accept allowlisted slot content updates",
+    [
+      `operation=${violation.operation}`,
+      `reason=${violation.reason}`,
+      ...(violation.slideId ? [`slideId=${violation.slideId}`] : []),
+      ...(violation.elementId ? [`elementId=${violation.elementId}`] : []),
+    ],
+  );
 }
 
 function formatZodError(error: ZodError): string[] {

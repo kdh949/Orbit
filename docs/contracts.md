@@ -636,6 +636,10 @@ MVP 실패 코드:
 - `STALE_BASE_VERSION`
 - `SNAPSHOT_PROJECT_MISMATCH`
 - `PATCH_APPLY_FAILED`
+- `OOXML_REFERENCE_MUTATION_BLOCKED`: `ooxmlReferenceTemplateSnapshot`이 있는 Deck에서
+  `TemplateBlueprint.slotEditPolicies` 밖의 element, frame/zIndex/geometry, decoration,
+  slide lifecycle, animation 또는 허용되지 않은 slot prop 변경을 시도한 경우 HTTP 409로
+  거부한다. `PUT deck` 전체 교체와 `POST deck/patches`에 동일하게 적용한다.
 
 구현 위치:
 

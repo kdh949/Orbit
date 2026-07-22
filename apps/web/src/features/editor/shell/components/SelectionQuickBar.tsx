@@ -110,6 +110,7 @@ export function SelectionQuickBar(props: {
   onToggleCustomShapeClosed: () => void;
   onToggleCustomShapeEdit: () => void;
   showIds: boolean;
+  referenceContentOnly?: boolean;
 }) {
   const editorPrimaryColor = useEditorPrimaryColor(
     props.theme?.palette.primary ??
@@ -143,6 +144,15 @@ export function SelectionQuickBar(props: {
   }
 
   if (!element && slide) {
+    if (props.referenceContentOnly) {
+      return (
+        <section className="selection-quickbar" data-testid="editor-slide-quickbar">
+          <span className="quickbar-inline-hint" role="status">
+            원본 템플릿에서는 슬라이드 구조와 장식이 잠겨 있습니다.
+          </span>
+        </section>
+      );
+    }
     const danglingAnimations = animationDiagnostics.danglingAnimations
       .map((diagnostic) =>
         slide.animations.find(
@@ -254,7 +264,7 @@ export function SelectionQuickBar(props: {
       ) : null}
       <header className="element-property-inspector-header">
         <strong>{getElementTypeLabel(element.type)}</strong>
-        <button
+        {!props.referenceContentOnly ? <button
           className={`quickbar-toggle ${element.visible ? "active" : ""}`}
           aria-label={element.visible ? "숨기기" : "표시"}
           title={element.visible ? "숨기기" : "표시"}
@@ -262,10 +272,10 @@ export function SelectionQuickBar(props: {
           onClick={() => onChangeFrame({ visible: !element.visible })}
         >
           {element.visible ? <Eye size={17} /> : <EyeOff size={17} />}
-        </button>
+        </button> : null}
       </header>
 
-      <div className="element-property-section">
+      {!props.referenceContentOnly ? <div className="element-property-section">
         <h4>위치</h4>
         {canvas ? (
           <div className="element-property-control-block">
@@ -425,9 +435,9 @@ export function SelectionQuickBar(props: {
             </button>
           </div>
         </div>
-      </div>
+      </div> : null}
 
-      <div className="element-property-section">
+      {!props.referenceContentOnly ? <div className="element-property-section">
         <h4>레이아웃</h4>
         <div className="element-property-grid">
           <PropertyNumberField
@@ -445,9 +455,9 @@ export function SelectionQuickBar(props: {
             value={Math.round(element.height)}
           />
         </div>
-      </div>
+      </div> : null}
 
-      <div className="element-property-section">
+      {!props.referenceContentOnly ? <div className="element-property-section">
         <h4>외형</h4>
         <div className="element-property-grid">
           <PropertyNumberField
@@ -472,13 +482,18 @@ export function SelectionQuickBar(props: {
             />
           ) : null}
         </div>
-      </div>
+      </div> : null}
 
       {element.type !== "group" ? (
         <div className="element-property-section">
           <h4>{getElementContentSectionLabel(element.type)}</h4>
           <div className="selection-quickbar-fields element-property-content-fields">
-            {imageCropActionState?.visible ? (
+            {props.referenceContentOnly ? (
+              <span className="quickbar-inline-hint" role="status">
+                캔버스에서 이 slot의 콘텐츠만 편집할 수 있습니다.
+              </span>
+            ) : null}
+            {!props.referenceContentOnly && imageCropActionState?.visible ? (
               <>
                 <button
                   aria-describedby={
@@ -506,7 +521,7 @@ export function SelectionQuickBar(props: {
                 ) : null}
               </>
             ) : null}
-            {element.type === "table" ? (
+            {!props.referenceContentOnly && (element.type === "table" ? (
               <TableQuickBarFields
                 deckSourceType={props.deckSourceType}
                 element={element}
@@ -522,7 +537,7 @@ export function SelectionQuickBar(props: {
                 onToggleCustomShapeEdit={onToggleCustomShapeEdit}
                 primaryColor={editorPrimaryColor}
               />
-            )}
+            ))}
           </div>
         </div>
       ) : null}

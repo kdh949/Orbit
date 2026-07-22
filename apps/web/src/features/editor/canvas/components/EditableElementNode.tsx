@@ -60,6 +60,7 @@ export function EditableElementNode(props: {
   deck: Deck;
   disablePointerEvents: boolean;
   element: DeckElement;
+  frameEditingDisabled?: boolean;
   hideContent?: boolean;
   editorPrimaryColor: string;
   editorPrimaryMediumColor: string;
@@ -92,6 +93,7 @@ export function EditableElementNode(props: {
     deck,
     disablePointerEvents,
     element,
+    frameEditingDisabled = false,
     hideContent = false,
     editorPrimaryColor,
     editorPrimaryMediumColor,
@@ -169,7 +171,7 @@ export function EditableElementNode(props: {
             Boolean(customShapeEditDraft) ||
             (element.type === "table" && editingElementId === element.elementId),
           isSelected,
-          locked: element.locked
+          locked: element.locked || frameEditingDisabled
         })
       }
       listening={!disablePointerEvents}

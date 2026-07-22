@@ -55,6 +55,7 @@ export function useEditorDocumentController(args: {
   persistedDeck?: Deck;
   projectId: string;
   refetchDeck: () => Promise<unknown>;
+  validatePatch?: (deck: Deck, patch: DeckPatch) => string | null;
 }) {
   const queryClient = useQueryClient();
   const [deck, setDeck] = useState<Deck>(args.loadedDeck);
@@ -425,6 +426,13 @@ export function useEditorDocumentController(args: {
     baseDeck: Deck = workingDeckRef.current
   ) {
     const patch = resolvePatchInput(baseDeck, patchInput);
+    const policyViolation = args.validatePatch?.(baseDeck, patch) ?? null;
+    if (policyViolation) {
+      setLastPatchLabel("원본 템플릿 편집 제한");
+      setSaveState("error");
+      setSaveError("auto-save-failed", policyViolation);
+      return false;
+    }
     const result = applyDeckPatch(baseDeck, patch);
     if (!result.ok) {
       setLastPatchLabel(`실패 · ${result.error.code}`);

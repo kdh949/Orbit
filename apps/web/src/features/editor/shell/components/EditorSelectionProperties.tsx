@@ -54,6 +54,7 @@ type EditorSelectionPropertiesProps = {
   showIds: boolean;
   slide: Slide | null;
   theme: Deck["theme"];
+  referenceContentOnly?: boolean;
 };
 
 export function EditorSelectionProperties(props: EditorSelectionPropertiesProps) {
@@ -76,6 +77,7 @@ export function EditorSelectionProperties(props: EditorSelectionPropertiesProps)
       imageCropActionState={props.imageCropActionState}
       key={element?.elementId ?? slide?.slideId ?? "none"}
       selectedKeywordLabel={props.selectedKeywordLabel}
+      referenceContentOnly={props.referenceContentOnly}
       showIds={props.showIds}
       slide={slide}
       theme={props.theme}

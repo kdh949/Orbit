@@ -500,6 +500,72 @@ function createTextElement(
   };
 }
 
+function createReferenceTemplateDeck(): Deck {
+  const deck = createDeck();
+  return deckSchema.parse({
+    ...deck,
+    metadata: {
+      ...deck.metadata,
+      sourceType: "import",
+      ooxmlReferenceTemplateSnapshot: {
+        catalogTemplateId: "operating-review",
+        catalogTemplateVersion: 1,
+        sourceSha256: "a".repeat(64),
+        generationId: "job_reference_1",
+      },
+    },
+    slides: [{
+      ...deck.slides[0],
+      ooxmlOrigin: "imported",
+      elements: [createTextElement("el_reference_text", "원본 문구")],
+    }],
+  });
+}
+
+function seedReferenceTemplateBlueprint(
+  dataSource: InMemoryDeckDataSource,
+  deck: Deck,
+) {
+  dataSource.templateBlueprintRows.push({
+    template_id: "template_reference_1",
+    project_id: deck.projectId,
+    deck_id: deck.deckId,
+    blueprint_json: {
+      templateId: "template_reference_1",
+      sourceFileId: "file_reference_source",
+      sourcePackageFileId: "file_reference_source",
+      currentPackageFileId: "file_reference_current",
+      referenceTemplateSnapshot: {
+        catalogTemplateId: "operating-review",
+        catalogTemplateVersion: 1,
+        sourceSha256: "a".repeat(64),
+        sourceSlideIds: ["cover-01"],
+        slotAssignmentCount: 1,
+      },
+      slotEditPolicies: [{
+        slotId: "slot_reference_text",
+        elementId: "el_reference_text",
+        mutationPolicy: ["text-content"],
+        frameLocked: true,
+      }],
+      slides: [{
+        slideId: deck.slides[0]!.slideId,
+        slideIndex: 1,
+        sourceSlideIndex: 1,
+        sourceSlidePart: "ppt/slides/slide1.xml",
+        elementSources: [{
+          elementId: "el_reference_text",
+          elementType: "text",
+          slidePart: "ppt/slides/slide1.xml",
+          shapeId: "2",
+          sourceType: "shape",
+          writable: true,
+        }],
+      }],
+    },
+  });
+}
+
 function createRepeatedKeywordDeck(): Deck {
   const deck = createDeck();
 
@@ -997,6 +1063,88 @@ describe("DecksService", () => {
     expect(
       snapshotResponse.snapshots.map((snapshot) => snapshot.version).sort(),
     ).toEqual([1]);
+  });
+
+  it("allows only slot content patches for an OOXML reference-template Deck", async () => {
+    const { dataSource, service } = createService();
+    const deck = createReferenceTemplateDeck();
+    seedStoredDeck(dataSource, deck, deck);
+    seedReferenceTemplateBlueprint(dataSource, deck);
+
+    const response = await service.appendPatch(deck.projectId, {
+      patch: {
+        deckId: deck.deckId,
+        baseVersion: deck.version,
+        source: "user",
+        operations: [{
+          type: "update_element_props",
+          slideId: deck.slides[0]!.slideId,
+          elementId: "el_reference_text",
+          props: { text: "허용된 문구" },
+        }],
+      },
+    });
+
+    expect(response.deck.slides[0]!.elements[0]).toMatchObject({
+      props: { text: "허용된 문구", fontSize: 32 },
+      x: 100,
+    });
+  });
+
+  it("returns 409 for reference-template frame and lifecycle patch bypasses", async () => {
+    const { dataSource, service } = createService();
+    const deck = createReferenceTemplateDeck();
+    seedStoredDeck(dataSource, deck, deck);
+    seedReferenceTemplateBlueprint(dataSource, deck);
+
+    for (const operation of [
+      {
+        type: "update_element_frame" as const,
+        slideId: deck.slides[0]!.slideId,
+        elementId: "el_reference_text",
+        frame: { x: 500 },
+      },
+      {
+        type: "delete_slide" as const,
+        slideId: deck.slides[0]!.slideId,
+      },
+    ]) {
+      const error = await expectDeckApiError(
+        () => service.appendPatch(deck.projectId, {
+          patch: {
+            deckId: deck.deckId,
+            baseVersion: deck.version,
+            source: "user",
+            operations: [operation],
+          },
+        }),
+        HttpStatus.CONFLICT,
+        "OOXML_REFERENCE_MUTATION_BLOCKED",
+      );
+      expect(error.details).toContain(`operation=${operation.type}`);
+    }
+    expect(dataSource.patchRows).toHaveLength(0);
+  });
+
+  it("returns 409 when PUT deck attempts to bypass the reference slot policy", async () => {
+    const { dataSource, service } = createService();
+    const deck = createReferenceTemplateDeck();
+    seedStoredDeck(dataSource, deck, deck);
+    seedReferenceTemplateBlueprint(dataSource, deck);
+    const bypass = structuredClone(deck);
+    bypass.slides[0]!.elements[0]!.zIndex = 99;
+
+    const error = await expectDeckApiError(
+      () => service.putDeck(deck.projectId, {
+        baseVersion: deck.version,
+        deck: bypass,
+      }),
+      HttpStatus.CONFLICT,
+      "OOXML_REFERENCE_MUTATION_BLOCKED",
+    );
+
+    expect(error.details).toContain("operation=put_deck");
+    expect(dataSource.decks.get(deck.projectId)?.deck_json).toEqual(deck);
   });
 
   it("persists deck and slide target duration patches", async () => {

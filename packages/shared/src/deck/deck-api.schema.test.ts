@@ -3,12 +3,25 @@ import { describe, expect, it } from "vitest";
 import {
   appendDeckPatchAckResponseSchema,
   appendDeckPatchRequestSchema,
+  deckApiErrorSchema,
   getPptxImportQualityResponseSchema,
   getOoxmlSyncStateResponseSchema,
   putDeckResponseSchema,
   retryOoxmlSyncResponseSchema,
   restoreDeckSnapshotResponseSchema,
 } from "./deck-api.schema";
+
+describe("Deck API errors", () => {
+  it("accepts the reference-template mutation gate error", () => {
+    expect(
+      deckApiErrorSchema.parse({
+        code: "OOXML_REFERENCE_MUTATION_BLOCKED",
+        message: "Reference-template Decks only accept slot content updates",
+        details: ["operation=update_element_frame"],
+      }),
+    ).toMatchObject({ code: "OOXML_REFERENCE_MUTATION_BLOCKED" });
+  });
+});
 
 const importQualityReport = {
   compositeScore: 82,

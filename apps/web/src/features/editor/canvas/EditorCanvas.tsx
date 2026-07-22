@@ -274,6 +274,7 @@ export function EditableCanvas(props: {
   customShapeEditElementId: string | null;
   deck: Deck;
   disableInteractions?: boolean;
+  frameEditingDisabled?: boolean;
   editingElementId: string | null;
   imageCropElementId?: string | null;
   insertTool: InsertTool;
@@ -336,6 +337,7 @@ export function EditableCanvas(props: {
     customShapeEditElementId,
     deck,
     disableInteractions = false,
+    frameEditingDisabled = false,
     editingElementId,
     imageCropElementId = null,
     elementStates,
@@ -448,9 +450,9 @@ export function EditableCanvas(props: {
   const selectedElementIdSet = new Set(selectedElementIds);
   const transformerConfig = getSelectionTransformerConfig({
     disableInteractions: canvasInteractionDisabled,
-    selectedElements: visibleElements.filter((element) =>
-      selectedElementIdSet.has(element.elementId),
-    ),
+    selectedElements: visibleElements
+      .filter((element) => selectedElementIdSet.has(element.elementId))
+      .map((element) => frameEditingDisabled ? { ...element, locked: true } : element),
     stageScale,
   });
 
@@ -682,6 +684,7 @@ export function EditableCanvas(props: {
                 canvasInteractionDisabled || insertTool !== "select"
               }
               element={element}
+              frameEditingDisabled={frameEditingDisabled}
               hideContent={
                 element.type === "text" &&
                 element.elementId === editingElementId
@@ -822,7 +825,7 @@ export function EditableCanvas(props: {
             keepRatio={transformerConfig.keepRatio}
             padding={transformerConfig.padding}
             rotateAnchorOffset={transformerConfig.rotateAnchorOffset}
-            rotateEnabled={!canvasInteractionDisabled}
+            rotateEnabled={!canvasInteractionDisabled && !frameEditingDisabled}
             rotationSnapTolerance={6}
             rotationSnaps={[0, 45, 90, 135, 180, 225, 270, 315]}
           />
@@ -851,6 +854,7 @@ export function EditableCanvas(props: {
         />
       ) : null}
       {textToolbarElement &&
+      !frameEditingDisabled &&
       !imageCropElement &&
       insertTool === "select" &&
       !customShapeEditElementId ? (
