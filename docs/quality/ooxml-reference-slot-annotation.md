@@ -90,6 +90,21 @@ source ID, part, order는 각각 유일해야 한다. relationship identity와 l
 - capacity count는 실제 `slots[]`와 일치해야 하며 overflow는 fail-closed한다.
 - unknown field, raw XML/text, local path, signed URL, storage key는 거부한다.
 
+### Chart slot package mutation 경계
+
+chart slot은 direct `p:graphicFrame`의 stable `shapeId`와 unique internal chart
+relationship을 모두 확인한 경우에만 활성화한다. chart는 manifest가 허용한 `bar`,
+`column`, `line`, `pie`, `doughnut` 중 실제 source type과 일치해야 하며, combo chart와
+그 밖의 chart type은 preserve-only다.
+
+embedded workbook은 unique internal `.xlsx` package relationship과 manifest의 SHA-256
+fingerprint가 일치해야 한다. generation replacement는 source series 수를 유지하고
+annotated category/series capacity 안에서 direct absolute worksheet range만 수정한다.
+chart formula/cache와 workbook cell은 함께 갱신하며 source number format, chart style,
+frame geometry, slide/chart relationship은 보존한다. external workbook, ambiguous
+relationship, unsupported formula/range, fingerprint drift가 있으면 package 원본을
+반환 가능한 error에 포함해 fail-closed하고 authored chart fallback을 만들지 않는다.
+
 ## Editable slot 제외 규칙
 
 다음 object는 slot으로 annotation하지 않고 locked inventory에만 포함한다.
