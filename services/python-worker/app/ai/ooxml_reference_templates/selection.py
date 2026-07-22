@@ -217,10 +217,9 @@ def _sequence_compatible(
     previous_source: OoxmlSourceSlide | None,
     used_copy: set[tuple[str, str, str]],
 ) -> bool:
-    if previous_source is not None and (
-        previous_source.source_slide_id == candidate.source.source_slide_id
-        or previous_source.relationships.layout_part
-        == candidate.source.relationships.layout_part
+    if (
+        previous_source is not None
+        and previous_source.source_slide_id == candidate.source.source_slide_id
     ):
         return False
     return not (_copy_keys(candidate) & used_copy)

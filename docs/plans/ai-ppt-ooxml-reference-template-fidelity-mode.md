@@ -353,7 +353,7 @@ solver는 다음 순서로 후보를 제거하고 점수를 계산한다.
 1. role 불일치, required slot 누락, capacity 초과 후보 제거
 2. 필요한 media/table/chart capability가 없는 후보 제거
 3. cover/closing과 single-template rule 강제
-4. 인접 동일 source/layout 제거
+4. 인접 동일 source 제거와 eligible layout 다양성 하한 강제
 5. source reuse penalty와 content-role 적합성으로 결정
 
 capacity 실패는 다음 순서로만 처리한다.
@@ -372,9 +372,13 @@ spike template은 eligible source가 충분한 PPTX를 골라 `unique source / g
 
 ```text
 requiredUniqueSourceCount = min(ceil(generatedSlideCount * 0.8), eligibleSourceSlideCount)
+requiredUniqueLayoutCount = min(ceil(generatedSlideCount * 0.4), eligibleLayoutCount)
 ```
 
-모든 template에서 인접 동일 source/layout은 0건이어야 한다. source 재사용 시 동일 slot assignment와 동일 문구를 반복하지 않는다.
+모든 template에서 인접 동일 source는 0건이어야 한다. 서로 다른 source가 같은 layout을
+사용하는 것은 실제 catalog의 eligible layout 수가 제한된 경우 허용하되,
+`requiredUniqueLayoutCount`를 충족해야 한다. source 재사용 시 동일 slot assignment와 동일
+문구를 반복하지 않는다.
 
 ## 7. fidelity 평가 기준
 
@@ -603,7 +607,7 @@ report에는 artifact checksum, renderer/version, font checksum, source/template
 #### Checkpoint B1: package clone spike
 
 - [ ] 8~10장 identity-control package relationship warning 0건
-- [ ] unique source ratio 80% 이상, layout unique ratio 40% 이상, 인접 반복 0건
+- [ ] eligible-source 기준 unique source 80%와 eligible-layout 기준 layout 40%의 bounded 하한, 인접 동일 source 0건
 - [ ] source 없는 authored element 0건
 - [ ] locked region geometry/style drift 0건
 - [ ] PowerPoint와 LibreOffice 재개방/render 성공

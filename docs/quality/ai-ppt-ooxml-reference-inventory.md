@@ -22,6 +22,19 @@ package의 font part 수, `chart workbooks`는 chart part가 단독으로 내부
 nested OOXML preflight를 통과한 `.xlsx` 수다. `animations`는 slide의 `p:timing`
 수다.
 
+## 승인과 활성화 상태
+
+2026-07-23 사용자 승인으로 위 7개 source의 provenance
+`authorizationStatus`는 `approved`다. 같은 검수에서 139장과 text-only slot annotation
+253개도 승인했으며 template별 검토 checksum은
+`ooxml-reference-slot-annotation.md`와 repository catalog에 기록한다.
+
+승인된 canonical manifest와 139개 preview의 checksum은 local QA private storage에서
+read-after-write로 검증됐다. 이 검증은 production managed storage를 대신하지 않는다.
+PowerPoint QA, embedded font resolve와 production private managed storage가 아직 검증되지
+않아 repository catalog의 7개 template은 모두 `disabled`다. 원본, font, render artifact와
+storage secret은 Git에 저장하지 않는다.
+
 ## Security preflight
 
 7개 source는 모두 다음 fail-closed 검사에 통과했다.

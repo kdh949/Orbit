@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "templates": [
     {
       "templateId": "simple-light",
@@ -11,20 +11,27 @@
       "name": "Simple Light",
       "description": "밝은 배경의 중립적인 범용 프레젠테이션",
       "preview": {
-        "coverPreviewId": "cover",
-        "coverPreviewSha256": null,
-        "bodyPreviewId": "body",
-        "bodyPreviewSha256": null
+        "coverPreviewId": "slide-001",
+        "coverPreviewSha256": "a5ddc77607c539beb13904f50b97ebde36d3738ac3b0b80fc355d5475cd34d08",
+        "bodyPreviewId": "slide-002",
+        "bodyPreviewSha256": "9e8c2f7d3c431eccea6f911cd1611a2010312d976531be45d05693346d6c8d94"
       },
       "provenance": {
-        "authorizationStatus": "pending",
+        "authorizationStatus": "approved",
         "inventoryVersion": 1
       },
+      "annotationReview": {
+        "status": "approved",
+        "reviewedOn": "2026-07-23",
+        "reviewedManifestSha256": "b74c8b380fc7e0851ead94b9a9d59db0e6675536ea5e3276629e9310b9847a51",
+        "slideCount": 26,
+        "slotCount": 39,
+        "contentTypes": ["text"]
+      },
       "activationBlockers": [
-        "SOURCE_AUTHORIZATION_PENDING",
-        "SOURCE_SLIDE_ANNOTATION_MISSING",
-        "COVER_BODY_PREVIEW_BASELINE_MISSING",
-        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
+        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED",
+        "POWERPOINT_QA_PENDING",
+        "FONT_AVAILABILITY_VALIDATION_PENDING"
       ]
     },
     {
@@ -37,20 +44,27 @@
       "name": "Simple Dark",
       "description": "어두운 배경의 중립적인 범용 프레젠테이션",
       "preview": {
-        "coverPreviewId": "cover",
-        "coverPreviewSha256": null,
-        "bodyPreviewId": "body",
-        "bodyPreviewSha256": null
+        "coverPreviewId": "slide-001",
+        "coverPreviewSha256": "ac76728dde6ebb696a67598affb4fa76b9953da9822297ee70dfc1d50b36503b",
+        "bodyPreviewId": "slide-002",
+        "bodyPreviewSha256": "1180e2cdd28e510e42ffacc55f8d8133fbd5a8c35b30051569364901f715fb31"
       },
       "provenance": {
-        "authorizationStatus": "pending",
+        "authorizationStatus": "approved",
         "inventoryVersion": 1
       },
+      "annotationReview": {
+        "status": "approved",
+        "reviewedOn": "2026-07-23",
+        "reviewedManifestSha256": "47463ab9eda2bf57fea9f927df5b921a01dc9007d54e805cfdcd4c2ec98f70c7",
+        "slideCount": 26,
+        "slotCount": 39,
+        "contentTypes": ["text"]
+      },
       "activationBlockers": [
-        "SOURCE_AUTHORIZATION_PENDING",
-        "SOURCE_SLIDE_ANNOTATION_MISSING",
-        "COVER_BODY_PREVIEW_BASELINE_MISSING",
-        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
+        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED",
+        "POWERPOINT_QA_PENDING",
+        "FONT_AVAILABILITY_VALIDATION_PENDING"
       ]
     },
     {
@@ -63,20 +77,27 @@
       "name": "Operating Review",
       "description": "운영 지표와 실행 과제를 위한 경영 보고 프레젠테이션",
       "preview": {
-        "coverPreviewId": "cover",
-        "coverPreviewSha256": null,
-        "bodyPreviewId": "body",
-        "bodyPreviewSha256": null
+        "coverPreviewId": "slide-001",
+        "coverPreviewSha256": "72f4ef3068b5064b62ab5f83cb511546cdd182f55f5bff5eeba8b31bf1410b42",
+        "bodyPreviewId": "slide-002",
+        "bodyPreviewSha256": "df94b51fb927f0bf3162abfce4477f3550781aabb479bf0db15d1c06b9729eca"
       },
       "provenance": {
-        "authorizationStatus": "pending",
+        "authorizationStatus": "approved",
         "inventoryVersion": 1
       },
+      "annotationReview": {
+        "status": "approved",
+        "reviewedOn": "2026-07-23",
+        "reviewedManifestSha256": "cfd23df7c920e9d45a4d425ea242eba88f9d3fc54f53be0276717eea368edb34",
+        "slideCount": 31,
+        "slotCount": 65,
+        "contentTypes": ["text"]
+      },
       "activationBlockers": [
-        "SOURCE_AUTHORIZATION_PENDING",
-        "SOURCE_SLIDE_ANNOTATION_MISSING",
-        "COVER_BODY_PREVIEW_BASELINE_MISSING",
-        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
+        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED",
+        "POWERPOINT_QA_PENDING",
+        "FONT_AVAILABILITY_VALIDATION_PENDING"
       ]
     },
     {
@@ -89,20 +110,27 @@
       "name": "Business Review",
       "description": "사업 성과와 의사결정을 위한 경영 리뷰 프레젠테이션",
       "preview": {
-        "coverPreviewId": "cover",
-        "coverPreviewSha256": null,
-        "bodyPreviewId": "body",
-        "bodyPreviewSha256": null
+        "coverPreviewId": "slide-001",
+        "coverPreviewSha256": "8e698ad5f30049355820dded6c7677468c0e27451a34e3e89a856e68487e7ce2",
+        "bodyPreviewId": "slide-002",
+        "bodyPreviewSha256": "66566c93433469118d13c9d0ff93b6ec2f3a5ec82731d1359cd30ffad97bf2ae"
       },
       "provenance": {
-        "authorizationStatus": "pending",
+        "authorizationStatus": "approved",
         "inventoryVersion": 1
       },
+      "annotationReview": {
+        "status": "approved",
+        "reviewedOn": "2026-07-23",
+        "reviewedManifestSha256": "12c93d5d08d0978d39c436142a19d237a35491cfdb8dcaf52a3cf6fd5d197545",
+        "slideCount": 14,
+        "slotCount": 21,
+        "contentTypes": ["text"]
+      },
       "activationBlockers": [
-        "SOURCE_AUTHORIZATION_PENDING",
-        "SOURCE_SLIDE_ANNOTATION_MISSING",
-        "COVER_BODY_PREVIEW_BASELINE_MISSING",
-        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
+        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED",
+        "POWERPOINT_QA_PENDING",
+        "FONT_AVAILABILITY_VALIDATION_PENDING"
       ]
     },
     {
@@ -115,20 +143,27 @@
       "name": "Project Kickoff",
       "description": "프로젝트 목표와 실행 계획을 정렬하는 킥오프 프레젠테이션",
       "preview": {
-        "coverPreviewId": "cover",
-        "coverPreviewSha256": null,
-        "bodyPreviewId": "body",
-        "bodyPreviewSha256": null
+        "coverPreviewId": "slide-001",
+        "coverPreviewSha256": "b3b95e9dacf8aa9ff3729a91a2d47b5fea4104e70037bf83393573789094fa0e",
+        "bodyPreviewId": "slide-002",
+        "bodyPreviewSha256": "b4e2c795c39c6cbb4ba14d425c11ac175c374105dd96b097012cedbc4e3fe159"
       },
       "provenance": {
-        "authorizationStatus": "pending",
+        "authorizationStatus": "approved",
         "inventoryVersion": 1
       },
+      "annotationReview": {
+        "status": "approved",
+        "reviewedOn": "2026-07-23",
+        "reviewedManifestSha256": "fff1138b8afb1d41db43a81de2df66eb2b39fb03e6f94d693f14146e357befd8",
+        "slideCount": 12,
+        "slotCount": 21,
+        "contentTypes": ["text"]
+      },
       "activationBlockers": [
-        "SOURCE_AUTHORIZATION_PENDING",
-        "SOURCE_SLIDE_ANNOTATION_MISSING",
-        "COVER_BODY_PREVIEW_BASELINE_MISSING",
-        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
+        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED",
+        "POWERPOINT_QA_PENDING",
+        "FONT_AVAILABILITY_VALIDATION_PENDING"
       ]
     },
     {
@@ -141,20 +176,27 @@
       "name": "Team Alignment",
       "description": "팀 역할과 우선순위를 정렬하는 협업 프레젠테이션",
       "preview": {
-        "coverPreviewId": "cover",
-        "coverPreviewSha256": null,
-        "bodyPreviewId": "body",
-        "bodyPreviewSha256": null
+        "coverPreviewId": "slide-001",
+        "coverPreviewSha256": "fb89c3516430481979a0a810a0843a0b6e946cc4e07a1c880a857d69827a90ec",
+        "bodyPreviewId": "slide-002",
+        "bodyPreviewSha256": "c1c354915bf57ff8131a9d62bc8a611b0eb0907d83452ef9921930a0e53e99ce"
       },
       "provenance": {
-        "authorizationStatus": "pending",
+        "authorizationStatus": "approved",
         "inventoryVersion": 1
       },
+      "annotationReview": {
+        "status": "approved",
+        "reviewedOn": "2026-07-23",
+        "reviewedManifestSha256": "d30bc208224b13a9a815b5b469666850feb3a64d2517437007477e6a53da2edb",
+        "slideCount": 24,
+        "slotCount": 51,
+        "contentTypes": ["text"]
+      },
       "activationBlockers": [
-        "SOURCE_AUTHORIZATION_PENDING",
-        "SOURCE_SLIDE_ANNOTATION_MISSING",
-        "COVER_BODY_PREVIEW_BASELINE_MISSING",
-        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
+        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED",
+        "POWERPOINT_QA_PENDING",
+        "FONT_AVAILABILITY_VALIDATION_PENDING"
       ]
     },
     {
@@ -167,20 +209,27 @@
       "name": "Market Trends Report",
       "description": "시장 변화와 시사점을 전달하는 에디토리얼 프레젠테이션",
       "preview": {
-        "coverPreviewId": "cover",
-        "coverPreviewSha256": null,
-        "bodyPreviewId": "body",
-        "bodyPreviewSha256": null
+        "coverPreviewId": "slide-001",
+        "coverPreviewSha256": "0fc8ed3cd7d021ae6afd4815586dcfbb8680a20afdd8bc5fa1b1d7d2bf33555e",
+        "bodyPreviewId": "slide-002",
+        "bodyPreviewSha256": "95e7c3cb0650f180aaec8c32bdcaf9ac1cfb3585c3b60ad3f2a53eb3069a6d6d"
       },
       "provenance": {
-        "authorizationStatus": "pending",
+        "authorizationStatus": "approved",
         "inventoryVersion": 1
       },
+      "annotationReview": {
+        "status": "approved",
+        "reviewedOn": "2026-07-23",
+        "reviewedManifestSha256": "50036ba39076f49a6aa89d72ca5e865ed001cee4c29812179c8deaa44ae8cfc8",
+        "slideCount": 6,
+        "slotCount": 17,
+        "contentTypes": ["text"]
+      },
       "activationBlockers": [
-        "SOURCE_AUTHORIZATION_PENDING",
-        "SOURCE_SLIDE_ANNOTATION_MISSING",
-        "COVER_BODY_PREVIEW_BASELINE_MISSING",
-        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
+        "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED",
+        "POWERPOINT_QA_PENDING",
+        "FONT_AVAILABILITY_VALIDATION_PENDING"
       ]
     }
   ]

@@ -2,9 +2,16 @@
 
 ## 상태
 
-이 문서는 Task 4 구현을 위한 검수 초안이다. 7개 원본과 annotation 범위에 대한 사람
-승인은 아직 없으며 Checkpoint A도 통과하지 않았다. manifest를 작성했거나 자동 테스트가
-통과했다는 사실만으로 template을 `active`로 승인하지 않는다.
+이 문서는 Task 4의 검수 계약과 승인 기록이다. 2026-07-23 사용자 검수에서 inventory의
+7개 원본 139장과 이에 대응하는 text-only slot annotation 253개를 승인했다. repository
+catalog에는 원본별 검토 manifest checksum과 합계만 기록하며 private locator, 원문과
+render artifact는 기록하지 않는다.
+
+이 승인은 source authorization과 text-only annotation 범위에 한정된다. 승인된 canonical
+manifest와 cover/body를 포함한 139개 preview checksum은 local QA private storage에서
+검증했지만 production managed storage를 대신하지 않는다. PowerPoint QA, embedded font
+resolve와 production publication은 아직 미검증이므로 repository의 7개 template은 모두
+`disabled`이고 Checkpoint A도 통과하지 않았다.
 
 원본 PPTX, 원문 XML, source filename/절대 경로, preview/render binary, font와 storage
 key는 Git·manifest·로그에 넣지 않는다. repository에는 승인 가능한 strict annotation과
@@ -31,8 +38,9 @@ candidate object 수다. unsupported SmartArt와 animation은 분모에는 남�
 
 8~10장 spike annotation은 cover 1장과 closing 1장을 필수로 하고, 나머지 source에서
 agenda/statement/summary와 metric/comparison/chart/table/process/timeline/team-role/evidence
-중 fixture가 요구하는 role 및 capacity를 만족해야 한다. 같은 source/layout의 인접 반복은
-허용하지 않는다.
+중 fixture가 요구하는 role 및 capacity를 만족해야 한다. 같은 source의 인접 반복은
+허용하지 않는다. 실제 source가 서로 다른 slide에서 같은 layout을 공유하면 인접 배치를
+허용하되 layout 다양성 하한은 `min(ceil(generated * 0.4), eligible layout 수)`로 계산한다.
 
 ## Source slide 형식
 
@@ -128,7 +136,21 @@ relationship, unsupported formula/range, fingerprint drift가 있으면 package 
 - table/chart locator와 embedded workbook policy를 package reopen으로 확인한다.
 - source checksum, manifest checksum, font/provenance 승인 상태를 확인한다.
 
-위 검수 결과와 승인자/시각이 기록되기 전에는 사람 승인 항목을 체크하지 않으며,
+2026-07-23 승인 범위와 repository catalog의 검토 checksum은 다음과 같다.
+
+| template ID | slides | approved text slots | reviewed manifest SHA-256 |
+| --- | ---: | ---: | --- |
+| `simple-light` | 26 | 39 | `b74c8b380fc7e0851ead94b9a9d59db0e6675536ea5e3276629e9310b9847a51` |
+| `simple-dark` | 26 | 39 | `47463ab9eda2bf57fea9f927df5b921a01dc9007d54e805cfdcd4c2ec98f70c7` |
+| `operating-review` | 31 | 65 | `cfd23df7c920e9d45a4d425ea242eba88f9d3fc54f53be0276717eea368edb34` |
+| `business-review` | 14 | 21 | `12c93d5d08d0978d39c436142a19d237a35491cfdb8dcaf52a3cf6fd5d197545` |
+| `project-kickoff` | 12 | 21 | `fff1138b8afb1d41db43a81de2df66eb2b39fb03e6f94d693f14146e357befd8` |
+| `team-alignment` | 24 | 51 | `d30bc208224b13a9a815b5b469666850feb3a64d2517437007477e6a53da2edb` |
+| `market-trends-report` | 6 | 17 | `50036ba39076f49a6aa89d72ca5e865ed001cee4c29812179c8deaa44ae8cfc8` |
+| 합계 | 139 | 253 | - |
+
+검토 checksum은 승인된 private annotation 내용의 drift를 탐지하기 위한 provenance이며
+runtime publication이나 template 활성화 증거가 아니다. 남은 외부 gate가 기록되기 전에는
 Checkpoint A 또는 spike rollout을 `passed`로 표시하지 않는다.
 
 ## 검수 artifact 생성
@@ -150,6 +172,7 @@ catalog에는 source slide ID, semantic role, preview ID, slot ID와 checksum만
 source path, 원문 text, raw XML, render binary는 기록하지 않는다. preview가 하나라도 없거나
 path-bounded preview ID가 아니면 montage 생성은 실패한다.
 
-현재 repository에는 승인된 7개 annotation draft와 preview baseline이 없으므로 실제 spike
-template 선정 결과 및 montage는 아직 생성되지 않았다. 자동 fixture 검증은 도구의 선정
-순서와 8~10장 catalog/montage 생성을 확인하지만 사람 승인을 대신하지 않는다.
+7개 private 검수 artifact의 139장/253 text-only slot 내용은 승인되었지만 raw annotation,
+source-slide catalog, montage와 원본은 repository에 복사하지 않는다. preview baseline과
+production managed storage publication은 아직 없으며, 자동 fixture와 private 검수 승인은
+PowerPoint/font 검증 또는 runtime 활성화를 대신하지 않는다.

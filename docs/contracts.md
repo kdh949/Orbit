@@ -1222,10 +1222,13 @@ PR 4의 personal staging 자동 배포는 완료됐다. #339 종료 전 배포 �
 
 OOXML reference template generation은 historical `ai-template-deck-generation`을 복구하지 않는 별도 제품 경계다. 일반 `GenerateDeckRequest`에는 `generationMode`, `templateBlueprintId`, `designReferences`, `slidePresetId`나 다른 recipe-v1 selector를 추가하지 않는다. active Job type, queue name과 job name은 모두 `ooxml-reference-template-generation`이다. generic `POST /api/v1/jobs`의 `publicCreatableJobTypeSchema`에는 이 type을 넣지 않으며, strict 전용 request를 검증하는 authenticated project endpoint만 Job을 생성하고 enqueue한다.
 
+- source sequence는 인접한 동일 source slide를 금지한다. 서로 다른 source slide가 같은 layout을 공유하는 실제 template은 허용하며, unique source/layout 하한은 각각 `min(ceil(generated * 0.8), eligible source 수)`와 `min(ceil(generated * 0.4), eligible layout 수)`로 계산한다.
+
 공통 계약은 `packages/shared/src/deck/ooxml-reference-template.schema.ts`를 원본으로 사용하고 Python은 `services/python-worker/app/ai/ooxml_reference_templates/models.py`에서 strict Pydantic mirror를 유지한다.
 
 - `OoxmlReferenceTemplateManifest`는 immutable `templateId`, positive `version`, source SHA-256, canvas, cover/body preview ID와 SHA-256, source slide와 허용 slot annotation, provenance만 저장한다. source filename/path, raw XML, source text, binary, signed URL과 storage key는 저장하지 않는다.
 - active manifest는 `authorizationStatus=approved`, cover/closing role과 하나 이상의 editable slot을 요구한다. source slide/part, slot ID와 authoritative locator는 catalog 안에서 유일해야 한다.
+- repository-only catalog v2는 각 disabled template에 source authorization과 approved annotation review의 날짜, approved canonical manifest SHA-256, slide/slot 합계, `contentTypes=["text"]`와 검증된 cover/body preview SHA-256만 저장한다. raw locator나 private artifact 경로는 저장하지 않는다. 승인된 source/annotation에는 `SOURCE_AUTHORIZATION_PENDING`, `SOURCE_SLIDE_ANNOTATION_MISSING` blocker를 둘 수 없고 preview checksum이 있으면 `COVER_BODY_PREVIEW_BASELINE_MISSING`도 둘 수 없다. production managed storage, PowerPoint와 font 검증 전에는 `PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED`, `POWERPOINT_QA_PENDING`, `FONT_AVAILABILITY_VALIDATION_PENDING`을 유지한다. 이 metadata는 runtime active manifest나 public API 계약이 아니다.
 - `OoxmlTemplateSelection`의 `mode=user`는 exact template ID/version을 모두 요구한다. `mode=auto`는 pinned template 필드를 받지 않으며 `/createdeck`의 첫 rollout에서는 사용하지 않는다.
 - `OoxmlReferenceTemplateGenerationRequest`는 topic, prompt, target duration, slide count range, audience/purpose/tone, reference policy/file ID와 template selection만 받는 별도 strict root request다. palette/font override, System Design Pack selector와 `TemplateBlueprint` instance ID를 받지 않는다.
 - BullMQ payload는 strict `{ jobId, projectId, request }`만 허용한다. source text, raw package/XML, storage key와 signed URL을 queue payload나 로그에 넣지 않는다. SQS adapter는 구현 전까지 명시적으로 실패한다.

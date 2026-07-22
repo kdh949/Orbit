@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path, PurePosixPath
 from typing import Annotated, Literal, Protocol
 
@@ -76,11 +77,22 @@ class RepositoryProvenance(_StrictCatalogModel):
     inventory_version: int = Field(gt=0)
 
 
+class RepositoryAnnotationReview(_StrictCatalogModel):
+    status: Literal["approved"]
+    reviewed_on: date
+    reviewed_manifest_sha256: Sha256
+    slide_count: int = Field(gt=0, le=500)
+    slot_count: int = Field(gt=0, le=10_000)
+    content_types: list[Literal["text"]] = Field(min_length=1, max_length=1)
+
+
 ActivationBlocker = Literal[
     "SOURCE_AUTHORIZATION_PENDING",
     "SOURCE_SLIDE_ANNOTATION_MISSING",
     "COVER_BODY_PREVIEW_BASELINE_MISSING",
     "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED",
+    "POWERPOINT_QA_PENDING",
+    "FONT_AVAILABILITY_VALIDATION_PENDING",
 ]
 
 
@@ -95,11 +107,45 @@ class RepositoryCatalogTemplate(_StrictCatalogModel):
     description: Annotated[str, Field(min_length=1, max_length=500)]
     preview: RepositoryPreviewBaseline
     provenance: RepositoryProvenance
+    annotation_review: RepositoryAnnotationReview
     activation_blockers: list[ActivationBlocker] = Field(min_length=1, max_length=8)
+
+    @model_validator(mode="after")
+    def validate_approval_and_activation_blockers(
+        self,
+    ) -> RepositoryCatalogTemplate:
+        blockers = set(self.activation_blockers)
+        if len(blockers) != len(self.activation_blockers):
+            raise ValueError("activation blockers must be unique")
+        if self.annotation_review.slide_count != self.slide_count:
+            raise ValueError("annotation review slide count must match source")
+        if (
+            self.provenance.authorization_status == "approved"
+            and "SOURCE_AUTHORIZATION_PENDING" in blockers
+        ):
+            raise ValueError("approved source cannot retain authorization blocker")
+        if "SOURCE_SLIDE_ANNOTATION_MISSING" in blockers:
+            raise ValueError("approved annotation cannot retain annotation blocker")
+
+        preview_missing = (
+            self.preview.cover_preview_sha256 is None
+            or self.preview.body_preview_sha256 is None
+        )
+        if preview_missing != ("COVER_BODY_PREVIEW_BASELINE_MISSING" in blockers):
+            raise ValueError("preview blocker must match preview checksum evidence")
+
+        required_unverified_gates = {
+            "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED",
+            "POWERPOINT_QA_PENDING",
+            "FONT_AVAILABILITY_VALIDATION_PENDING",
+        }
+        if not required_unverified_gates.issubset(blockers):
+            raise ValueError("disabled catalog must retain every unverified gate")
+        return self
 
 
 class RepositoryCatalog(_StrictCatalogModel):
-    schema_version: Literal[1]
+    schema_version: Literal[2]
     templates: list[RepositoryCatalogTemplate] = Field(min_length=1, max_length=100)
 
     @model_validator(mode="after")

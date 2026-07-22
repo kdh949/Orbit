@@ -19,6 +19,7 @@ from app.ai.ooxml_reference_templates.registry import (
     load_active_reference_template,
     load_repository_catalog,
 )
+from scripts.ingest_ooxml_reference_templates import build_dry_run_report
 
 
 def _sha256(content: bytes) -> str:
@@ -314,8 +315,38 @@ def test_repository_catalog_is_strict_bounded_and_contains_no_private_locator() 
 
     assert len(catalog.templates) == 7
     assert sum(template.slide_count for template in catalog.templates) == 139
+    assert sum(
+        template.annotation_review.slot_count for template in catalog.templates
+    ) == 253
     assert all(template.status == "disabled" for template in catalog.templates)
+    assert all(
+        template.provenance.authorization_status == "approved"
+        for template in catalog.templates
+    )
+    assert all(
+        template.annotation_review.status == "approved"
+        and template.annotation_review.reviewed_on.isoformat() == "2026-07-23"
+        and template.annotation_review.slide_count == template.slide_count
+        and template.annotation_review.content_types == ["text"]
+        for template in catalog.templates
+    )
     assert all(template.activation_blockers for template in catalog.templates)
+    assert all(
+        "SOURCE_AUTHORIZATION_PENDING" not in template.activation_blockers
+        and "SOURCE_SLIDE_ANNOTATION_MISSING" not in template.activation_blockers
+        and "COVER_BODY_PREVIEW_BASELINE_MISSING"
+        not in template.activation_blockers
+        and "POWERPOINT_QA_PENDING" in template.activation_blockers
+        and "FONT_AVAILABILITY_VALIDATION_PENDING" in template.activation_blockers
+        and "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
+        in template.activation_blockers
+        for template in catalog.templates
+    )
+    assert all(
+        template.preview.cover_preview_sha256 is not None
+        and template.preview.body_preview_sha256 is not None
+        for template in catalog.templates
+    )
     assert not any(
         forbidden in serialized
         for forbidden in (
@@ -331,4 +362,69 @@ def test_repository_catalog_is_strict_bounded_and_contains_no_private_locator() 
             "base64",
         )
     )
-    assert json.loads(serialized)["schemaVersion"] == 1
+    assert json.loads(serialized)["schemaVersion"] == 2
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda value: value["templates"][0]["activationBlockers"].append(
+            "SOURCE_AUTHORIZATION_PENDING"
+        ),
+        lambda value: value["templates"][0]["annotationReview"].update(
+            {"slideCount": 1}
+        ),
+        lambda value: value["templates"][0]["activationBlockers"].remove(
+            "POWERPOINT_QA_PENDING"
+        ),
+        lambda value: value["templates"][0]["preview"].update(
+            {"coverPreviewSha256": None}
+        ),
+    ],
+)
+def test_repository_catalog_rejects_approval_and_activation_blocker_drift(
+    tmp_path: Path,
+    mutation: object,
+) -> None:
+    source = (
+        Path(__file__).parents[1]
+        / "app/ai/design_library/ooxml-reference-templates/catalog.json"
+    )
+    value = json.loads(source.read_text(encoding="utf-8"))
+    assert callable(mutation)
+    mutation(value)
+    path = tmp_path / "catalog.json"
+    path.write_text(json.dumps(value), encoding="utf-8")
+
+    with pytest.raises(RegistryError, match="REPOSITORY_CATALOG_INVALID"):
+        load_repository_catalog(path)
+
+
+def test_ingestion_dry_run_reports_approved_inputs_without_enabling_catalog() -> None:
+    catalog_path = (
+        Path(__file__).parents[1]
+        / "app/ai/design_library/ooxml-reference-templates/catalog.json"
+    )
+    catalog = load_repository_catalog(catalog_path)
+
+    report = build_dry_run_report(
+        catalog,
+        {"sourceCount": 7, "slideCount": 139},
+    )
+
+    assert report["catalogSchemaVersion"] == 2
+    assert report["approvalSummary"] == {
+        "sourceAuthorizationApproved": True,
+        "annotationReviewApproved": True,
+        "reviewedSlideCount": 139,
+        "reviewedTextSlotCount": 253,
+    }
+    assert report["readyForPrivateIngestion"] is False
+    assert report["privateManagedStorageConfigured"] is False
+    assert "SOURCE_AUTHORIZATION_PENDING" not in report["blockerCodes"]
+    assert "SOURCE_SLIDE_ANNOTATION_MISSING" not in report["blockerCodes"]
+    assert "POWERPOINT_QA_PENDING" in report["blockerCodes"]
+    assert "FONT_AVAILABILITY_VALIDATION_PENDING" in report["blockerCodes"]
+    assert all(
+        template["status"] == "disabled" for template in report["templates"]
+    )

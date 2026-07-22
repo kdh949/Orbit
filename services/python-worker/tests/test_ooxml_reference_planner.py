@@ -281,14 +281,8 @@ def test_seven_template_families_obey_role_capacity_and_repetition_rules(
     assert plan.catalog_version == "catalog-v1"
     assert plan.slides[0].source_slide_id.startswith("cover-")
     assert plan.slides[-1].source_slide_id.startswith("closing-")
-    layout_by_source_id = {
-        slide.source_slide_id: slide.relationships.layout_part
-        for slide in manifest.source_slides
-    }
     assert all(
         left.source_slide_id != right.source_slide_id
-        and layout_by_source_id[left.source_slide_id]
-        != layout_by_source_id[right.source_slide_id]
         for left, right in zip(plan.slides, plan.slides[1:], strict=False)
     )
     unique_count = len({slide.source_slide_id for slide in plan.slides})
@@ -320,6 +314,27 @@ def test_seven_template_families_obey_role_capacity_and_repetition_rules(
         for slide in plan.slides
         for assignment in slide.slot_assignments
     )
+
+
+def test_different_source_slides_may_share_an_adjacent_layout_when_catalog_is_bounded() -> None:
+    manifest = _manifest(
+        "market-trends-report",
+        body_capacities=(900, 900, 900),
+        body_layouts=(6, 6, 6),
+    )
+
+    plan = plan_reference_template(
+        adapt_content_plan(_content_plan()),
+        manifest=manifest,
+        catalog_version="catalog-v1",
+    )
+
+    assert all(
+        left.source_slide_id != right.source_slide_id
+        for left, right in zip(plan.slides, plan.slides[1:], strict=False)
+    )
+    body_ids = [slide.source_slide_id for slide in plan.slides[1:-1]]
+    assert len(set(body_ids)) == len(body_ids)
 
 
 def test_capacity_filter_selects_larger_same_role_source() -> None:
