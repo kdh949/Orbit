@@ -9,6 +9,7 @@ import type {
   DesignPackOption,
   GenerateDeckDesignSelection,
   SystemDesignPackSelection,
+  OoxmlReferenceTemplateOption,
 } from "@orbit/shared";
 import { demoIds, recommendGenerateDeckFonts } from "@orbit/shared";
 import {
@@ -61,9 +62,17 @@ import {
   styleColorPath,
 } from "./design-selection-api";
 import { DesignPackOptions } from "./DesignPackOptions";
+import { OoxmlReferenceTemplateOptions } from "./OoxmlReferenceTemplateOptions";
+import {
+  buildOoxmlReferenceTemplateGenerationRequest,
+  ooxmlReferenceGenerationPath,
+  requestOoxmlReferenceTemplateOptions,
+  startOoxmlReferenceTemplateGeneration,
+} from "./ooxml-reference-template-api";
 import "./ai-ppt-mockup.css";
 
 type Tone = "professional" | "friendly" | "confident" | "concise";
+type GenerationMode = "recommended" | "ooxml-reference";
 type PaletteOverride = NonNullable<
   GenerateDeckRequest["design"]["paletteOverride"]
 >;
@@ -520,6 +529,17 @@ export function inferAiPptTimingFromContent(content: string): Pick<
 
 export function AiPptMockupPage() {
   const [form, setForm] = useState(initialAiPptWizardState);
+  const [generationMode, setGenerationMode] =
+    useState<GenerationMode>("recommended");
+  const [referenceTemplateOptions, setReferenceTemplateOptions] = useState<
+    OoxmlReferenceTemplateOption[]
+  >([]);
+  const [selectedReferenceTemplate, setSelectedReferenceTemplate] =
+    useState<OoxmlReferenceTemplateOption | null>(null);
+  const [isLoadingReferenceTemplates, setIsLoadingReferenceTemplates] =
+    useState(false);
+  const [referenceTemplateError, setReferenceTemplateError] = useState("");
+  const [referenceTemplateReload, setReferenceTemplateReload] = useState(0);
   const [referenceFiles, setReferenceFiles] = useState<File[]>([]);
   const [uploadStates, setUploadStates] = useState<Record<string, UploadState>>({});
   const [isGenerating, setIsGenerating] = useState(false);
@@ -544,6 +564,45 @@ export function AiPptMockupPage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (generationMode !== "ooxml-reference") return;
+    let cancelled = false;
+    setIsLoadingReferenceTemplates(true);
+    setReferenceTemplateError("");
+    void requestOoxmlReferenceTemplateOptions()
+      .then((response) => {
+        if (cancelled) return;
+        setReferenceTemplateOptions(response.options);
+        setSelectedReferenceTemplate((current) =>
+          current &&
+          response.options.some(
+            (option) =>
+              option.templateId === current.templateId &&
+              option.version === current.version,
+          )
+            ? current
+            : null,
+        );
+      })
+      .catch((cause) => {
+        if (!cancelled) {
+          setReferenceTemplateOptions([]);
+          setSelectedReferenceTemplate(null);
+          setReferenceTemplateError(
+            cause instanceof Error
+              ? cause.message
+              : "원본 템플릿을 불러오지 못했습니다.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingReferenceTemplates(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [generationMode, referenceTemplateReload]);
 
   async function ensureProject() {
     if (!projectPromiseRef.current) {
@@ -652,6 +711,7 @@ export function AiPptMockupPage() {
   }
 
   async function submitGeneration() {
+    const referenceTemplate = selectedReferenceTemplate;
     const nextForm = contentFormRef.current
       ? mergeAiPptContentFormData(form, new FormData(contentFormRef.current))
       : form;
@@ -659,6 +719,13 @@ export function AiPptMockupPage() {
     const validationMessage = getAiPptWizardValidationMessage(nextForm);
     if (validationMessage) {
       setError(validationMessage);
+      return;
+    }
+    if (
+      generationMode === "ooxml-reference" &&
+      !referenceTemplate
+    ) {
+      setError("사용할 원본 템플릿을 선택하세요.");
       return;
     }
 
@@ -678,6 +745,33 @@ export function AiPptMockupPage() {
       }));
       if (uploadedFiles.some(({ fileId }) => !fileId)) {
         throw new Error("첨부파일 업로드가 완료된 후 계속할 수 있습니다.");
+      }
+
+      if (generationMode === "ooxml-reference") {
+        if (!referenceTemplate) {
+          throw new Error("사용할 원본 템플릿을 선택하세요.");
+        }
+        const timing = inferAiPptTimingFromContent(nextForm.content);
+        const referenceFileIds = uploadedFiles.flatMap(({ fileId }) =>
+          fileId ? [fileId] : [],
+        );
+        setStatus("원본 템플릿 발표 생성 중...");
+        const job = await startOoxmlReferenceTemplateGeneration(
+          project.projectId,
+          buildOoxmlReferenceTemplateGenerationRequest({
+            ...nextForm,
+            referenceFileIds,
+            targetDurationMinutes: timing.targetDurationMinutes,
+            slideCountRange: timing.slideCountRange,
+            template: referenceTemplate,
+          }),
+        );
+        generationStarted = true;
+        generationStartedRef.current = true;
+        navigateToPath(
+          ooxmlReferenceGenerationPath(project.projectId, job.jobId),
+        );
+        return;
       }
 
       setStatus("발표 구성 생성 중...");
@@ -726,9 +820,14 @@ export function AiPptMockupPage() {
     }
   }
 
-  if (isGenerating || showStyleLoadingPreview) {
+  if (
+    (isGenerating && generationMode === "recommended") ||
+    showStyleLoadingPreview
+  ) {
     return <AiPptStyleStartingPage />;
   }
+
+  if (isGenerating) return <OoxmlReferenceStartingPage />;
 
   return (
     <WorkspaceContainer as="section" className="ai-ppt-page" width="content">
@@ -737,6 +836,25 @@ export function AiPptMockupPage() {
 
         <main className="ai-ppt-workspace ai-ppt-workspace-single">
           <section className="ai-ppt-panel">
+            <GenerationModePicker
+              mode={generationMode}
+              onChange={(mode) => {
+                setGenerationMode(mode);
+                setError("");
+              }}
+            />
+            {generationMode === "ooxml-reference" ? (
+              <OoxmlReferenceTemplateOptions
+                error={referenceTemplateError}
+                loading={isLoadingReferenceTemplates}
+                onRetry={() =>
+                  setReferenceTemplateReload((current) => current + 1)
+                }
+                onSelect={setSelectedReferenceTemplate}
+                options={referenceTemplateOptions}
+                selected={selectedReferenceTemplate}
+              />
+            ) : null}
             <ContentStep
               files={referenceFiles}
               form={form}
@@ -766,7 +884,10 @@ export function AiPptMockupPage() {
                     </>
                   ) : (
                     <>
-                      다음 단계 <IconArrowRight size={18} />
+                      {generationMode === "ooxml-reference"
+                        ? "선택한 원본으로 생성"
+                        : "다음 단계"}{" "}
+                      <IconArrowRight size={18} />
                     </>
                   )}
                 </GradientButton>
@@ -785,6 +906,52 @@ export function AiPptMockupPage() {
           </section>
         </main>
       </div>
+    </WorkspaceContainer>
+  );
+}
+
+export function GenerationModePicker(props: {
+  mode: GenerationMode;
+  onChange: (mode: GenerationMode) => void;
+}) {
+  return (
+    <fieldset className="ai-ppt-generation-mode">
+      <legend>생성 방식</legend>
+      <div>
+        <button
+          aria-pressed={props.mode === "recommended"}
+          className={props.mode === "recommended" ? "selected" : ""}
+          onClick={() => props.onChange("recommended")}
+          type="button"
+        >
+          <strong>AI 추천 디자인</strong>
+          <span>내용에 맞는 디자인 팩, 폰트와 색상을 추천합니다.</span>
+        </button>
+        <button
+          aria-pressed={props.mode === "ooxml-reference"}
+          className={props.mode === "ooxml-reference" ? "selected" : ""}
+          onClick={() => props.onChange("ooxml-reference")}
+          type="button"
+        >
+          <strong>원본 템플릿 충실도</strong>
+          <span>승인된 PPTX 원본의 레이아웃과 스타일을 그대로 사용합니다.</span>
+        </button>
+      </div>
+    </fieldset>
+  );
+}
+
+function OoxmlReferenceStartingPage() {
+  return (
+    <WorkspaceContainer as="section" className="ai-ppt-page" width="content">
+      <main className="ai-ppt-workspace ai-ppt-loading-workspace">
+        <section className="ai-ppt-panel ai-ppt-loading-panel" aria-busy="true">
+          <p className="ai-ppt-status" role="status">
+            선택한 원본 템플릿 버전을 확인하고 생성 작업을 시작하는 중입니다.
+          </p>
+          <IconLoader2 aria-hidden="true" className="ai-ppt-style-loader" size={48} />
+        </section>
+      </main>
     </WorkspaceContainer>
   );
 }

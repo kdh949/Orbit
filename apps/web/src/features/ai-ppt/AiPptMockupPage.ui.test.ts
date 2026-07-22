@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   AiPptMockupPage,
   AiPptStyleColorPage,
+  GenerationModePicker,
 } from "./AiPptMockupPage";
 import { DesignPackOptions } from "./DesignPackOptions";
 
@@ -54,6 +55,22 @@ describe("AI PPT wizard UI", () => {
     expect(html).not.toContain('name="duration"');
     expect(html).not.toContain('name="slides"');
     expect(html).not.toContain(">References<");
+    expect(html).toContain("AI 추천 디자인");
+    expect(html).toContain("원본 템플릿 충실도");
+    expect(html).toContain('aria-pressed="true"');
+  });
+
+  it("keeps both generation modes as keyboard-native buttons", () => {
+    const html = renderToStaticMarkup(
+      createElement(GenerationModePicker, {
+        mode: "ooxml-reference",
+        onChange: vi.fn(),
+      }),
+    );
+
+    expect(html.match(/<button/g)).toHaveLength(2);
+    expect(html).toContain("원본 템플릿 충실도");
+    expect(html).toContain('aria-pressed="true"');
   });
 
   it("shows the two-step content and Style & Color indicator", () => {
