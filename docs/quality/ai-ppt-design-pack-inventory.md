@@ -33,7 +33,7 @@ Heuristic role inventory는 `content=77`, `data=37`, `media-content=9`, `cover=7
 - `neutral`: active, Orbit-native 9개 layout과 deterministic selector를 제공한다.
 - `executive-review`: active, Orbit-native 8개 layout을 제공한다. KPI와 chart는 grounded typed metric만 사용하고, table과 chart는 편집 가능한 native element로 export한다.
 - `kickoff-alignment`: active, Orbit-native 9개 layout과 3~6개 role/milestone capacity gate를 제공한다.
-- `editorial-insight`: 후보 정의만 승인되었으며 renderer와 golden 검증 전까지 active catalog에 포함하지 않는다.
+- `editorial-insight`: active, Orbit-native 9개 layout을 제공하며 grounded metric이 없을 때 statement/evidence를 metric layout으로 승격하지 않는다.
 
 ## 검수 체크리스트
 

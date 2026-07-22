@@ -15,6 +15,9 @@ from app.ai.design_pack_layouts.neutral import select_neutral_layouts
 from app.ai.design_pack_layouts.executive_review import (
     select_executive_review_layouts,
 )
+from app.ai.design_pack_layouts.editorial_insight import (
+    select_editorial_insight_layouts,
+)
 from app.ai.design_pack_layouts.kickoff_alignment import (
     select_kickoff_alignment_layouts,
 )
@@ -115,9 +118,9 @@ def selection_sort_key(
     default_variant_penalty = int(not preferred_rhythm and pack.variant == "dark")
     role_penalty = missing_role_count(pack, slides)
     return (
+        intent_penalty,
         profile_penalty,
         purpose_penalty,
-        intent_penalty,
         media_penalty,
         rhythm_penalty + default_variant_penalty + role_penalty,
         pack.id,
@@ -165,6 +168,8 @@ def semantic_intent_penalty(
         for family, keywords in keyword_groups.items()
         if any(keyword in text for keyword in keywords)
     }
+    if raw_input.design.profile == "editorial":
+        matched_families.add("editorial-insight")
     if pack.family == "neutral":
         return int(bool(matched_families))
     if pack.family in keyword_groups:
@@ -194,6 +199,8 @@ def select_layouts(
         return select_executive_review_layouts(slides, registry)
     if pack.family == "kickoff-alignment":
         return select_kickoff_alignment_layouts(slides, registry)
+    if pack.family == "editorial-insight":
+        return select_editorial_insight_layouts(slides, registry)
     raise ValueError(f"unsupported design pack family: {pack.family}")
 
 
