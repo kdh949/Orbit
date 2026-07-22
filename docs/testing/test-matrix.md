@@ -145,30 +145,33 @@
 ## AI PPT OOXML reference fidelity mode
 
 이 표의 `자동 통과`는 해당 구현 task의 fixture/contract 검증 상태이며 checkpoint 승인과
-동일하지 않다. private managed storage, 승인된 annotation, 실제 7개 full-deck artifact와
-사람 검수가 필요한 항목은 자동 테스트가 통과해도 `승인 보류`로 유지한다.
+동일하지 않다. 2026-07-23에 7개 source authorization과 139장/253 text-only slot
+annotation은 승인되었다. local QA private storage의 7개 source와 139개 preview checksum도
+검증했지만 production managed storage를 대신하지 않는다. PowerPoint/font QA, 실제 7개
+full-deck artifact와 남은 사람 검수가 필요한 항목은 자동 테스트가 통과해도 `승인 보류`로
+유지한다.
 
 | 범위 | 현재 상태 | 자동 검증 앵커 | 남은 승인 증거 |
 | --- | --- | --- | --- |
-| Task 1 source inventory/security | 자동 통과 | `test_ooxml_reference_inventory.py`와 실제 7개 source dry-run | private storage upload/ACL과 권리 승인 |
+| Task 1 source inventory/security | 자동 통과, source authorization 승인 | `test_ooxml_reference_inventory.py`와 실제 7개 source dry-run | production private storage upload/ACL |
 | Task 2 strict 공통 계약 | 자동 통과 | shared Zod/Python mirror contract test | 없음 |
-| Task 3 private catalog | 자동 통과, 전체 disabled | registry/catalog test | preview asset와 checksum, managed storage |
-| Task 4 annotation pipeline | 자동 통과 | annotation candidate/locator/locked inventory test | 실제 139장 annotation과 사람 승인 |
-| Checkpoint A | 승인 보류 | inventory/schema/security fixture | 승인된 manifest/preview/license/private ACL |
+| Task 3 private catalog | local QA source/preview checksum 검증, repository 전체 disabled | registry/catalog v2 approval/blocker test와 local QA 146-object read-after-write | production managed storage, PowerPoint/font QA |
+| Task 4 annotation pipeline | 자동 통과, 139장/253 text-only slot 승인 | annotation candidate/locator/locked inventory와 catalog approval provenance test | production storage publication과 runtime manifest drift 검증 |
+| Checkpoint A | 승인 보류 | inventory/schema/security fixture, 승인 manifest와 local QA preview checksum | production private ACL/storage, font availability와 PowerPoint QA |
 | Task 5 raw clone | 자동 통과 | clone/package validator test, actual-source 7개/139장 identity clone warning 0과 LibreOffice render/reopen | 승인된 Checkpoint A와 PowerPoint reopen |
 | Checkpoint B1 | actual-source 기계 검증 통과, 승인 보류 | 7개/139장 identity clone, relationship/package warning 0, slide count 일치, LibreOffice render/reopen | Checkpoint A, PowerPoint reopen과 사람 검수 |
-| Task 6 text/image slot | 자동 통과 | text/image capacity·style·media preservation test | 실제 승인 slot fixture |
+| Task 6 text/image slot | 자동 통과 | text/image capacity·style·media preservation test | 승인 text slot의 production publication과 실제 image slot 승인 |
 | Task 7 materialization | 자동 통과 | Python materialization과 Worker transaction test | 실제 private storage publication |
 | Task 8 fidelity harness | 자동 통과 | identity/masked comparison과 known drift test, actual-source 7개 LibreOffice identity render | PowerPoint baseline, renderer별 비교와 threshold 승인 |
-| Checkpoint B2 | 자동 경로 통과, 승인 보류 | Postgres round-trip integration 6 tests, `ai-ppt-ooxml-editor-roundtrip-spike.md` | 실제 slot montage와 사람 승인 |
-| Task 9 content/sequence planner | 자동 통과 | 7-family table-driven role/capacity/evidence/repetition tests | 승인된 7개 annotation fixture |
+| Checkpoint B2 | 자동 경로 통과, 승인 보류 | Postgres round-trip integration 6 tests, `ai-ppt-ooxml-editor-roundtrip-spike.md` | 승인 artifact의 production publication, 실제 slot montage와 PowerPoint/font 검수 |
+| Task 9 content/sequence planner | 자동 통과 | 7-family table-driven role/capacity/evidence/repetition tests | 승인 annotation의 production runtime fixture |
 | Task 10 table slot | 자동 통과 | reference table replacement + 기존 table sync 26 tests | 실제 template table fixture/reopen |
 | Task 11a chart package replacement | 자동 통과 | chart/workbook atomic replacement test, PowerPoint/LibreOffice fixture reopen | 실제 template chart montage와 사람 검수 |
 | Task 11b chart targeted sync | 자동 통과 | chart data patch → workbook/chart atomic sync/reopen test | 실제 template chart slot 편집 artifact |
-| Task 12 7-template 확장 | 구현 차단 | disabled 7-template catalog와 family planner fixture | 승인된 139장 annotation, private source/preview/font |
+| Task 12 7-template 확장 | 실제 generation/PowerPoint artifact 대기 | 승인 provenance/preview checksum을 가진 disabled 7-template catalog와 family planner fixture | 7개 8~10장 full-deck, production publication, font와 PowerPoint QA |
 | Checkpoint C | 승인 보류 | planner/materializer/package fixture | 7개 template별 8~10장 full-deck와 montage/report |
 | Task 13 별도 Job/API/Worker | 자동 통과 | shared Job/queue, authenticated API, stage processor, atomic publication/fidelity gate test | private artifact storage smoke |
-| Task 14 catalog/preview API | 자동 통과, 전체 disabled | catalog projection/auth/checksum/preview-missing test와 Python option projection | 승인된 preview/checksum/allowlist |
+| Task 14 catalog/preview API | 자동 통과, repository 전체 disabled | catalog projection/auth/checksum/preview-missing test와 Python option projection | QA active manifest/allowlist smoke와 production publication |
 | Task 15 generation preview polling | 자동 통과 | completed-prefix, read-only, failed/ready transition API test | actual generated preview artifact |
 | Task 16 `/createdeck` mode/template 선택 | 자동 통과 | AI 추천 payload 회귀, keyboard/mobile/loading/error와 exact selection test | enabled template을 사용한 browser E2E |
 | Task 17 generation progress/error UX | 자동 통과 | ordering/reduced-motion/typed failure/retry CTA test | actual Job → editor browser E2E |
