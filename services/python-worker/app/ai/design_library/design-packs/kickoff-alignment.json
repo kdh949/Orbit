@@ -1,0 +1,68 @@
+{
+  "catalogVersion": 1,
+  "packs": [
+    {
+      "id": "kickoff-alignment",
+      "version": 1,
+      "family": "kickoff-alignment",
+      "variant": "mixed",
+      "status": "active",
+      "baseStylePackId": "project-kickoff",
+      "supportedProfiles": ["proposal", "product-launch", "general-inform"],
+      "supportedPurposes": ["inform", "persuade"],
+      "selectionTags": ["kickoff", "alignment", "project-plan", "roadmap", "schedule"],
+      "layoutIds": ["kickoff-cover-01", "kickoff-agenda-01", "kickoff-goals-01", "kickoff-roles-01", "kickoff-process-01", "kickoff-timeline-01", "kickoff-roadmap-01", "kickoff-schedule-01", "kickoff-closing-01"],
+      "backgroundRhythm": "light-dominant",
+      "mediaPolicy": ["avoid", "minimal", "balanced", "provided-only", "hybrid"],
+      "previewManifestId": "preview-kickoff-alignment-v1",
+      "provenance": { "source": "orbit-native", "licenseStatus": "approved" }
+    }
+  ],
+  "layouts": [
+    {
+      "layoutId": "kickoff-cover-01", "rendererId": "kickoff-cover-01", "slideRoles": ["cover"], "silhouetteId": "kickoff-cover", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 120, "itemMin": 0, "itemMax": 0 }, "dataRequirement": "none", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "subtitle", "required": false }], "previewId": "preview-kickoff-cover-01-v1"
+    },
+    {
+      "layoutId": "kickoff-agenda-01", "rendererId": "kickoff-agenda-01", "slideRoles": ["content", "summary"], "silhouetteId": "kickoff-agenda-list", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 120, "itemMin": 3, "itemMax": 6 }, "dataRequirement": "none", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "body", "required": true }], "previewId": "preview-kickoff-agenda-01-v1"
+    },
+    {
+      "layoutId": "kickoff-goals-01", "rendererId": "kickoff-goals-01", "slideRoles": ["statement", "content"], "silhouetteId": "kickoff-goals-split", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 140, "itemMin": 2, "itemMax": 4 }, "dataRequirement": "none", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "body", "required": true }], "previewId": "preview-kickoff-goals-01-v1"
+    },
+    {
+      "layoutId": "kickoff-roles-01", "rendererId": "kickoff-roles-01", "slideRoles": ["content", "comparison"], "silhouetteId": "kickoff-role-grid", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 100, "itemMin": 3, "itemMax": 6 }, "dataRequirement": "none", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "body", "required": true }], "previewId": "preview-kickoff-roles-01-v1"
+    },
+    {
+      "layoutId": "kickoff-process-01", "rendererId": "kickoff-process-01", "slideRoles": ["process"], "silhouetteId": "kickoff-process-lanes", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 100, "itemMin": 3, "itemMax": 6 }, "dataRequirement": "timeline", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "body", "required": true }], "previewId": "preview-kickoff-process-01-v1"
+    },
+    {
+      "layoutId": "kickoff-timeline-01", "rendererId": "kickoff-timeline-01", "slideRoles": ["timeline", "process"], "silhouetteId": "kickoff-timeline-axis", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 100, "itemMin": 3, "itemMax": 6 }, "dataRequirement": "timeline", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "body", "required": true }], "previewId": "preview-kickoff-timeline-01-v1"
+    },
+    {
+      "layoutId": "kickoff-roadmap-01", "rendererId": "kickoff-roadmap-01", "slideRoles": ["timeline", "process"], "silhouetteId": "kickoff-roadmap-cards", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 100, "itemMin": 3, "itemMax": 6 }, "dataRequirement": "timeline", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "body", "required": true }], "previewId": "preview-kickoff-roadmap-01-v1"
+    },
+    {
+      "layoutId": "kickoff-schedule-01", "rendererId": "kickoff-schedule-01", "slideRoles": ["timeline", "data"], "silhouetteId": "kickoff-schedule-grid", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 100, "itemMin": 3, "itemMax": 6 }, "dataRequirement": "timeline", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "body", "required": true }], "previewId": "preview-kickoff-schedule-01-v1"
+    },
+    {
+      "layoutId": "kickoff-closing-01", "rendererId": "kickoff-closing-01", "slideRoles": ["closing", "summary"], "silhouetteId": "kickoff-closing", "backgroundModes": ["light", "dark"],
+      "contentCapacity": { "titleMaxLines": 2, "messageMaxChars": 120, "itemMin": 0, "itemMax": 3 }, "dataRequirement": "none", "mediaRequirement": "none",
+      "slots": [{ "role": "title", "required": true }, { "role": "body", "required": false }], "previewId": "preview-kickoff-closing-01-v1"
+    }
+  ]
+}

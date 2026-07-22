@@ -15,6 +15,9 @@ from app.ai.design_pack_layouts.neutral import select_neutral_layouts
 from app.ai.design_pack_layouts.executive_review import (
     select_executive_review_layouts,
 )
+from app.ai.design_pack_layouts.kickoff_alignment import (
+    select_kickoff_alignment_layouts,
+)
 from app.ai.design_program import DeckDesignProgram
 
 
@@ -99,11 +102,12 @@ def selection_sort_key(
     pack: SystemDesignPackManifest,
     raw_input: RawInput,
     slides: list[dict[str, Any]],
-) -> tuple[int, int, int, int, str, int]:
+) -> tuple[int, int, int, int, int, str, int]:
     preferences = raw_input.design_program_context.saved_design_preferences
     preferred_rhythm = str(preferences.get("backgroundRhythm", ""))
     profile_penalty = int(raw_input.presentation_profile not in pack.supported_profiles)
     purpose_penalty = int(raw_input.metadata.purpose not in pack.supported_purposes)
+    intent_penalty = semantic_intent_penalty(pack, raw_input)
     media_penalty = int(raw_input.design.media_policy not in pack.media_policy)
     rhythm_penalty = int(
         bool(preferred_rhythm) and pack.background_rhythm != preferred_rhythm
@@ -113,11 +117,59 @@ def selection_sort_key(
     return (
         profile_penalty,
         purpose_penalty,
+        intent_penalty,
         media_penalty,
         rhythm_penalty + default_variant_penalty + role_penalty,
         pack.id,
         -pack.version,
     )
+
+
+def semantic_intent_penalty(
+    pack: SystemDesignPackManifest,
+    raw_input: RawInput,
+) -> int:
+    text = " ".join(
+        (
+            raw_input.topic,
+            raw_input.prompt,
+            raw_input.design_prompt,
+            raw_input.brief.presentation_context,
+            raw_input.brief.presentation_type,
+        )
+    ).casefold()
+    keyword_groups = {
+        "kickoff-alignment": (
+            "kickoff",
+            "alignment",
+            "project plan",
+            "roadmap",
+            "schedule",
+            "착수",
+            "킥오프",
+            "얼라인먼트",
+            "로드맵",
+            "일정 계획",
+        ),
+        "editorial-insight": (
+            "market trend",
+            "market insight",
+            "editorial",
+            "시장 동향",
+            "시장 인사이트",
+            "트렌드",
+        ),
+    }
+    matched_families = {
+        family
+        for family, keywords in keyword_groups.items()
+        if any(keyword in text for keyword in keywords)
+    }
+    if pack.family == "neutral":
+        return int(bool(matched_families))
+    if pack.family in keyword_groups:
+        return int(pack.family not in matched_families)
+    return 0
 
 
 def missing_role_count(
@@ -140,6 +192,8 @@ def select_layouts(
         return select_neutral_layouts(slides, registry)
     if pack.family == "executive-review":
         return select_executive_review_layouts(slides, registry)
+    if pack.family == "kickoff-alignment":
+        return select_kickoff_alignment_layouts(slides, registry)
     raise ValueError(f"unsupported design pack family: {pack.family}")
 
 
