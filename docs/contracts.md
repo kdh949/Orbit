@@ -1265,7 +1265,7 @@ Job:
 - Job type: `pptx-ooxml-sync`
 - Queue name: `pptx-ooxml-sync`
 
-클라이언트는 `GET /api/v1/projects/:projectId/deck/ooxml-sync-state`로 현재 Deck version과 PPTX package의 동기화 상태를 조회한다. 응답의 `ooxmlSyncState.status`는 `not-applicable`, `pending`, `synced`, `stale`, `failed` 중 하나이며 `deckId`, `deckVersion`, nullable `syncedDeckVersion`, `retryable`, optional 최신 `job`을 포함한다. `POST /api/v1/projects/:projectId/deck/ooxml-sync/retry`는 stale, retryable failure, 또는 현재 `PPTX_OOXML_SYNC_CAPABILITY_VERSION`보다 낮은 implementation에서 만들어진 failure에 대해 현재 Deck version 대상 sync Job을 enqueue한다. 같은 version의 queued/running Job이 있으면 기존 Job을 반환하며 중복 enqueue하지 않고, 현재 capability의 non-retryable failure는 HTTP 409로 거부한다.
+클라이언트는 `GET /api/v1/projects/:projectId/deck/ooxml-sync-state`로 현재 Deck version과 PPTX package의 동기화 상태를 조회한다. 응답의 `ooxmlSyncState.status`는 `not-applicable`, `pending`, `synced`, `warning`, `stale`, `failed` 중 하나이며 `deckId`, `deckVersion`, nullable `syncedDeckVersion`, `retryable`, optional 최신 `job`을 포함한다. reference-template Deck은 current version sync에 warning이 있으면 `warning`과 `warningCount`, `OOXML_REFERENCE_SYNC_WARNING` issue code를 반환한다. `pending`, `stale`, `failed`도 각각 안정적인 `OOXML_REFERENCE_SYNC_*` issue code를 제공한다. `POST /api/v1/projects/:projectId/deck/ooxml-sync/retry`는 stale, retryable failure, 또는 현재 `PPTX_OOXML_SYNC_CAPABILITY_VERSION`보다 낮은 implementation에서 만들어진 failure에 대해 현재 Deck version 대상 sync Job을 enqueue한다. 같은 version의 queued/running Job이 있으면 기존 Job을 반환하며 중복 enqueue하지 않고, warning 또는 현재 capability의 non-retryable failure는 HTTP 409로 거부한다. reference-template PPTX export는 current version이 `synced`이고 warning이 0개일 때만 허용한다.
 
 Job result:
 

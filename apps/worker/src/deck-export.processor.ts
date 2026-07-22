@@ -86,7 +86,9 @@ type ProjectAssetRow = {
 
 type ImportedExportResult =
   | { kind: "generic" }
+  | { kind: "invalid-reference" }
   | { kind: "stale"; deckVersion: number; syncedDeckVersion: number }
+  | { kind: "warning"; warningCount: number }
   | { kind: "completed"; job: Job }
   | { kind: "materialized"; pptxBytes: Buffer; warnings: string[] };
 
@@ -179,6 +181,24 @@ export async function processDeckExportJob(
           exportPayload,
           imported.pptxBytes,
           imported.warnings,
+        );
+      }
+      if (imported.kind === "warning") {
+        return failJob(
+          dataSource,
+          payload.jobId,
+          20,
+          "OOXML_REFERENCE_EXPORT_SYNC_WARNING",
+          `Current reference-template PPTX package has ${imported.warningCount} sync warning(s).`,
+        );
+      }
+      if (imported.kind === "invalid-reference") {
+        return failJob(
+          dataSource,
+          payload.jobId,
+          20,
+          "OOXML_REFERENCE_EXPORT_SNAPSHOT_MISMATCH",
+          "Reference-template Deck and blueprint snapshots do not match.",
         );
       }
       if (imported.kind === "generic") break;
@@ -322,6 +342,9 @@ async function exportImportedDeckIfReady(
       payload.deck.deckId,
     );
     if (!templateBlueprint) return { kind: "generic" };
+    if (referenceSnapshotMismatch(payload.deck, templateBlueprint)) {
+      return { kind: "invalid-reference" };
+    }
 
     const currentPackageFileId = templateBlueprint.currentPackageFileId;
     if (!currentPackageFileId) {
@@ -333,6 +356,15 @@ async function exportImportedDeckIfReady(
         kind: "stale",
         deckVersion: storedDeck.version,
         syncedDeckVersion,
+      };
+    }
+    if (
+      templateBlueprint.referenceTemplateSnapshot &&
+      (templateBlueprint.ooxmlSyncWarnings?.length ?? 0) > 0
+    ) {
+      return {
+        kind: "warning",
+        warningCount: templateBlueprint.ooxmlSyncWarnings!.length,
       };
     }
 
@@ -373,6 +405,18 @@ async function exportImportedDeckIfReady(
         syncedDeckVersion: recheckedBlueprint?.ooxmlSyncedDeckVersion ?? 0,
       };
     }
+    if (referenceSnapshotMismatch(payload.deck, recheckedBlueprint)) {
+      return { kind: "invalid-reference" };
+    }
+    if (
+      recheckedBlueprint.referenceTemplateSnapshot &&
+      (recheckedBlueprint.ooxmlSyncWarnings?.length ?? 0) > 0
+    ) {
+      return {
+        kind: "warning",
+        warningCount: recheckedBlueprint.ooxmlSyncWarnings!.length,
+      };
+    }
 
     if (payload.format === "png") {
       return { kind: "materialized", pptxBytes: packageBytes, warnings: [] };
@@ -395,6 +439,23 @@ async function exportImportedDeckIfReady(
     });
     return { kind: "completed", job };
   });
+}
+
+function referenceSnapshotMismatch(
+  deck: DeckExportPayload["deck"],
+  blueprint: TemplateBlueprint,
+): boolean {
+  const deckSnapshot = deck.metadata.ooxmlReferenceTemplateSnapshot;
+  const blueprintSnapshot = blueprint.referenceTemplateSnapshot;
+  if (!deckSnapshot && !blueprintSnapshot) return false;
+  return (
+    !deckSnapshot ||
+    !blueprintSnapshot ||
+    deckSnapshot.catalogTemplateId !== blueprintSnapshot.catalogTemplateId ||
+    deckSnapshot.catalogTemplateVersion !==
+      blueprintSnapshot.catalogTemplateVersion ||
+    deckSnapshot.sourceSha256 !== blueprintSnapshot.sourceSha256
+  );
 }
 
 async function loadStoredDeckForExport(

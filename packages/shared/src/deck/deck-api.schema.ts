@@ -146,8 +146,16 @@ export const ooxmlSyncStatusSchema = z.enum([
   "not-applicable",
   "pending",
   "synced",
+  "warning",
   "stale",
   "failed",
+]);
+
+export const ooxmlReferenceSyncIssueCodeSchema = z.enum([
+  "OOXML_REFERENCE_SYNC_PENDING",
+  "OOXML_REFERENCE_SYNC_STALE",
+  "OOXML_REFERENCE_SYNC_FAILED",
+  "OOXML_REFERENCE_SYNC_WARNING",
 ]);
 
 export const ooxmlSyncStateSchema = z.object({
@@ -156,6 +164,8 @@ export const ooxmlSyncStateSchema = z.object({
   deckVersion: z.number().int().positive(),
   syncedDeckVersion: z.number().int().positive().nullable(),
   retryable: z.boolean(),
+  warningCount: z.number().int().nonnegative().optional(),
+  issueCode: ooxmlReferenceSyncIssueCodeSchema.optional(),
   job: jobSchema.optional(),
 });
 

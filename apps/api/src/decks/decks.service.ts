@@ -312,11 +312,15 @@ export class DecksService {
         syncState.status !== "not-applicable" &&
         syncState.status !== "synced"
       ) {
+        const referenceIssueCode = syncState.issueCode;
         throw new HttpException(
           {
-            code: "DECK_EXPORT_OOXML_SYNC_NOT_READY",
-            message:
-              "최신 편집 내용의 PPTX 동기화가 완료되지 않았습니다. 동기화 재시도 후 다시 내보내세요.",
+            code: referenceIssueCode
+              ? "OOXML_REFERENCE_EXPORT_SYNC_NOT_READY"
+              : "DECK_EXPORT_OOXML_SYNC_NOT_READY",
+            message: referenceIssueCode
+              ? `[${referenceIssueCode}] 원본 템플릿의 최신 PPTX package가 export 조건을 충족하지 않습니다.`
+              : "최신 편집 내용의 PPTX 동기화가 완료되지 않았습니다. 동기화 재시도 후 다시 내보내세요.",
             ooxmlSyncState: syncState,
           },
           HttpStatus.CONFLICT,
@@ -1544,6 +1548,17 @@ export class DecksService {
       deck,
     );
     if (!imported) {
+      if (deck.metadata.ooxmlReferenceTemplateSnapshot) {
+        return {
+          status: "failed",
+          deckId: deck.deckId,
+          deckVersion: deck.version,
+          syncedDeckVersion: null,
+          retryable: false,
+          warningCount: 0,
+          issueCode: "OOXML_REFERENCE_SYNC_FAILED",
+        };
+      }
       return {
         status: "not-applicable",
         deckId: deck.deckId,
@@ -1555,6 +1570,25 @@ export class DecksService {
 
     const syncedDeckVersion =
       imported.blueprint.ooxmlSyncedDeckVersion ?? null;
+    const deckReferenceSnapshot =
+      deck.metadata.ooxmlReferenceTemplateSnapshot;
+    const blueprintReferenceSnapshot =
+      imported.blueprint.referenceTemplateSnapshot;
+    const isReferenceTemplate = Boolean(
+      deckReferenceSnapshot || blueprintReferenceSnapshot,
+    );
+    const referenceSnapshotMismatch = Boolean(
+      isReferenceTemplate &&
+        (!deckReferenceSnapshot ||
+          !blueprintReferenceSnapshot ||
+          deckReferenceSnapshot.catalogTemplateId !==
+            blueprintReferenceSnapshot.catalogTemplateId ||
+          deckReferenceSnapshot.catalogTemplateVersion !==
+            blueprintReferenceSnapshot.catalogTemplateVersion ||
+          deckReferenceSnapshot.sourceSha256 !==
+            blueprintReferenceSnapshot.sourceSha256),
+    );
+    const syncWarnings = imported.blueprint.ooxmlSyncWarnings ?? [];
     const job =
       suppliedJob ??
       (await this.jobsService?.getLatestPptxOoxmlSync(
@@ -1563,8 +1597,12 @@ export class DecksService {
         deck.version,
       ));
     const status =
-      syncedDeckVersion === deck.version
-        ? "synced"
+      referenceSnapshotMismatch
+        ? "failed"
+        : syncedDeckVersion === deck.version
+        ? isReferenceTemplate && syncWarnings.length > 0
+          ? "warning"
+          : "synced"
         : job?.status === "failed"
           ? "failed"
           : job?.status === "queued" || job?.status === "running"
@@ -1572,17 +1610,24 @@ export class DecksService {
             : "stale";
 
     const attemptedCapabilityVersion = readSyncCapabilityVersion(job);
+    const issueCode = isReferenceTemplate
+      ? referenceSyncIssueCode(status)
+      : undefined;
     return {
       status,
       deckId: deck.deckId,
       deckVersion: deck.version,
       syncedDeckVersion,
       retryable:
-        status === "stale" ||
+        !referenceSnapshotMismatch &&
+        (status === "stale" ||
         (status === "failed" &&
           (job?.error?.retryable === true ||
             attemptedCapabilityVersion <
-              PPTX_OOXML_SYNC_CAPABILITY_VERSION)),
+              PPTX_OOXML_SYNC_CAPABILITY_VERSION))),
+      ...(isReferenceTemplate
+        ? { warningCount: syncWarnings.length, ...(issueCode ? { issueCode } : {}) }
+        : {}),
       ...(job ? { job } : {}),
     };
   }
@@ -2274,6 +2319,16 @@ function assertReferenceMutationAllowed(
       ...(violation.elementId ? [`elementId=${violation.elementId}`] : []),
     ],
   );
+}
+
+function referenceSyncIssueCode(
+  status: OoxmlSyncState["status"],
+): OoxmlSyncState["issueCode"] {
+  if (status === "pending") return "OOXML_REFERENCE_SYNC_PENDING";
+  if (status === "stale") return "OOXML_REFERENCE_SYNC_STALE";
+  if (status === "failed") return "OOXML_REFERENCE_SYNC_FAILED";
+  if (status === "warning") return "OOXML_REFERENCE_SYNC_WARNING";
+  return undefined;
 }
 
 function formatZodError(error: ZodError): string[] {

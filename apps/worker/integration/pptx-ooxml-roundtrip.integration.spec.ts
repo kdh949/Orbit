@@ -185,6 +185,174 @@ describeIntegration("PPTX OOXML PostgreSQL round-trip", () => {
     expect(reimportedText.height).toBeCloseTo(expectedFrame.height, 0);
   }, 120_000);
 
+  it("edits a reference text slot, syncs without warnings, exports the current package, and re-imports it", async () => {
+    const projectId = integrationId("project");
+    const sourceFileId = integrationId("file");
+    const sourceStorageKey = `integration/${projectId}/reference-source.pptx`;
+    const storage = new MemoryStorage();
+    projectIds.add(projectId);
+
+    await expectPythonWorkerHealthy(pythonWorkerUrl);
+    const sourceDeck = createDeck(projectId, integrationId("deck"), 1);
+    const sourceBytes = await exportDeckWithPython(pythonWorkerUrl, sourceDeck);
+    storage.seed(sourceStorageKey, sourceBytes, pptxMimeType, "pptx-import");
+    await seedProject(dataSource, projectId);
+    await seedAsset(dataSource, {
+      projectId,
+      fileId: sourceFileId,
+      storageKey: sourceStorageKey,
+      purpose: "pptx-import",
+      body: sourceBytes,
+    });
+
+    const harness = createServiceHarness(dataSource);
+    const importJob = await harness.jobs.create({
+      projectId,
+      type: "pptx-ooxml-generation",
+      payload: { request: { fileId: sourceFileId } },
+    });
+    const importedJob = await processPptxOoxmlGenerationJob(
+      dataSource,
+      storage,
+      pythonWorkerUrl,
+      {
+        jobId: importJob.jobId,
+        projectId,
+        request: { fileId: sourceFileId },
+      },
+    );
+    expect(importedJob.status, JSON.stringify(importedJob.error)).toBe(
+      "succeeded",
+    );
+
+    const imported = (await harness.decks.getDeck(projectId)).deck;
+    const sourceText = findTextElement(imported, "Initial integration text");
+    const sourceBlueprint = await loadTemplateBlueprint(
+      dataSource,
+      projectId,
+      imported.deckId,
+    );
+    const referenceSnapshot = {
+      catalogTemplateId: "operating-review",
+      catalogTemplateVersion: 1,
+      sourceSha256: "a".repeat(64),
+    } as const;
+    const referenceDeck = deckSchema.parse({
+      ...imported,
+      metadata: {
+        ...imported.metadata,
+        ooxmlReferenceTemplateSnapshot: {
+          ...referenceSnapshot,
+          generationId: importJob.jobId,
+        },
+      },
+    });
+    const referenceBlueprint = templateBlueprintSchema.parse({
+      ...sourceBlueprint,
+      referenceTemplateSnapshot: {
+        ...referenceSnapshot,
+        sourceSlideIds: ["cover-01"],
+        slotAssignmentCount: 1,
+      },
+      slotEditPolicies: [
+        {
+          slotId: "slot_reference_title",
+          elementId: sourceText.elementId,
+          mutationPolicy: ["text-content"],
+          frameLocked: true,
+        },
+      ],
+    });
+    await dataSource.query(
+      `UPDATE decks SET deck_json = $3, updated_at = now()
+       WHERE project_id = $1 AND deck_id = $2`,
+      [projectId, imported.deckId, referenceDeck],
+    );
+    await dataSource.query(
+      `UPDATE template_blueprints SET blueprint_json = $3, updated_at = now()
+       WHERE project_id = $1 AND deck_id = $2`,
+      [projectId, imported.deckId, referenceBlueprint],
+    );
+    expect(
+      (await harness.decks.getDeck(projectId)).deck.metadata
+        .ooxmlReferenceTemplateSnapshot,
+    ).toBeDefined();
+
+    const editedText = "Reference slot round-trip text";
+    const saved = await harness.decks.appendPatch(projectId, {
+      patch: {
+        deckId: referenceDeck.deckId,
+        baseVersion: referenceDeck.version,
+        source: "user",
+        operations: [
+          {
+            type: "update_element_props",
+            slideId: referenceDeck.slides[0]!.slideId,
+            elementId: sourceText.elementId,
+            props: { text: editedText },
+          },
+        ],
+      },
+    });
+    expect(saved.deck.metadata.ooxmlReferenceTemplateSnapshot).toBeDefined();
+    const syncPayload = await enqueueSync(harness, projectId, {
+      deckId: saved.deck.deckId,
+      changeId: saved.changeRecord.changeId,
+      targetDeckVersion: saved.deck.version,
+    });
+    const syncJob = await processPptxOoxmlSyncJob(
+      dataSource,
+      storage,
+      pythonWorkerUrl,
+      syncPayload,
+    );
+    expect(syncJob.status, JSON.stringify(syncJob.error)).toBe("succeeded");
+    expect(syncJob.result).toMatchObject({
+      syncedDeckVersion: saved.deck.version,
+      warnings: [],
+    });
+    const syncedBlueprint = await loadTemplateBlueprint(
+      dataSource,
+      projectId,
+      referenceDeck.deckId,
+    );
+    expect(syncedBlueprint.ooxmlSyncWarnings).toEqual([]);
+    expect(syncedBlueprint.referenceTemplateSnapshot).toBeDefined();
+    expect(
+      (await harness.decks.getDeck(projectId)).deck.metadata
+        .ooxmlReferenceTemplateSnapshot,
+    ).toBeDefined();
+    expect(await harness.decks.getOoxmlSyncState(projectId)).toMatchObject({
+      ooxmlSyncState: {
+        status: "synced",
+        warningCount: 0,
+      },
+    });
+
+    const exportPayload = await enqueueExport(harness, projectId);
+    const exportedJob = await processDeckExportJob(
+      dataSource,
+      storage,
+      pythonWorkerUrl,
+      exportPayload,
+      { ooxmlReadyAttempts: 1, ooxmlReadyDelayMs: 0 },
+    );
+    expect(exportedJob.status, JSON.stringify(exportedJob.error)).toBe(
+      "succeeded",
+    );
+    expect(storage.bytes(sourceStorageKey)).toEqual(sourceBytes);
+    const exportedBytes = await jobAssetBytes(dataSource, storage, exportedJob);
+    const reimported = await importPptxWithPython(
+      pythonWorkerUrl,
+      exportedBytes,
+      projectId,
+      integrationId("file"),
+    );
+    expect(findImportedText(reimported, editedText).props.text).toContain(
+      editedText,
+    );
+  }, 120_000);
+
   it("coalesces cumulative reorder and authored line, arrow, and chart fallbacks", async () => {
     const projectId = integrationId("project");
     const sourceFileId = integrationId("file");

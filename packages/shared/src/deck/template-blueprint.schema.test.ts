@@ -88,6 +88,7 @@ describe("templateBlueprintSchema", () => {
       sourcePackageFileId: "file_1",
       currentPackageFileId: "file_current",
       ooxmlSyncedDeckVersion: 2,
+      ooxmlSyncWarnings: ["PPTX_OOXML_SYNC_RENDER_FALLBACK"],
       slides: [
         {
           slideIndex: 1,
@@ -122,6 +123,9 @@ describe("templateBlueprintSchema", () => {
 
     expect(blueprint.currentPackageFileId).toBe("file_current");
     expect(blueprint.ooxmlSyncedDeckVersion).toBe(2);
+    expect(blueprint.ooxmlSyncWarnings).toEqual([
+      "PPTX_OOXML_SYNC_RENDER_FALLBACK",
+    ]);
     expect(blueprint.slides[0].renderAssetFileId).toBe("file_slide_1");
     expect(blueprint.slides[0].ooxmlOrigin).toBe("imported");
     expect(

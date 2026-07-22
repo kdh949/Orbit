@@ -98,18 +98,21 @@ describe("processPptxOoxmlSyncJob", () => {
         ]);
         return new Response(
           JSON.stringify(
-            workerResponse([
-              {
-                operationType: "update_element_props",
-                slideId: "slide_1",
-                elementId: "el_title",
-              },
-              {
-                operationType: "update_element_props",
-                slideId: "slide_1",
-                elementId: "el_image",
-              },
-            ]),
+            workerResponse(
+              [
+                {
+                  operationType: "update_element_props",
+                  slideId: "slide_1",
+                  elementId: "el_title",
+                },
+                {
+                  operationType: "update_element_props",
+                  slideId: "slide_1",
+                  elementId: "el_image",
+                },
+              ],
+              ["PPTX_OOXML_SYNC_RENDER_FALLBACK"],
+            ),
           ),
         );
       }
@@ -129,6 +132,7 @@ describe("processPptxOoxmlSyncJob", () => {
     expect(savedBlueprint).toMatchObject({
       currentPackageFileId: expect.stringMatching(/^file_/),
       ooxmlSyncedDeckVersion: 3,
+      ooxmlSyncWarnings: ["PPTX_OOXML_SYNC_RENDER_FALLBACK"],
     });
     expect(query).toHaveBeenCalledWith(
       "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
@@ -2140,6 +2144,7 @@ function workerResponse(
     slideId?: string;
     elementId?: string;
   }> = [],
+  warnings: string[] = [],
 ) {
   return {
     assets: [
@@ -2153,7 +2158,7 @@ function workerResponse(
     elementSources: [],
     appliedOperations,
     unsupportedOperations: [],
-    warnings: [],
+    warnings,
   };
 }
 

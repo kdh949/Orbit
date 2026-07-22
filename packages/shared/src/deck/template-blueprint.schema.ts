@@ -348,6 +348,10 @@ export const templateBlueprintSchema = z
     sourcePackageFileId: z.string().min(1).optional(),
     currentPackageFileId: z.string().min(1).optional(),
     ooxmlSyncedDeckVersion: z.number().int().positive().optional(),
+    ooxmlSyncWarnings: z
+      .array(z.string().trim().min(1).max(500))
+      .max(500)
+      .optional(),
     logicalGroupElementIds: z.array(deckElementIdSchema).default([]),
     referenceTemplateSnapshot: ooxmlTemplateSnapshotSchema.optional(),
     slotEditPolicies: z

@@ -418,7 +418,10 @@ export async function processPptxOoxmlSyncJob(
           ),
           syncedDeckVersion,
           rasterizedElements,
-          warnings: rasterFallbackWarnings(rasterizedElements),
+          warnings: uniqueSyncWarnings([
+            ...(templateBlueprint.ooxmlSyncWarnings ?? []),
+            ...rasterFallbackWarnings(rasterizedElements),
+          ]),
         });
       }
 
@@ -513,13 +516,24 @@ export async function processPptxOoxmlSyncJob(
         payload.projectId,
         synced,
       );
-      const nextTemplateBlueprint = withSyncResult(
+      const nextTemplateBlueprintWithoutWarnings = withSyncResult(
         syncPlan.templateBlueprint,
         savedAssets,
         latestDeckVersion,
         synced,
         storedDeck,
       );
+      const rasterizedElements = activeRasterizedElements(
+        nextTemplateBlueprintWithoutWarnings,
+      );
+      const syncWarnings = uniqueSyncWarnings([
+        ...synced.warnings,
+        ...rasterFallbackWarnings(rasterizedElements),
+      ]);
+      const nextTemplateBlueprint = templateBlueprintSchema.parse({
+        ...nextTemplateBlueprintWithoutWarnings,
+        ooxmlSyncWarnings: syncWarnings,
+      });
       const updated = await updateTemplateBlueprintConditionally(
         manager,
         payload.projectId,
@@ -539,21 +553,13 @@ export async function processPptxOoxmlSyncJob(
         latestDeckVersion,
       );
 
-      const rasterizedElements = activeRasterizedElements(
-        nextTemplateBlueprint,
-      );
       return completeSyncJob(manager, payload, {
         templateId: nextTemplateBlueprint.templateId,
         currentPackageFileId: savedAssets.currentPackageFileId,
         renderAssetFileIds: savedAssets.renderAssetFileIds,
         syncedDeckVersion: latestDeckVersion,
         rasterizedElements,
-        warnings: [
-          ...new Set([
-            ...synced.warnings,
-            ...rasterFallbackWarnings(rasterizedElements),
-          ]),
-        ],
+        warnings: syncWarnings,
       });
     });
   } catch (error) {
@@ -1863,6 +1869,10 @@ function rasterFallbackWarnings(
   return [
     `PPTX 호환을 위해 authored 요소 ${rasterizedElements.length}개를 투명 PNG로 동기화했습니다 (${summary}).`,
   ];
+}
+
+function uniqueSyncWarnings(warnings: readonly string[]): string[] {
+  return [...new Set(warnings.map((warning) => warning.trim()).filter(Boolean))];
 }
 
 function withSourceSlideLocator(

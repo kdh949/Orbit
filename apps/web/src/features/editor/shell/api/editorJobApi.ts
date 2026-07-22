@@ -186,8 +186,17 @@ export async function waitForOoxmlSync(
 
   for (;;) {
     if (state.status === "synced" || state.status === "not-applicable") return state;
+    if (state.status === "warning") {
+      throw new Error(
+        `[${state.issueCode ?? "OOXML_REFERENCE_SYNC_WARNING"}] 동기화 경고가 ${state.warningCount ?? 1}개 남아 있어 원본 템플릿을 내보낼 수 없습니다.`
+      );
+    }
     if (state.status === "failed") {
-      throw new Error("PPTX 원본 동기화에 실패했습니다. 동기화 재시도 후 다시 내보내세요.");
+      throw new Error(
+        state.issueCode
+          ? `[${state.issueCode}] 원본 템플릿 동기화에 실패했습니다. 문제를 해결한 뒤 다시 시도하세요.`
+          : "PPTX 원본 동기화에 실패했습니다. 동기화 재시도 후 다시 내보내세요."
+      );
     }
     if (Date.now() - startedAt > timeoutMs) {
       throw new Error("PPTX 원본 동기화가 완료되지 않았습니다. 잠시 후 다시 시도하세요.");

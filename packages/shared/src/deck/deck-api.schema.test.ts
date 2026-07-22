@@ -98,6 +98,26 @@ describe("OOXML sync state API schema", () => {
 
     expect(parsed.ooxmlSyncState.status).toBe("pending");
   });
+
+  it("accepts a blocked reference-template warning state", () => {
+    const parsed = getOoxmlSyncStateResponseSchema.parse({
+      ooxmlSyncState: {
+        status: "warning",
+        deckId: "deck_reference_1",
+        deckVersion: 4,
+        syncedDeckVersion: 4,
+        retryable: false,
+        warningCount: 1,
+        issueCode: "OOXML_REFERENCE_SYNC_WARNING",
+      },
+    });
+
+    expect(parsed.ooxmlSyncState).toMatchObject({
+      status: "warning",
+      warningCount: 1,
+      issueCode: "OOXML_REFERENCE_SYNC_WARNING",
+    });
+  });
 });
 
 const changeRecord = {

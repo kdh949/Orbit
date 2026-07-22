@@ -1111,6 +1111,40 @@ describe("editor shell", () => {
     expect(stateRequestCount).toBe(2);
   });
 
+  it("blocks reference-template export when the current sync has warnings", async () => {
+    const requestedPaths: string[] = [];
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      requestedPaths.push(url);
+      if (url.endsWith("/deck/ooxml-sync-state")) {
+        return new Response(
+          JSON.stringify({
+            ooxmlSyncState: {
+              status: "warning",
+              deckId: "deck_reference_1",
+              deckVersion: 4,
+              syncedDeckVersion: 4,
+              retryable: false,
+              warningCount: 1,
+              issueCode: "OOXML_REFERENCE_SYNC_WARNING",
+            },
+          }),
+        );
+      }
+      return new Response("unexpected request", { status: 500 });
+    });
+
+    await expect(exportDeckToPptx("project-a", fetcher)).rejects.toThrow(
+      "[OOXML_REFERENCE_SYNC_WARNING]",
+    );
+    expect(
+      requestedPaths.some((path) => path.endsWith("/deck/exports")),
+    ).toBe(false);
+    expect(
+      requestedPaths.some((path) => path.endsWith("/deck/ooxml-sync/retry")),
+    ).toBe(false);
+  });
+
   it("passes PNG format and an explicitly selected session to export", async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);

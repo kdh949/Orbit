@@ -82,6 +82,40 @@ describe("processDeckExportJob", () => {
     ).toBe(true);
   });
 
+  it("exports a fresh reference-template current package without reading or overwriting its source", async () => {
+    const deck = createReferenceDeck();
+    const { dataSource, query } = createExportDataSource({
+      deckVersion: 1,
+      blueprint: referenceTemplateBlueprint(1),
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("reference-current-package")),
+    );
+
+    const job = await processDeckExportJob(
+      dataSource,
+      storage,
+      "http://localhost:8000",
+      exportPayload(deck),
+      { ooxmlReadyAttempts: 1, ooxmlReadyDelayMs: 0 },
+    );
+
+    expect(job.status, JSON.stringify(job.error)).toBe("succeeded");
+    const assetRead = query.mock.calls.find(([sql]) =>
+      String(sql).includes("FROM project_assets") &&
+      String(sql).includes("FOR SHARE"),
+    );
+    expect(assetRead?.[1]?.[0]).toBe("file_current");
+    expect(assetRead?.[1]?.[0]).not.toBe("file_source");
+    expect(storage.putObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: Buffer.from("reference-current-package"),
+        purpose: "export-result",
+      }),
+    );
+  });
+
   it("uses the generic exporter for imported Activity decks and sends only static content", async () => {
     const deck = createActivityDeck("import");
     const original = structuredClone(deck);
@@ -391,6 +425,60 @@ describe("processDeckExportJob", () => {
     expect(storage.putObject).not.toHaveBeenCalled();
   });
 
+  it("blocks a current reference-template package with sync warnings", async () => {
+    const deck = createReferenceDeck();
+    const blueprint = {
+      ...referenceTemplateBlueprint(1),
+      ooxmlSyncWarnings: ["PPTX_OOXML_SYNC_RENDER_FALLBACK"],
+    };
+    const { dataSource } = createExportDataSource({
+      deckVersion: 1,
+      blueprint,
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const job = await processDeckExportJob(
+      dataSource,
+      storage,
+      "http://localhost:8000",
+      exportPayload(deck),
+      { ooxmlReadyAttempts: 1, ooxmlReadyDelayMs: 0 },
+    );
+
+    expect(job.status).toBe("failed");
+    expect(job.error).toMatchObject({
+      code: "OOXML_REFERENCE_EXPORT_SYNC_WARNING",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(storage.putObject).not.toHaveBeenCalled();
+  });
+
+  it("blocks reference export when the blueprint snapshot is missing", async () => {
+    const deck = createReferenceDeck();
+    const { dataSource } = createExportDataSource({
+      deckVersion: 1,
+      blueprint: templateBlueprint(1),
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const job = await processDeckExportJob(
+      dataSource,
+      storage,
+      "http://localhost:8000",
+      exportPayload(deck),
+      { ooxmlReadyAttempts: 1, ooxmlReadyDelayMs: 0 },
+    );
+
+    expect(job.status).toBe("failed");
+    expect(job.error).toMatchObject({
+      code: "OOXML_REFERENCE_EXPORT_SNAPSHOT_MISMATCH",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(storage.putObject).not.toHaveBeenCalled();
+  });
+
   it("rejects a current package asset owned by another project", async () => {
     const deck = createDeck("import");
     const { dataSource } = createExportDataSource({
@@ -544,6 +632,19 @@ function templateBlueprint(syncedDeckVersion: number) {
   };
 }
 
+function referenceTemplateBlueprint(syncedDeckVersion: number) {
+  return {
+    ...templateBlueprint(syncedDeckVersion),
+    referenceTemplateSnapshot: {
+      catalogTemplateId: "operating-review",
+      catalogTemplateVersion: 1,
+      sourceSha256: "a".repeat(64),
+      sourceSlideIds: ["cover-01"],
+      slotAssignmentCount: 0,
+    },
+  };
+}
+
 function exportPayload(deck: Deck, format: "pptx" | "png" = "pptx") {
   return {
     jobId: "job-export",
@@ -616,6 +717,22 @@ function createDeck(sourceType: "ai" | "import"): Deck {
         actions: [],
       },
     ],
+  };
+}
+
+function createReferenceDeck(): Deck {
+  const deck = createDeck("import");
+  return {
+    ...deck,
+    metadata: {
+      ...deck.metadata,
+      ooxmlReferenceTemplateSnapshot: {
+        catalogTemplateId: "operating-review",
+        catalogTemplateVersion: 1,
+        sourceSha256: "a".repeat(64),
+        generationId: "job_reference_1",
+      },
+    },
   };
 }
 

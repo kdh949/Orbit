@@ -164,7 +164,18 @@
 | Task 9 content/sequence planner | 자동 통과 | 7-family table-driven role/capacity/evidence/repetition tests | 승인된 7개 annotation fixture |
 | Task 10 table slot | 자동 통과 | reference table replacement + 기존 table sync 26 tests | 실제 template table fixture/reopen |
 | Task 11a chart package replacement | 자동 통과 | chart/workbook atomic replacement test, PowerPoint/LibreOffice fixture reopen | 실제 template chart montage와 사람 검수 |
-| Task 14 Python option projection | 자동 통과, API 미연결 | options + registry 18 tests | Task 13 Job과 authenticated API/preview 연결 |
+| Task 11b chart targeted sync | 자동 통과 | chart data patch → workbook/chart atomic sync/reopen test | 실제 template chart slot 편집 artifact |
+| Task 12 7-template 확장 | 구현 차단 | disabled 7-template catalog와 family planner fixture | 승인된 139장 annotation, private source/preview/font |
+| Checkpoint C | 승인 보류 | planner/materializer/package fixture | 7개 template별 8~10장 full-deck와 montage/report |
+| Task 13 별도 Job/API/Worker | 자동 통과 | shared Job/queue, authenticated API, stage processor, atomic publication/fidelity gate test | private artifact storage smoke |
+| Task 14 catalog/preview API | 자동 통과, 전체 disabled | catalog projection/auth/checksum/preview-missing test와 Python option projection | 승인된 preview/checksum/allowlist |
+| Task 15 generation preview polling | 자동 통과 | completed-prefix, read-only, failed/ready transition API test | actual generated preview artifact |
+| Task 16 `/createdeck` mode/template 선택 | 자동 통과 | AI 추천 payload 회귀, keyboard/mobile/loading/error와 exact selection test | enabled template을 사용한 browser E2E |
+| Task 17 generation progress/error UX | 자동 통과 | ordering/reduced-motion/typed failure/retry CTA test | actual Job → editor browser E2E |
+| Checkpoint D1 | 부분 통과, 승인 보류 | AI 추천 회귀와 reference UI/API 자동 test | enabled exact template checksum snapshot과 actual preview/editor transition |
+| Task 18 slot-only editor/API policy | 자동 통과 | toolbar/canvas/keyboard/drop gate, API patch/PUT bypass 409, 일반 Deck 회귀 | 제한 편집 UX 사람 검수 |
+| Task 19 sync freshness/export gate | 자동 통과 | API/Worker 101 tests, PostgreSQL+Python round-trip 7 tests, reference text edit→warning 0→current package export→re-import | 실제 7-template PowerPoint/LibreOffice reopen |
+| Checkpoint D2 | 승인 보류 | product path 단위/통합 fixture | 전체 E2E, 7개 fidelity artifact, actual PowerPoint와 사람 승인 |
 
 최종 gate는 계획 문서의 전체 검증 매트릭스를 따른다. LibreOffice 결과를 Microsoft
 PowerPoint QA로 대체하지 않으며, `not-run` 환경 증거를 `passed`로 승격하지 않는다.

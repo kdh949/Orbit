@@ -525,6 +525,7 @@ function createReferenceTemplateDeck(): Deck {
 function seedReferenceTemplateBlueprint(
   dataSource: InMemoryDeckDataSource,
   deck: Deck,
+  sync?: { version: number; warnings?: string[] },
 ) {
   dataSource.templateBlueprintRows.push({
     template_id: "template_reference_1",
@@ -535,6 +536,12 @@ function seedReferenceTemplateBlueprint(
       sourceFileId: "file_reference_source",
       sourcePackageFileId: "file_reference_source",
       currentPackageFileId: "file_reference_current",
+      ...(sync
+        ? {
+            ooxmlSyncedDeckVersion: sync.version,
+            ooxmlSyncWarnings: sync.warnings ?? [],
+          }
+        : {}),
       referenceTemplateSnapshot: {
         catalogTemplateId: "operating-review",
         catalogTemplateVersion: 1,
@@ -1089,6 +1096,9 @@ describe("DecksService", () => {
       props: { text: "허용된 문구", fontSize: 32 },
       x: 100,
     });
+    expect(
+      response.deck.metadata.ooxmlReferenceTemplateSnapshot,
+    ).toEqual(deck.metadata.ooxmlReferenceTemplateSnapshot);
   });
 
   it("returns 409 for reference-template frame and lifecycle patch bypasses", async () => {
@@ -1835,6 +1845,112 @@ describe("DecksService", () => {
     });
     expect(jobsService.create).not.toHaveBeenCalled();
     expect(enqueueExportJob).not.toHaveBeenCalled();
+  });
+
+  it("blocks reference-template export when the current sync has warnings", async () => {
+    const dataSource = new InMemoryDeckDataSource();
+    const deck = createReferenceTemplateDeck();
+    seedStoredDeck(dataSource, deck, deck);
+    seedReferenceTemplateBlueprint(dataSource, deck, {
+      version: deck.version,
+      warnings: ["PPTX_OOXML_SYNC_RENDER_FALLBACK"],
+    });
+    const jobsService = {
+      create: vi.fn(),
+      update: vi.fn(),
+      getLatestPptxOoxmlSync: vi.fn(async () => null),
+    };
+    const enqueueExportJob = vi.fn(async () => undefined);
+    const service = new DecksService(
+      dataSource as unknown as DataSource,
+      jobsService as never,
+      vi.fn(async () => undefined),
+      enqueueExportJob,
+    );
+
+    const syncResponse = await service.getOoxmlSyncState(deck.projectId);
+    expect(syncResponse.ooxmlSyncState).toMatchObject({
+      status: "warning",
+      deckVersion: deck.version,
+      syncedDeckVersion: deck.version,
+      retryable: false,
+      warningCount: 1,
+      issueCode: "OOXML_REFERENCE_SYNC_WARNING",
+    });
+    await expect(
+      service.createExportJob(deck.projectId, { format: "pptx" }),
+    ).rejects.toMatchObject({
+      status: HttpStatus.CONFLICT,
+      response: expect.objectContaining({
+        code: "OOXML_REFERENCE_EXPORT_SYNC_NOT_READY",
+        message: expect.stringContaining("OOXML_REFERENCE_SYNC_WARNING"),
+      }),
+    });
+    expect(jobsService.create).not.toHaveBeenCalled();
+    expect(enqueueExportJob).not.toHaveBeenCalled();
+  });
+
+  it("reports a stable issue code for a stale reference-template package", async () => {
+    const dataSource = new InMemoryDeckDataSource();
+    const deck = deckSchema.parse({
+      ...createReferenceTemplateDeck(),
+      version: 2,
+    });
+    seedStoredDeck(dataSource, deck, deck);
+    seedReferenceTemplateBlueprint(dataSource, deck, { version: 1 });
+    const jobsService = {
+      getLatestPptxOoxmlSync: vi.fn(async () => null),
+    };
+    const service = new DecksService(
+      dataSource as unknown as DataSource,
+      jobsService as never,
+    );
+
+    const response = await service.getOoxmlSyncState(deck.projectId);
+
+    expect(response.ooxmlSyncState).toMatchObject({
+      status: "stale",
+      retryable: true,
+      warningCount: 0,
+      issueCode: "OOXML_REFERENCE_SYNC_STALE",
+    });
+  });
+
+  it("fails closed when reference Deck and blueprint snapshots drift", async () => {
+    const dataSource = new InMemoryDeckDataSource();
+    const deck = createReferenceTemplateDeck();
+    seedStoredDeck(dataSource, deck, deck);
+    seedReferenceTemplateBlueprint(dataSource, deck, { version: deck.version });
+    const row = dataSource.templateBlueprintRows[0];
+    if (!row || typeof row.blueprint_json !== "object" || !row.blueprint_json) {
+      throw new Error("reference blueprint fixture missing");
+    }
+    delete (row.blueprint_json as Record<string, unknown>)
+      .referenceTemplateSnapshot;
+    const jobsService = {
+      create: vi.fn(),
+      getLatestPptxOoxmlSync: vi.fn(async () => null),
+    };
+    const service = new DecksService(
+      dataSource as unknown as DataSource,
+      jobsService as never,
+    );
+
+    const state = await service.getOoxmlSyncState(deck.projectId);
+    expect(state.ooxmlSyncState).toMatchObject({
+      status: "failed",
+      retryable: false,
+      issueCode: "OOXML_REFERENCE_SYNC_FAILED",
+    });
+    await expect(
+      service.createExportJob(deck.projectId, { format: "pptx" }),
+    ).rejects.toMatchObject({
+      status: HttpStatus.CONFLICT,
+      response: expect.objectContaining({
+        code: "OOXML_REFERENCE_EXPORT_SYNC_NOT_READY",
+      }),
+    });
+    expect(jobsService.create).not.toHaveBeenCalled();
   });
 
   it("authorizes and forwards the selected presentation session for export", async () => {
