@@ -12,6 +12,14 @@ import type {
 } from "@orbit/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { OrbitButton, OrbitFailureState } from "../../components/ui";
+import {
+  hashDiagnosticIdentifier,
+  useDiagnostics,
+} from "../diagnostics/DiagnosticProvider";
+import {
+  emitKeywordOccurrenceEvaluations,
+  emitSpeechAnimationRuntimeDecisions,
+} from "../diagnostics/presentationInstrumentation";
 import { PresentationScreen } from "./PresentationScreen";
 import { PresentationCompletionDialog } from "./PresentationCompletionDialog";
 import { PresentationMicCheckModal } from "./PresentationMicCheckModal";
@@ -61,7 +69,10 @@ import {
   type SpeechAnimationRuntimeState,
   type SpeechAnimationRuntimeUpdate,
 } from "../rehearsal/playback/speechAnimationRuntime";
-import type { SlideshowTransitionAddress } from "../rehearsal/presenter/useSlideshowTransitions";
+import type {
+  SlideshowTransitionAddress,
+  SlideshowTransitionTrace,
+} from "../rehearsal/presenter/useSlideshowTransitions";
 import type { AnimationFlowNavigation } from "../rehearsal/presenter/AnimationFlowNavigator";
 import { AutoAdvanceStatus } from "../rehearsal/advance/AutoAdvanceStatus";
 import {
@@ -77,6 +88,7 @@ import {
 } from "../rehearsal/advance/advanceController";
 import { createDefaultPhraseExtractor } from "../rehearsal/speech/phraseExtractor";
 import {
+  evaluateKeywordOccurrenceTriggers,
   estimateScriptProgressOffset,
   matchKeywordOccurrenceTriggers,
 } from "../rehearsal/speech/keywordOccurrenceRuntime";
@@ -186,6 +198,19 @@ export function PresentationWorkspace(props: {
       createInitialAdvanceControllerState(),
     );
   const [autoAdvanceNowMs, setAutoAdvanceNowMs] = useState(0);
+  const {
+    diagnostics,
+    stop: stopDiagnostics,
+    updateSessionMetadata,
+  } = useDiagnostics();
+  const [transitionTrace, setTransitionTrace] =
+    useState<SlideshowTransitionTrace>();
+  const pendingReactTransitionRef = useRef<{
+    stateTransitionId: string;
+    stepIndex: number;
+    triggerTraceId?: string;
+  } | null>(null);
+  const reactTransitionSequenceRef = useRef(0);
   const speech = usePresentationSpeech(props.projectId);
 
   useEffect(() => {
@@ -279,6 +304,61 @@ export function PresentationWorkspace(props: {
 
   const currentSlide = deck?.slides[currentSlideIndex] ?? null;
   const nextSlide = deck?.slides[currentSlideIndex + 1] ?? null;
+  useEffect(() => {
+    if (!deck) {
+      return;
+    }
+    updateSessionMetadata({
+      deckRevision: String(deck.version),
+      ...(props.projectId
+        ? { projectIdHash: hashDiagnosticIdentifier(props.projectId) }
+        : {}),
+    });
+  }, [deck, props.projectId, updateSessionMetadata]);
+
+  useEffect(() => {
+    if (!currentSlide) {
+      return;
+    }
+    diagnostics.emit({
+      stage: "session",
+      name: "session.slide_snapshot",
+      outcome: "accepted",
+      trace: { slideId: currentSlide.slideId },
+      data: {
+        actionCount: currentSlide.actions.length,
+        animationCount: currentSlide.animations.length,
+        keywords: currentSlide.keywords.map((keyword) => ({
+          keywordId: keyword.keywordId,
+          text: keyword.text,
+          synonyms: keyword.synonyms,
+          abbreviations: keyword.abbreviations,
+        })),
+        speakerNotes: currentSlide.speakerNotes,
+      },
+    });
+  }, [currentSlide, diagnostics]);
+
+  useEffect(() => {
+    const pending = pendingReactTransitionRef.current;
+    if (!pending || pending.stepIndex !== presenterStepIndex || !currentSlide) {
+      return;
+    }
+    diagnostics.emit({
+      stage: "react",
+      name: "react.presenter_step.committed",
+      outcome: "committed",
+      trace: {
+        slideId: currentSlide.slideId,
+        stateTransitionId: pending.stateTransitionId,
+        ...(pending.triggerTraceId
+          ? { triggerTraceId: pending.triggerTraceId }
+          : {}),
+      },
+      data: { stepIndex: presenterStepIndex },
+    });
+    pendingReactTransitionRef.current = null;
+  }, [currentSlide, diagnostics, presenterStepIndex]);
   useEffect(() => {
     if (runtimePhase !== "active" || !currentSlide) {
       previousSlideIndexRef.current = currentSlideIndex;
@@ -548,6 +628,48 @@ export function PresentationWorkspace(props: {
 
   const applySpeechAnimationRuntimeUpdate = useCallback(
     (slide: Slide, runtimeUpdate: SpeechAnimationRuntimeUpdate) => {
+      emitSpeechAnimationRuntimeDecisions({
+        decisions: runtimeUpdate.decisions,
+        diagnostics,
+        slideId: slide.slideId,
+      });
+      const triggerTraceId = runtimeUpdate.decisions
+        .flatMap((decision) =>
+          decision.triggerTraceId ? [decision.triggerTraceId] : [],
+        )
+        .at(-1);
+      if (
+        !runtimeUpdate.shouldAdvanceSlide &&
+        runtimeUpdate.state.presenterStepIndex !== presenterStepIndex
+      ) {
+        reactTransitionSequenceRef.current += 1;
+        const stateTransitionId = `${
+          triggerTraceId ?? diagnostics.sessionId ?? "presentation"
+        }:state:${reactTransitionSequenceRef.current}`;
+        pendingReactTransitionRef.current = {
+          stateTransitionId,
+          stepIndex: runtimeUpdate.state.presenterStepIndex,
+          ...(triggerTraceId ? { triggerTraceId } : {}),
+        };
+        setTransitionTrace({
+          stateTransitionId,
+          ...(triggerTraceId ? { triggerTraceId } : {}),
+        });
+        diagnostics.emit({
+          stage: "react",
+          name: "react.presenter_step.requested",
+          outcome: "received",
+          trace: {
+            slideId: slide.slideId,
+            stateTransitionId,
+            ...(triggerTraceId ? { triggerTraceId } : {}),
+          },
+          data: {
+            fromStepIndex: presenterStepIndex,
+            toStepIndex: runtimeUpdate.state.presenterStepIndex,
+          },
+        });
+      }
       speechAnimationRuntimeRef.current = runtimeUpdate.state;
       applyPlaybackUpdate({
         consumedOccurrenceIds: runtimeUpdate.consumedOccurrenceIds,
@@ -564,7 +686,7 @@ export function PresentationWorkspace(props: {
       };
       setPendingKeywordOccurrenceIds(runtimeUpdate.pendingOccurrenceIds);
     },
-    [applyPlaybackUpdate],
+    [applyPlaybackUpdate, diagnostics, presenterStepIndex],
   );
 
   const handleNextPresenterStep = useCallback(() => {
@@ -821,8 +943,8 @@ export function PresentationWorkspace(props: {
         ? pendingKeywordOccurrenceIdsRef.current.occurrenceIds
         : [];
     const transcriptSpan = speech.getSlideTranscriptSpan();
-    const matches = speech.state.latestTranscript.trim()
-      ? matchKeywordOccurrenceTriggers({
+    const occurrenceEvaluation = speech.state.latestTranscript.trim()
+      ? evaluateKeywordOccurrenceTriggers({
           slide: currentSlide,
           targetOccurrenceIds: getKeywordOccurrenceTriggerIdsForSlide(currentSlide),
           previousTranscript: transcriptSpan.previousTranscript,
@@ -831,7 +953,14 @@ export function PresentationWorkspace(props: {
           confidence: speech.state.latestTranscriptConfidence,
           confirmedOccurrenceIds: currentState.confirmedOccurrenceIds,
         })
-      : [];
+      : { evaluations: [], matches: [] };
+    emitKeywordOccurrenceEvaluations({
+      diagnostics,
+      evaluations: occurrenceEvaluation.evaluations,
+      slideId: currentSlide.slideId,
+      trace: speech.state.latestTranscriptDiagnosticTrace,
+    });
+    const matches = occurrenceEvaluation.matches;
     if (matches.length === 0 && pendingOccurrenceIds.length === 0) {
       return;
     }
@@ -849,6 +978,8 @@ export function PresentationWorkspace(props: {
               presenterStepIndex,
               slideId: currentSlide.slideId,
             }),
+      triggerTraceId:
+        speech.state.latestTranscriptDiagnosticTrace?.triggerTraceId,
       triggers: matches.map((match) => ({
         kind: "keyword-occurrence" as const,
         keywordId: match.keywordId,
@@ -859,11 +990,13 @@ export function PresentationWorkspace(props: {
   }, [
     applySpeechAnimationRuntimeUpdate,
     currentSlide,
+    diagnostics,
     presenterStepIndex,
     runtimePhase,
     slideshowAnimationPlan,
     speech.state.latestTranscript,
     speech.state.latestTranscriptConfidence,
+    speech.state.latestTranscriptDiagnosticTrace,
     speech.state.latestTranscriptSequence,
     speech.state.status,
   ]);
@@ -895,6 +1028,8 @@ export function PresentationWorkspace(props: {
               presenterStepIndex,
               slideId: currentSlide.slideId,
             }),
+      triggerTraceId:
+        speech.state.latestTranscriptDiagnosticTrace?.triggerTraceId,
       triggers: newlyHitIds.map((keywordId) => ({
         kind: "keyword" as const,
         keywordId,
@@ -908,6 +1043,7 @@ export function PresentationWorkspace(props: {
     presenterStepIndex,
     runtimePhase,
     slideshowAnimationPlan,
+    speech.state.latestTranscriptDiagnosticTrace,
   ]);
 
   const handlePresentationTransitionSettled = useCallback(
@@ -925,13 +1061,21 @@ export function PresentationWorkspace(props: {
         slideAnimationPlan: slideshowAnimationPlan,
         state: speechAnimationRuntimeRef.current,
       });
+      setTransitionTrace(undefined);
       if (update.state !== speechAnimationRuntimeRef.current) {
         applySpeechAnimationRuntimeUpdate(currentSlide, update);
+      } else {
+        emitSpeechAnimationRuntimeDecisions({
+          decisions: update.decisions,
+          diagnostics,
+          slideId: currentSlide.slideId,
+        });
       }
     },
     [
       applySpeechAnimationRuntimeUpdate,
       currentSlide,
+      diagnostics,
       slideshowAnimationPlan,
     ],
   );
@@ -1088,6 +1232,7 @@ export function PresentationWorkspace(props: {
       await activityApi.closeSession(props.projectId, runtime.sessionId);
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
+      await stopDiagnostics("presentation-ended");
       setRuntimePhase("completed");
     })()
       .catch((cause) => {
@@ -1108,7 +1253,9 @@ export function PresentationWorkspace(props: {
 
   function requestPresentationExit() {
     if (!requiresPresentationRuntime) {
-      navigateToProject(deck?.projectId ?? props.projectId);
+      void stopDiagnostics("presentation-exit").finally(() => {
+        navigateToProject(deck?.projectId ?? props.projectId);
+      });
       return;
     }
     if (!window.confirm("발표를 종료하고 결과를 저장할까요?")) {
@@ -1337,6 +1484,7 @@ export function PresentationWorkspace(props: {
         currentSlide={currentSlide}
         currentSlideIndex={currentSlideIndex}
         deck={deck}
+        diagnostics={diagnostics}
         elapsedTimeInput={elapsedTimeInput}
         highlightedKeywordOccurrences={highlightedKeywordOccurrences}
         infoCards={infoCards}
@@ -1406,6 +1554,7 @@ export function PresentationWorkspace(props: {
         timing={timing}
         timerDurationInput={timerDurationInput}
         totalSlides={deck?.slides.length ?? 0}
+        transitionTrace={transitionTrace}
         triggerAnimationIds={triggerAnimationIds}
         wordsPerMinute={speech.state.wordsPerMinute}
       />

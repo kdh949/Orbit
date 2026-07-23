@@ -1,6 +1,7 @@
 import type { Deck, DeckElement, Slide } from "@orbit/shared";
 import { Presentation } from "lucide-react";
 import type { ReactNode } from "react";
+import type { DiagnosticSink } from "../diagnostics/diagnosticTypes";
 import { ActivityPresenterPanel } from "../activity-slides";
 import { RehearsalPanel } from "../rehearsal/panel/RehearsalPanel";
 import { createRehearsalScriptPrompterRows } from "../rehearsal/panel/rehearsalScriptPrompter";
@@ -11,7 +12,10 @@ import {
   type AnimationFlowNavigation,
 } from "../rehearsal/presenter/AnimationFlowNavigator";
 import { SlideshowRenderer } from "../rehearsal/presenter/SlideshowRenderer";
-import type { SlideshowTransitionAddress } from "../rehearsal/presenter/useSlideshowTransitions";
+import type {
+  SlideshowTransitionAddress,
+  SlideshowTransitionTrace,
+} from "../rehearsal/presenter/useSlideshowTransitions";
 import type { SpeechTrackerSnapshot } from "../rehearsal/speech/speechTrackingEvents";
 import {
   PresenterStageSection,
@@ -26,6 +30,7 @@ export function PresentationScreen(props: {
   animationTriggerDebug?: ReactNode;
   autoAdvanceStatus?: ReactNode;
   deck: Deck | null;
+  diagnostics?: DiagnosticSink;
   currentSlide: Slide | null;
   currentSlideIndex: number;
   elapsedTimeInput: string;
@@ -71,6 +76,7 @@ export function PresentationScreen(props: {
   timing: RehearsalTimingSnapshot;
   timerDurationInput: string;
   totalSlides: number;
+  transitionTrace?: SlideshowTransitionTrace;
   triggerAnimationIds: string[];
   wordsPerMinute: number;
 }) {
@@ -150,10 +156,12 @@ export function PresentationScreen(props: {
             props.deck && props.currentSlide ? (
               <SlideshowRenderer
                 deck={props.deck}
+                diagnostics={props.diagnostics}
                 onTransitionSettled={props.onTransitionSettled}
                 scale={props.presenterScale}
                 slideId={props.currentSlide.slideId}
                 stepIndex={props.presenterStepIndex}
+                transitionTrace={props.transitionTrace}
                 triggerAnimationIds={props.triggerAnimationIds}
               />
             ) : null

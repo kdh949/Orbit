@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { App } from "./App";
+import { DiagnosticProvider } from "./features/diagnostics/DiagnosticProvider";
 import "./fonts.css";
 import "./styles/tokens.css";
 import "./styles/foundations.css";
@@ -12,7 +13,9 @@ const queryClient = new QueryClient();
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <DiagnosticProvider>
+        <App />
+      </DiagnosticProvider>
     </QueryClientProvider>
   </React.StrictMode>
 );

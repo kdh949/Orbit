@@ -212,6 +212,10 @@ export class OrbitDiagnosticRecorder implements DiagnosticSink {
     };
   }
 
+  reportStorageWarning(cause: unknown) {
+    this.setStorageWarning(cause);
+  }
+
   private callWriter(action: () => void) {
     try {
       action();

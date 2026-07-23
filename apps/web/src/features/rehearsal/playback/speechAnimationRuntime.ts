@@ -58,6 +58,7 @@ export type SpeechAnimationRuntimeState = {
   recognizedTriggerKeys: string[];
   slideId: string;
   transition: SlideshowTransitionAddress | null;
+  transitionTriggerTraceId: string | null;
 };
 
 export type SpeechAnimationRuntimeUpdate = {
@@ -81,7 +82,8 @@ export function createSpeechAnimationRuntimeState(args: {
     presenterStepIndex: args.presenterStepIndex ?? 0,
     recognizedTriggerKeys: [],
     slideId: args.slideId,
-    transition: null
+    transition: null,
+    transitionTriggerTraceId: null
   };
 }
 
@@ -263,7 +265,10 @@ export function settleSpeechAnimationTransition(args: {
       createDecision(args.state, {
         name: "transition_settle_rejected",
         outcome: "rejected",
-        reason: "SETTLE_ADDRESS_MISMATCH"
+        reason: "SETTLE_ADDRESS_MISMATCH",
+        ...(args.state.transitionTriggerTraceId === null
+          ? {}
+          : { triggerTraceId: args.state.transitionTriggerTraceId })
       })
     ]);
   }
@@ -274,10 +279,17 @@ export function settleSpeechAnimationTransition(args: {
     decisions: [
       createDecision(args.state, {
         name: "transition_settled",
-        outcome: "settled"
+        outcome: "settled",
+        ...(args.state.transitionTriggerTraceId === null
+          ? {}
+          : { triggerTraceId: args.state.transitionTriggerTraceId })
       })
     ],
-    state: { ...args.state, transition: null }
+    state: {
+      ...args.state,
+      transition: null,
+      transitionTriggerTraceId: null
+    }
   });
 }
 
@@ -459,6 +471,10 @@ function finalizeUpdate(args: {
           slideId: args.state.slideId,
           stepIndex: args.presenterStepIndex
         }
+      : null,
+    transitionTriggerTraceId: didAdvanceStep
+      ? args.executedIntents.find((intent) => intent.triggerTraceId)
+          ?.triggerTraceId ?? null
       : null
   };
 

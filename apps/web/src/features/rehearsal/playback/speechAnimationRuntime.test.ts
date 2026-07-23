@@ -34,6 +34,7 @@ describe("speechAnimationRuntime", () => {
       slideId: slide.slideId,
       stepIndex: 1
     });
+    expect(first.state.transitionTriggerTraceId).toBe("speech:item-1:0");
     expect(first.state.pendingIntents).toHaveLength(1);
     expect(first.decisions).toEqual(
       expect.arrayContaining([

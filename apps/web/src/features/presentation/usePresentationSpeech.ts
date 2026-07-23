@@ -1,6 +1,8 @@
 import type { Slide } from "@orbit/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useDiagnostics } from "../diagnostics/DiagnosticProvider";
+import type { DiagnosticTrace } from "../diagnostics/diagnosticTypes";
 import {
   createSpeechTracker,
   type SpeechTracker,
@@ -16,6 +18,7 @@ type PresentationSpeechState = {
   lastTranscriptActivityAtMs: number | null;
   latestTranscript: string;
   latestTranscriptConfidence: number | null;
+  latestTranscriptDiagnosticTrace: DiagnosticTrace | null;
   latestTranscriptSequence: number;
   snapshot: SpeechTrackerSnapshot | null;
   status: "idle" | "starting" | "listening" | "paused" | "stopped" | "error";
@@ -28,6 +31,7 @@ const initialState: PresentationSpeechState = {
   lastTranscriptActivityAtMs: null,
   latestTranscript: "",
   latestTranscriptConfidence: null,
+  latestTranscriptDiagnosticTrace: null,
   latestTranscriptSequence: 0,
   snapshot: null,
   status: "idle",
@@ -36,6 +40,7 @@ const initialState: PresentationSpeechState = {
 };
 
 export function usePresentationSpeech(projectId?: string) {
+  const { diagnostics, updateSessionMetadata } = useDiagnostics();
   const [state, setState] = useState(initialState);
   const portRef = useRef<LiveSttPort | null>(null);
   const trackerRef = useRef<SpeechTracker | null>(null);
@@ -66,6 +71,7 @@ export function usePresentationSpeech(projectId?: string) {
       ...current,
       latestTranscript: "",
       latestTranscriptConfidence: null,
+      latestTranscriptDiagnosticTrace: null,
       snapshot: trackerRef.current?.snapshot() ?? null,
     }));
     void Promise.resolve(
@@ -98,7 +104,9 @@ export function usePresentationSpeech(projectId?: string) {
   const startPort = useCallback(
     async (stream: MediaStream, slide: Slide) => {
       const runtimeConfig = await fetchLiveSttRuntimeConfig();
+      updateSessionMetadata({ sttEngine: runtimeConfig.liveSttEngine });
       const port = createLiveSttPort(runtimeConfig.liveSttEngine, {
+        diagnostics,
         projectId,
       });
       portRef.current = port;
@@ -147,6 +155,8 @@ export function usePresentationSpeech(projectId?: string) {
             lastTranscriptActivityAtMs: transcriptActivityAtMs,
             latestTranscript: result.text,
             latestTranscriptConfidence: result.confidence ?? null,
+            latestTranscriptDiagnosticTrace:
+              result.diagnosticTrace ?? null,
             latestTranscriptSequence: transcriptSequenceRef.current,
             snapshot: tracker.snapshot(),
             transcript: transcriptRef.current,
@@ -154,7 +164,7 @@ export function usePresentationSpeech(projectId?: string) {
               finalWordCountRef.current / elapsedMinutes,
             ),
           }));
-        }),
+        }, { subscriberId: "presentation-speech-tracker" }),
         port.onError((error) => {
           setState((current) => ({
             ...current,
@@ -170,7 +180,7 @@ export function usePresentationSpeech(projectId?: string) {
       });
       setState((current) => ({ ...current, status: "listening" }));
     },
-    [projectId],
+    [diagnostics, projectId, updateSessionMetadata],
   );
 
   const start = useCallback(
@@ -185,6 +195,7 @@ export function usePresentationSpeech(projectId?: string) {
         error: null,
         latestTranscript: "",
         latestTranscriptConfidence: null,
+        latestTranscriptDiagnosticTrace: null,
         status: "starting",
         transcript: "",
         wordsPerMinute: 0,
