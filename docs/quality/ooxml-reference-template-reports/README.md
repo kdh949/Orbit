@@ -29,7 +29,8 @@ letter spacing을 지원한 뒤 product materialization warning도 7개 모두 0
 
 `actual identity clone`은 exact source 전체 139장을 raw clone engine으로 다시 구성한
 결과다. 7개 모두 package warning 0, slide count 일치, `python-pptx` reopen과
-LibreOfficeDev 26.8.0.0.alpha0 PDF render를 통과했다. content plan/slot replacement를 거친
+LibreOfficeDev 26.8.0.0.alpha0 PDF render를 통과했다. Microsoft PowerPoint 16.111에서도
+139장 open/PDF render/reopen과 clean close를 통과했다. content plan/slot replacement를 거친
 product full-deck가 아니며 임시 artifact는 Git에 포함하지 않는다.
 
 PowerPoint 자동화는 input alias/output file spec을 application tell 밖에서 만들고 export

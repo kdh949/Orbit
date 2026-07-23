@@ -617,10 +617,12 @@ Checkpoint A의 정식 상태는 승인 보류다. repository catalog도 계속 
 - [ ] locked region geometry/style drift 0건
 - [ ] PowerPoint와 LibreOffice 재개방/render 성공
 
-2026-07-23 현재 actual-source 139장 clone의 package/LibreOffice와 generated 7개×8장의
-PowerPoint/LibreOffice reopen은 통과했다. 그러나 같은 identity-control clone의 PowerPoint
-render와 source/generated locked diff artifact 및 사람 검수가 한 묶음으로 완료되지 않아
-Checkpoint B1은 미통과다.
+2026-07-23 actual-source 139장 clone의 package/LibreOffice와 Microsoft PowerPoint 16.111
+open, 139-page PDF render, close, reopen을 통과했다. PowerPoint repair/recovery/corrupt/font
+substitution 로그 매치는 0건이고 종료 후 열린 presentation도 0개다. 그러나
+source/generated locked diff artifact, exact font checksum 및 사람 검수가 한 묶음으로
+완료되지 않아 Checkpoint B1은 미통과다. PowerPoint evidence는
+`/private/tmp/orbit-ooxml-powerpoint-identity-20260723-a/summary.json`에 보관한다.
 
 #### Task 7: generated package를 Deck/TemplateBlueprint instance로 materialize
 

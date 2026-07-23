@@ -9,6 +9,11 @@ package warning 0, `python-pptx` reopen과 LibreOffice render checksum을 재현
 LibreOffice 56장 render를 통과했다. template별 checksum은
 `ooxml-reference-template-reports/`에 기록한다.
 
+identity clone 7개/139장도 Microsoft PowerPoint 16.111에서 open, 139-page PDF render,
+close, reopen을 통과했다. 별도 evidence는
+`/private/tmp/orbit-ooxml-powerpoint-identity-20260723-a/summary.json`에 보관하며 exact font
+checksum과 locked overlay 승인 대신으로 사용하지 않는다.
+
 Microsoft PowerPoint 16.111에서 7개 generated 8장 deck과 7개 actual text-slot
 edit/export 결과를 각각 open, 8-page PDF render, close, reopen했고 repair/recovery 로그는
 0건이었다. LibreOffice 결과와 별도 artifact로 보관한다. 다만 renderer가 실제 resolve한
