@@ -45,4 +45,29 @@ describe("DeckExportDialog", () => {
       })
     ).toContain("종료 · abcdefgh");
   });
+
+  it("disables PPTX and keeps PNG available for a morph deck", () => {
+    const html = renderToStaticMarkup(
+      <QueryClientProvider client={new QueryClient()}>
+        <DeckExportDialog
+          deckId="deck_1"
+          errorMessage=""
+          initialFormat="pptx"
+          onClose={() => undefined}
+          onExport={async () => true}
+          open
+          pending={false}
+          pptxDisabledReason="모핑을 제거하거나 페이드로 변경해 주세요."
+          projectId="project_1"
+          statusMessage=""
+        />
+      </QueryClientProvider>
+    );
+
+    expect(html).toContain(
+      "모핑을 제거하거나 페이드로 변경해 주세요."
+    );
+    expect(html).toContain("disabled=\"\"");
+    expect(html).toContain("checked=\"\" value=\"png\"");
+  });
 });

@@ -8,7 +8,12 @@ import {
   deriveKeywordActionUsage,
   validateSlideAnimations
 } from "../../../../../../packages/editor-core/src/index";
-import { demoIds, slideQuestionGuideTextHashInput, type Slide } from "@orbit/shared";
+import {
+  deckHasMorphTransition,
+  demoIds,
+  slideQuestionGuideTextHashInput,
+  type Slide
+} from "@orbit/shared";
 import { getRenderableSlideElements } from "../canvas/EditorCanvas";
 import { getImageCropActionState } from "../canvas/image/imageCropSession";
 import {
@@ -1320,6 +1325,9 @@ export function EditorShell(props: { projectId?: string }) {
   }
 
   async function handleExportDeck(input: DeckExportRequest) {
+    if (input.format === "pptx" && deckHasMorphTransition(deck)) {
+      return false;
+    }
     return editorFileTransferActions.exportDeck(handleSaveDeck, input);
   }
 
@@ -2094,6 +2102,9 @@ export function EditorShell(props: { projectId?: string }) {
           onExport: handleExportDeck,
           open: isExportDialogOpen,
           pending: isPptxExporting,
+          pptxDisabledReason: deckHasMorphTransition(deck)
+            ? "웹 모핑은 PPTX로 내보낼 수 없습니다. 모핑을 제거하거나 페이드로 변경해 주세요. PNG ZIP은 계속 사용할 수 있습니다."
+            : undefined,
           projectId,
           statusMessage: pptxExportStatus
         }}

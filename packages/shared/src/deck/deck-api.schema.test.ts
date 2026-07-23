@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   appendDeckPatchAckResponseSchema,
   appendDeckPatchRequestSchema,
+  deckApiErrorSchema,
   getPptxNotesPreviewResponseSchema,
   getPptxImportQualityResponseSchema,
   getOoxmlSyncStateResponseSchema,
@@ -10,6 +11,24 @@ import {
   retryOoxmlSyncResponseSchema,
   restoreDeckSnapshotResponseSchema,
 } from "./deck-api.schema";
+
+describe("Deck Morph API errors", () => {
+  it.each([
+    "DECK_MORPH_IMPORTED_UNSUPPORTED",
+    "DECK_EXPORT_MORPH_UNSUPPORTED",
+  ] as const)("accepts the stable %s error code", (code) => {
+    expect(
+      deckApiErrorSchema.parse({
+        code,
+        message: "Morph is unsupported for this operation.",
+      }),
+    ).toEqual({
+      code,
+      message: "Morph is unsupported for this operation.",
+      details: [],
+    });
+  });
+});
 
 const importQualityReport = {
   compositeScore: 82,

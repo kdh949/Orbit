@@ -18,10 +18,13 @@ export function DeckExportDialog(props: {
   onExport: (input: DeckExportRequest) => Promise<boolean>;
   open: boolean;
   pending: boolean;
+  pptxDisabledReason?: string;
   projectId: string;
   statusMessage: string;
 }) {
-  const [format, setFormat] = useState<DeckExportFormat>(props.initialFormat);
+  const [format, setFormat] = useState<DeckExportFormat>(() =>
+    resolveAvailableExportFormat(props.initialFormat, props.pptxDisabledReason)
+  );
   const [presentationSessionId, setPresentationSessionId] = useState("");
   const sessions = useQuery({
     enabled: props.open,
@@ -32,9 +35,14 @@ export function DeckExportDialog(props: {
 
   useEffect(() => {
     if (!props.open) return;
-    setFormat(props.initialFormat);
+    setFormat(
+      resolveAvailableExportFormat(
+        props.initialFormat,
+        props.pptxDisabledReason
+      )
+    );
     setPresentationSessionId("");
-  }, [props.initialFormat, props.open]);
+  }, [props.initialFormat, props.open, props.pptxDisabledReason]);
 
   if (!props.open) return null;
 
@@ -55,7 +63,13 @@ export function DeckExportDialog(props: {
           <OrbitButton disabled={props.pending} onClick={props.onClose} variant="secondary">
             취소
           </OrbitButton>
-          <OrbitButton disabled={props.pending} onClick={() => void submit()}>
+          <OrbitButton
+            disabled={
+              props.pending ||
+              (format === "pptx" && Boolean(props.pptxDisabledReason))
+            }
+            onClick={() => void submit()}
+          >
             {props.pending ? "내보내는 중..." : "내보내기"}
           </OrbitButton>
         </>
@@ -69,18 +83,26 @@ export function DeckExportDialog(props: {
         <label>
           <input
             checked={format === "pptx"}
+            disabled={Boolean(props.pptxDisabledReason)}
             name="deck-export-format"
             onChange={() => setFormat("pptx")}
             type="radio"
+            value="pptx"
           />
           <span><strong>PPTX</strong><small>PowerPoint 프레젠테이션</small></span>
         </label>
+        {props.pptxDisabledReason ? (
+          <p className="deck-export-dialog-message" role="status">
+            {props.pptxDisabledReason}
+          </p>
+        ) : null}
         <label>
           <input
             checked={format === "png"}
             name="deck-export-format"
             onChange={() => setFormat("png")}
             type="radio"
+            value="png"
           />
           <span><strong>PNG ZIP</strong><small>모든 장표를 PNG로 묶은 ZIP</small></span>
         </label>
@@ -120,6 +142,15 @@ export function DeckExportDialog(props: {
       ) : null}
     </OrbitDialog>
   );
+}
+
+function resolveAvailableExportFormat(
+  initialFormat: DeckExportFormat,
+  pptxDisabledReason: string | undefined
+): DeckExportFormat {
+  return initialFormat === "pptx" && pptxDisabledReason
+    ? "png"
+    : initialFormat;
 }
 
 export function createDeckExportRequest(

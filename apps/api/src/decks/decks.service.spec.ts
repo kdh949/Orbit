@@ -546,6 +546,53 @@ function createDeck(): Deck {
   });
 }
 
+function createMorphDeck(sourceType: "manual" | "import" = "manual"): Deck {
+  const deck = createDeck();
+
+  return deckSchema.parse({
+    ...deck,
+    metadata: {
+      ...deck.metadata,
+      sourceType,
+    },
+    slides: [
+      {
+        ...deck.slides[0],
+        elements: [createTextElement("el_morph_source", "Before")],
+      },
+      {
+        slideId: "slide_morph_destination",
+        order: 2,
+        title: "모핑 대상",
+        transition: {
+          type: "morph",
+          durationMs: 1000,
+          mode: "object",
+        },
+        elements: [
+          {
+            ...createTextElement("el_morph_destination", "After", 640),
+            morphKey: "el_morph_source",
+          },
+        ],
+      },
+    ],
+  });
+}
+
+function createImportedDeckWithoutMorph(): Deck {
+  const deck = createMorphDeck("import");
+
+  return deckSchema.parse({
+    ...deck,
+    slides: deck.slides.map((slide) => ({
+      ...slide,
+      transition: undefined,
+      elements: slide.elements.map(({ morphKey: _morphKey, ...element }) => element),
+    })),
+  });
+}
+
 function createTextElement(
   elementId: string,
   text: string,
@@ -1880,6 +1927,47 @@ describe("DecksService", () => {
     );
   });
 
+  it("blocks Morph PPTX export before Job creation while allowing PNG export", async () => {
+    stubOrbitEnv();
+    const dataSource = new InMemoryDeckDataSource();
+    const deck = createMorphDeck();
+    const exportJob = createJob("job_export_morph_png", "deck-export");
+    const jobsService = {
+      create: vi.fn(async () => exportJob),
+      update: vi.fn(),
+    };
+    const enqueueExportJob = vi.fn(async () => undefined);
+    const service = new DecksService(
+      dataSource as unknown as DataSource,
+      jobsService as never,
+      vi.fn(async () => undefined),
+      enqueueExportJob,
+    );
+    await service.putDeck(deck.projectId, { deck });
+
+    await expectDeckApiError(
+      () => service.createExportJob(deck.projectId, { format: "pptx" }),
+      HttpStatus.CONFLICT,
+      "DECK_EXPORT_MORPH_UNSUPPORTED",
+    );
+
+    expect(jobsService.create).not.toHaveBeenCalled();
+    expect(enqueueExportJob).not.toHaveBeenCalled();
+
+    const response = await service.createExportJob(deck.projectId, {
+      format: "png",
+    });
+
+    expect(response.job.jobId).toBe(exportJob.jobId);
+    expect(jobsService.create).toHaveBeenCalledTimes(1);
+    expect(enqueueExportJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deck: expect.objectContaining({ deckId: deck.deckId }),
+        format: "png",
+      }),
+    );
+  });
+
   it("marks the export Job failed and returns a structured 503 when enqueue is unavailable", async () => {
     stubOrbitEnv();
     const dataSource = new InMemoryDeckDataSource();
@@ -2560,6 +2648,89 @@ describe("DecksService", () => {
 
     expect(dataSource.patchRows).toHaveLength(0);
     expect(dataSource.decks.get(deck.projectId)?.version).toBe(2);
+  });
+
+  it("rejects Morph mutations on imported decks before patch persistence", async () => {
+    const { dataSource, service } = createService();
+    const deck = createImportedDeckWithoutMorph();
+    seedStoredDeck(dataSource, deck, deck);
+    const destinationSlide = deck.slides[1]!;
+    const destinationElement = destinationSlide.elements[0]!;
+    const operations: DeckPatch["operations"][] = [
+      [
+        {
+          type: "update_slide_transition",
+          slideId: destinationSlide.slideId,
+          transition: {
+            type: "morph",
+            durationMs: 1000,
+            mode: "object",
+          },
+        },
+      ],
+      [
+        {
+          type: "update_element_morph_key",
+          slideId: destinationSlide.slideId,
+          elementId: destinationElement.elementId,
+          morphKey: "el_morph_source",
+        },
+      ],
+    ];
+
+    for (const patchOperations of operations) {
+      await expectDeckApiError(
+        () =>
+          service.appendPatch(deck.projectId, {
+            patch: {
+              deckId: deck.deckId,
+              baseVersion: deck.version,
+              source: "user",
+              operations: patchOperations,
+            },
+          }),
+        HttpStatus.CONFLICT,
+        "DECK_MORPH_IMPORTED_UNSUPPORTED",
+      );
+    }
+
+    expect(dataSource.patchRows).toHaveLength(0);
+    expect(dataSource.decks.get(deck.projectId)?.deck_json).toEqual(deck);
+  });
+
+  it("rejects an imported full Deck save containing Morph before replacement", async () => {
+    const { dataSource, service } = createService();
+    const deck = createImportedDeckWithoutMorph();
+    seedStoredDeck(dataSource, deck, deck);
+    const incomingDeck = deckSchema.parse({
+      ...deck,
+      slides: deck.slides.map((slide, index) =>
+        index === 1
+          ? {
+              ...slide,
+              transition: {
+                type: "morph",
+                durationMs: 1000,
+                mode: "object",
+              },
+            }
+          : slide,
+      ),
+    });
+
+    await expectDeckApiError(
+      () =>
+        service.putDeck(deck.projectId, {
+          baseVersion: deck.version,
+          deck: incomingDeck,
+        }),
+      HttpStatus.CONFLICT,
+      "DECK_MORPH_IMPORTED_UNSUPPORTED",
+    );
+
+    expect(dataSource.decks.get(deck.projectId)?.deck_json).toEqual(deck);
+    expect(dataSource.patchRows).toHaveLength(0);
+    expect(dataSource.snapshotRows).toHaveLength(0);
   });
 
   it("rejects stale full deck saves before deleting newer patch rows", async () => {

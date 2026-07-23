@@ -11,6 +11,7 @@ import { randomUUID } from "crypto";
 import type { DataSource } from "typeorm";
 import { z } from "zod";
 import { projectActivityDeckForStaticExport } from "./activity-export-projection";
+import { projectMorphDeckForStaticExport } from "./morph-export-projection";
 
 const deckExportPayloadSchema = z
   .object({
@@ -139,14 +140,18 @@ export async function processDeckExportJob(
 
   let exportPayload: DeckExportPayload;
   try {
+    const projectedDeck = await projectActivityDeckForStaticExport(
+      dataSource,
+      payload.projectId,
+      payload.deck,
+      payload.presentationSessionId,
+    );
     exportPayload = {
       ...payload,
-      deck: await projectActivityDeckForStaticExport(
-        dataSource,
-        payload.projectId,
-        payload.deck,
-        payload.presentationSessionId,
-      ),
+      deck:
+        payload.format === "png"
+          ? projectMorphDeckForStaticExport(projectedDeck)
+          : projectedDeck,
     };
   } catch (error) {
     return failJob(

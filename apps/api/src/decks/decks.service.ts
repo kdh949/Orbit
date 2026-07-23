@@ -23,6 +23,7 @@ import {
   deckApiErrorSchema,
   deckExportEnqueueErrorSchema,
   deckExportRequestSchema,
+  deckHasMorphTransition,
   deckSchema,
   deckSnapshotDetailSchema,
   deckSnapshotIdSchema,
@@ -389,15 +390,21 @@ export class DecksService {
   }
 
   async createExportJob(projectId: string, body: unknown) {
+    const request = deckExportRequestSchema.parse(body ?? {});
+    const { deck } = await this.getDeck(projectId);
+    if (request.format === "pptx" && deckHasMorphTransition(deck)) {
+      throwDeckApiException(
+        "DECK_EXPORT_MORPH_UNSUPPORTED",
+        HttpStatus.CONFLICT,
+        "웹 모핑은 PPTX로 내보낼 수 없습니다. 모핑을 제거하거나 페이드로 변경해 주세요.",
+      );
+    }
     if (!this.jobsService) {
       throw new HttpException(
         "Deck export job service is unavailable",
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
-
-    const request = deckExportRequestSchema.parse(body ?? {});
-    const { deck } = await this.getDeck(projectId);
     if (request.format === "pptx") {
       const syncState = await this.readOoxmlSyncState(projectId, deck);
       if (
@@ -567,6 +574,7 @@ export class DecksService {
         [`projectId=${projectId}`, `deck.projectId=${request.deck.projectId}`],
       );
     }
+    assertImportedDeckMorphPayload(request.deck);
 
     let syncInput: PptxOoxmlSyncJobInput | null = null;
     const response = await this.dataSource.transaction(async (manager) => {
@@ -601,6 +609,10 @@ export class DecksService {
             true,
           )
         ).deck;
+        assertImportedDeckMorphPayload(
+          request.deck,
+          currentDeck.metadata.sourceType === "import",
+        );
         const baseVersion = request.baseVersion ?? request.deck.version;
 
         if (currentDeck.version !== baseVersion) {
@@ -733,6 +745,7 @@ export class DecksService {
           [`projectId=${projectId}`, `deck.projectId=${currentDeck.projectId}`],
         );
       }
+      assertImportedDeckMorphPatch(currentDeck, request.patch.operations);
 
       const updatedAt = nowIso();
       const applyResult = applyDeckPatch(currentDeck, request.patch, {
@@ -2341,6 +2354,65 @@ function throwApplyPatchException(error: ApplyDeckPatchError): never {
     error.message,
     error.details ?? [],
   );
+}
+
+function assertImportedDeckMorphPayload(
+  deck: Deck,
+  treatAsImported = deck.metadata.sourceType === "import",
+): void {
+  if (!treatAsImported || !deckContainsMorphData(deck)) return;
+  throwDeckApiException(
+    "DECK_MORPH_IMPORTED_UNSUPPORTED",
+    HttpStatus.CONFLICT,
+    "PPTX 호환이 지원되기 전에는 가져온 자료에서 모핑을 편집할 수 없습니다.",
+  );
+}
+
+function assertImportedDeckMorphPatch(
+  deck: Deck,
+  operations: DeckPatchOperation[],
+): void {
+  if (
+    deck.metadata.sourceType !== "import" ||
+    !operations.some(operationContainsMorphMutation)
+  ) {
+    return;
+  }
+  throwDeckApiException(
+    "DECK_MORPH_IMPORTED_UNSUPPORTED",
+    HttpStatus.CONFLICT,
+    "PPTX 호환이 지원되기 전에는 가져온 자료에서 모핑을 편집할 수 없습니다.",
+  );
+}
+
+function deckContainsMorphData(deck: Deck): boolean {
+  return deck.slides.some(
+    (slide) =>
+      slide.transition?.type === "morph" ||
+      slide.elements.some((element) => element.morphKey !== undefined),
+  );
+}
+
+function operationContainsMorphMutation(
+  operation: DeckPatchOperation,
+): boolean {
+  switch (operation.type) {
+    case "update_slide_transition":
+      return operation.transition?.type === "morph";
+    case "update_element_morph_key":
+      return true;
+    case "add_element":
+      return operation.element.morphKey !== undefined;
+    case "add_slide":
+      return (
+        operation.slide.transition?.type === "morph" ||
+        operation.slide.elements.some(
+          (element) => element.morphKey !== undefined,
+        )
+      );
+    default:
+      return false;
+  }
 }
 
 function throwDeckApiException(
