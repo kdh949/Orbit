@@ -1,5 +1,6 @@
 import type { Deck } from "@orbit/shared";
 import { useEffect, useRef, useState } from "react";
+import type { DiagnosticSink } from "../../diagnostics/diagnosticTypes";
 import {
   getRenderableSlideElements,
   ReadOnlySlideCanvas,
@@ -9,7 +10,10 @@ import {
 import { resolveEditorAssetUrl } from "../../editor/shared/editorAssetUrl";
 import { useReducedMotion } from "./useReducedMotion";
 import { useSlideshowTransitions } from "./useSlideshowTransitions";
-import type { SlideshowTransitionAddress } from "./useSlideshowTransitions";
+import type {
+  SlideshowTransitionAddress,
+  SlideshowTransitionTrace
+} from "./useSlideshowTransitions";
 import {
   ActivityAudienceRuntime,
   ActivityResultRuntime
@@ -21,6 +25,7 @@ const emptyTriggerAnimationIds: readonly string[] = [];
 
 export function SlideshowRenderer(props: {
   deck: Deck;
+  diagnostics?: DiagnosticSink;
   highlights?: SlideRuntimeHighlight[];
   onTransitionSettled?: (address: SlideshowTransitionAddress) => void;
   playInitialEntryAnimations?: boolean;
@@ -28,6 +33,7 @@ export function SlideshowRenderer(props: {
   scale?: number;
   slideId: string;
   stepIndex: number;
+  transitionTrace?: SlideshowTransitionTrace;
   triggerAnimationIds?: Iterable<string>;
 }) {
   const {
@@ -81,6 +87,7 @@ export function SlideshowRenderer(props: {
   return (
     <SlideshowRendererContent
       deck={deck}
+      diagnostics={props.diagnostics}
       highlights={highlights}
       onTransitionSettled={props.onTransitionSettled}
       playInitialEntryAnimations={playInitialEntryAnimations}
@@ -89,6 +96,7 @@ export function SlideshowRenderer(props: {
       scale={scale}
       slide={slide}
       stepIndex={stepIndex}
+      transitionTrace={props.transitionTrace}
       triggerAnimationIds={triggerAnimationIds}
     />
   );
@@ -96,6 +104,7 @@ export function SlideshowRenderer(props: {
 
 function SlideshowRendererContent(props: {
   deck: Deck;
+  diagnostics?: DiagnosticSink;
   highlights: SlideRuntimeHighlight[];
   onTransitionSettled?: (address: SlideshowTransitionAddress) => void;
   playInitialEntryAnimations: boolean;
@@ -104,10 +113,12 @@ function SlideshowRendererContent(props: {
   scale: number;
   slide: Deck["slides"][number];
   stepIndex: number;
+  transitionTrace?: SlideshowTransitionTrace;
   triggerAnimationIds: Iterable<string>;
 }) {
   const {
     deck,
+    diagnostics,
     highlights,
     onTransitionSettled,
     playInitialEntryAnimations,
@@ -116,15 +127,18 @@ function SlideshowRendererContent(props: {
     scale,
     slide,
     stepIndex,
+    transitionTrace,
     triggerAnimationIds
   } = props;
   const { elementStates, settledElementStates } = useSlideshowTransitions({
     deck,
+    diagnostics,
     onTransitionSettled,
     playInitialEntryAnimations,
     reducedMotion,
     slide,
     stepIndex,
+    transitionTrace,
     triggerAnimationIds
   });
   const frame = { settledElementStates, slide };

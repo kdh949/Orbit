@@ -6,6 +6,7 @@ import {
   createSlideshowEntryTransitionTimeline,
   createSlideshowTransitionStartStates,
   getSlideshowTransitionDurationMs,
+  getSlideshowTransitionSkipReason,
   interpolateSlideshowTransitionStates,
   resolveSlideshowDisplayStates
 } from "./useSlideshowTransitions";
@@ -284,6 +285,37 @@ describe("useSlideshowTransitions helpers", () => {
     ).toBe(newTargetStates);
   });
 
+  it("classifies every immediate transition skip reason", () => {
+    expect(
+      getSlideshowTransitionSkipReason({
+        animationCount: 1,
+        reducedMotion: true,
+        shouldPlayTransition: true
+      })
+    ).toBe("REDUCED_MOTION");
+    expect(
+      getSlideshowTransitionSkipReason({
+        animationCount: 0,
+        reducedMotion: false,
+        shouldPlayTransition: true
+      })
+    ).toBe("NO_TRANSITION_ANIMATIONS");
+    expect(
+      getSlideshowTransitionSkipReason({
+        animationCount: 0,
+        reducedMotion: false,
+        shouldPlayTransition: false
+      })
+    ).toBe("STEP_DELTA_NOT_SUPPORTED");
+    expect(
+      getSlideshowTransitionSkipReason({
+        animationCount: 1,
+        reducedMotion: false,
+        shouldPlayTransition: true
+      })
+    ).toBeNull();
+  });
+
   it("does not replay entry transitions when restoring a later slide step", () => {
     const source = fs.readFileSync(
       path.join(
@@ -311,5 +343,7 @@ describe("useSlideshowTransitions helpers", () => {
     expect(source).toContain("onTransitionSettled");
     expect(source.match(/notifyTransitionSettled\(\)/g)?.length).toBe(2);
     expect(source).toContain("settledAddressRef");
+    expect(source).toContain("transition.raf_started");
+    expect(source).toContain("transition.cancelled");
   });
 });

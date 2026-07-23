@@ -1,5 +1,9 @@
 import type { Deck, Slide } from "@orbit/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type {
+  DiagnosticSink,
+  DiagnosticTrace
+} from "../../diagnostics/diagnosticTypes";
 import type { ElementPresentationState } from "../../slides/rendering/ReadOnlySlideCanvas";
 import {
   computeSettledElementStates,
@@ -21,13 +25,20 @@ export type SlideshowTransitionAddress = {
   stepIndex: number;
 };
 
+export type SlideshowTransitionTrace = Pick<
+  DiagnosticTrace,
+  "stateTransitionId" | "triggerTraceId"
+>;
+
 export function useSlideshowTransitions(args: {
   deck: Deck;
+  diagnostics?: DiagnosticSink;
   onTransitionSettled?: (address: SlideshowTransitionAddress) => void;
   playInitialEntryAnimations?: boolean;
   reducedMotion: boolean;
   slide: Slide;
   stepIndex: number;
+  transitionTrace?: SlideshowTransitionTrace;
   triggerAnimationIds?: Iterable<string>;
 }) {
   const playInitialEntryAnimations = args.playInitialEntryAnimations ?? true;
@@ -124,20 +135,67 @@ export function useSlideshowTransitions(args: {
       slideId: args.slide.slideId,
       stepIndex: args.stepIndex
     };
+    const transitionId = createTransitionId();
+    const transitionTrace = {
+      ...(args.transitionTrace ?? {}),
+      slideId: args.slide.slideId,
+      transitionId
+    };
+    const skipReason = getSlideshowTransitionSkipReason({
+      animationCount: transitionAnimations.length,
+      reducedMotion: args.reducedMotion,
+      shouldPlayTransition
+    });
+    let didStartRaf = false;
+    let didSettle = false;
     const notifyTransitionSettled = () => {
       const addressKey = `${transitionAddress.slideId}:${transitionAddress.stepIndex}`;
       if (settledAddressRef.current === addressKey) {
         return;
       }
+      didSettle = true;
       settledAddressRef.current = addressKey;
+      args.diagnostics?.emit({
+        stage: "transition",
+        name: "transition.settled",
+        outcome: "settled",
+        trace: transitionTrace,
+        data: {
+          animationCount: transitionAnimations.length,
+          stepIndex: args.stepIndex
+        }
+      });
       onTransitionSettledRef.current?.(transitionAddress);
     };
 
-    if (
-      args.reducedMotion ||
-      transitionAnimations.length === 0 ||
-      !shouldPlayTransition
-    ) {
+    args.diagnostics?.emit({
+      stage: "transition",
+      name: "transition.planned",
+      outcome: skipReason === null ? "accepted" : "skipped",
+      ...(skipReason === null ? {} : { reason: skipReason }),
+      trace: transitionTrace,
+      data: {
+        animationCount: transitionAnimations.length,
+        isInitialEntry,
+        isSlideChange,
+        shouldPlaySlideEntry,
+        stepDelta,
+        stepIndex: args.stepIndex
+      }
+    });
+
+    if (skipReason !== null) {
+      args.diagnostics?.emit({
+        stage: "transition",
+        name: "transition.skipped",
+        outcome: "skipped",
+        reason: skipReason,
+        trace: transitionTrace,
+        data: {
+          animationCount: transitionAnimations.length,
+          stepIndex: args.stepIndex
+        }
+      });
       setDisplayFrame({ slideId: args.slide.slideId, states: targetStates });
       notifyTransitionSettled();
       return;
@@ -152,6 +210,18 @@ export function useSlideshowTransitions(args: {
     const startedAt = performance.now();
 
     setDisplayFrame({ slideId: args.slide.slideId, states: startStates });
+    didStartRaf = true;
+    args.diagnostics?.emit({
+      stage: "transition",
+      name: "transition.raf_started",
+      outcome: "started",
+      trace: transitionTrace,
+      data: {
+        animationCount: transitionAnimations.length,
+        durationMs,
+        stepIndex: args.stepIndex
+      }
+    });
 
     const tick = (now: number) => {
       const progress = Math.min(1, (now - startedAt) / durationMs);
@@ -184,10 +254,26 @@ export function useSlideshowTransitions(args: {
         cancelAnimationFrame(frameRef.current);
         frameRef.current = null;
       }
+      if (didStartRaf && !didSettle) {
+        args.diagnostics?.emit({
+          stage: "transition",
+          name: "transition.cancelled",
+          outcome: "rejected",
+          reason: "EFFECT_CLEANUP",
+          trace: transitionTrace,
+          data: {
+            animationCount: transitionAnimations.length,
+            stepIndex: args.stepIndex
+          }
+        });
+      }
     };
   }, [
+    args.diagnostics,
     args.reducedMotion,
     args.slide.slideId,
+    args.transitionTrace?.stateTransitionId,
+    args.transitionTrace?.triggerTraceId,
     args.stepIndex,
     baseStates,
     initialEntryPlan,
@@ -210,6 +296,23 @@ export function useSlideshowTransitions(args: {
     }),
     settledElementStates: targetStates
   };
+}
+
+export function getSlideshowTransitionSkipReason(args: {
+  animationCount: number;
+  reducedMotion: boolean;
+  shouldPlayTransition: boolean;
+}) {
+  if (args.reducedMotion) {
+    return "REDUCED_MOTION";
+  }
+  if (!args.shouldPlayTransition) {
+    return "STEP_DELTA_NOT_SUPPORTED";
+  }
+  if (args.animationCount === 0) {
+    return "NO_TRANSITION_ANIMATIONS";
+  }
+  return null;
 }
 
 export function resolveSlideshowDisplayStates(args: {
@@ -398,4 +501,11 @@ function cloneElementStates(states: Record<string, ElementPresentationState>) {
 
 function lerp(start: number, end: number, progress: number) {
   return start + (end - start) * progress;
+}
+
+let transitionSequence = 0;
+
+function createTransitionId() {
+  transitionSequence += 1;
+  return `transition:${Date.now()}:${transitionSequence}`;
 }
