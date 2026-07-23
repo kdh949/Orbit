@@ -1,4 +1,9 @@
-import type { AuthUser, Deck, Project, ProjectMemberRole } from "@orbit/shared";
+import type {
+  AuthUser,
+  Deck,
+  Project,
+  ProjectMemberRole,
+} from "../../packages/shared/src";
 import { expect, type Page } from "@playwright/test";
 
 const e2ePassword = "orbit-e2e-password-123";
@@ -10,9 +15,11 @@ export type E2eActor = {
 };
 
 export async function authenticateE2ePage(page: Page, label: string) {
-  const email = `orbit-e2e-${label}-${Date.now()}-${Math.random().toString(36).slice(2)}@example.test`;
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const email = `orbit-e2e-${label}-${suffix}@example.test`;
+  const displayName = `E2E-${suffix.slice(-12)}`;
   const response = await page.request.post("/api/v1/auth/register", {
-    data: { email, password: e2ePassword },
+    data: { displayName, email, password: e2ePassword },
   });
 
   expect(response.ok(), await response.text()).toBe(true);
