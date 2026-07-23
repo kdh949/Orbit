@@ -524,11 +524,13 @@ report에는 artifact checksum, renderer/version, font checksum, source/template
 - [x] 사람 승인: inventory와 slot annotation 범위를 검토한 뒤 spike로 진행한다.
 
 2026-07-23 사용자 승인과 local QA private storage의 7개 source·139개 preview
-read-after-write 검증으로 inventory·annotation 검수 증거는 충족됐다. strict manifest는
-게시하지 않았고 repository catalog도 계속 disabled다. 현재 결정은
-`/private/tmp/orbit-ooxml-private-catalog-decision-disabled-20260723`에 기록했으며, strict
-manifest를 active로 잘못 기록한 이전 decision artifact를 supersede한다. §15의 production
-private managed storage도 준비되지 않았으므로 Checkpoint A의 정식 상태는 승인 보류다.
+read-after-write 검증으로 inventory·annotation 검수 증거는 충족됐다. 이후 같은 QA bucket에
+7개 strict manifest가 `active` 상태로 게시되어 총 153개 object가 됐고 canonical bytes,
+metadata SHA-256, content type, version ID와 anonymous `403`을 재검증했다. 현재 상태는
+`/private/tmp/orbit-ooxml-qa-manifest-drift-audit-v2-WSyKlN`에 기록했다. 이 publication은
+QA-only이며 calibration object가 없고 feature flag/allowlist도 꺼져 있다. repository catalog와
+production rollout은 계속 disabled이고 §15의 production private managed storage도 준비되지
+않았으므로 Checkpoint A의 정식 상태는 승인 보류다.
 
 ### Phase 1: 한 개 PPTX vertical spike
 
@@ -680,6 +682,13 @@ locked-region SSIM은 모두 1.0이고 changed pixel, structural drift와 packag
 `runtimeEligible=false`, proposed threshold는 `null`이다. 따라서 측정 증거는 확보했지만
 threshold 선택 근거의 exact-font 재측정과 사람 승인이 없어 acceptance checkbox는 미완료다.
 
+PowerPoint app bundle과 Office CloudFonts를 read-only fontconfig에 추가한 별도 diagnostic
+candidate
+`/private/tmp/orbit-ooxml-identity-calibration-candidate-office-fonts-20260723-a`도
+7개/139장 SSIM 1.0, changed pixel 0, structural pass와 checksum 461/461을 유지했다.
+resolution은 exact 320/substituted 31, unique substitution 8개로 줄었지만 font license,
+embedded-only/exact-absent family와 사람 threshold 승인이 남아 runtime에는 적용하지 않는다.
+
 **Dependencies:** Tasks 5, 6, 7
 
 **Files likely touched:**
@@ -709,6 +718,15 @@ LibreOffice 기반 montage-only 증거이며 PowerPoint/reopen/full-deck/font �
 
 첫 항목은 승인 범위의 actual text slot 7개는 충족했지만 actual image slot annotation이 승인되지
 않았으므로 완료로 표시하지 않는다. image replacement는 synthetic fixture 범위에서만 통과했다.
+actual source의 direct picture 19개를 읽기 전용 감사한 결과 package-wide exclusive media
+target을 가진 기술 후보는 5개다. source-authored `p:cNvPr@descr`의 정규화된 exact
+replacement intent를 가진 4개는 high-confidence, 나머지 1개는 low-confidence로
+분류했다. `team-alignment`의 14개 picture는 두 media part를 여러 picture가 공유하므로
+독립 slot으로 만들지 않는다. 결과와 checksum은
+`/private/tmp/orbit-ooxml-image-slot-candidates-v2-20260723-8vzdI7`에 보관한다.
+annotation과 runtime은 shared target을 각각 `shared_image_media_target`,
+`OOXML_REFERENCE_IMAGE_MEDIA_SHARED`로 fail-closed하도록 고정했지만, 후보 자체의 사람
+content-bearing/replacement-intent 승인과 actual image round-trip은 아직 미완료다.
 
 같은 승인 범위를 253개 text slot 전수로 확장한 수정 전 matrix
 `/private/tmp/orbit-ooxml-actual-text-slot-matrix-20260723-ew36f6m1`에서는 generic sync가

@@ -127,6 +127,16 @@ render-validation을 fail-closed한다.
 file checksum을 제공해야 한다. PowerPoint의 resolved font evidence는 이 결과와 별도로
 수집한다.
 
+PowerPoint app bundle과 Office CloudFonts를 읽기 전용 fontconfig directory로 추가한
+diagnostic calibration은
+`/private/tmp/orbit-ooxml-identity-calibration-candidate-office-fonts-20260723-a`에 있다.
+7개/139장 SSIM 1.0, changed pixel 0, structural pass와 checksum 461/461을 유지하면서 351개
+resolution은 exact 320/substituted 31, unique substitution 8개로 줄었다. 그러나 app/cache
+font의 cross-application license, embedded-only 4개와 exact source가 없는 4개, 사람
+threshold 승인이 남아 `runtimeEligible=false`와
+`proposedLockedRegionSsimThreshold=null`을 유지한다. 진단 분류 SHA-256은
+`494208e0196867805d29e1a727e7a8e1e92a7a6a361c7496632d2da92bd758b0`이다.
+
 artifact는 Git이 아닌 `/tmp` 또는 승인된 private QA storage에 다음 구조로 둔다.
 
 ```text

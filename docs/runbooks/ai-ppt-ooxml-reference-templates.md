@@ -117,7 +117,8 @@ rollback 뒤에도 이 경로를 smoke해 복구 가능성을 보존한다.
 ## 현재 승인 상태
 
 2026-07-23 기준 source 사용 권리와 139장/253개 text-only slot annotation을 승인했고,
-local QA MinIO의 source 7개와 preview 139개, 총 146개 private object checksum/ACL,
+local QA MinIO의 source 7개, preview 139개와 QA-active strict manifest 7개, 총 153개
+private object checksum/ACL,
 anonymous HTTP `403`, actual-source identity clone 139장,
 content-generated 7개×8장 package/LibreOffice를 검증했다. Microsoft PowerPoint 16.111에서도
 7개 generated deck과 7개 actual slot edit/export deck을 각각 open, PDF render, close,
@@ -141,10 +142,11 @@ actual text-slot 편집→sync/export 수정본의 PowerPoint 증거는
 보존하고, 7개 source와 139장/253개 text-only annotation 승인 후 상태 결정은
 `/private/tmp/orbit-ooxml-private-catalog-decision-disabled-20260723`에 별도 기록했다.
 `approval-decision.json` SHA-256은
-`e30b9f5bbe9046b00c5f535f1b8ec3bf8dd8c6d8b50c539359f81dc0fa2cc0ad`이다. 이 결정은 strict
-manifest를 active로 잘못 기록한 이전 artifact를 supersede한다. 승인 provenance와 annotation
-review는 repository catalog에 반영했지만 strict manifest는 local QA bucket에 게시하지 않았고
-repository/production status는 7개 모두 `disabled`다.
+`e30b9f5bbe9046b00c5f535f1b8ec3bf8dd8c6d8b50c539359f81dc0fa2cc0ad`이다. 이 결정은 QA
+manifest 게시 전 상태를 보존한다. 현재 QA storage의 7개 active manifest와 153개 object는
+`/private/tmp/orbit-ooxml-qa-manifest-drift-audit-v2-WSyKlN`에서 재검증했고 `audit.json`
+SHA-256은 `455ec8689f1000b4360a0583b84df8af7955be56e034bc264119e41b66c965b6`이다. 이 상태는
+QA-only이며 repository/production status는 7개 모두 `disabled`다.
 
 그러나 local MinIO는 production private managed storage를 대체하지 않는다. generated full-deck
 locked diff/montage와 edited-slot montage는 각각
@@ -163,6 +165,15 @@ resolved file SHA-256을 다시 생성하고 PowerPoint와 LibreOffice evidence�
 현 fidelity manifest의 exact 38개와 substituted fallback 313개 checksum은 현재 renderer가 읽은
 파일 provenance이며 requested exact family 설치 완료를 뜻하지 않는다.
 
+PowerPoint app bundle과 Office CloudFonts를 복제하지 않고 읽기 전용 fontconfig로 연결한
+진단에서는 raw exact family 42/50, calibration resolution exact 320/substituted 31,
+unique substitution 8개까지 개선됐다. 결과는
+`/private/tmp/orbit-ooxml-font-gap-office-runtime-20260723-a.json`과
+`/private/tmp/orbit-ooxml-identity-calibration-candidate-office-fonts-20260723-a`에 있다.
+Microsoft/Office asset의 cross-application license와 embedded font 추출 권한이 확인되기
+전에는 app/cache font를 복사하거나 production image에 넣지 않는다. 남은 exact family와
+사람 threshold 승인이 없으므로 calibration object도 게시하지 않는다.
+
 승인/disabled canonical manifest 기반 LibreOffice 26.8 identity candidate는
 `/private/tmp/orbit-ooxml-identity-calibration-candidate-20260723-b`에 있다. 7개/139장의
 SSIM은 1.0, changed pixel과 structural/package drift는 0이고 461개 checksum이 일치한다.
@@ -177,8 +188,15 @@ geometry/style/relationship drift는 모두 0이다. 119개 hierarchy rewrite도
 template byte-equivalence와 non-text/relationship semantics drift 0으로 분류했다. 이 결과는
 actual image annotation과 사람 fidelity 승인을 대체하지 않는다.
 
+actual source image 후보는
+`/private/tmp/orbit-ooxml-image-slot-candidates-v2-20260723-8vzdI7`에서 읽기 전용으로
+검사했다. direct picture 19개 중 독립 교체 가능한 후보 5개, 명시적 source replacement
+intent를 가진 high-confidence 4개, low-confidence 1개이며 shared target 14개는 제외했다.
+사람 content-bearing 승인과 actual image edit→sync→export→PowerPoint/LibreOffice reopen
+전에는 image slot을 manifest/catalog에 추가하지 않는다.
+
 2026-07-23 최종 회귀에서는 repository build 10/10, lint/test 17/17, Python pytest
-1,038 passed/1 skipped,
+1,048 passed/1 skipped,
 current-branch Python worker의 PostgreSQL PPTX round-trip 7개와 `/createdeck` Chrome Playwright
 2개를 통과했다. 같은 실행의 no-mock spec 1개는 opt-in gate로 skip됐다. route-mocked
 Playwright는 실제 API→queue→private publication vertical 증거가 아니다. 별도 opt-in spec은

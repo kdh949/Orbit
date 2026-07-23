@@ -30,18 +30,22 @@ nested OOXML preflight를 통과한 `.xlsx` 수다. `animations`는 slide의 `p:
 `ooxml-reference-slot-annotation.md`와 repository catalog에 기록한다.
 
 승인된 source 7개와 preview 139개의 checksum은 local QA private storage에서
-146/146 read-after-write로 검증됐고 anonymous HTTP 접근은 `403`이었다. strict manifest는
-local QA bucket에 publication하지 않았으므로 이 검증은 manifest activation이나 production
-managed storage를 대신하지 않는다.
+146/146 read-after-write로 검증됐고 anonymous HTTP 접근은 `403`이었다. 이후 같은 QA
+bucket에 strict manifest 7개가 `active` 상태로 게시되어 총 153개 object가 됐다. 7개 manifest의
+canonical byte identity, metadata SHA-256, `application/json`, version ID와 anonymous `403`은
+`/private/tmp/orbit-ooxml-qa-manifest-drift-audit-v2-WSyKlN/audit.json`
+(`SHA-256 455ec8689f1000b4360a0583b84df8af7955be56e034bc264119e41b66c965b6`)에서
+재검증했다.
 승인 전 검수 snapshot은 `/private/tmp/orbit-ooxml-private-catalog-review-9e2wd3pb`에
 보존하고, 현재 승인 후 상태 결정은
 `/private/tmp/orbit-ooxml-private-catalog-decision-disabled-20260723/approval-decision.json`
 (`SHA-256 e30b9f5bbe9046b00c5f535f1b8ec3bf8dd8c6d8b50c539359f81dc0fa2cc0ad`)에
-별도로 기록했다. 이 artifact는 strict manifest 7개를 active로 잘못 기록한 이전 결정을
-supersede한다. 승인 정보는 repository catalog의
+별도로 기록했다. 당시의 disabled decision은 QA manifest 게시 전 상태의 기록이며 위 drift
+audit가 현재 QA storage 상태를 supersede한다. 승인 정보는 repository catalog의
 `provenance.authorizationStatus=approved`와 `annotationReview.status=approved`에 반영했지만
-strict catalog status는 7개 모두 `disabled`다. production publication 증거가 아니므로
-production rollout도 계속 `disabled`다.
+repository catalog status는 7개 모두 `disabled`다. QA-active manifest는 calibration,
+feature flag와 exact allowlist가 없으므로 runtime eligible하지 않고 production publication
+증거도 아니다. production rollout도 계속 `disabled`다.
 Microsoft PowerPoint 16.111에서 7개 generated deck과 actual slot-edit/export deck의
 open/render/reopen은 별도로 검증했다. 그러나 embedded/exact font file checksum과 production
 private managed storage, full fidelity 사람 승인이 남아 repository catalog의 7개 template은
@@ -52,6 +56,15 @@ private managed storage, full fidelity 사람 승인이 남아 repository catalo
 `/private/tmp/orbit-ooxml-font-gap-20260723-a.json`에 보관한다. PowerPoint 자동화 로그의 font
 substitution match 0건은 실제 resolved font file checksum 증거가 아니므로 이 blocker를
 해제하지 않는다.
+
+PowerPoint app bundle과 Office CloudFonts를 복사하지 않고 별도 fontconfig에 읽기 전용으로
+연결한 진단에서는 50개 중 raw exact family 42개가 확인됐다. 나머지 8개 중 4개는
+document-embedded only이고, 4개는 exact local/embedded family가 없거나 alias/style
+해석이 필요하다. 분류와 7개/139장 재측정 결과는
+`/private/tmp/orbit-ooxml-font-gap-office-runtime-20260723-a.json`
+(`SHA-256 494208e0196867805d29e1a727e7a8e1e92a7a6a361c7496632d2da92bd758b0`)에
+있다. Microsoft/Office font의 cross-application 사용 권한과 embedded font 추출 권한을
+추정하지 않으며 이 진단으로 `FONT_AVAILABILITY_VALIDATION_PENDING`을 해제하지 않는다.
 
 ## Security preflight
 

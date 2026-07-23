@@ -5,17 +5,20 @@
 2026-07-23 기준 7개/139장 source inventory와 SHA-256을 재현했고 source 사용 권한과
 139장/253개 text-only slot annotation을 승인했다. actual identity clone 7개와 actual
 content-generated 8장 full-deck 7개는 package warning 0, `python-pptx` reopen과
-LibreOffice PDF/PNG render를 통과했다. local QA private storage의 source 7개와 preview
-139개, 총 146개 object도 checksum과 private ACL을 검증했지만 strict manifest는 게시하지
-않았고 production managed storage를 대신하지 않는다.
+LibreOffice PDF/PNG render를 통과했다. local QA private storage의 source 7개, preview
+139개와 QA-active strict manifest 7개, 총 153개 object도 checksum, canonical manifest
+identity, versioning과 private ACL을 검증했다. 현재 상태 audit는
+`/private/tmp/orbit-ooxml-qa-manifest-drift-audit-v2-WSyKlN`에 있고 `audit.json` SHA-256은
+`455ec8689f1000b4360a0583b84df8af7955be56e034bc264119e41b66c965b6`이다. 이 QA-only
+publication은 production managed storage를 대신하지 않는다.
 승인 전 검수 snapshot과 승인 후 상태 결정은 각각
 `/private/tmp/orbit-ooxml-private-catalog-review-9e2wd3pb`,
 `/private/tmp/orbit-ooxml-private-catalog-decision-disabled-20260723`에 분리 보존한다. 후자의
 `approval-decision.json` SHA-256은
 `e30b9f5bbe9046b00c5f535f1b8ec3bf8dd8c6d8b50c539359f81dc0fa2cc0ad`이다. 이 결정은
-strict manifest를 active로 잘못 기록한 이전 artifact를 supersede한다. 승인 provenance와
-annotation review는 repository catalog에 반영했지만 strict manifest와 production rollout
-상태는 모두 `disabled`다.
+QA strict manifest 게시 전 상태를 보존하며 현재 storage 사실은 위 drift audit가 supersede한다.
+승인 provenance와 annotation review는 repository catalog에 반영했지만 repository와 production
+rollout 상태는 모두 `disabled`다. QA bucket에는 runtime calibration object가 없다.
 
 | template                                          | version | slides | identity clone | actual full-deck | actual slot edit | fidelity artifact | PowerPoint | rollout  |
 | ------------------------------------------------- | ------: | -----: | -------------- | ---------------- | ---------------- | ----------------- | ---------- | -------- |
@@ -73,12 +76,28 @@ drift도 0이다. 461개 checksum은 모두 재계산 일치하지만 font는 ex
 candidate는 `runtimeEligible=false`, proposed threshold는 `null`이며 Task 8 approval을
 충족하지 않는다.
 
+PowerPoint app bundle과 Office CloudFonts를 읽기 전용으로 연결한 후의 별도 diagnostic
+candidate는
+`/private/tmp/orbit-ooxml-identity-calibration-candidate-office-fonts-20260723-a`에 있다.
+7개/139장 identity metric은 동일하게 exact지만 font resolution은 exact 320,
+substituted 31, unique substitution 8개다. font license와 exact family 및 사람 승인이
+남아 `runtimeEligible=false`이고 runtime calibration으로 게시하지 않는다.
+
 실제 text-slot 편집용 B2 visual artifact는
 `/private/tmp/orbit-ooxml-b2-slot-montage-7cg9oi8q`에 있다. 7개 template의 편집 전/후,
 slot mask, locked overlay, montage와 bounded report 43개 파일의 checksum을 재검산했다.
 package/import warning과 structural drift는 0이지만 `operating-review` 42px와 `simple-light`
 72px의 locked pixel이 남아 있고 사람 승인 template은 0개다. 이 LibreOffice 기반 montage-only
 artifact는 기존 PowerPoint/LibreOffice reopen 증거나 full-deck calibration을 대체하지 않는다.
+
+actual source image 후보의 읽기 전용 감사 artifact는
+`/private/tmp/orbit-ooxml-image-slot-candidates-v2-20260723-8vzdI7`에 있다. direct picture
+19개 중 package-wide exclusive 후보는 5개이며 source-authored replacement intent 기준
+high-confidence 4개, low-confidence 1개다. shared media target 14개는 제외했다.
+`summary.json`과 `CHECKSUMS.sha256`의 SHA-256은 각각
+`364bac762d035ce1d01dcfb2e0043f4b5c69e79b8aebd77e402099f946695426`,
+`0b348dca0a7914c7a38c8bb4b6fe71231ae4974135c2d89fb98162a0d344212d`다.
+사람 content-bearing 승인과 actual image round-trip 전에는 manifest/catalog를 변경하지 않는다.
 
 승인된 253개 actual text slot의 sync 구조 matrix는 수정 전
 `/private/tmp/orbit-ooxml-actual-text-slot-matrix-20260723-ew36f6m1`, 수정 후

@@ -93,6 +93,10 @@ source ID, part, order는 각각 유일해야 한다. relationship identity와 l
   slot ID와 locator tuple은 manifest 전체에서 중복될 수 없다.
 - locator의 slide part는 부모 source slide와 같아야 한다. image/chart는 authoritative
   relationship ID가 필수다.
+- image relationship은 internal media part를 package 전체에서 단독 참조해야 하고 해당
+  slide의 `a:blip`도 한 번만 embed해야 한다. 같은 media part 또는 relationship을 다른
+  picture가 공유하면 `shared_image_media_target`으로 annotation을 거부하고 runtime도
+  `OOXML_REFERENCE_IMAGE_MEDIA_SHARED`로 원본 package를 그대로 반환한다.
 - text는 max chars/lines/paragraphs/bullet depth, image는 aspect ratio/crop/alpha/mask,
   table은 fixed grid/merge policy/editable cell fingerprint, chart는 supported chart type과
   category/series 및 embedded workbook fingerprint를 기록한다.
@@ -125,6 +129,7 @@ relationship, unsupported formula/range, fingerprint drift가 있으면 package 
 - unsupported SmartArt/diagram
 - animation/timing 대상 object
 - external workbook/media relationship, OLE, embedded package와 linked content
+- 둘 이상의 picture/relationship이 같은 media part를 공유해 독립 교체할 수 없는 image
 - stable direct locator 또는 bounded mutation policy를 만들 수 없는 object
 
 제외 object를 slot locator로 지정하면 각각 stable issue code로 validation을 실패시킨다.
@@ -168,6 +173,7 @@ uv run python scripts/annotate_ooxml_reference_template.py \
   --source <private-reference.pptx> \
   --manifest <private-annotation.json> \
   --catalog-output <private-output>/source-slide-catalog.json \
+  --image-slot-candidate-output <private-output>/image-slot-candidates.json \
   --preview-directory <private-rendered-slide-pngs> \
   --montage-output <private-output>/source-slide-montage.png
 ```
@@ -175,6 +181,19 @@ uv run python scripts/annotate_ooxml_reference_template.py \
 catalog에는 source slide ID, semantic role, preview ID, slot ID와 checksum만 기록한다.
 source path, 원문 text, raw XML, render binary는 기록하지 않는다. preview가 하나라도 없거나
 path-bounded preview ID가 아니면 montage 생성은 실패한다.
+
+image candidate report는 strict manifest validation 후 direct `p:pic`만 읽고 internal image
+relationship, media part 존재, package-wide exclusive target, 단일 slide embed와 animation
+제외 여부를 기록한다. source path/text/raw XML/media target/bytes는 출력하지 않는다. 실제
+7개 원본에서는 direct picture 19개 중 기술 후보 5개, shared media 제외 14개였다. direct
+`p:ph` 또는 정규화된 source-authored `p:cNvPr@descr`의 exact allowlist만 명시적 replacement
+intent로 인정하며 `@name`이나 importer/prepared metadata로 추론하지 않는다. 이 기준에서
+high-confidence 후보는 4개, low-confidence 후보는 1개다. artifact는
+`/private/tmp/orbit-ooxml-image-slot-candidates-v2-20260723-8vzdI7`에 있으며 candidate
+승인이나 manifest mutation은 적용하지 않았다. `summary.json`과 `CHECKSUMS.sha256`의
+SHA-256은 각각
+`364bac762d035ce1d01dcfb2e0043f4b5c69e79b8aebd77e402099f946695426`,
+`0b348dca0a7914c7a38c8bb4b6fe71231ae4974135c2d89fb98162a0d344212d`이다.
 
 7개 private 검수 artifact의 139장/253 text-only slot 내용은 승인되었지만 raw annotation,
 source-slide catalog, montage와 원본은 repository에 복사하지 않는다. preview baseline과
