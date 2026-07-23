@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import { deckSchema } from "@orbit/shared";
 
 import { createDemoDeck } from "../index";
+import { activityDesignPresetIds } from "../activity-layouts/activityDesignPresets";
 import { applyDeckPatch } from "./applyPatch";
 import {
+  createApplyActivityDesignPresetPatch,
   createActivityResultsSlide,
   createActivitySlide,
   createReplaceActivityDesignPatch,
@@ -31,6 +33,67 @@ describe("Activity slide operations", () => {
       expect(result.success).toBe(true);
       expect(slide.kind).toBe("activity");
       expect(slide.activity.template).toBe(template);
+    }
+  });
+
+  it("creates all Activity design presets as concrete editable elements", () => {
+    for (const preset of activityDesignPresetIds) {
+      const deck = createDemoDeck();
+      const slide = createActivitySlide(deck, "poll", { preset });
+      const result = deckSchema.safeParse({
+        ...deck,
+        slides: [...deck.slides, slide]
+      });
+      const elementIds = slide.elements.map((element) => element.elementId);
+
+      expect(result.success).toBe(true);
+      expect(slide.activityAppearance.mode).toBe("editable");
+      expect(new Set(elementIds).size).toBe(elementIds.length);
+      if (preset === "blank") {
+        expect(slide.elements).toHaveLength(0);
+      } else {
+        expect(slide.elements.some((element) => element.type === "activity-qr")).toBe(
+          true
+        );
+        expect(
+          slide.elements.some(
+            (element) => element.type === "presentation-passcode"
+          )
+        ).toBe(true);
+      }
+
+      for (const element of slide.elements) {
+        if (element.role === "decoration") continue;
+        expect(element.x).toBeGreaterThanOrEqual(0);
+        expect(element.y).toBeGreaterThanOrEqual(0);
+        expect(element.x + element.width).toBeLessThanOrEqual(deck.canvas.width);
+        expect(element.y + element.height).toBeLessThanOrEqual(deck.canvas.height);
+      }
+    }
+  });
+
+  it("reapplies an Activity preset without changing its semantic definition", () => {
+    const deck = deckWithSatisfaction();
+    const source = deck.slides.find((slide) => slide.kind === "activity");
+    if (!source) throw new Error("missing activity slide");
+
+    const patch = createApplyActivityDesignPresetPatch(
+      deck,
+      source.slideId,
+      "editorial"
+    );
+    const result = applyDeckPatch(deck, patch);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const updated = result.deck.slides.find(
+      (slide) => slide.slideId === source.slideId
+    );
+    expect(updated?.kind).toBe("activity");
+    if (updated?.kind === "activity") {
+      expect(updated.activity).toEqual(source.activity);
+      expect(updated.activityAppearance.mode).toBe("editable");
+      expect(updated.elements.length).toBeGreaterThan(0);
     }
   });
 

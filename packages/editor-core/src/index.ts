@@ -135,6 +135,16 @@ export type {
 export { getAnimationActionTriggerKeys } from "./playback/slidePlayback";
 export { normalizeLegacyAnimationStartModes } from "./patches/legacyAnimationStartModeMigration";
 export {
+  activityDesignPresetIds,
+  activityDesignPresetLabels,
+  createActivityDesignPreset
+} from "./activity-layouts/activityDesignPresets";
+export type {
+  ActivityDesignPreset,
+  ActivityDesignPresetId
+} from "./activity-layouts/activityDesignPresets";
+export {
+  createApplyActivityDesignPresetPatch,
   createActivityResultsSlide,
   createActivitySlide,
   createReplaceActivityDesignPatch,
