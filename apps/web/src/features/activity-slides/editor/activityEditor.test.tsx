@@ -151,8 +151,7 @@ describe("activity slide editor", () => {
     );
 
     expect(html).toContain("편집 디자인 미리보기");
-    expect(html).toContain('data-testid="read-only-slide-stage"');
-    expect(html).toContain("••••");
+    expect(html).toContain("activity-special-thumbnail--editable");
   });
 
   it("renders editor status, public state, direct link, and QR controls", () => {

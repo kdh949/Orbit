@@ -1,8 +1,13 @@
 import type { ActivityResultsSlide, ActivitySlide, Deck } from "@orbit/shared";
+import { lazy, Suspense } from "react";
 
 import { OrbitBrand } from "../../../components/ui";
-import { ReadOnlySlideCanvas } from "../../slides/rendering";
 import { createActivityThemeStyle } from "../rendering/activityThemeStyle";
+
+const ReadOnlySlideCanvas = lazy(async () => {
+  const module = await import("../../slides/rendering/ReadOnlySlideCanvas");
+  return { default: module.ReadOnlySlideCanvas };
+});
 
 const resultLayoutLabels: Record<ActivityResultsSlide["activityResult"]["layout"], string> = {
   summary: "요약 결과",
@@ -22,11 +27,13 @@ export function ActivitySpecialSlideThumbnail(props: {
           className="activity-special-thumbnail activity-special-thumbnail--editable"
           data-testid="activity-slide-thumbnail"
         >
-          <ReadOnlySlideCanvas
-            deck={props.deck}
-            scale={192 / props.deck.canvas.width}
-            slide={props.slide}
-          />
+          <Suspense fallback={null}>
+            <ReadOnlySlideCanvas
+              deck={props.deck}
+              scale={192 / props.deck.canvas.width}
+              slide={props.slide}
+            />
+          </Suspense>
         </span>
       );
     }
