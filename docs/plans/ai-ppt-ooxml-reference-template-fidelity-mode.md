@@ -569,7 +569,13 @@ Checkpoint A의 정식 상태는 승인 보류다. repository catalog도 계속 
 **Verification:**
 
 - [x] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_clone.py`
-- [ ] identity-control clone 8~10장 render/diff
+- [x] identity-control clone 8~10장 render/diff
+
+Microsoft PowerPoint 16.111에서 7개 actual source와 raw identity clone 전체 139장을 각각
+open/PDF render/close/reopen하고 동일 해상도 pixel diff를 생성했다. 139장 모두 changed pixel
+0이며 template별 6~8장 montage와 bounded report는
+`/private/tmp/orbit-ooxml-powerpoint-identity-control-20260723-a`에 있다. 이 기계적 baseline은
+exact font 설치 또는 사람 calibration 승인을 대체하지 않는다.
 
 **Dependencies:** Task 4
 
@@ -814,7 +820,15 @@ LibreOffice 기반 montage-only 증거이며 PowerPoint/reopen/full-deck/font �
 **Verification:**
 
 - [x] 7개 fixture generation command
-- [ ] 7개 PowerPoint/LibreOffice montage와 fidelity report 생성
+- [x] 7개 PowerPoint/LibreOffice montage와 fidelity report 생성
+
+LibreOffice 기반 source/generated/mask/locked-diff artifact는
+`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-g`, PowerPoint 16.111의 7개×8장
+self-contained PPTX/PDF/PNG/montage/report bundle은
+`/private/tmp/orbit-ooxml-powerpoint-full-deck-montage-metadata-fixed-20260723-b`에 있다. 생성
+PPTX는 source의 stale `TitlesOfParts`, 통계, custom property와 thumbnail을 제거하고 `Slides=8`을
+재계산한 수정본이다. 두 renderer의 결과는 별도 evidence로 유지하며 사람 fidelity 승인과 exact
+font gate는 계속 pending이다.
 
 **Dependencies:** Tasks 9, 10, 11a, 11b
 
@@ -841,7 +855,7 @@ LibreOffice 기반 montage-only 증거이며 PowerPoint/reopen/full-deck/font �
 overflow/overlap/crop, LibreOffice 56장과 Microsoft PowerPoint 16.111 open/render/reopen을
 통과했다. 실제 7개 text-slot edit/export도 두 renderer에서 reopen했다. 7개 generated deck의
 56장 source/generated/mask/locked-diff와 세 종류 montage는
-`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-f`에 계획 §7.4 구조로 생성했고 모든
+`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-g`에 계획 §7.4 구조로 생성했고 모든
 template의 package warning과 geometry/style/relationship drift는 0이다. font manifest는
 template별 43~50개 substitution을 확인했고 exact/substituted 351개 resolved file checksum을
 모두 기록했다. 다만 313개는 요청 family가 아니라 fallback file checksum이다. 따라서 요청한
@@ -849,10 +863,18 @@ exact font 설치·checksum, private calibration
 threshold와 locked-diff의 사람 승인, production managed storage가 없어 Checkpoint C는 미통과다.
 
 최신 strict runner report는
-`/private/tmp/orbit-ooxml-checkpoint-c-report-20260723-final-d/summary.json`이다. 자동 검증은
+`/private/tmp/orbit-ooxml-checkpoint-c-report-20260723-metadata-fixed-final/summary.json`이다.
+자동 검증은
 7/7 통과했지만 PowerPoint evidence에 `FONT_AVAILABILITY_VALIDATION_PENDING`을 명시해 전체
 상태를 `failed`로 유지했다. 실제 PowerPoint open/render/reopen 통과만으로 font 설치·checksum
 gate를 대체하지 않는다.
+
+source `docProps/app.xml`의 선택되지 않은 slide title과 통계, core/custom property, thumbnail이
+생성본에 남는 결함은 clone 경계의 sanitizer와 회귀 테스트로 수정했다. 수정본 7개는 ZIP warning
+0, slide part 8개, `app.xml Slides=8`, stale/private metadata 0을 전수 확인했다. actual text slot
+편집→sync/export 수정본의 PowerPoint 16.111 render/reopen 증거는
+`/private/tmp/orbit-ooxml-powerpoint-slot-roundtrip-metadata-fixed-20260723-d`에 있으며 7개 모두
+편집값 유지와 8장 재열기를 통과했다. 이 결과도 font/사람 승인 gate를 승격하지 않는다.
 
 ### Phase 3: 별도 API/Job과 `/createdeck` 제품 연결
 

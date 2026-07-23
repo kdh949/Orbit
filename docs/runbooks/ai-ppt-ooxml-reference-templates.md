@@ -123,6 +123,19 @@ content-generated 7개×8장 package/LibreOffice를 검증했다. Microsoft Powe
 reopen했고 repair/recovery 징후는 0건이었다. 이 증거는 LibreOffice 결과와 분리해 외부 QA
 artifact로 보관한다.
 
+PowerPoint 16.111 identity-control은
+`/private/tmp/orbit-ooxml-powerpoint-identity-control-20260723-a`에서 7개/139장 source와 raw
+clone의 render/reopen 및 exact pixel diff 0을 기록한다. generated 7개×8장 self-contained
+PPTX/PDF/PNG/montage/report는
+`/private/tmp/orbit-ooxml-powerpoint-full-deck-montage-metadata-fixed-20260723-b`에 있다. 두 bundle
+모두 checksum manifest를 재검산했지만 approval/calibration은 `pending`이다. 각 `summary.json`
+SHA-256은 `865ad3747a83939d99a5a516a79376352707349a5cb1a512de570c6d54490393`,
+`5474bdc87e48d3ff9a1a20d64338cdf747b8fb66fe0575016aad5a820e2996aa`다. generated package는
+source의 stale title/count, custom property와 thumbnail을 제거하고 `Slides=8`을 재계산했다.
+actual text-slot 편집→sync/export 수정본의 PowerPoint 증거는
+`/private/tmp/orbit-ooxml-powerpoint-slot-roundtrip-metadata-fixed-20260723-d`에 있으며 7개 모두
+편집값 렌더와 8장 재열기를 통과했다.
+
 승인 전 검수 snapshot은 `/private/tmp/orbit-ooxml-private-catalog-review-9e2wd3pb`에 그대로
 보존하고, 7개 source와 139장/253개 text-only annotation 승인 후 상태 결정은
 `/private/tmp/orbit-ooxml-private-catalog-decision-3TH9mcuh`에 별도 기록했다.
@@ -133,7 +146,7 @@ QA strict manifest의 `active`/`approved`를 기록하지만 repository/producti
 
 그러나 local MinIO는 production private managed storage를 대체하지 않는다. generated full-deck
 locked diff/montage와 edited-slot montage는 각각
-`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-f`,
+`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-g`,
 `/private/tmp/orbit-ooxml-b2-slot-montage-7cg9oi8q`에 생성했지만 사람 승인은 pending이다. 대상
 QA/운영 환경의 requested exact font file checksum, 사람이 승인한 renderer별 calibration
 threshold와 실제 flag-on vertical E2E가 남아 있다. 현재 QA bucket에는 runtime이 요구하는
@@ -148,7 +161,7 @@ resolved file SHA-256을 다시 생성하고 PowerPoint와 LibreOffice evidence�
 현 fidelity manifest의 exact 38개와 substituted fallback 313개 checksum은 현재 renderer가 읽은
 파일 provenance이며 requested exact family 설치 완료를 뜻하지 않는다.
 
-2026-07-23 최종 회귀에서는 repository build 10/10, lint/test 17/17, Python pytest 1,034개,
+2026-07-23 최종 회귀에서는 repository build 10/10, lint/test 17/17, Python pytest 1,035개,
 current-branch Python worker의 PostgreSQL PPTX round-trip 7개와 `/createdeck` Chrome Playwright
 2개를 통과했다. Playwright는 route-mocked product 계약이며 실제 API→queue→private
 publication vertical 증거가 아니다. running `orbit-*` Compose stack은 다른 worktree에서 시작된

@@ -39,6 +39,13 @@ LibreOfficeDev 26.8.0.0.alpha0 PDF render를 통과했다. Microsoft PowerPoint 
 139장 open/PDF render/reopen과 clean close를 통과했다. content plan/slot replacement를 거친
 product full-deck가 아니며 임시 artifact는 Git에 포함하지 않는다.
 
+PowerPoint identity-control의 source와 raw clone을 각각 다시 렌더해 139장 exact pixel diff를
+계산한 bundle은 `/private/tmp/orbit-ooxml-powerpoint-identity-control-20260723-a`에 있다.
+7개 모두 changed pixel 0, open/render/reopen `passed`, checksum manifest 446/446 일치다.
+template별 6~8장 source/clone/diff montage와 report를 포함하지만 approval/calibration은
+`pending`이다. `summary.json` SHA-256은
+`865ad3747a83939d99a5a516a79376352707349a5cb1a512de570c6d54490393`이다.
+
 PowerPoint 자동화는 input alias/output file spec을 application tell 밖에서 만들고 export
 완료를 기다리는 방식으로 실행했다. QA 구간의 repair/recovery/corrupt/font substitution 로그
 match는 0건이고 종료 후 열린 presentation도 0개다. 이 자동 검증은 full locked-region
@@ -47,7 +54,7 @@ montage의 사람 승인, exact font checksum 또는 production managed storage�
 renderer version만 기록한다.
 
 LibreOffice 기반 generated fidelity review artifact는
-`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-f`에 있다. 7개/56장의 source,
+`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-g`에 있다. 7개/56장의 source,
 generated, intended-slot mask, locked-diff PNG와 source/generated/locked-diff montage를
 계획 §7.4의 versioned 구조로 생성했고 package/font/fidelity manifest도 함께 기록했다.
 package warning과 geometry/style/relationship drift는 전부 0이다. template별 locked pixel 차이는
@@ -63,7 +70,17 @@ package/import warning과 structural drift는 0이지만 `operating-review` 42px
 72px의 locked pixel이 남아 있고 사람 승인 template은 0개다. 이 LibreOffice 기반 montage-only
 artifact는 기존 PowerPoint/LibreOffice reopen 증거나 full-deck calibration을 대체하지 않는다.
 
-PowerPoint full-deck bundle의 `operating-review` summary는 quality checksum과 일치하는 isolated
-deterministic reproduction PDF를 slot-roundtrip artifact 경로에서 참조한다. full-deck 디렉터리의
-동명 PDF는 그 checksum과 다르므로 디렉터리 하나만 self-contained checksum bundle로 해석하지
-않는다. slot-roundtrip bundle의 7개 edited PPTX/PDF와 reproduction checksum은 모두 일치한다.
+초기 full-deck bundle은 self-contained checksum caveat에 더해 source `docProps/app.xml`의 stale
+slide title/count와 custom/thumbnail metadata를 보존해 승인 증거에서 제외했다. sanitizer 수정 후
+self-contained 7개×8장 PowerPoint PPTX/PDF/PNG/montage/report bundle은
+`/private/tmp/orbit-ooxml-powerpoint-full-deck-montage-metadata-fixed-20260723-b`에 있다. 7개 PPTX는
+모두 `Slides=8`, stale/private metadata 0, package warning 0이다. 86개 파일 중
+checksum manifest가 선언한 85개가 모두 일치하며 7개 report는 render/reopen `passed`,
+approval `pending`이다. `summary.json` SHA-256은
+`5474bdc87e48d3ff9a1a20d64338cdf747b8fb66fe0575016aad5a820e2996aa`다.
+
+actual text-slot 편집→sync/export 수정본 7개의 PowerPoint 16.111 open/PDF render/reopen 증거는
+`/private/tmp/orbit-ooxml-powerpoint-slot-roundtrip-metadata-fixed-20260723-d`에 있다. 편집값은
+slot capacity에 맞춘 `ORBIT QA`이고 7개 PDF에서 모두 확인됐다. checksum manifest 22/22,
+package warning 0, `Slides=8`, stale/private metadata 0이며 approval/font/human gate는 `pending`이다.
+`summary.json` SHA-256은 `9205fcad788d7e043cd2d539f28b27b3cca4e706f0d244c4a44b417e727977b4`다.

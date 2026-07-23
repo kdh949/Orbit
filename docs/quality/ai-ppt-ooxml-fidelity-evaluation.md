@@ -10,15 +10,23 @@ LibreOffice 56장 render를 통과했다. template별 checksum은
 `ooxml-reference-template-reports/`에 기록한다.
 
 identity clone 7개/139장도 Microsoft PowerPoint 16.111에서 open, 139-page PDF render,
-close, reopen을 통과했다. 별도 evidence는
-`/private/tmp/orbit-ooxml-powerpoint-identity-20260723-a/summary.json`에 보관하며 exact font
-checksum과 locked overlay 승인 대신으로 사용하지 않는다.
+close, reopen을 통과했다. 이어 actual source와 raw identity clone을 같은 renderer/version에서
+각각 다시 PDF/PNG로 만들고 139장 exact pixel diff를 계산한 결과 changed pixel은 모두 0이었다.
+6~8장 template별 montage, per-slide checksum과 bounded report는
+`/private/tmp/orbit-ooxml-powerpoint-identity-control-20260723-a`에 보관한다. 이 baseline은
+exact font checksum과 locked overlay 승인 대신으로 사용하지 않는다. `summary.json` SHA-256은
+`865ad3747a83939d99a5a516a79376352707349a5cb1a512de570c6d54490393`이다.
 
 Microsoft PowerPoint 16.111에서 7개 generated 8장 deck과 7개 actual text-slot
 edit/export 결과를 각각 open, 8-page PDF render, close, reopen했고 repair/recovery 로그는
-0건이었다. LibreOffice 결과와 별도 artifact로 보관한다. 7개 generated deck의 56장
+0건이었다. 7개 generated deck의 PowerPoint PPTX/PDF/56장 PNG/montage/report를 checksum이
+완결된
+`/private/tmp/orbit-ooxml-powerpoint-full-deck-montage-metadata-fixed-20260723-b`에 다시 묶었다.
+이 bundle의 `summary.json` SHA-256은
+`5474bdc87e48d3ff9a1a20d64338cdf747b8fb66fe0575016aad5a820e2996aa`다. LibreOffice 결과와
+별도 artifact로 보관한다. 7개 generated deck의 56장
 source/generated/mask/locked-diff와 세 종류 montage는
-`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-f`에 생성했다. 모든 template의 structural
+`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-g`에 생성했다. 모든 template의 structural
 geometry/style/relationship drift는 0이며 locked pixel 차이는 사람 검수를 위해 수치 그대로
 남겼다. package manifest warning도 7개 모두 0이다. font manifest는 template별 48~56개 explicit
 family 중 4~7개만 exact resolve되고 43~50개가 substituted임을 기록했다. exact 38개와 fallback
@@ -29,10 +37,20 @@ pixel 차이, SSIM 점수나 종합 점수를 승인 threshold로
 간주하지 않으며 제품 rollout을 통과로 표시하지 않는다.
 
 strict Checkpoint C runner의 최신 report는
-`/private/tmp/orbit-ooxml-checkpoint-c-report-20260723-final-d/summary.json`이다. 7개 자동 검증은
+`/private/tmp/orbit-ooxml-checkpoint-c-report-20260723-metadata-fixed-final/summary.json`이다. 7개
+자동 검증은
 모두 통과했지만 derived PowerPoint evidence에 `FONT_AVAILABILITY_VALIDATION_PENDING`을
 보존했으므로 공식 상태는 `failed`다. 폰트 설치와 exact file checksum을 확인한 뒤에만 이
 warning을 제거하고 Checkpoint를 재실행한다.
+
+초기 generated bundle은 source `docProps/app.xml`의 전체 slide title 목록과 stale slide count,
+custom property와 thumbnail을 보존하는 결함 때문에 승인 증거에서 제외했다. clone 경계는 이제
+root relationship으로 core/extended part를 찾고 private property/thumbnail을 제거하며
+`Slides`/`HiddenSlides`를 선택된 slide 기준으로 재계산한다. metadata-fixed 7개 package는
+`Slides=8`, stale/private metadata 0, package warning 0을 독립 전수 검산했다. actual text-slot
+편집본의 수정 후 PowerPoint evidence는
+`/private/tmp/orbit-ooxml-powerpoint-slot-roundtrip-metadata-fixed-20260723-d`이고 `summary.json`
+SHA-256은 `9205fcad788d7e043cd2d539f28b27b3cca4e706f0d244c4a44b417e727977b4`다.
 
 실제 7개 package에서 발견된 DrawingML `a:rPr@spc`는 importer, shared rich-text schema,
 editor measure/render, sync와 export까지 보존하도록 구현했다. 같은 deterministic package의
@@ -157,9 +175,11 @@ renderer/version, `geometryEdgeTolerancePx=0`, threshold와 승인 rationale가 
 
 - [x] 7개 identity-control package/LibreOffice baseline과 checksum이 재현됨
 - [x] PowerPoint와 LibreOffice renderer별 결과가 분리됨
+- [x] PowerPoint 7개/139장 source↔identity clone pixel diff와 montage가 생성됨
 - [x] known geometry/style/relationship/package drift fixture가 실패함
 - [x] intended slot mask 밖 drift가 실패함
 - [x] 7개 generated full-deck의 56장 source/generated/mask/locked-diff와 montage가 생성됨
+- [x] PowerPoint 7개 generated full-deck의 56장 PNG/montage/report가 생성됨
 - [x] 7개 실제 text-slot 편집 전/후/mask/locked-overlay/montage가 생성됨
 - [ ] threshold와 tolerance 근거가 사람 검수됨
 
