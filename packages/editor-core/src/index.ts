@@ -137,6 +137,7 @@ export { normalizeLegacyAnimationStartModes } from "./patches/legacyAnimationSta
 export {
   createActivityResultsSlide,
   createActivitySlide,
+  createReplaceActivityDesignPatch,
   createUpdateActivityDefinitionPatch,
   createUpdateActivityResultDefinitionPatch,
   duplicateActivityResultsSlide,

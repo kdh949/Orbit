@@ -264,12 +264,27 @@ export const activityQrElementPropsSchema = z.object({
 });
 
 export const activityCopyFieldSchema = z.enum(["title", "description"]);
+export const activityBoundTextStyleSchema = z
+  .object({
+    fontFamily: z.string().min(1).optional(),
+    fontSize: z.number().finite().positive().optional(),
+    fontWeight: textFontWeightSchema.optional(),
+    letterSpacing: z.number().finite().optional(),
+    italic: z.boolean().optional(),
+    underline: z.boolean().optional(),
+    color: themeColorSchema.optional(),
+    align: textAlignSchema.optional(),
+    verticalAlign: textVerticalAlignSchema.optional(),
+    autoFit: z.enum(["none", "shrink-text", "resize-shape"]).optional(),
+    lineHeight: z.number().finite().positive().optional()
+  })
+  .default({});
 
 export const activityCopyElementPropsSchema = z.object({
   activityId: z.string().trim().min(1),
   field: activityCopyFieldSchema,
   fallbackText: z.string().default(""),
-  textStyle: textElementPropsSchema.default({}),
+  textStyle: activityBoundTextStyleSchema,
 });
 
 export const presentationPasscodeElementPropsSchema = z.object({
@@ -277,11 +292,11 @@ export const presentationPasscodeElementPropsSchema = z.object({
   unavailableText: z.string().default("발표 시작 후 표시"),
   publicAccessText: z.string().default("비밀번호 없이 바로 참여"),
   legacyUnavailableText: z.string().default("입장 코드를 다시 설정해 주세요"),
-  labelTextStyle: textElementPropsSchema.default({
+  labelTextStyle: activityBoundTextStyleSchema.default({
     fontSize: 22,
     fontWeight: "medium",
   }),
-  codeTextStyle: textElementPropsSchema.default({
+  codeTextStyle: activityBoundTextStyleSchema.default({
     fontSize: 64,
     fontWeight: "bold",
     letterSpacing: 12,

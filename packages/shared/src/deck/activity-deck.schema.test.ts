@@ -357,4 +357,32 @@ describe("Activity slide Deck contract", () => {
       }).success,
     ).toBe(true);
   });
+
+  it("parses an atomic Activity design replacement operation", () => {
+    expect(
+      deckPatchSchema.safeParse({
+        deckId: "deck_activity_1",
+        baseVersion: 1,
+        operations: [
+          {
+            type: "replace_activity_design",
+            slideId: "slide_1",
+            activityAppearance: { mode: "editable" },
+            style: { backgroundColor: "#F7F7F2" },
+            elements: [
+              {
+                elementId: "el_qr",
+                type: "activity-qr",
+                x: 100,
+                y: 100,
+                width: 320,
+                height: 320,
+                props: { activityId: "activity_1" }
+              }
+            ]
+          }
+        ]
+      }).success
+    ).toBe(true);
+  });
 });

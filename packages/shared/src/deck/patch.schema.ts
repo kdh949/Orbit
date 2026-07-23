@@ -13,11 +13,13 @@ import {
 } from "./animation.schema";
 import {
   deckThumbnailSourceSchema,
+  activityAppearanceSchema,
   slideBackgroundImageFitSchema,
   slideKeywordsSchema,
   slideLayoutSchema,
   slideOrderSchema,
   slideSchema,
+  slideStyleSchema,
   slideTransitionSchema
 } from "./deck.schema";
 import {
@@ -67,6 +69,7 @@ export const deckPatchOperationTypeSchema = z.enum([
   "add_slide_action",
   "update_slide_action",
   "delete_slide_action",
+  "replace_activity_design",
   "update_activity_definition",
   "update_activity_result_definition"
 ]);
@@ -303,6 +306,16 @@ export const updateActivityDefinitionOperationSchema = z
   })
   .strict();
 
+export const replaceActivityDesignOperationSchema = z
+  .object({
+    type: z.literal("replace_activity_design"),
+    slideId: deckSlideIdSchema,
+    activityAppearance: activityAppearanceSchema,
+    style: slideStyleSchema,
+    elements: z.array(deckElementSchema)
+  })
+  .strict();
+
 export const updateActivityResultDefinitionOperationSchema = z
   .object({
     type: z.literal("update_activity_result_definition"),
@@ -333,6 +346,7 @@ const deckPatchOperationSchemaInternal = z.discriminatedUnion("type", [
   addSlideActionOperationSchema,
   updateSlideActionOperationSchema,
   deleteSlideActionOperationSchema,
+  replaceActivityDesignOperationSchema,
   updateActivityDefinitionOperationSchema,
   updateActivityResultDefinitionOperationSchema
 ]);

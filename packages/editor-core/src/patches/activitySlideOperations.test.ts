@@ -7,6 +7,7 @@ import { applyDeckPatch } from "./applyPatch";
 import {
   createActivityResultsSlide,
   createActivitySlide,
+  createReplaceActivityDesignPatch,
   createUpdateActivityDefinitionPatch,
   createUpdateActivityResultDefinitionPatch,
   duplicateActivityResultsSlide,
@@ -101,6 +102,51 @@ describe("Activity slide operations", () => {
     }
   });
 
+  it("replaces Activity appearance, style, and elements atomically", () => {
+    const deck = deckWithSatisfaction();
+    const source = deck.slides.find((slide) => slide.kind === "activity");
+    if (!source) throw new Error("missing activity slide");
+
+    const patch = createReplaceActivityDesignPatch(deck, source.slideId, {
+      activityAppearance: { mode: "editable" },
+      style: { backgroundColor: "#F7F7F2" },
+      elements: [
+        {
+          elementId: "el_activity_title",
+          type: "activity-copy",
+          x: 100,
+          y: 100,
+          width: 1000,
+          height: 180,
+          rotation: 0,
+          opacity: 1,
+          zIndex: 1,
+          locked: false,
+          visible: true,
+          props: {
+            activityId: source.activity.activityId,
+            field: "title",
+            fallbackText: "",
+            textStyle: { fontSize: 72 }
+          }
+        }
+      ]
+    });
+    const result = applyDeckPatch(deck, patch);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const updated = result.deck.slides.find(
+      (slide) => slide.slideId === source.slideId
+    );
+    expect(updated).toMatchObject({
+      kind: "activity",
+      activityAppearance: { mode: "editable" },
+      style: { backgroundColor: "#F7F7F2" }
+    });
+    expect(updated?.elements).toHaveLength(1);
+  });
+
   it("duplicates Activity definitions with fresh IDs", () => {
     const deck = deckWithSatisfaction();
     const source = deck.slides.find((slide) => slide.kind === "activity");
@@ -164,7 +210,7 @@ describe("Activity slide operations", () => {
     }
   });
 
-  it("remaps reusable QR references during whole Deck duplication", () => {
+  it("remaps reusable Activity-bound references during whole Deck duplication", () => {
     const deck = deckWithSatisfaction();
     const source = deck.slides.find((slide) => slide.kind === "activity");
     const content = deck.slides.find((slide) => slide.kind === "content");
@@ -190,6 +236,24 @@ describe("Activity slide operations", () => {
                   locked: false,
                   visible: true,
                   props: { activityId: source.activity.activityId }
+                },
+                {
+                  elementId: "el_activity_copy_1",
+                  type: "activity-copy",
+                  x: 400,
+                  y: 100,
+                  width: 800,
+                  height: 180,
+                  rotation: 0,
+                  opacity: 1,
+                  zIndex: 100,
+                  locked: false,
+                  visible: true,
+                  props: {
+                    activityId: source.activity.activityId,
+                    field: "title",
+                    textStyle: {}
+                  }
                 }
               ]
             }
@@ -205,15 +269,26 @@ describe("Activity slide operations", () => {
     const duplicatedQr = duplicate.slides
       .flatMap((slide) => slide.elements)
       .find((element) => element.type === "activity-qr");
+    const duplicatedCopy = duplicate.slides
+      .flatMap((slide) => slide.elements)
+      .find((element) => element.type === "activity-copy");
 
     expect(duplicatedActivity?.kind).toBe("activity");
     expect(duplicatedQr?.type).toBe("activity-qr");
     if (duplicatedActivity?.kind === "activity" && duplicatedQr?.type === "activity-qr") {
       expect(duplicatedQr.props.activityId).toBe(duplicatedActivity.activity.activityId);
     }
+    if (
+      duplicatedActivity?.kind === "activity" &&
+      duplicatedCopy?.type === "activity-copy"
+    ) {
+      expect(duplicatedCopy.props.activityId).toBe(
+        duplicatedActivity.activity.activityId
+      );
+    }
   });
 
-  it("removes reusable QR elements when their Activity source is deleted", () => {
+  it("removes Activity-bound elements when their Activity source is deleted", () => {
     const deck = deckWithSatisfaction();
     const source = deck.slides.find((slide) => slide.kind === "activity");
     const content = deck.slides.find((slide) => slide.kind === "content");
@@ -239,6 +314,24 @@ describe("Activity slide operations", () => {
                   locked: false,
                   visible: true,
                   props: { activityId: source.activity.activityId }
+                },
+                {
+                  elementId: "el_activity_copy_delete",
+                  type: "activity-copy",
+                  x: 400,
+                  y: 100,
+                  width: 800,
+                  height: 180,
+                  rotation: 0,
+                  opacity: 1,
+                  zIndex: 100,
+                  locked: false,
+                  visible: true,
+                  props: {
+                    activityId: source.activity.activityId,
+                    field: "description",
+                    textStyle: {}
+                  }
                 }
               ]
             }
@@ -255,7 +348,9 @@ describe("Activity slide operations", () => {
     if (result.ok) {
       expect(
         result.deck.slides.flatMap((slide) => slide.elements).some(
-          (element) => element.type === "activity-qr"
+          (element) =>
+            element.type === "activity-qr" ||
+            element.type === "activity-copy"
         )
       ).toBe(false);
     }

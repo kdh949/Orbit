@@ -5,11 +5,14 @@ import {
 } from "@orbit/shared";
 import type {
   ActivityDefinition,
+  ActivityAppearance,
   ActivityResultsSlide,
   ActivitySlide,
   ActivityTemplate,
   Deck,
-  DeckPatch
+  DeckElement,
+  DeckPatch,
+  Slide
 } from "@orbit/shared";
 
 type CreateActivitySlideOptions = {
@@ -123,6 +126,36 @@ export function createUpdateActivityResultDefinitionPatch(
   };
 }
 
+export function createReplaceActivityDesignPatch(
+  deck: Deck,
+  slideId: string,
+  design: {
+    activityAppearance: ActivityAppearance;
+    style: Slide["style"];
+    elements: DeckElement[];
+  }
+): DeckPatch {
+  const slide = deck.slides.find((candidate) => candidate.slideId === slideId);
+  if (slide?.kind !== "activity") {
+    throw new Error(`Activity slide not found: ${slideId}`);
+  }
+
+  return {
+    deckId: deck.deckId,
+    baseVersion: deck.version,
+    source: "user",
+    operations: [
+      {
+        type: "replace_activity_design",
+        slideId,
+        activityAppearance: design.activityAppearance,
+        style: design.style,
+        elements: design.elements
+      }
+    ]
+  };
+}
+
 export function duplicateActivitySlide(
   deck: Deck,
   sourceSlideId: string
@@ -206,7 +239,10 @@ export function remapActivityDefinitionsForDeckDuplicate(
 
   for (const slide of clone.slides) {
     for (const element of slide.elements) {
-      if (element.type !== "activity-qr") {
+      if (
+        element.type !== "activity-qr" &&
+        element.type !== "activity-copy"
+      ) {
         continue;
       }
       element.props.activityId =

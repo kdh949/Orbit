@@ -357,14 +357,14 @@ ORBIT-14 진행 중에는 위 구현 위치를 기준으로 계약을 변경한�
 참여 장표는 Deck에 저장되는 정의와 PresentationSession별 DB runtime을 분리한다.
 
 - Slide `kind`는 `content | activity | activity-results`다. 기존 `kind` 없는 Slide는 `content`로 정규화한다.
-- `activity` Slide는 strict `ActivityDefinition` 하나를 소유하고, `activity-results` Slide는 strict `{ sourceActivityId, display: "live", layout }` 참조만 소유한다.
+- `activity` Slide는 strict `ActivityDefinition`과 `activityAppearance: { mode: "system" | "editable" }`을 소유하고, `activity-results` Slide는 strict `{ sourceActivityId, display: "live", layout }` 참조만 소유한다. 기존 Activity slide에서 `activityAppearance`이 생략되면 `{ mode: "system" }`으로 정규화한다.
 - Activity가 하나라도 있는 Deck은 `canvas.preset = "wide-16-9"`여야 한다. `activityId`는 Deck 안에서 유일하다.
 - 정의에는 `pre-question | poll | satisfaction` template과 `rating | single-choice | multiple-choice | free-text` 문항만 허용한다.
 - 만족도 조사는 최대 5문항, 사전 질문은 `free-text` 1~5문항, 투표는 선택지 2~8개의 `single-choice` 1문항이다.
 - 평점 문항 aggregate는 `average`와 1~5점의 `value`, `count`, `ratio`를 모두 담은 `ratingDistribution`을 제공한다. 비평점 문항의 `ratingDistribution`은 빈 배열이다.
-- 응답, aggregate, QR 이미지, audience URL, response count는 Deck JSON과 `slide.elements`에 저장하지 않는다. 일반 장표의 참여 QR 요소는 `type: "activity-qr"`, `props: { activityId }`로 activity ID만 참조하고, editor·live renderer가 현재 `PresentationSession`에서 QR을 동적으로 만든다. activity run 생성은 발표 시작에서 명시적으로 수행하며, 편집·썸네일·미리보기 렌더링은 읽기 전용 조회만 한다. Deck 복제는 이 참조를 remap하고, 원본 활동 장표 삭제는 연결된 QR 요소를 함께 제거한다. 정적 PPTX/PNG export에서는 이 요소를 안내 텍스트로 바꾼다.
+- 응답, aggregate, QR 이미지, audience URL, 입장 코드 숫자, response count는 Deck JSON과 `slide.elements`에 저장하지 않는다. 참여 QR 요소는 `type: "activity-qr"`, `props: { activityId }`로 activity ID만 참조하고, 질문 문구 요소는 `type: "activity-copy"`, `props: { activityId, field, fallbackText, textStyle }`로 `title | description`을 참조한다. 입장 코드 요소는 `type: "presentation-passcode"`이며 label과 placeholder style만 저장한다. editor·live renderer가 현재 `PresentationSession`에서 동적 값을 주입한다. activity run 생성은 발표 시작에서 명시적으로 수행하며, 편집·썸네일·미리보기 렌더링은 읽기 전용 조회만 한다. Deck 복제는 Activity-bound 참조를 remap하고, 원본 활동 장표 삭제는 연결된 QR와 copy 요소를 함께 제거한다. 정적 PPTX/PNG export에서는 runtime 요소를 안전한 안내 텍스트로 바꾼다.
 - 결과 장표의 dangling `sourceActivityId`는 parse를 허용하고 editor/renderer에서 `source-missing` 복구 상태로 표시한다.
-- Deck patch는 `update_activity_definition`, `update_activity_result_definition` 전용 operation을 사용하며 적용 후 전체 Deck을 다시 검증한다.
+- semantic 정의 변경은 `update_activity_definition`, `update_activity_result_definition` 전용 operation을 사용한다. 참여 장표의 appearance, style, elements 전체 교체는 `replace_activity_design` 하나로 원자 적용하며 적용 후 전체 Deck을 다시 검증한다.
 
 PresentationSession은 `deckId`, server가 읽은 `deckVersion`, `passcode | public` 접근 방식, `startsAt`, `expiresAt`, active run과 retention 시각을 명시한다. 기본 접근 기간은 server command가 14일로 채우고 schema와 DB는 30일을 초과하는 기간을 거절한다. session 생성 request는 `deckVersion`이나 Activity 정의를 받지 않는다.
 
@@ -466,6 +466,9 @@ DeckPatch 결정 사항:
 - `add_slide_action`: slide action 추가
 - `update_slide_action`: slide action 부분 수정
 - `delete_slide_action`: slide action 삭제
+- `replace_activity_design`: Activity slide의 appearance, style, elements를 원자 교체
+- `update_activity_definition`: Activity 질문 정의 전체 교체
+- `update_activity_result_definition`: Activity 결과 장표 참조와 표시 설정 전체 교체
 
 Semantic Cue cascade 규칙:
 
