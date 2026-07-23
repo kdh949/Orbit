@@ -6126,13 +6126,16 @@ def render_pptx_to_png_assets(
         temp_path = Path(temp_dir)
         pptx_path = temp_path / "source.pptx"
         out_dir = temp_path / "out"
+        profile_dir = temp_path / "profile"
         out_dir.mkdir()
+        profile_dir.mkdir()
         pptx_path.write_bytes(package_bytes)
         try:
             subprocess.run(
                 [
                     executable,
                     "--headless",
+                    f"-env:UserInstallation={profile_dir.as_uri()}",
                     "--convert-to",
                     "pdf",
                     "--outdir",

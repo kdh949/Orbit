@@ -169,6 +169,22 @@ approved-alias 4, substituted 343이며 `runtimeEligible=false`다. 이 결과�
 통합만 입증하고 Microsoft PowerPoint alias 렌더, 나머지 라이선스 폰트, 승인 threshold 또는
 production storage를 입증하지 않는다.
 
+동일 alias overlay에 macOS PowerPoint/Office font directory를 복제 없이 read-only로 연결한
+후속 진단은
+`/private/tmp/orbit-ooxml-identity-calibration-candidate-approved-aliases-office-diagnostic-20260723-b`
+에 있다. LibreOffice 변환마다 fresh `UserInstallation` profile을 사용해 기존 인스턴스의
+환경을 재사용하지 않도록 고정했고, 7개/139장, checksum 461/461, exact 320,
+approved-alias 4, substituted 27을 기록했다. 남은 requested family는
+`Estrangelo Edessa`, `Helvetica Neue Medium`, `OpenAI Sans`, `Phagspa` 네 개다.
+candidate SHA-256은
+`1cfc1c1c9cfcc76d32d3aac4b3cdc51fe8816b7196686097483cc7174f89734c`,
+summary SHA-256은
+`9e28e9865369105213ef19b9a1ce98daa4bf1d835ca996ad6eaac0b269f1cab3`,
+checksums manifest SHA-256은
+`58036d4296e18904ccffabf1509b63331c0169236f699ea404bf5b6a9fdd150b`다.
+이 font source는 production image 설치나 cross-application license 승인이 아니므로
+`runtimeEligible=false`, threshold `null`과 pending issue를 유지한다.
+
 artifact는 Git이 아닌 `/tmp` 또는 승인된 private QA storage에 다음 구조로 둔다.
 
 ```text

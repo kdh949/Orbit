@@ -711,6 +711,16 @@ font SHA-256, OFL SHA-256과 canonical policy SHA-256이 모두 맞을 때만 `a
 전체 target font가 없는 image여서 exact 4/approved-alias 4/substituted 343,
 `runtimeEligible=false`이며 threshold·calibration status와 strict catalog는 변경하지 않았다.
 
+추가로 macOS PowerPoint/Office font directory를 복제 없이 read-only로 연결하고 승인 alias
+overlay를 함께 적용한
+`/private/tmp/orbit-ooxml-identity-calibration-candidate-approved-aliases-office-diagnostic-20260723-b`
+를 생성했다. LibreOffice마다 fresh `UserInstallation` profile을 사용해 기존 process
+environment 재사용을 차단한 뒤 7개/139장, checksum 461/461, exact 320,
+approved-alias 4, substituted 27을 확인했다. 남은 family는 `Estrangelo Edessa`,
+`Helvetica Neue Medium`, `OpenAI Sans`, `Phagspa`다. 이 진단은 Office font의
+cross-application license나 target image 설치를 승인하지 않으므로
+`runtimeEligible=false`, threshold `null`과 strict catalog disabled 상태를 유지한다.
+
 **Dependencies:** Tasks 5, 6, 7
 
 **Files likely touched:**

@@ -1038,9 +1038,11 @@ def test_renders_slide_pngs_when_libreoffice_is_available(tmp_path: Path) -> Non
 def test_generic_renderer_does_not_inject_reference_fontconfig(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    captured_arguments: list[list[str]] = []
     captured_environment: list[object] = []
 
     def fake_run(args: list[str], **kwargs: object) -> object:
+        captured_arguments.append(args)
         captured_environment.append(kwargs.get("env"))
         output = Path(args[args.index("--outdir") + 1]) / "source.pdf"
         output.write_bytes(b"%PDF")
@@ -1063,6 +1065,10 @@ def test_generic_renderer_does_not_inject_reference_fontconfig(
 
     assert result == []
     assert captured_environment == [None]
+    assert captured_arguments[0][2].startswith(
+        "-env:UserInstallation=file://"
+    )
+    assert captured_arguments[0][2].endswith("/profile")
 
 
 def test_shape_fallback_assets_crop_from_slide_render() -> None:

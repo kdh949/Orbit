@@ -206,6 +206,18 @@ overlay는 OOXML reference render/font-match subprocess에만 적용하며 일�
 Phagspa/Microsoft PhagsPa compatibility의 라이선스·바이너리·대상 환경 설치 증거를 확보한 뒤
 같은 image와 실제 PowerPoint 환경에서 다시 측정한다.
 
+승인 alias와 macOS PowerPoint/Office font directory를 read-only로 함께 사용한 후속 진단은
+`/private/tmp/orbit-ooxml-identity-calibration-candidate-approved-aliases-office-diagnostic-20260723-b`
+에 있다. LibreOffice 호출마다 fresh `UserInstallation` profile을 적용한 결과 7개/139장,
+checksum 461/461, exact 320/approved-alias 4/substituted 27이며 남은 family는
+`Estrangelo Edessa`, `Helvetica Neue Medium`, `OpenAI Sans`, `Phagspa`다. candidate,
+summary, checksum manifest SHA-256은 각각
+`1cfc1c1c9cfcc76d32d3aac4b3cdc51fe8816b7196686097483cc7174f89734c`,
+`9e28e9865369105213ef19b9a1ce98daa4bf1d835ca996ad6eaac0b269f1cab3`,
+`58036d4296e18904ccffabf1509b63331c0169236f699ea404bf5b6a9fdd150b`다.
+이는 복제·production 설치·cross-application license 승인이 아닌 진단이므로 calibration을
+게시하지 않는다.
+
 승인/disabled canonical manifest 기반 LibreOffice 26.8 identity candidate는
 `/private/tmp/orbit-ooxml-identity-calibration-candidate-20260723-b`에 있다. 7개/139장의
 SSIM은 1.0, changed pixel과 structural/package drift는 0이고 461개 checksum이 일치한다.
