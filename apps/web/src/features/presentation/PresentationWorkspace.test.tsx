@@ -91,9 +91,8 @@ describe("PresentationWorkspace", () => {
     const source = fs.readFileSync(presentationWorkspaceSourcePath, "utf8");
 
     expect(source).toContain("matchKeywordOccurrenceTriggers");
-    expect(source).toContain("resolveKeywordOccurrenceTriggeredActions");
     expect(source).toContain("getKeywordOccurrenceTriggerIdsForSlide");
-    expect(source).toContain("resolveManualAnimationPlaybackUpdate");
+    expect(source).toContain("advanceSpeechAnimationManually");
     expect(source).toContain("applyPlaybackUpdate");
     expect(source).toContain("confirmedOccurrenceIds");
     expect(source).toContain("getSlideTranscriptSpan");

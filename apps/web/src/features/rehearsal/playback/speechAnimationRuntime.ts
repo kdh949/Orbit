@@ -323,9 +323,10 @@ function getActionRequiredStepIndex(
     return slideAnimationPlan.maxStepIndex;
   }
 
+  const animationId = action.effect.animationId;
   const stepIndex = slideAnimationPlan.triggerSteps.findIndex((step) =>
     step.animations.some(
-      (animation) => animation.animationId === action.effect.animationId
+      (animation) => animation.animationId === animationId
     )
   );
   return stepIndex >= 0 ? stepIndex : null;
