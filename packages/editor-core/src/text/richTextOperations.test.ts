@@ -297,6 +297,7 @@ describe("rich text selection style", () => {
       color: { mixed: false, value: "#111827" },
       fontFamily: { mixed: false, value: "Pretendard" },
       fontSize: { mixed: false, value: 26 },
+      letterSpacing: { mixed: false, value: 0 },
       fontWeight: { mixed: false, value: "bold" },
       italic: { mixed: false, value: true },
       underline: { mixed: false, value: true }

@@ -151,6 +151,7 @@ export const textElementRunSchema = z.object({
   text: z.string().default(""),
   fontFamily: z.string().min(1).optional(),
   fontSize: z.number().finite().positive().optional(),
+  letterSpacing: z.number().finite().optional(),
   fontWeight: textFontWeightSchema.optional(),
   italic: z.boolean().optional(),
   underline: z.boolean().optional(),

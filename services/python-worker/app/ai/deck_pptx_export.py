@@ -24,9 +24,6 @@ from app.ai.korean_typography import resolve_korean_typography
 DECK_UNITS_PER_INCH = 144
 POINTS_PER_INCH = 72
 RICH_TEXT_UNSUPPORTED_HYPERLINK = "PPTX_RICH_TEXT_UNSUPPORTED_HYPERLINK"
-RICH_TEXT_UNSUPPORTED_LETTER_SPACING = (
-    "PPTX_RICH_TEXT_UNSUPPORTED_LETTER_SPACING"
-)
 RICH_TEXT_UNSUPPORTED_RUN_PROPERTY = "PPTX_RICH_TEXT_UNSUPPORTED_RUN_PROPERTY"
 TABLE_STRUCTURE_UNSUPPORTED = "PPTX_TABLE_STRUCTURE_UNSUPPORTED"
 TABLE_STYLE_UNSUPPORTED = "PPTX_TABLE_STYLE_UNSUPPORTED"
@@ -36,13 +33,13 @@ SUPPORTED_RUN_PROPERTIES = {
     "color",
     "fontFamily",
     "fontSize",
+    "letterSpacing",
     "fontWeight",
     "italic",
     "text",
     "underline",
 }
 HYPERLINK_RUN_PROPERTIES = {"href", "hyperlink", "link"}
-LETTER_SPACING_RUN_PROPERTIES = {"letterSpacing"}
 
 
 class DeckPptxExportRequest(BaseModel):
@@ -425,6 +422,11 @@ def apply_font(font: Any, props: dict[str, Any], deck: dict[str, Any]) -> None:
         run_properties.set("baseline", "-25000")
     else:
         run_properties.attrib.pop("baseline", None)
+    if "letterSpacing" in props:
+        run_properties.set(
+            "spc",
+            str(round(canvas_units_to_points(props["letterSpacing"]) * 100)),
+        )
 
 
 def apply_east_asian_typeface(run_properties: Any, font_family: str) -> None:
@@ -450,14 +452,10 @@ def append_run_diagnostics(
     )
     if any(key in run_payload for key in HYPERLINK_RUN_PROPERTIES):
         warnings.append(f"{RICH_TEXT_UNSUPPORTED_HYPERLINK}: {location}")
-    if any(key in run_payload for key in LETTER_SPACING_RUN_PROPERTIES):
-        warnings.append(f"{RICH_TEXT_UNSUPPORTED_LETTER_SPACING}: {location}")
-
     diagnostic_properties = (
         set(run_payload)
         - SUPPORTED_RUN_PROPERTIES
         - HYPERLINK_RUN_PROPERTIES
-        - LETTER_SPACING_RUN_PROPERTIES
     )
     for property_name in sorted(diagnostic_properties):
         warnings.append(

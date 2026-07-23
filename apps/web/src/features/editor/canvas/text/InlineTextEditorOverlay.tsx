@@ -364,6 +364,7 @@ function getRunStyle(args: {
     color: run.color ?? paragraph.color ?? baseColor,
     fontFamily: run.fontFamily ?? paragraph.fontFamily ?? baseFontFamily,
     fontSize: `${(run.fontSize ?? paragraph.fontSize ?? props.fontSize) * stageScale}px`,
+    letterSpacing: `${(run.letterSpacing ?? 0) * stageScale}px`,
     fontStyle: run.italic ?? paragraph.italic ?? props.italic ? "italic" : "normal",
     fontWeight: String(getCssFontWeight(fontWeight)),
     textDecoration:

@@ -12,6 +12,7 @@ export type RichTextCharacterStylePatch = {
   color?: TextElementRun["color"];
   fontFamily?: TextElementRun["fontFamily"];
   fontSize?: TextElementRun["fontSize"];
+  letterSpacing?: TextElementRun["letterSpacing"];
   fontWeight?: TextElementRun["fontWeight"];
   italic?: TextElementRun["italic"];
   underline?: TextElementRun["underline"];
@@ -32,6 +33,7 @@ export type RichTextSelectionCharacterStyle = {
   color: RichTextSelectionValue<TextElementRun["color"]>;
   fontFamily: RichTextSelectionValue<TextElementRun["fontFamily"]>;
   fontSize: RichTextSelectionValue<number>;
+  letterSpacing: RichTextSelectionValue<number>;
   fontWeight: RichTextSelectionValue<TextElementProps["fontWeight"]>;
   italic: RichTextSelectionValue<boolean>;
   underline: RichTextSelectionValue<boolean>;
@@ -48,6 +50,7 @@ type EffectiveCharacterStyle = {
   color: TextElementRun["color"];
   fontFamily: TextElementRun["fontFamily"];
   fontSize: number;
+  letterSpacing: number;
   fontWeight: TextElementProps["fontWeight"];
   italic: boolean;
   underline: boolean;
@@ -64,6 +67,7 @@ const characterStyleKeys = [
   "color",
   "fontFamily",
   "fontSize",
+  "letterSpacing",
   "fontWeight",
   "italic",
   "underline"
@@ -168,6 +172,7 @@ export function getRichTextSelectionCharacterStyle(
     color: summarizeValues(styles.map((style) => style.color)),
     fontFamily: summarizeValues(styles.map((style) => style.fontFamily)),
     fontSize: summarizeValues(styles.map((style) => style.fontSize)),
+    letterSpacing: summarizeValues(styles.map((style) => style.letterSpacing)),
     fontWeight: summarizeValues(styles.map((style) => style.fontWeight)),
     italic: summarizeValues(styles.map((style) => style.italic)),
     underline: summarizeValues(styles.map((style) => style.underline))
@@ -292,6 +297,7 @@ function applyRunStylePatch(
   if (patch.color !== undefined) next.color = patch.color;
   if (patch.fontFamily !== undefined) next.fontFamily = patch.fontFamily;
   if (patch.fontSize !== undefined) next.fontSize = patch.fontSize;
+  if (patch.letterSpacing !== undefined) next.letterSpacing = patch.letterSpacing;
   if (patch.fontWeight !== undefined) next.fontWeight = patch.fontWeight;
   if (patch.italic !== undefined) next.italic = patch.italic;
   if (patch.underline !== undefined) next.underline = patch.underline;
@@ -437,6 +443,7 @@ function getEffectiveCharacterStyle(
     color: run.color ?? paragraph?.color ?? props.color,
     fontFamily: run.fontFamily ?? paragraph?.fontFamily ?? props.fontFamily,
     fontSize: run.fontSize ?? paragraph?.fontSize ?? props.fontSize,
+    letterSpacing: run.letterSpacing ?? 0,
     fontWeight: run.fontWeight ?? paragraph?.fontWeight ?? props.fontWeight,
     italic: run.italic ?? paragraph?.italic ?? props.italic ?? false,
     underline: run.underline ?? paragraph?.underline ?? props.underline ?? false

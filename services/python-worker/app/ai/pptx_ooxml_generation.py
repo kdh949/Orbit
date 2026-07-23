@@ -113,11 +113,11 @@ SUPPORTED_TEXT_PARAGRAPH_PROPS = {
 }
 SUPPORTED_TEXT_RUN_PROPS = {
     "text", "fontFamily", "fontSize", "fontWeight", "italic", "underline",
-    "color", "baseline",
+    "color", "baseline", "letterSpacing",
 }
 SUPPORTED_TEXT_STYLE_PROPS = {
     "fontFamily", "fontSize", "fontWeight", "italic", "underline", "color",
-    "baseline",
+    "baseline", "letterSpacing",
 }
 MAX_TEXT_DIFF_MATRIX_CELLS = 250_000
 
@@ -2573,6 +2573,10 @@ def valid_text_style_values(value: dict[str, Any]) -> bool:
         return False
     if "fontSize" in value and not valid_positive_number(value.get("fontSize")):
         return False
+    if "letterSpacing" in value and not valid_finite_number(
+        value.get("letterSpacing")
+    ):
+        return False
     weight = value.get("fontWeight")
     if weight is not None and weight not in {"normal", "bold"}:
         return False
@@ -3961,6 +3965,11 @@ def patch_run_properties(
             font.set("typeface", str(differences["fontFamily"]))
     if "fontSize" in differences:
         r_pr.set("sz", str(font_size_to_ooxml(differences["fontSize"], scale)))
+    if "letterSpacing" in differences:
+        r_pr.set(
+            "spc",
+            str(letter_spacing_to_ooxml(differences["letterSpacing"], scale)),
+        )
     if "fontWeight" in differences:
         r_pr.set("b", "1" if is_bold_text_weight(differences["fontWeight"]) else "0")
     if "italic" in differences:
@@ -4009,6 +4018,11 @@ def current_run_style(
     size = int_value(r_pr.get("sz"), 0)
     if size > 0:
         current["fontSize"] = font_size_from_ooxml(size, scale)
+    if r_pr.get("spc") is not None:
+        current["letterSpacing"] = letter_spacing_from_ooxml(
+            int_value(r_pr.get("spc"), 0),
+            scale,
+        )
     if r_pr.get("b") is not None:
         current["fontWeight"] = "bold" if r_pr.get("b") in {"1", "true"} else "normal"
     if r_pr.get("i") is not None:
@@ -4193,6 +4207,14 @@ def font_size_from_ooxml(size: int, scale: PackageFrameScale) -> float:
 
 def font_size_to_ooxml(value: Any, scale: PackageFrameScale) -> int:
     return max(1, round(float(value) / (12700 * canvas_average_scale(scale)) * 100))
+
+
+def letter_spacing_from_ooxml(value: int, scale: PackageFrameScale) -> float:
+    return round(value / 100 * 12700 * canvas_average_scale(scale), 3)
+
+
+def letter_spacing_to_ooxml(value: Any, scale: PackageFrameScale) -> int:
+    return round(float(value) / (12700 * canvas_average_scale(scale)) * 100)
 
 
 def canvas_spacing_to_ooxml(value: Any, scale: PackageFrameScale) -> int:

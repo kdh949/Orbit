@@ -39,6 +39,8 @@ def test_imported_rich_text_capability_distinguishes_simple_and_hyperlink(
     linked_source = source_for_text(generated, "Linked source")
     assert simple_source["ooxmlEditCapabilities"]["richText"] == "full"
     assert linked_source["ooxmlEditCapabilities"]["richText"] == "style-only"
+    simple = text_element(generated, "Simple source")
+    assert simple["props"]["paragraphs"][0]["runs"][0]["letterSpacing"] == 2.4
 
 
 def test_equal_plain_text_projection_preserves_full_mixed_run_bytes(
@@ -181,6 +183,7 @@ def test_imported_rich_text_style_sync_preserves_unknown_rpr_and_unselected_run(
     props = copy.deepcopy(text["props"])
     props["paragraphs"][0]["runs"][0]["underline"] = True
     props["paragraphs"][0]["runs"][0]["color"] = "#16A34A"
+    props["paragraphs"][0]["runs"][0]["letterSpacing"] = 3.0
 
     result = sync_pptx_ooxml(
         pptx_path,
@@ -206,6 +209,7 @@ def test_imported_rich_text_style_sync_preserves_unknown_rpr_and_unselected_run(
     first_rpr = run_property_element(package, source["shapeId"], 0)
     assert first_rpr.attrib["kumimoji"] == "1"
     assert first_rpr.attrib["u"] == "sng"
+    assert first_rpr.attrib["spc"] == "150"
     assert first_rpr.find(f"{{{DML_NS}}}effectLst") is not None
     assert first_rpr.find(f"{{{DML_NS}}}solidFill/{{{DML_NS}}}srgbClr").attrib == {
         "val": "16A34A"
@@ -226,6 +230,9 @@ def test_imported_rich_text_style_sync_preserves_unknown_rpr_and_unselected_run(
     assert round_trip_text["props"]["paragraphs"][0]["runs"][0]["color"] == (
         "#16A34A"
     )
+    assert round_trip_text["props"]["paragraphs"][0]["runs"][0][
+        "letterSpacing"
+    ] == 3.0
     assert round_trip_text["props"]["paragraphs"][0]["runs"][1]["italic"] is (
         True
     )
@@ -704,6 +711,7 @@ def add_run_property_extensions(
         simple_shape = shape_by_id(root, simple_shape_id)
         simple_rpr = next(simple_shape.iter(f"{{{DML_NS}}}rPr"))
         simple_rpr.set("kumimoji", "1")
+        simple_rpr.set("spc", "120")
         ET.SubElement(simple_rpr, f"{{{DML_NS}}}effectLst")
         if add_field:
             simple_run = next(simple_shape.iter(f"{{{DML_NS}}}r"))

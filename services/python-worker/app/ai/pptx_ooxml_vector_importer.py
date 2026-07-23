@@ -63,9 +63,6 @@ DEFAULT_TEXT_BODY_HORIZONTAL_INSET_EMU = 91440
 DEFAULT_TEXT_BODY_VERTICAL_INSET_EMU = 45720
 DEFAULT_PPTX_FONT_FAMILY = "Aptos, Calibri, Arial, sans-serif"
 RICH_TEXT_UNSUPPORTED_HYPERLINK = "PPTX_RICH_TEXT_UNSUPPORTED_HYPERLINK"
-RICH_TEXT_UNSUPPORTED_LETTER_SPACING = (
-    "PPTX_RICH_TEXT_UNSUPPORTED_LETTER_SPACING"
-)
 TABLE_STRUCTURE_UNSUPPORTED = "PPTX_TABLE_STRUCTURE_UNSUPPORTED"
 TABLE_TRACK_MISMATCH = "PPTX_TABLE_TRACK_MISMATCH"
 MAX_TABLE_CELL_LOCATORS = 10_000
@@ -2319,10 +2316,6 @@ def append_rich_text_diagnostics(
                 or first_local_descendant(r_pr, "hlinkMouseOver") is not None
             ):
                 warnings.append(f"{RICH_TEXT_UNSUPPORTED_HYPERLINK}: {location}")
-            if "spc" in r_pr.attrib:
-                warnings.append(
-                    f"{RICH_TEXT_UNSUPPORTED_LETTER_SPACING}: {location}"
-                )
             run_index += 1
 
 
@@ -2383,6 +2376,12 @@ def run_properties_value(
     size = int_attr(r_pr, "sz", 0)
     if size > 0:
         props["fontSize"] = font_size_to_canvas_px(size / 100, scale)
+    spacing = r_pr.get("spc")
+    if spacing is not None:
+        props["letterSpacing"] = round(
+            int_attr(r_pr, "spc", 0) / 100 * 12700 * scale.average_scale,
+            3,
+        )
     bold = r_pr.get("b")
     if bold is not None:
         props["fontWeight"] = "bold" if bold in {"1", "true"} else "normal"

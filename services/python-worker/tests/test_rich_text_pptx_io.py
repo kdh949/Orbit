@@ -69,6 +69,7 @@ def test_vector_importer_records_rich_text_styles_and_stable_diagnostics(
         "text": "Styled",
         "fontFamily": "Aptos",
         "fontSize": 40,
+        "letterSpacing": 2.4,
         "fontWeight": "bold",
         "italic": True,
         "underline": True,
@@ -88,10 +89,7 @@ def test_vector_importer_records_rich_text_styles_and_stable_diagnostics(
         warning.startswith("PPTX_RICH_TEXT_UNSUPPORTED_HYPERLINK:")
         for warning in result.warnings
     )
-    assert any(
-        warning.startswith("PPTX_RICH_TEXT_UNSUPPORTED_LETTER_SPACING:")
-        for warning in result.warnings
-    )
+    assert not any("LETTER_SPACING" in warning for warning in result.warnings)
 
 
 def test_generic_export_round_trips_canonical_paragraphs_and_runs(
@@ -327,7 +325,7 @@ def test_generic_export_preserves_legacy_plain_text() -> None:
     assert paragraph.runs[0].font.underline is True
 
 
-def test_generic_export_reports_unsupported_run_properties_with_stable_codes() -> None:
+def test_generic_export_preserves_letter_spacing_and_reports_other_run_properties() -> None:
     deck = rich_text_deck(
         {
             "text": "Linked tracking",
@@ -363,11 +361,15 @@ def test_generic_export_reports_unsupported_run_properties_with_stable_codes() -
     assert response.warnings == [
         "PPTX_RICH_TEXT_UNSUPPORTED_HYPERLINK: "
         "element=el_rich_text; paragraph=0; run=0",
-        "PPTX_RICH_TEXT_UNSUPPORTED_LETTER_SPACING: "
-        "element=el_rich_text; paragraph=0; run=0",
         "PPTX_RICH_TEXT_UNSUPPORTED_RUN_PROPERTY: "
         "property=textShadow; element=el_rich_text; paragraph=0; run=0",
     ]
+    presentation = Presentation(BytesIO(base64.b64decode(response.content_base64)))
+    run_properties = (
+        presentation.slides[0].shapes[0].text_frame.paragraphs[0]
+        .runs[0]._r.get_or_add_rPr()
+    )
+    assert run_properties.get("spc") == "75"
 
 
 def rich_text_deck(props: dict[str, object]) -> dict[str, object]:

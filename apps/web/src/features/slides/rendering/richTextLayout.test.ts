@@ -51,6 +51,7 @@ describe("richTextLayout", () => {
                 color: "#DC2626",
                 fontFamily: "Aptos",
                 fontSize: 24,
+                letterSpacing: 2,
                 fontWeight: "bold",
                 italic: true,
                 text: "Bold"
@@ -78,6 +79,7 @@ describe("richTextLayout", () => {
       color: "#DC2626",
       fontFamily: "Aptos",
       fontSize: 24,
+      letterSpacing: 2,
       fontStyle: "bold italic",
       italic: true,
       underline: false

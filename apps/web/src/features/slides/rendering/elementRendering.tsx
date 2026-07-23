@@ -131,6 +131,7 @@ export function ElementNodeContent(props: {
               fontFamily={fragment.style.fontFamily}
               fontSize={fragment.style.fontSize}
               fontStyle={fragment.style.fontStyle}
+              letterSpacing={fragment.style.letterSpacing}
               key={`${fragment.paragraphIndex}-${fragment.lineIndex}-${index}`}
               lineHeight={1}
               listening={false}

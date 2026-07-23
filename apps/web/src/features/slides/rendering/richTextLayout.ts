@@ -17,6 +17,7 @@ export type RichTextFragmentStyle = {
   color: string;
   fontFamily: string;
   fontSize: number;
+  letterSpacing: number;
   fontStyle: RichTextFontStyle;
   fontWeight: TextElementProps["fontWeight"];
   italic: boolean;
@@ -155,13 +156,20 @@ export function measureRichTextFragment(
 ) {
   const context = getMeasurementContext();
   if (!context) {
-    return Array.from(text).length * style.fontSize * 0.55;
+    const characterCount = Array.from(text).length;
+    return (
+      characterCount * style.fontSize * 0.55 +
+      Math.max(0, characterCount - 1) * style.letterSpacing
+    );
   }
 
   context.font = `${style.italic ? "italic " : ""}${getNumericFontWeight(
     style.fontWeight
   )} ${style.fontSize}px ${style.fontFamily}`;
-  return context.measureText(text).width;
+  return (
+    context.measureText(text).width +
+    Math.max(0, Array.from(text).length - 1) * style.letterSpacing
+  );
 }
 
 export function richTextLayout(args: {
@@ -552,6 +560,7 @@ function resolveParagraphStyle(
     color: paragraph?.color ?? baseStyle.color,
     fontFamily: paragraph?.fontFamily ?? baseStyle.fontFamily,
     fontSize: paragraph?.fontSize ?? baseStyle.fontSize,
+    letterSpacing: 0,
     fontStyle: getRichTextFontStyle(fontWeight, italic),
     fontWeight,
     italic,
@@ -572,6 +581,7 @@ function resolveRunStyle(
     color: run.color ?? paragraphStyle.color,
     fontFamily: run.fontFamily ?? paragraphStyle.fontFamily,
     fontSize: run.fontSize ?? paragraphStyle.fontSize,
+    letterSpacing: run.letterSpacing ?? paragraphStyle.letterSpacing,
     fontStyle: getRichTextFontStyle(fontWeight, italic),
     fontWeight,
     italic,
@@ -607,6 +617,7 @@ function sameStyle(left: RichTextFragmentStyle, right: RichTextFragmentStyle) {
     left.color === right.color &&
     left.fontFamily === right.fontFamily &&
     left.fontSize === right.fontSize &&
+    left.letterSpacing === right.letterSpacing &&
     left.fontStyle === right.fontStyle &&
     left.fontWeight === right.fontWeight &&
     left.italic === right.italic &&

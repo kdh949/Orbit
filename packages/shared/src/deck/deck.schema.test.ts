@@ -1058,6 +1058,7 @@ describe("deckSchema validation", () => {
               text: "Hello ",
               fontFamily: "Aptos",
               fontSize: 36,
+              letterSpacing: 1.5,
               fontWeight: "bold",
               color: "#111827"
             },
@@ -1077,6 +1078,7 @@ describe("deckSchema validation", () => {
                   text: "Hello ",
                   fontFamily: "Aptos",
                   fontSize: 36,
+                  letterSpacing: 1.5,
                   fontWeight: "bold",
                   color: "#111827"
                 },
