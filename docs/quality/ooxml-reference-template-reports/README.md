@@ -70,8 +70,11 @@ generated, intended-slot mask, locked-diff PNG와 source/generated/locked-diff m
 package warning과 geometry/style/relationship drift는 전부 0이다. template별 locked pixel 차이는
 6~615px이며 threshold를 적용하지 않았다. font manifest는 43~50개 substituted family를
 기록하고 exact 38개와 substituted fallback 313개 resolved file checksum을 모두 보존한다.
-fallback checksum은 요청 family 설치 증거가 아니다. report는 `approvalStatus=pending`이고
-exact font와 사람 fidelity 검수 전에는 `passed`로 해석하지 않는다.
+fallback checksum은 요청 family 설치 증거가 아니다. report 자체의
+`approvalStatus=pending`은 원본 artifact를 불변으로 보존한 값이다. 사용자는 2026-07-23
+별도 decision artifact에서 7개 PowerPoint full-deck montage의 source identity와 B2
+locked-diff 예외를 승인했다. exact font와 calibration threshold 전에는 전체 fidelity
+gate를 `passed`로 해석하지 않는다.
 
 승인/disabled canonical manifest를 사용한 full 139-slide LibreOffice identity candidate는
 `/private/tmp/orbit-ooxml-identity-calibration-candidate-20260723-b`에 있다. source와 clone
@@ -90,9 +93,12 @@ substituted 31, unique substitution 8개다. font license와 exact family 및 �
 실제 text-slot 편집용 B2 visual artifact는
 `/private/tmp/orbit-ooxml-b2-slot-montage-7cg9oi8q`에 있다. 7개 template의 편집 전/후,
 slot mask, locked overlay, montage와 bounded report 43개 파일의 checksum을 재검산했다.
-package/import warning과 structural drift는 0이지만 `operating-review` 42px와 `simple-light`
-72px의 locked pixel이 남아 있고 사람 승인 template은 0개다. 이 LibreOffice 기반 montage-only
-artifact는 기존 PowerPoint/LibreOffice reopen 증거나 full-deck calibration을 대체하지 않는다.
+package/import warning과 structural drift는 0이고 `operating-review` 42px와 `simple-light`
+72px의 locked pixel은 사용자가 각각 slot-mask 경계 antialiasing으로 승인했다. 나머지 다섯
+template은 0px다. 승인 기록과 원본 request checksum은
+`/private/tmp/orbit-ooxml-human-fidelity-review-decision-20260723`에 있다. 이 LibreOffice
+기반 montage-only artifact는 기존 PowerPoint/LibreOffice reopen 증거나 full-deck
+calibration을 대체하지 않는다.
 
 actual source image 후보의 읽기 전용 감사 artifact는
 `/private/tmp/orbit-ooxml-image-slot-candidates-v2-20260723-8vzdI7`에 있다. direct picture
@@ -130,8 +136,9 @@ slide title/count와 custom/thumbnail metadata를 보존해 승인 증거에서 
 self-contained 7개×8장 PowerPoint PPTX/PDF/PNG/montage/report bundle은
 `/private/tmp/orbit-ooxml-powerpoint-full-deck-montage-metadata-fixed-20260723-b`에 있다. 7개 PPTX는
 모두 `Slides=8`, stale/private metadata 0, package warning 0이다. 86개 파일 중
-checksum manifest가 선언한 85개가 모두 일치하며 7개 report는 render/reopen `passed`,
-approval `pending`이다. `summary.json` SHA-256은
+checksum manifest가 선언한 85개가 모두 일치하며 7개 report는 render/reopen `passed`다.
+artifact 내부 approval 값은 불변인 `pending`이고 별도 사람 검수에서 7개 montage의
+source-template identity는 승인됐다. `summary.json` SHA-256은
 `5474bdc87e48d3ff9a1a20d64338cdf747b8fb66fe0575016aad5a820e2996aa`다.
 
 actual text-slot 편집→sync/export 수정본 7개의 PowerPoint 16.111 open/PDF render/reopen 증거는

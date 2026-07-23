@@ -15,6 +15,7 @@
 - generated full-deck OOXML ZIP/package validation: `passed` (warning 0)
 - generated document properties: `sanitized` (`Slides=8`, stale/private metadata 0)
 - Microsoft PowerPoint render/reopen: `passed` (8 slides, PowerPoint 16.111)
+- PowerPoint full-deck human visual review: `approved` (2026-07-23)
 - PowerPoint render PDF SHA-256: `09d58d9e6587f3e7ba823bf99064b9fa5a7762e0310aa919de0106ffd9e5a036`
 - PowerPoint full-deck montage/report SHA-256: `1c14b311e700b2ec78f38664ace2292cc86f9489a0b36e46440ace49dbadb190` / `866e1f3191558166cd4529d6b28dcaeaa4010f0c7c604d2d219482d03e660d72`
 - generated full-deck LibreOffice render/reopen: `passed` (8 slides, LibreOffice 26.8.0.0)
@@ -23,12 +24,12 @@
 - slot edit → sync/export/reopen: `passed` (warning 0, unsupported 0, text retained)
 - edited package SHA-256: `80dfa0ee65a39d272b9751f02268bdf6d8ce1b4b25f20e5fd0eb1d2c292cd018`
 - edited PowerPoint PDF SHA-256: `975c346903a900fd867ea081e034cd7e66fb30f81d59d595bbd64652b3cf2018`
-- edited-slot montage: `generated/pending` (locked diff 0px, human approval pending)
+- edited-slot montage: `approved` (locked diff 0px)
 - edited-slot montage/report SHA-256: `fbca6cd09821c5a8fda2eba1f8641fa0ca264583b9895a5f072b31dfaeb13e93` / `eec515d3143332d8e2f56348c02dfd7f744f8870afca81c6d4553a2bb42073aa`
 - product materialization warning: `0`
 - fidelity artifact: `generated/pending` (structural drift 0, locked diff 41px)
 - source/locked-diff montage SHA-256: `7ce4486446e60038eaa75eae7c437be2b0bd5d21e421d8f0bad1038fe709e9f4` / `761aa66aea0c01423c7215b0b8494d4ea5abb7a9444d357be23fedfce53465d1`
 - fidelity report SHA-256: `8744060baabda543eb15cb1db379fca3a5fe8f08560cd9c4e9f96c2016e5cc0c`
 
-Blocker: production managed storage, exact font checksum과 사람 locked-diff/calibration/UX
-승인이 남았다.
+Blocker: production managed storage, exact font checksum과 calibration/actual editor UX 승인이
+남았다.

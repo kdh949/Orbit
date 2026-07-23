@@ -718,16 +718,19 @@ family가 아니라 style·full name이고 Roboto Serif 배포본은 14pt family
 - [x] text/image slot 편집 후 기존 `pptx-ooxml-sync` warning 0건
 - [x] 최신 sync version 확인 후 `deck-export` 성공
 - [x] slot locator와 decoration lock mapping이 재현되며 product rollout 전 Task 18의 API mutation gate가 필요한 범위를 report에 기록
-- [ ] spike report와 montage를 사람이 검수하고 7개 확장 여부를 승인
+- [x] spike report와 montage를 사람이 검수하고 7개 확장 여부를 승인
 
 2026-07-23 승인 text-only 범위에서는 7개 template별 실제 slot 1개를 편집해 sync/export,
 Python/LibreOffice/PowerPoint reopen을 수행했고 warning 0, unsupported 0과 편집 문구 유지를
 확인했다. 7개 편집 전/후/mask/locked-overlay/montage 43개 파일도
 `/private/tmp/orbit-ooxml-b2-slot-montage-7cg9oi8q`에 생성했다. geometry/style/relationship drift와
 package/import warning은 모두 0이지만 `operating-review` 42px, `simple-light` 72px의 mask 밖
-글리프 경계 차이는 threshold 없이 `LOCKED_PIXEL_DIFF_REVIEW_PENDING`으로 보존했다. 이 artifact는
-LibreOffice 기반 montage-only 증거이며 PowerPoint/reopen/full-deck/font 증거를 대체하지 않는다.
-사람 검수와 exact font 환경 승인이 남아 Checkpoint B2는 미통과다.
+글리프 경계 차이는 threshold 없이 `LOCKED_PIXEL_DIFF_REVIEW_PENDING`으로 보존했다. 사용자는
+2026-07-23 두 차이를 slot-mask 경계 antialiasing으로 승인했고 나머지 다섯 template의 0px
+결과와 함께 `/private/tmp/orbit-ooxml-human-fidelity-review-decision-20260723`에 기록했다.
+이 artifact는 LibreOffice 기반 montage-only 증거이며 PowerPoint/reopen/full-deck/font 증거를
+대체하지 않는다. exact font 환경과 production publication이 남아 Checkpoint B2 전체는
+미통과다.
 
 actual source의 direct picture 19개를 읽기 전용 감사한 결과 package-wide exclusive media
 target을 가진 기술 후보는 5개다. source-authored `p:cNvPr@descr`의 정규화된 exact
@@ -923,8 +926,9 @@ overflow/overlap/crop, LibreOffice 56장과 Microsoft PowerPoint 16.111 open/ren
 template의 package warning과 geometry/style/relationship drift는 0이다. font manifest는
 template별 43~50개 substitution을 확인했고 exact/substituted 351개 resolved file checksum을
 모두 기록했다. 다만 313개는 요청 family가 아니라 fallback file checksum이다. 따라서 요청한
-exact font 설치·checksum, private calibration
-threshold와 locked-diff의 사람 승인, production managed storage가 없어 Checkpoint C는 미통과다.
+exact font 설치·checksum, private calibration threshold와 production managed storage가
+없어 Checkpoint C는 미통과다. B2 locked-diff와 PowerPoint full-deck visual identity의 사람
+검수는 2026-07-23 승인됐다.
 
 최신 strict runner report는
 `/private/tmp/orbit-ooxml-checkpoint-c-report-20260723-metadata-fixed-final/summary.json`이다.
@@ -1196,7 +1200,8 @@ template snapshot, UI slot edit, sync freshness/warning 0, PPTX export/package�
 - [x] 7개 full-deck fidelity artifact와 report 존재
 - [x] 기존 System Design Pack, PPTX import, OOXML sync/export regression 통과
 - [ ] flag off와 template allowlist rollback smoke 통과
-- [ ] 사람 검수: PowerPoint fidelity와 편집 제한 UX 승인
+- [x] 사람 검수: PowerPoint fidelity 승인
+- [ ] 사람 검수: 실제 flag-on Deck의 편집 제한 UX 승인
 
 실제 7개 text-slot edit→sync/export package는 PowerPoint 16.111과 LibreOffice reopen을
 통과했고 7개/56장 source/generated/mask/locked-diff와 montage/report 및 7개 편집 전후
