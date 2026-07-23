@@ -137,6 +137,13 @@ export const presentationSessionWithAudienceUrlResponseSchema = z
   })
   .strict();
 
+export const presenterAccessResponseSchema = z
+  .object({
+    accessMode: presentationAccessModeSchema,
+    displayPasscode: z.string().regex(/^\d{4}$/).nullable()
+  })
+  .strict();
+
 export const presentationRunStatusSchema = z.enum([
   "created",
   "uploading",
@@ -459,6 +466,9 @@ export type UpdatePresentationSessionAccessRequest = z.infer<
 >;
 export type PresentationSessionWithAudienceUrlResponse = z.infer<
   typeof presentationSessionWithAudienceUrlResponseSchema
+>;
+export type PresenterAccessResponse = z.infer<
+  typeof presenterAccessResponseSchema
 >;
 export type GetCurrentPresentationSessionResponse = z.infer<
   typeof getCurrentPresentationSessionResponseSchema

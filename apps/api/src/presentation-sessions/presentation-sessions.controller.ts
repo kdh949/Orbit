@@ -73,6 +73,20 @@ export class PresentationSessionsController {
     return this.presentationSessionsService.updateAccess(projectId, sessionId, input);
   }
 
+  @Get(":sessionId/presenter-access")
+  async getPresenterAccess(
+    @Param("projectId") projectId: string,
+    @Param("sessionId") sessionId: string,
+    @Req() request: SignedCookieRequest
+  ) {
+    const user = await this.getCurrentUser(request);
+    await this.projectsService.assertCanWriteProject(projectId, user.userId);
+    return this.presentationSessionsService.getPresenterAccess(
+      projectId,
+      sessionId
+    );
+  }
+
   @Post(":sessionId/close")
   async close(
     @Param("projectId") projectId: string,

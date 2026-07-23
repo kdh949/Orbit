@@ -15,6 +15,8 @@ export type PresentationSessionRow = {
   status: PresentationSessionStatus;
   access_mode: PresentationAccessMode;
   session_password_hash: string | null;
+  session_password_display_ciphertext: string | null;
+  session_password_key_version: number | null;
   starts_at: Date | string;
   expires_at: Date | string;
   active_activity_run_id: string | null;
@@ -36,7 +38,8 @@ type QueryExecutor = DataSource | EntityManager;
 
 const sessionColumns = `
   session_id, project_id, deck_id, deck_version, presenter_user_id, created_by,
-  status, access_mode, session_password_hash, starts_at, expires_at,
+  status, access_mode, session_password_hash, session_password_display_ciphertext,
+  session_password_key_version, starts_at, expires_at,
   active_activity_run_id, started_at, ended_at, closed_at,
   raw_responses_delete_after, raw_responses_deleted_at, results_deleted_at,
   created_at, updated_at
@@ -45,7 +48,8 @@ const sessionColumns = `
 const qualifiedSessionColumns = `
   sessions.session_id, sessions.project_id, sessions.deck_id, sessions.deck_version,
   sessions.presenter_user_id, sessions.created_by, sessions.status, sessions.access_mode,
-  sessions.session_password_hash, sessions.starts_at, sessions.expires_at,
+  sessions.session_password_hash, sessions.session_password_display_ciphertext,
+  sessions.session_password_key_version, sessions.starts_at, sessions.expires_at,
   sessions.active_activity_run_id, sessions.started_at, sessions.ended_at,
   sessions.closed_at, sessions.raw_responses_delete_after,
   sessions.raw_responses_deleted_at, sessions.results_deleted_at,
@@ -249,6 +253,8 @@ export class PresentationSessionRepository {
       status: Exclude<PresentationSessionStatus, "ended">;
       accessMode: PresentationAccessMode;
       passwordHash: string | null;
+      passwordDisplayCiphertext: string | null;
+      passwordKeyVersion: number | null;
       startsAt: Date;
       expiresAt: Date;
       now: Date;
@@ -257,19 +263,22 @@ export class PresentationSessionRepository {
     const rows = await manager.query<PresentationSessionRow[]>(
       `
         INSERT INTO presentation_sessions (
-          session_id, session_password_hash, project_id, status, created_at, expires_at,
+          session_id, session_password_hash, session_password_display_ciphertext,
+          session_password_key_version, project_id, status, created_at, expires_at,
           deck_id, deck_version, presenter_user_id, created_by, access_mode,
           starts_at, updated_at, started_at, raw_responses_delete_after
         )
         VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11, $5, $12,
-          $6::timestamptz + interval '90 days'
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11, $12, $13, $7, $14,
+          $8::timestamptz + interval '90 days'
         )
         RETURNING ${sessionColumns}
       `,
       [
         input.sessionId,
         input.passwordHash,
+        input.passwordDisplayCiphertext,
+        input.passwordKeyVersion,
         input.projectId,
         input.status,
         input.now,
@@ -293,6 +302,8 @@ export class PresentationSessionRepository {
       status: Exclude<PresentationSessionStatus, "ended">;
       accessMode: PresentationAccessMode;
       passwordHash: string | null;
+      passwordDisplayCiphertext: string | null;
+      passwordKeyVersion: number | null;
       startsAt: Date;
       expiresAt: Date;
       now: Date;
@@ -302,9 +313,11 @@ export class PresentationSessionRepository {
       `
         UPDATE presentation_sessions
         SET status = $3, access_mode = $4, session_password_hash = $5,
-            starts_at = $6, expires_at = $7, updated_at = $8,
-            raw_responses_delete_after = $7::timestamptz + interval '90 days',
-            started_at = CASE WHEN $3 = 'live' THEN COALESCE(started_at, $8) ELSE NULL END
+            session_password_display_ciphertext = $6,
+            session_password_key_version = $7,
+            starts_at = $8, expires_at = $9, updated_at = $10,
+            raw_responses_delete_after = $9::timestamptz + interval '90 days',
+            started_at = CASE WHEN $3 = 'live' THEN COALESCE(started_at, $10) ELSE NULL END
         WHERE project_id = $1 AND session_id = $2 AND status IN ('draft', 'live')
         RETURNING ${sessionColumns}
       `,
@@ -314,6 +327,8 @@ export class PresentationSessionRepository {
         input.status,
         input.accessMode,
         input.passwordHash,
+        input.passwordDisplayCiphertext,
+        input.passwordKeyVersion,
         input.startsAt,
         input.expiresAt,
         input.now

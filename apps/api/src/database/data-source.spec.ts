@@ -79,6 +79,9 @@ describe("databaseOptions", () => {
     );
 
     expect(names).toContain("ExpandPresentationSessionsForActivities2026071701000");
+    expect(names).toContain(
+      "AddPresentationPasscodeDisplayCiphertext2026072401000"
+    );
   });
 
   it("registers the activity runtime migration after the session expansion", () => {

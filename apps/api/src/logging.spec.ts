@@ -16,4 +16,18 @@ describe("API logging redaction", () => {
       ])
     );
   });
+
+  it("redacts presentation passcodes and their encrypted display copy", () => {
+    expect(redactedPaths).toEqual(
+      expect.arrayContaining([
+        "passcode",
+        "*.passcode",
+        "body.passcode",
+        "displayPasscode",
+        "*.displayPasscode",
+        "passwordDisplayCiphertext",
+        "*.passwordDisplayCiphertext"
+      ])
+    );
+  });
 });

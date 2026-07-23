@@ -93,6 +93,22 @@
       "source": "doppler-required",
       "delivery": "compose"
     },
+    "PRESENTATION_PASSCODE_ENCRYPTION_KEY": {
+      "source": "doppler-required",
+      "delivery": "compose"
+    },
+    "PRESENTATION_PASSCODE_ENCRYPTION_KEY_VERSION": {
+      "source": "doppler-required",
+      "delivery": "compose"
+    },
+    "PRESENTATION_PASSCODE_ENCRYPTION_PREVIOUS_KEY": {
+      "source": "doppler-optional",
+      "delivery": "compose"
+    },
+    "PRESENTATION_PASSCODE_ENCRYPTION_PREVIOUS_KEY_VERSION": {
+      "source": "doppler-optional",
+      "delivery": "compose"
+    },
     "DATABASE_URL": {
       "source": "doppler-required",
       "delivery": "compose"

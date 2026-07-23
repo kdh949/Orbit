@@ -22,6 +22,7 @@ import {
   PresentationRunsService,
 } from "./presentation-runs.service";
 import { PresentationCompanionSpikeGateway } from "./presentation-companion-spike.gateway";
+import { PresentationPasscodeCipher } from "./presentation-passcode-cipher";
 
 @Module({
   imports: [
@@ -43,6 +44,10 @@ import { PresentationCompanionSpikeGateway } from "./presentation-companion-spik
     AudienceRateLimitService,
     PresentationSessionRepository,
     PresentationSessionsService,
+    {
+      provide: PresentationPasscodeCipher,
+      useFactory: () => PresentationPasscodeCipher.fromEnvironment()
+    },
     PresentationRunsService,
     PresentationCompanionSpikeGateway,
     {

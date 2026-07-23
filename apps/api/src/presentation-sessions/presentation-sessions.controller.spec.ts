@@ -12,6 +12,10 @@ function createController(canWrite = true) {
     list: vi.fn().mockResolvedValue({ sessions: [] }),
     create: vi.fn().mockResolvedValue({}),
     updateAccess: vi.fn().mockResolvedValue({}),
+    getPresenterAccess: vi.fn().mockResolvedValue({
+      accessMode: "passcode",
+      displayPasscode: "4821"
+    }),
     close: vi.fn().mockResolvedValue({})
   };
   const projectsService = {
@@ -48,6 +52,26 @@ describe("PresentationSessionsController", () => {
       )
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(presentationSessionsService.create).not.toHaveBeenCalled();
+  });
+
+  it("authorizes presenter access through project write permission", async () => {
+    const { controller, presentationSessionsService, projectsService, request } =
+      createController();
+
+    await controller.getPresenterAccess(
+      "project_1",
+      "session_1",
+      request
+    );
+
+    expect(projectsService.assertCanWriteProject).toHaveBeenCalledWith(
+      "project_1",
+      "user_1"
+    );
+    expect(presentationSessionsService.getPresenterAccess).toHaveBeenCalledWith(
+      "project_1",
+      "session_1"
+    );
   });
 
   it("passes only the authenticated user and server-validated create input", async () => {

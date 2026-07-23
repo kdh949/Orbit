@@ -368,6 +368,15 @@ ORBIT-14 진행 중에는 위 구현 위치를 기준으로 계약을 변경한�
 
 PresentationSession은 `deckId`, server가 읽은 `deckVersion`, `passcode | public` 접근 방식, `startsAt`, `expiresAt`, active run과 retention 시각을 명시한다. 기본 접근 기간은 server command가 14일로 채우고 schema와 DB는 30일을 초과하는 기간을 거절한다. session 생성 request는 `deckVersion`이나 Activity 정의를 받지 않는다.
 
+`passcode` 접근 방식은 검증용 Argon2id hash와 발표 화면 표시용
+AES-256-GCM ciphertext를 별도로 저장한다. ciphertext는 `sessionId`를 AAD로
+묶고 key version을 함께 보관하며 원문 입장 코드는 저장하지 않는다. 로그인 및
+프로젝트 쓰기 권한을 통과한 발표자만
+`GET /api/v1/projects/:projectId/presentation-sessions/:sessionId/presenter-access`
+에서 `{ accessMode, displayPasscode }`를 조회할 수 있다. 기존 session처럼 표시용
+ciphertext가 없거나 현재·이전 key로 복호화할 수 없으면 `displayPasscode`는
+`null`이며 청중 입장 검증은 기존 Argon2id hash로 계속 동작한다.
+
 실전 발표의 음성 실행 기록은 `presentation_runs`에 저장하며 `presentation_sessions`와 1:1 관계를 가진다. 이 기록은 `rehearsal_runs`, 리허설 비교·요약·집중 연습 계약과 분리한다.
 
 - `recordingMode`는 `microphone | none`이며 마이크 없이 시작한 run도 청중 참여 세션을 그대로 사용한다.

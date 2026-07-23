@@ -6,7 +6,8 @@ import {
   getCurrentPresentationSessionResponseSchema,
   listPresentationSessionsResponseSchema,
   presentationSessionResponseSchema,
-  presentationSessionWithAudienceUrlResponseSchema
+  presentationSessionWithAudienceUrlResponseSchema,
+  presenterAccessResponseSchema
 } from "@orbit/shared";
 import type {
   CreatePresentationSessionRequest,
@@ -30,6 +31,7 @@ import {
   type PresentationSessionRow
 } from "./presentation-session.repository";
 import { AudienceRateLimitService } from "./audience-rate-limit.service";
+import { PresentationPasscodeCipher } from "./presentation-passcode-cipher";
 
 const defaultAccessDays = 14;
 
@@ -40,7 +42,8 @@ export class PresentationSessionsService {
     private readonly decksService: DecksService,
     @InjectPinoLogger(PresentationSessionsService.name)
     private readonly logger: PinoLogger,
-    @Optional() private readonly audienceRateLimit?: AudienceRateLimitService
+    @Optional() private readonly audienceRateLimit?: AudienceRateLimitService,
+    @Optional() private readonly passcodeCipher?: PresentationPasscodeCipher
   ) {}
 
   async create(
@@ -54,10 +57,14 @@ export class PresentationSessionsService {
       ? new Date(input.expiresAt)
       : new Date(startsAt.getTime() + defaultAccessDays * 24 * 60 * 60 * 1000);
     assertAccessWindow(startsAt, expiresAt);
+    const sessionId = `session_${randomUUID()}`;
     const passwordHash = input.passcode
       ? await argon2.hash(input.passcode, { type: argon2.argon2id })
       : null;
-    const sessionId = `session_${randomUUID()}`;
+    const encryptedPasscode =
+      input.passcode && this.passcodeCipher
+        ? this.passcodeCipher.encrypt(input.passcode, sessionId)
+        : null;
 
     const result = await this.repository.transaction(async (manager) => {
       const deck = await this.decksService.getDeckForUpdate(
@@ -97,6 +104,8 @@ export class PresentationSessionsService {
         status: startsAt.getTime() > now.getTime() ? "draft" : "live",
         accessMode: input.accessMode,
         passwordHash,
+        passwordDisplayCiphertext: encryptedPasscode?.ciphertext ?? null,
+        passwordKeyVersion: encryptedPasscode?.keyVersion ?? null,
         startsAt,
         expiresAt,
         now
@@ -154,12 +163,18 @@ export class PresentationSessionsService {
     const passwordHash = input.passcode
       ? await argon2.hash(input.passcode, { type: argon2.argon2id })
       : null;
+    const encryptedPasscode =
+      input.passcode && this.passcodeCipher
+        ? this.passcodeCipher.encrypt(input.passcode, sessionId)
+        : null;
     const now = new Date();
     const row = await this.repository.transaction((manager) =>
       this.repository.updateAccess(manager, projectId, sessionId, {
         status: startsAt.getTime() > now.getTime() ? "draft" : "live",
         accessMode: input.accessMode,
         passwordHash,
+        passwordDisplayCiphertext: encryptedPasscode?.ciphertext ?? null,
+        passwordKeyVersion: encryptedPasscode?.keyVersion ?? null,
         startsAt,
         expiresAt,
         now
@@ -185,6 +200,42 @@ export class PresentationSessionsService {
     const row = await this.repository.findByIdForRead(projectId, sessionId);
     if (!row) throw new NotFoundException("Presentation session not found");
     return this.toSession(row);
+  }
+
+  async getPresenterAccess(projectId: string, sessionId: string) {
+    const row = await this.repository.findByIdForRead(projectId, sessionId);
+    if (!row) throw new NotFoundException("Presentation session not found");
+
+    let displayPasscode: string | null = null;
+    if (
+      row.access_mode === "passcode" &&
+      row.session_password_display_ciphertext &&
+      row.session_password_key_version &&
+      this.passcodeCipher
+    ) {
+      try {
+        displayPasscode = this.passcodeCipher.decrypt(
+          row.session_password_display_ciphertext,
+          row.session_password_key_version,
+          row.session_id
+        );
+      } catch {
+        this.logger.warn(
+          {
+            event: "presentation_session.passcode_display_unavailable",
+            projectId,
+            presentationSessionId: sessionId,
+            keyVersion: row.session_password_key_version
+          },
+          "presentation session passcode display unavailable"
+        );
+      }
+    }
+
+    return presenterAccessResponseSchema.parse({
+      accessMode: row.access_mode,
+      displayPasscode
+    });
   }
 
   async getAudiencePublicInfo(sessionId: string, now = new Date()) {

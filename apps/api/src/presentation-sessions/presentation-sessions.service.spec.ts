@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { DecksService } from "../decks/decks.service";
 import type { PresentationSessionRepository } from "./presentation-session.repository";
+import { PresentationPasscodeCipher } from "./presentation-passcode-cipher";
 import { PresentationSessionsService } from "./presentation-sessions.service";
 
 const sessionRow = {
@@ -14,6 +15,8 @@ const sessionRow = {
   status: "live" as const,
   access_mode: "public" as const,
   session_password_hash: null,
+  session_password_display_ciphertext: null,
+  session_password_key_version: null,
   starts_at: "2026-07-17T00:00:00.000Z",
   expires_at: "2026-07-31T00:00:00.000Z",
   active_activity_run_id: null,
@@ -30,7 +33,8 @@ const sessionRow = {
 function createService(
   overrides: Partial<PresentationSessionRepository> = {},
   audienceRateLimit?: { consumeJoin: ReturnType<typeof vi.fn> },
-  deckOverrides: Partial<DecksService> = {}
+  deckOverrides: Partial<DecksService> = {},
+  passcodeCipher?: PresentationPasscodeCipher
 ) {
   const manager = {} as never;
   const repository = {
@@ -54,13 +58,14 @@ function createService(
       ...sessionRow,
       project_title: "ORBIT 발표"
     }),
+    findByIdForRead: vi.fn().mockResolvedValue(sessionRow),
     ...overrides
   } as unknown as PresentationSessionRepository;
   const decksService = {
     getDeckForUpdate: vi.fn().mockResolvedValue({ deckId: "deck_1", version: 7 }),
     ...deckOverrides
   } as unknown as DecksService;
-  const logger = { info: vi.fn() } as never;
+  const logger = { info: vi.fn(), warn: vi.fn() } as never;
   return {
     decksService,
     repository,
@@ -68,7 +73,8 @@ function createService(
       repository,
       decksService,
       logger,
-      audienceRateLimit as never
+      audienceRateLimit as never,
+      passcodeCipher
     )
   };
 }
@@ -108,6 +114,63 @@ describe("PresentationSessionsService", () => {
       expect.anything(),
       expect.objectContaining({ deckId: "deck_1", deckVersion: 7, userId: "user_1" })
     );
+  });
+
+  it("stores only encrypted presenter display data beside the Argon2 hash", async () => {
+    const passcodeCipher = new PresentationPasscodeCipher({
+      key: Buffer.alloc(32, 5),
+      version: 4
+    });
+    const { repository, service } = createService(
+      {},
+      undefined,
+      {},
+      passcodeCipher
+    );
+
+    await service.create("project_1", "user_1", {
+      deckId: "deck_1",
+      accessMode: "passcode",
+      passcode: "4821"
+    });
+
+    expect(repository.insert).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        passwordKeyVersion: 4,
+        passwordDisplayCiphertext: expect.not.stringContaining("4821"),
+        passwordHash: expect.any(String)
+      })
+    );
+  });
+
+  it("returns a decrypted passcode only through presenter access", async () => {
+    const passcodeCipher = new PresentationPasscodeCipher({
+      key: Buffer.alloc(32, 5),
+      version: 4
+    });
+    const encrypted = passcodeCipher.encrypt("4821", "session_existing");
+    const { service } = createService(
+      {
+        findByIdForRead: vi.fn().mockResolvedValue({
+          ...sessionRow,
+          access_mode: "passcode",
+          session_password_hash: "argon2-hash",
+          session_password_display_ciphertext: encrypted.ciphertext,
+          session_password_key_version: encrypted.keyVersion
+        })
+      },
+      undefined,
+      {},
+      passcodeCipher
+    );
+
+    await expect(
+      service.getPresenterAccess("project_1", "session_existing")
+    ).resolves.toEqual({
+      accessMode: "passcode",
+      displayPasscode: "4821"
+    });
   });
 
   it("reuses the matching live-runtime session without closing audience activity", async () => {
