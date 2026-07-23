@@ -67,8 +67,10 @@ export class DiagnosticWorkerWriter implements DiagnosticEventWriter {
     this.batchIntervalMs = options.batchIntervalMs ?? 250;
     this.batchSize = options.batchSize ?? 50;
     this.createId = options.createId ?? (() => crypto.randomUUID());
-    this.clearTimer = options.clearTimer ?? clearTimeout;
-    this.setTimer = options.setTimer ?? setTimeout;
+    const clearTimer = options.clearTimer ?? clearTimeout;
+    const setTimer = options.setTimer ?? setTimeout;
+    this.clearTimer = (timer) => clearTimer(timer);
+    this.setTimer = (callback, delayMs) => setTimer(callback, delayMs);
     this.worker = options.createWorker?.() ?? createDiagnosticWorker();
     this.worker.addEventListener("message", this.handleMessage);
     this.worker.addEventListener("error", this.handleWorkerError);
@@ -165,7 +167,9 @@ export function createDiagnosticWorker(): DiagnosticWorkerLike {
   if (typeof Worker === "undefined") {
     throw new Error("DiagnosticWorkerUnavailable");
   }
-  return new Worker(new URL("./diagnosticWorker.ts", import.meta.url));
+  return new Worker(new URL("./diagnosticWorker.ts", import.meta.url), {
+    type: "module"
+  });
 }
 
 export async function listDiagnosticSessions(): Promise<DiagnosticSession[]> {

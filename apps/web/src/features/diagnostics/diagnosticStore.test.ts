@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { DiagnosticWorkerWriter } from "./diagnosticStore";
+import {
+  createDiagnosticWorker,
+  DiagnosticWorkerWriter
+} from "./diagnosticStore";
 import type {
   DiagnosticSession,
   OrbitDiagnosticEvent
@@ -11,6 +14,23 @@ import type {
 } from "./diagnosticStore";
 
 describe("DiagnosticWorkerWriter", () => {
+  it("creates the persistence worker as an ES module", () => {
+    const worker = new FakeDiagnosticWorker();
+    const workerConstructor = vi.fn(function () {
+      return worker;
+    });
+    vi.stubGlobal("Worker", workerConstructor);
+
+    try {
+      expect(createDiagnosticWorker()).toBe(worker);
+      expect(workerConstructor).toHaveBeenCalledWith(expect.any(URL), {
+        type: "module"
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("posts an event batch at the configured boundary", () => {
     const worker = new FakeDiagnosticWorker();
     const writer = new DiagnosticWorkerWriter({
@@ -29,6 +49,38 @@ describe("DiagnosticWorkerWriter", () => {
       type: "append-events",
       events: [{ seq: 1 }, { seq: 2 }]
     });
+  });
+
+  it("does not rebind browser timer functions to the writer", () => {
+    const worker = new FakeDiagnosticWorker();
+    const timer = 1 as unknown as ReturnType<typeof setTimeout>;
+    const setTimer = vi.fn(function (
+      this: unknown,
+      _callback: () => void,
+      _delayMs: number
+    ) {
+      expect(this).toBeUndefined();
+      return timer;
+    });
+    const clearTimer = vi.fn(function (
+      this: unknown,
+      receivedTimer: ReturnType<typeof setTimeout>
+    ) {
+      expect(this).toBeUndefined();
+      expect(receivedTimer).toBe(timer);
+    });
+    const writer = new DiagnosticWorkerWriter({
+      batchSize: 2,
+      clearTimer,
+      createWorker: () => worker,
+      setTimer
+    });
+
+    writer.append(createEvent(1));
+    writer.append(createEvent(2));
+
+    expect(setTimer).toHaveBeenCalledOnce();
+    expect(clearTimer).toHaveBeenCalledOnce();
   });
 
   it("flushes pending events before resolving", async () => {

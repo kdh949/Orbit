@@ -20,8 +20,9 @@ let pendingOperation = Promise.resolve();
 workerScope.addEventListener(
   "message",
   (event: MessageEvent<DiagnosticWorkerInboundMessage>) => {
-    if (event.data.type === "flush") {
-      const requestId = event.data.requestId;
+    const message = event.data;
+    if (message.type === "flush") {
+      const requestId = message.requestId;
       void pendingOperation
         .then(() => {
           post({ type: "flushed", requestId });
@@ -32,22 +33,34 @@ workerScope.addEventListener(
 
     pendingOperation = pendingOperation
       .then(async () => {
-        switch (event.data.type) {
-          case "start-session":
-            await pruneExpiredSessions(new Date(event.data.session.startedAt));
-            await putSession(event.data.session);
+        switch (message.type) {
+          case "start-session": {
+            const session = message.session;
+            await runStorageOperation("retention", () =>
+              pruneExpiredSessions(new Date(session.startedAt))
+            );
+            await runStorageOperation("start-session", () =>
+              putSession(session)
+            );
             return;
-          case "append-events":
-            await appendEvents(event.data.events);
+          }
+          case "append-events": {
+            const events = message.events;
+            await runStorageOperation("append-events", () =>
+              appendEvents(events)
+            );
             return;
-          case "finish-session":
-            await putSession(event.data.session);
+          }
+          case "finish-session": {
+            const session = message.session;
+            await runStorageOperation("finish-session", () =>
+              putSession(session)
+            );
             return;
+          }
         }
       })
-      .catch((cause: unknown) => {
-        reportWarning(cause);
-      });
+      .catch(() => undefined);
   }
 );
 
@@ -124,10 +137,24 @@ function requestResult<T>(request: IDBRequest<T>) {
   });
 }
 
-function reportWarning(cause: unknown) {
+async function runStorageOperation(
+  operation: string,
+  action: () => Promise<void>
+) {
+  try {
+    await action();
+  } catch (cause) {
+    reportWarning(cause, operation);
+    throw cause;
+  }
+}
+
+function reportWarning(cause: unknown, operation?: string) {
+  const errorName =
+    cause instanceof Error ? cause.name : "DiagnosticStorageError";
   post({
     type: "warning",
-    errorName: cause instanceof Error ? cause.name : "DiagnosticStorageError"
+    errorName: operation ? `${operation}:${errorName}` : errorName
   });
 }
 
