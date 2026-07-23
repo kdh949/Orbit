@@ -11,6 +11,7 @@ import {
 
 import { OrbitDiagnosticRecorder } from "./diagnosticRecorder";
 import { DiagnosticWorkerWriter } from "./diagnosticStore";
+import { DiagnosticDrawer } from "./DiagnosticDrawer";
 import type {
   DiagnosticMode,
   DiagnosticRecorderSnapshot,
@@ -152,6 +153,15 @@ export function DiagnosticProvider(props: {
   return (
     <DiagnosticContext.Provider value={value}>
       {props.children}
+      {shouldAutoStart && surface ? (
+        <DiagnosticDrawer
+          flush={() => recorder.flush()}
+          snapshot={snapshot}
+          start={start}
+          stop={stop}
+          surface={surface}
+        />
+      ) : null}
     </DiagnosticContext.Provider>
   );
 }

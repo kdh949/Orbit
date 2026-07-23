@@ -139,6 +139,12 @@ export class OrbitDiagnosticRecorder implements DiagnosticSink {
     return session;
   }
 
+  async flush() {
+    await this.writer.flush().catch((cause: unknown) => {
+      this.setStorageWarning(cause);
+    });
+  }
+
   emit(input: DiagnosticEventInput): OrbitDiagnosticEvent | null {
     const session = this.activeSession;
     if (!session) {

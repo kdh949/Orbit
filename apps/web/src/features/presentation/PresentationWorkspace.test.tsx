@@ -90,7 +90,7 @@ describe("PresentationWorkspace", () => {
   it("resolves exact speaker-note keyword occurrences during live presentation", () => {
     const source = fs.readFileSync(presentationWorkspaceSourcePath, "utf8");
 
-    expect(source).toContain("matchKeywordOccurrenceTriggers");
+    expect(source).toContain("evaluateKeywordOccurrenceTriggers");
     expect(source).toContain("getKeywordOccurrenceTriggerIdsForSlide");
     expect(source).toContain("advanceSpeechAnimationManually");
     expect(source).toContain("applyPlaybackUpdate");

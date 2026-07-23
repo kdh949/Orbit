@@ -4903,61 +4903,6 @@
   overflow: hidden;
 }
 
-.presentation-animation-trigger-debug {
-  background: color-mix(
-    in srgb,
-    var(--redesign-color-dark-surface) 94%,
-    transparent
-  );
-  border: 1px solid color-mix(in srgb, var(--redesign-color-secondary) 72%, transparent);
-  border-radius: var(--redesign-radius-lg);
-  bottom: var(--redesign-space-4);
-  box-shadow: var(--redesign-shadow-overlay);
-  color: var(--redesign-color-on-dark);
-  font-size: var(--redesign-type-body-sm-size);
-  left: var(--redesign-space-4);
-  max-height: min(56vh, 620px);
-  overflow: auto;
-  padding: var(--redesign-space-3);
-  position: fixed;
-  width: min(460px, calc(100vw - var(--redesign-space-8)));
-  z-index: 50;
-}
-
-.presentation-animation-trigger-debug header,
-.presentation-animation-trigger-debug dl,
-.presentation-animation-trigger-debug details {
-  display: grid;
-  gap: var(--redesign-space-2);
-}
-
-.presentation-animation-trigger-debug header > span,
-.presentation-animation-trigger-debug dt {
-  color: color-mix(in srgb, var(--redesign-color-light-surface) 68%, transparent);
-}
-
-.presentation-animation-trigger-debug dl {
-  margin: 0;
-}
-
-.presentation-animation-trigger-debug dl > div {
-  display: grid;
-  gap: var(--redesign-space-2);
-  grid-template-columns: 112px minmax(0, 1fr);
-}
-
-.presentation-animation-trigger-debug dd,
-.presentation-animation-trigger-debug p {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.presentation-animation-trigger-debug-blocker {
-  background: color-mix(in srgb, var(--redesign-color-warning) 22%, transparent);
-  border-radius: var(--redesign-radius-sm);
-  padding: var(--redesign-space-2);
-}
-
 .rehearsal-side-timer-card {
   background: var(--redesign-color-surface-container-low);
   border-bottom: 1px solid var(--redesign-color-outline-variant);

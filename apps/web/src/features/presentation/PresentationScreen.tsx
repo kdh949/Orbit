@@ -27,7 +27,6 @@ import {
 
 export function PresentationScreen(props: {
   adviceState: TimingAdviceState;
-  animationTriggerDebug?: ReactNode;
   autoAdvanceStatus?: ReactNode;
   deck: Deck | null;
   diagnostics?: DiagnosticSink;
@@ -230,7 +229,6 @@ export function PresentationScreen(props: {
           rows={teleprompterRows}
         />
       </section>
-      {props.animationTriggerDebug}
     </main>
   );
 }
