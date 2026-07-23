@@ -127,6 +127,37 @@ describe("slide operation helpers", () => {
     expect(duplicate.title).toBe("Data Contract 복사본");
     expect(duplicate.thumbnailUrl).toBe("");
     expectReferenceRichDuplicate(source, duplicate, deck);
+    expect(
+      duplicate.elements.map((element) => element.morphKey)
+    ).toEqual(
+      source.elements.map((element) => element.morphKey ?? element.elementId)
+    );
+  });
+
+  it("keeps morph lineage across repeated slide duplication", () => {
+    const deck = createReferenceRichDeck();
+    const source = deck.slides[1]!;
+    const firstResult = applyDeckPatch(
+      deck,
+      createDuplicateSlidePatch(deck, source.slideId)
+    );
+    expect(firstResult.ok).toBe(true);
+    if (!firstResult.ok) return;
+
+    const firstDuplicate = firstResult.deck.slides[2]!;
+    const secondResult = applyDeckPatch(
+      firstResult.deck,
+      createDuplicateSlidePatch(firstResult.deck, firstDuplicate.slideId)
+    );
+    expect(secondResult.ok).toBe(true);
+    if (!secondResult.ok) return;
+
+    const secondDuplicate = secondResult.deck.slides[3]!;
+    expect(
+      secondDuplicate.elements.map((element) => element.morphKey)
+    ).toEqual(
+      source.elements.map((element) => element.morphKey ?? element.elementId)
+    );
   });
 
   it("uses a stable slide title fallback for a duplicate", () => {
@@ -175,7 +206,8 @@ describe("slide operation helpers", () => {
         operation.slide.elements.every(
           (element) =>
             element.ooxmlOrigin === "authored" &&
-            element.ooxmlEditCapabilities === undefined,
+            element.ooxmlEditCapabilities === undefined &&
+            element.morphKey === undefined,
         ),
       ).toBe(true);
     }

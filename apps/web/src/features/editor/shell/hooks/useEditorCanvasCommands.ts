@@ -78,6 +78,7 @@ type ClipboardState = {
   elements: DeckElement[];
   pasteCount: number;
   rootElementId: string;
+  sourceSlideId: string;
 };
 type CommitPatch = (
   patch: DeckPatch | PatchProducer,
@@ -322,6 +323,33 @@ function nextTableCellTarget(
     return { ...target, anchorColumnIndex: columnIndex, columnIndex };
   }
   return target;
+}
+
+export function applyCloneMorphLineage(args: {
+  allowMorphLineage: boolean;
+  clonedElement: DeckElement;
+  destinationMatchKeys: Set<string>;
+  destinationSlideId: string;
+  sourceElement: DeckElement;
+  sourceSlideId?: string;
+}): void {
+  const sameSlide =
+    args.sourceSlideId === undefined ||
+    args.sourceSlideId === args.destinationSlideId;
+  if (!args.allowMorphLineage || sameSlide) {
+    delete args.clonedElement.morphKey;
+    return;
+  }
+
+  const sourceMatchKey =
+    args.sourceElement.morphKey ?? args.sourceElement.elementId;
+  if (args.destinationMatchKeys.has(sourceMatchKey)) {
+    delete args.clonedElement.morphKey;
+    return;
+  }
+
+  args.clonedElement.morphKey = sourceMatchKey;
+  args.destinationMatchKeys.add(sourceMatchKey);
 }
 
 export function useEditorCanvasCommands(args: {
@@ -921,6 +949,7 @@ export function useEditorCanvasCommands(args: {
     sourceElements: DeckElement[],
     rootElementId: string,
     offsetMultiplier = 1,
+    sourceSlideId = args.currentSlide?.slideId,
   ) {
     if (!canEditSlideCanvas(args.currentSlide)) return null;
     if (sourceElements.length === 0) return null;
@@ -945,6 +974,11 @@ export function useEditorCanvasCommands(args: {
       ...sourceElements.map((element) => element.zIndex),
     );
     const offset = 24 * offsetMultiplier;
+    const destinationMatchKeys = new Set(
+      args.currentSlide.elements.map(
+        (element) => element.morphKey ?? element.elementId
+      )
+    );
     const clonedElements = sourceElements.map((sourceElement) => {
       const clonedElement = structuredClone(sourceElement);
       clonedElement.elementId = idMap.get(sourceElement.elementId)!;
@@ -952,6 +986,14 @@ export function useEditorCanvasCommands(args: {
       clonedElement.y = sourceElement.y + offset;
       clonedElement.zIndex =
         highestZIndex + 1 + sourceElement.zIndex - lowestSourceZIndex;
+      applyCloneMorphLineage({
+        allowMorphLineage: args.deck.metadata.sourceType !== "import",
+        clonedElement,
+        destinationMatchKeys,
+        destinationSlideId: args.currentSlide!.slideId,
+        sourceElement,
+        sourceSlideId
+      });
       if (clonedElement.type === "group") {
         const groupProps = clonedElement.props as GroupElementProps;
         groupProps.childElementIds = groupProps.childElementIds
@@ -993,16 +1035,23 @@ export function useEditorCanvasCommands(args: {
       elements: structuredClone(getCloneSourceElements(args.selectedElement)),
       pasteCount: 0,
       rootElementId: args.selectedElement.elementId,
+      sourceSlideId: args.currentSlide.slideId,
     };
   }
 
   function pasteCopiedElement() {
     if (!canEditSlideCanvas(args.currentSlide) || !copiedElementRef.current) return;
     args.setElementContextMenu(null);
-    const { elements, pasteCount, rootElementId } = copiedElementRef.current;
+    const { elements, pasteCount, rootElementId, sourceSlideId } =
+      copiedElementRef.current;
     const nextPasteCount = pasteCount + 1;
-    cloneElements(elements, rootElementId, nextPasteCount);
-    copiedElementRef.current = { elements, pasteCount: nextPasteCount, rootElementId };
+    cloneElements(elements, rootElementId, nextPasteCount, sourceSlideId);
+    copiedElementRef.current = {
+      elements,
+      pasteCount: nextPasteCount,
+      rootElementId,
+      sourceSlideId
+    };
   }
 
   function createDrawnElement(

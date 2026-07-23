@@ -79,6 +79,7 @@ export function createDuplicateSlidePatch(deck: Deck, sourceSlideId: string): De
     sourceMatches[0]!,
     deck.slides.length + 1,
     allocateId,
+    deck.metadata.sourceType !== "import" && sourceMatches[0]!.kind === "content",
   );
   const duplicate =
     deck.metadata.sourceType === "import"
@@ -127,6 +128,7 @@ function duplicateSlideWithReferences(
   sourceInput: Slide,
   temporaryOrder: number,
   allocateId: LocalIdAllocator,
+  preserveMorphLineage: boolean,
 ): Slide {
   const source = slideSchema.parse(sourceInput);
   const nextSlideId = allocateId("slide_");
@@ -175,6 +177,9 @@ function duplicateSlideWithReferences(
     const nextElement = {
       ...element,
       elementId: requireRemappedId(elementIds, element.elementId, "element"),
+      morphKey: preserveMorphLineage
+        ? (element.morphKey ?? element.elementId)
+        : undefined,
     };
 
     if (nextElement.type !== "group") {
