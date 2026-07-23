@@ -33,6 +33,7 @@ from app.ai.ooxml_reference_templates.private_generation_runtime import (
     PrivateOoxmlReferenceGenerationRuntime,
     ProjectImageAsset,
     _locked_snapshot,
+    _master_placeholder_type,
     _slot_mask_png,
     generated_storage_key,
 )
@@ -699,6 +700,44 @@ def test_fidelity_geometry_resolves_inherited_placeholder_chain(
         shape for shape in snapshot["shapes"] if shape["shapeId"] == shape_id
     )
     assert title_snapshot["geometry"]["transform"] is not None
+
+
+@pytest.mark.parametrize(
+    ("placeholder_type", "master_type"),
+    [
+        ("ctrTitle", "title"),
+        ("title", "title"),
+        ("obj", "body"),
+        ("chart", "body"),
+        ("pic", "body"),
+        ("subTitle", "body"),
+        ("dt", "dt"),
+    ],
+)
+def test_fidelity_geometry_maps_layout_placeholder_to_master_type(
+    placeholder_type: str,
+    master_type: str,
+) -> None:
+    assert _master_placeholder_type(placeholder_type) == master_type
+
+
+def test_fidelity_geometry_resolves_object_placeholder_from_master_body() -> None:
+    presentation = Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[1])
+    content = slide.placeholders[1]
+    output = BytesIO()
+    presentation.save(output)
+    shape_id = str(content.shape_id)
+
+    snapshot = _locked_snapshot(
+        output.getvalue(),
+        "ppt/slides/slide1.xml",
+        {shape_id},
+    )
+    content_snapshot = next(
+        shape for shape in snapshot["shapes"] if shape["shapeId"] == shape_id
+    )
+    assert content_snapshot["geometry"]["transform"] is not None
 
 
 def _calibration() -> dict[str, object]:

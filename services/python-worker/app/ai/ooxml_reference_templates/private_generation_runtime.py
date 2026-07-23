@@ -1152,24 +1152,36 @@ def _matching_placeholder_shape(
     *,
     prefer_type: bool,
 ) -> ET.Element | None:
-    matching_index: list[ET.Element] = []
-    matching_type: list[ET.Element] = []
+    matches: list[ET.Element] = []
+    expected_type = _master_placeholder_type(placeholder[1]) if prefer_type else None
     for candidate in _shape_elements(root):
         identity = _placeholder_identity(candidate)
         if identity is None:
             continue
-        if identity[0] == placeholder[0]:
-            matching_index.append(candidate)
-        if identity[1] == placeholder[1]:
-            matching_type.append(candidate)
-    preferred, fallback = (
-        (matching_type, matching_index)
-        if prefer_type and placeholder[1] != "obj"
-        else (matching_index, matching_type)
-    )
-    if len(preferred) == 1:
-        return preferred[0]
-    return fallback[0] if len(fallback) == 1 else None
+        if prefer_type and identity[1] == expected_type:
+            matches.append(candidate)
+        elif not prefer_type and identity[0] == placeholder[0]:
+            matches.append(candidate)
+    return matches[0] if len(matches) == 1 else None
+
+
+def _master_placeholder_type(placeholder_type: str) -> str:
+    return {
+        "body": "body",
+        "chart": "body",
+        "clipArt": "body",
+        "ctrTitle": "title",
+        "dgm": "body",
+        "dt": "dt",
+        "ftr": "ftr",
+        "media": "body",
+        "obj": "body",
+        "pic": "body",
+        "sldNum": "sldNum",
+        "subTitle": "body",
+        "tbl": "body",
+        "title": "title",
+    }.get(placeholder_type, placeholder_type)
 
 
 def _related_package_part(
