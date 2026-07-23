@@ -1,9 +1,47 @@
 import { describe, expect, it, vi } from "vitest";
 import type { LiveSttAudioLevelEvent } from "../liveStt";
 import type { LiveSttResult } from "./liveSttPort";
-import { OpenAiRealtimeLiveSttPort } from "./openAiRealtimeLiveSttPort";
+import {
+  OpenAiRealtimeLiveSttPort,
+  sanitizeRealtimeEvent
+} from "./openAiRealtimeLiveSttPort";
 
 describe("OpenAiRealtimeLiveSttPort", () => {
+  it("allowlist 밖의 transport credential과 SDP를 제거한다", () => {
+    expect(
+      sanitizeRealtimeEvent({
+        type: "conversation.item.input_audio_transcription.completed",
+        event_id: "event_1",
+        item_id: "item_1",
+        content_index: 0,
+        transcript: "오르빗",
+        Authorization: "Bearer secret",
+        client_secret: "secret",
+        sdp: "private-sdp",
+        session: {
+          model: "gpt-realtime-whisper",
+          client_secret: "secret"
+        },
+        error: {
+          type: "invalid_request_error",
+          code: "invalid_audio",
+          message: "민감한 원문"
+        }
+      })
+    ).toEqual({
+      eventType: "conversation.item.input_audio_transcription.completed",
+      event_id: "event_1",
+      item_id: "item_1",
+      content_index: 0,
+      transcript: "오르빗",
+      session: { model: "gpt-realtime-whisper" },
+      error: {
+        type: "invalid_request_error",
+        code: "invalid_audio"
+      }
+    });
+  });
+
   it("connects with a project-scoped client secret and maps delta/completed events", async () => {
     const peerConnection = new FakePeerConnection();
     const fetcher = createOpenAiRealtimeFetcher();

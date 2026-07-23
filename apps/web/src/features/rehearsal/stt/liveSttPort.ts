@@ -1,4 +1,5 @@
 import type { LiveSttPartialTranscriptEvent } from "@orbit/shared";
+import type { DiagnosticTrace } from "../../diagnostics/diagnosticTypes";
 
 export type LiveSttEngineId =
   | "openai-realtime"
@@ -58,6 +59,11 @@ export type LiveSttResult = {
   resultRevision?: number;
   confidence?: number;
   alternatives?: LiveSttAlternative[];
+  diagnosticTrace?: DiagnosticTrace;
+};
+
+export type LiveSttResultSubscriptionOptions = {
+  subscriberId: string;
 };
 
 export type LiveSttErrorCode =
@@ -86,7 +92,10 @@ export type LiveSttPort = {
   start: (config: LiveSttSessionConfig) => Promise<void>;
   stop: () => Promise<void>;
   updateBiasPhrases: (phrases: readonly LiveSttBiasPhrase[]) => void | Promise<void>;
-  onResult: (cb: (result: LiveSttResult) => void) => LiveSttUnsubscribe;
+  onResult: (
+    cb: (result: LiveSttResult) => void,
+    options?: LiveSttResultSubscriptionOptions
+  ) => LiveSttUnsubscribe;
   onError: (cb: (error: LiveSttError) => void) => LiveSttUnsubscribe;
   dispose: () => void | Promise<void>;
 };

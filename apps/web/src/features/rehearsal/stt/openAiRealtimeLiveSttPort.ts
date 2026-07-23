@@ -1,5 +1,10 @@
 import { realtimeTranscriptionClientSecretResponseSchema } from "@orbit/shared";
 import type { LiveSttAudioLevelEvent } from "../liveStt";
+import type {
+  DiagnosticData,
+  DiagnosticSink,
+  DiagnosticTrace
+} from "../../diagnostics/diagnosticTypes";
 import { calculatePcmAudioLevel } from "../liveSttAudioLevel";
 import {
   emitLiveSttResultToSubscribers,
@@ -15,7 +20,7 @@ import {
 
 type OpenAiRealtimeDataChannel = {
   addEventListener: (
-    type: "error" | "message" | "open",
+    type: "close" | "error" | "message" | "open",
     listener: (event: Event) => void
   ) => void;
   close: () => void;
@@ -48,6 +53,7 @@ type OpenAiRealtimeLiveSttPortOptions = {
   now?: () => number;
   onAudioLevel?: (event: LiveSttAudioLevelEvent) => void;
   pendingAudioRmsDbThreshold?: number;
+  diagnostics?: DiagnosticSink;
 };
 
 type RealtimeTranscriptEventKey = string;
@@ -73,6 +79,7 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
     stream: MediaStream,
     onAudioLevel?: (event: LiveSttAudioLevelEvent) => void
   ) => AudioLevelMeter;
+  private readonly diagnostics?: DiagnosticSink;
   private readonly resultSubscribers = new Set<(result: LiveSttResult) => void>();
   private readonly errorSubscribers = new Set<(error: LiveSttError) => void>();
   private readonly partialTextByEventKey = new Map<
@@ -90,6 +97,16 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
   private hasPendingAudioForCommit = false;
   private startedAtMs: number | null = null;
   private biasPhrases: LiveSttBiasPhrase[] = [];
+  private audioLevelWindow:
+    | {
+        minRmsDb: number;
+        maxRmsDb: number;
+        totalRmsDb: number;
+        sampleCount: number;
+        samplesAboveCommitThreshold: number;
+        startedAtMs: number;
+      }
+    | null = null;
 
   constructor(options: OpenAiRealtimeLiveSttPortOptions) {
     this.projectId = options.projectId;
@@ -104,6 +121,7 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
       options.createPeerConnection ?? createDefaultPeerConnection;
     this.createAudioLevelMeter =
       options.createAudioLevelMeter ?? createAnalyserAudioLevelMeter;
+    this.diagnostics = options.diagnostics;
   }
 
   async start(config: LiveSttSessionConfig) {
@@ -119,6 +137,7 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
     this.biasPhrases = normalizeLiveSttBiasPhrases(config.biasPhrases);
     this.partialTextByEventKey.clear();
     this.revisionByEventKey.clear();
+    this.audioLevelWindow = null;
 
     try {
       const token = await this.fetchClientSecret();
@@ -133,6 +152,7 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
       const dataChannel = peerConnection.createDataChannel("oai-events");
       this.dataChannel = dataChannel;
       dataChannel.addEventListener("open", this.handleDataChannelOpen);
+      dataChannel.addEventListener("close", this.handleDataChannelClose);
       dataChannel.addEventListener("message", this.handleDataChannelMessage);
       dataChannel.addEventListener("error", this.handleDataChannelError);
 
@@ -175,6 +195,7 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
   }
 
   async stop() {
+    this.flushAudioLevelWindow();
     this.startedAtMs = null;
     this.stopCommitLoop();
     this.hasPendingAudioForCommit = false;
@@ -244,8 +265,26 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
 
   private readonly handleDataChannelMessage = (event: Event) => {
     try {
-      this.handleRealtimeEvent(JSON.parse(String((event as MessageEvent).data)));
-    } catch {
+      const raw = JSON.parse(String((event as MessageEvent).data));
+      this.diagnostics?.emit({
+        stage: "stt",
+        name: "stt.transport.raw_event",
+        outcome: "received",
+        trace: getRealtimeDiagnosticTrace(raw),
+        data: sanitizeRealtimeEvent(raw)
+      });
+      this.handleRealtimeEvent(raw);
+    } catch (cause) {
+      this.diagnostics?.emit({
+        level: "error",
+        stage: "stt",
+        name: "stt.transport.parse_failed",
+        outcome: "failed",
+        reason: "INVALID_JSON",
+        data: {
+          errorName: cause instanceof Error ? cause.name : "UnknownError"
+        }
+      });
       this.emitError(
         new LiveSttError(
           "runtime_error",
@@ -256,10 +295,33 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
   };
 
   private readonly handleDataChannelOpen = () => {
+    this.diagnostics?.emit({
+      stage: "stt",
+      name: "data_channel.opened",
+      outcome: "accepted",
+      data: { engine: this.engineId }
+    });
     this.startCommitLoop();
   };
 
+  private readonly handleDataChannelClose = () => {
+    this.diagnostics?.emit({
+      stage: "stt",
+      name: "data_channel.closed",
+      outcome: "settled",
+      data: { engine: this.engineId }
+    });
+  };
+
   private readonly handleDataChannelError = () => {
+    this.diagnostics?.emit({
+      level: "error",
+      stage: "stt",
+      name: "data_channel.error",
+      outcome: "failed",
+      reason: "DATA_CHANNEL_ERROR",
+      data: { engine: this.engineId }
+    });
     this.emitError(
       new LiveSttError("runtime_error", "OpenAI Realtime data channel 오류입니다.")
     );
@@ -270,6 +332,7 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
       this.hasPendingAudioForCommit = true;
     }
 
+    this.recordAudioLevel(event);
     this.onAudioLevel?.(event);
   };
 
@@ -294,11 +357,28 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
 
   private commitPendingAudioBuffer() {
     const dataChannel = this.dataChannel;
-    if (
-      !dataChannel ||
-      !this.hasPendingAudioForCommit ||
-      !isDataChannelOpen(dataChannel)
-    ) {
+    this.diagnostics?.emit({
+      stage: "audio",
+      name: "audio.commit.tick",
+      outcome: "received",
+      data: {
+        hasDataChannel: dataChannel !== null,
+        hasPendingAudio: this.hasPendingAudioForCommit,
+        readyState: dataChannel?.readyState ?? "unknown"
+      }
+    });
+    if (!dataChannel) {
+      this.emitCommitSkipped("NO_DATA_CHANNEL");
+      return;
+    }
+    if (!this.hasPendingAudioForCommit) {
+      this.emitCommitSkipped("NO_PENDING_AUDIO");
+      return;
+    }
+    if (!isDataChannelOpen(dataChannel)) {
+      this.emitCommitSkipped("DATA_CHANNEL_NOT_OPEN", {
+        readyState: dataChannel.readyState ?? "unknown"
+      });
       return;
     }
 
@@ -309,7 +389,26 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
         })
       );
       this.hasPendingAudioForCommit = false;
-    } catch {
+      this.diagnostics?.emit({
+        stage: "audio",
+        name: "audio.commit.sent",
+        outcome: "committed",
+        data: {
+          thresholdDb: this.pendingAudioRmsDbThreshold,
+          intervalMs: this.commitIntervalMs
+        }
+      });
+    } catch (cause) {
+      this.diagnostics?.emit({
+        level: "error",
+        stage: "audio",
+        name: "audio.commit.failed",
+        outcome: "failed",
+        reason: "DATA_CHANNEL_SEND_FAILED",
+        data: {
+          errorName: cause instanceof Error ? cause.name : "UnknownError"
+        }
+      });
       this.emitError(
         new LiveSttError(
           "runtime_error",
@@ -317,6 +416,64 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
         )
       );
     }
+  }
+
+  private emitCommitSkipped(reason: string, data: DiagnosticData = {}) {
+    this.diagnostics?.emit({
+      stage: "audio",
+      name: "audio.commit.skipped",
+      outcome: "skipped",
+      reason,
+      data
+    });
+  }
+
+  private recordAudioLevel(event: LiveSttAudioLevelEvent) {
+    const now = this.now();
+    const window = this.audioLevelWindow;
+    if (!window) {
+      this.audioLevelWindow = {
+        minRmsDb: event.rmsDb,
+        maxRmsDb: event.rmsDb,
+        totalRmsDb: event.rmsDb,
+        sampleCount: 1,
+        samplesAboveCommitThreshold:
+          event.rmsDb >= this.pendingAudioRmsDbThreshold ? 1 : 0,
+        startedAtMs: now
+      };
+      return;
+    }
+    window.minRmsDb = Math.min(window.minRmsDb, event.rmsDb);
+    window.maxRmsDb = Math.max(window.maxRmsDb, event.rmsDb);
+    window.totalRmsDb += event.rmsDb;
+    window.sampleCount += 1;
+    if (event.rmsDb >= this.pendingAudioRmsDbThreshold) {
+      window.samplesAboveCommitThreshold += 1;
+    }
+    if (now - window.startedAtMs >= 500) {
+      this.flushAudioLevelWindow();
+    }
+  }
+
+  private flushAudioLevelWindow() {
+    const window = this.audioLevelWindow;
+    if (!window) {
+      return;
+    }
+    this.audioLevelWindow = null;
+    this.diagnostics?.emit({
+      stage: "audio",
+      name: "audio.level.window",
+      outcome: "accepted",
+      data: {
+        minRmsDb: window.minRmsDb,
+        maxRmsDb: window.maxRmsDb,
+        averageRmsDb: window.totalRmsDb / window.sampleCount,
+        sampleCount: window.sampleCount,
+        samplesAboveCommitThreshold: window.samplesAboveCommitThreshold,
+        commitThresholdDb: this.pendingAudioRmsDbThreshold
+      }
+    });
   }
 
   private handleRealtimeEvent(event: unknown) {
@@ -481,6 +638,61 @@ function getRealtimeTranscriptUtteranceId(
   const contentIndex =
     typeof event.content_index === "number" ? event.content_index : 0;
   return `${event.item_id}:${contentIndex}`;
+}
+
+function getRealtimeDiagnosticTrace(event: unknown): DiagnosticTrace {
+  if (!isRecord(event)) {
+    return {};
+  }
+  return {
+    ...(typeof event.event_id === "string"
+      ? { sourceEventId: event.event_id }
+      : {}),
+    ...(typeof event.item_id === "string" ? { itemId: event.item_id } : {}),
+    ...(typeof event.content_index === "number"
+      ? { contentIndex: event.content_index }
+      : {})
+  };
+}
+
+export function sanitizeRealtimeEvent(event: unknown): DiagnosticData {
+  if (!isRecord(event)) {
+    return { eventType: "invalid" };
+  }
+  const data: DiagnosticData = {
+    eventType: typeof event.type === "string" ? event.type : "unknown"
+  };
+  for (const key of ["event_id", "item_id", "content_index"] as const) {
+    const value = event[key];
+    if (typeof value === "string" || typeof value === "number") {
+      data[key] = value;
+    }
+  }
+  if (typeof event.delta === "string") {
+    data.delta = event.delta;
+  }
+  if (typeof event.transcript === "string") {
+    data.transcript = event.transcript;
+  }
+  const error = event.error;
+  if (isRecord(error)) {
+    data.error = Object.fromEntries(
+      ["type", "code"].flatMap((key) => {
+        const value = error[key];
+        return typeof value === "string" ? [[key, value]] : [];
+      })
+    );
+  }
+  const session = event.session;
+  if (isRecord(session)) {
+    data.session = Object.fromEntries(
+      ["model", "input_audio_format"].flatMap((key) => {
+        const value = session[key];
+        return typeof value === "string" ? [[key, value]] : [];
+      })
+    );
+  }
+  return data;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
