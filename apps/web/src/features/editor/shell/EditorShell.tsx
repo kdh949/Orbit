@@ -1,5 +1,6 @@
 import {
   createDemoDeck,
+  createApplyActivityDesignPresetPatch,
   createDuplicateSlidePatch,
   createUpdateActivityDefinitionPatch,
   createUpdateActivityResultDefinitionPatch,
@@ -1001,6 +1002,8 @@ export function EditorShell(props: { projectId?: string }) {
   const handleAddActivityResultsSlide =
     editorCanvasActions.addActivityResultsSlide;
   const handleAddActivityQrElement = editorCanvasActions.addActivityQrElement;
+  const handleAddActivityRuntimeElement =
+    editorCanvasActions.addActivityRuntimeElement;
   const handleAddTextElement = editorCanvasActions.addTextElement;
   const handleCanvasBackgroundSelectionClear = editorCanvasActions.clearCanvasSelection;
   const handleCommitCustomShapeGeometry = editorCanvasActions.commitCustomShapeGeometry;
@@ -2566,6 +2569,20 @@ export function EditorShell(props: { projectId?: string }) {
             currentSlide?.kind === "activity" ? (
               <ActivitySlideInspector
                 deckId={deck.deckId}
+                onAddRuntimeElement={(kind) => {
+                  handleAddActivityRuntimeElement(kind);
+                }}
+                onApplyDesignPreset={(presetId) => {
+                  commitPatch((currentDeck) =>
+                    createApplyActivityDesignPresetPatch(
+                      currentDeck,
+                      currentSlide.slideId,
+                      presetId
+                    )
+                  );
+                  setSelectedElementIds([]);
+                  setEditingElementId(null);
+                }}
                 onOpenAudienceLink={() => setIsAudienceLinkModalOpen(true)}
                 projectId={deck.projectId}
                 slide={currentSlide}

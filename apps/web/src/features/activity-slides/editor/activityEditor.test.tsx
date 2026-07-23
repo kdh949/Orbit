@@ -13,6 +13,7 @@ import {
   removeQuestionOption
 } from "./ActivitySlideInspector";
 import { ActivityEditorOperationsPanel } from "./ActivityEditorOperationsPanel";
+import { ActivityDesignPicker } from "./ActivityDesignPicker";
 import { ActivitySlidePreview } from "./ActivitySlidePreview";
 import { ActivitySpecialSlideThumbnail } from "./ActivitySpecialSlideThumbnail";
 import { startSequentialPolling } from "../model/sequentialPolling";
@@ -24,6 +25,29 @@ import {
 
 describe("activity slide editor", () => {
   const slide = createActivitySlide(createDemoDeck(), "satisfaction");
+
+  it("shows every editable design preset and runtime element palette", () => {
+    const editableSlide = createActivitySlide(createDemoDeck(), "poll", {
+      preset: "spotlight"
+    });
+    const html = renderToStaticMarkup(
+      <ActivityDesignPicker slide={editableSlide} />
+    );
+
+    for (const label of [
+      "Spotlight",
+      "Split",
+      "Editorial",
+      "Essentials",
+      "Blank",
+      "질문 제목",
+      "질문 설명",
+      "QR",
+      "입장 코드"
+    ]) {
+      expect(html).toContain(label);
+    }
+  });
 
   it("renders role-specific previews from the same activity definition", () => {
     const audience = renderToStaticMarkup(<ActivitySlidePreview role="audience" slide={slide} />);

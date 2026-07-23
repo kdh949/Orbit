@@ -14,6 +14,10 @@ import {
 } from "../../../components/ui";
 import { ActivityAudienceSlideRenderer } from "../rendering/ActivityAudienceSlideRenderer";
 import { ActivityEditorOperationsPanel } from "./ActivityEditorOperationsPanel";
+import {
+  ActivityDesignPicker,
+  type ActivityDesignPresetId
+} from "./ActivityDesignPicker";
 import { ActivityPreQuestionInbox } from "./ActivityPreQuestionInbox";
 import { useActivityEditorRuntime } from "./useActivityEditorRuntime";
 
@@ -39,6 +43,10 @@ const templateDescriptions = {
 export function ActivitySlideInspector(props: {
   deckId?: string;
   onOpenAudienceLink?: () => void;
+  onAddRuntimeElement?: (
+    kind: "title" | "description" | "qr" | "passcode"
+  ) => void;
+  onApplyDesignPreset?: (presetId: ActivityDesignPresetId) => void;
   onChange: (activity: ActivityDefinition) => void;
   projectId?: string;
   slide: ActivitySlide;
@@ -74,6 +82,12 @@ export function ActivitySlideInspector(props: {
           <p>{templateDescriptions[activity.template]}</p>
         </div>
       </div>
+
+      <ActivityDesignPicker
+        onAddRuntimeElement={props.onAddRuntimeElement}
+        onApplyPreset={props.onApplyDesignPreset}
+        slide={props.slide}
+      />
 
       <fieldset
         className="activity-semantic-fields"

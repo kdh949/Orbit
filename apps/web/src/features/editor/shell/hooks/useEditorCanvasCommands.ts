@@ -491,6 +491,94 @@ export function useEditorCanvasCommands(args: {
     return true;
   }
 
+  function addActivityRuntimeElement(
+    kind: "title" | "description" | "qr" | "passcode"
+  ) {
+    const slide = args.currentSlide;
+    if (
+      slide?.kind !== "activity" ||
+      slide.activityAppearance.mode !== "editable"
+    ) {
+      return false;
+    }
+    if (kind === "qr") {
+      return addActivityQrElement(slide.activity.activityId);
+    }
+
+    const elementId = createElementId(args.deck);
+    const zIndex = getNextElementZIndex(slide.elements);
+    const common = {
+      elementId,
+      rotation: 0,
+      opacity: 1,
+      zIndex,
+      locked: false,
+      visible: true
+    };
+    const element: DeckElement =
+      kind === "passcode"
+        ? {
+            ...common,
+            type: "presentation-passcode",
+            role: "highlight",
+            x: 720,
+            y: 420,
+            width: 480,
+            height: 240,
+            props: {
+              label: "입장 코드",
+              unavailableText: "발표 시작 후 표시",
+              publicAccessText: "비밀번호 없이 바로 참여",
+              legacyUnavailableText: "입장 코드를 다시 설정해 주세요",
+              labelTextStyle: { fontSize: 22 },
+              codeTextStyle: {
+                fontSize: 64,
+                fontWeight: "bold",
+                letterSpacing: 12,
+                align: "center",
+                verticalAlign: "middle"
+              },
+              fill: "#FFFFFF",
+              stroke: "#C9CEC5",
+              strokeWidth: 2,
+              borderRadius: 24
+            }
+          }
+        : {
+            ...common,
+            type: "activity-copy",
+            role: kind === "title" ? "title" : "subtitle",
+            x: 360,
+            y: kind === "title" ? 240 : 430,
+            width: 1200,
+            height: kind === "title" ? 180 : 100,
+            props: {
+              activityId: slide.activity.activityId,
+              field: kind,
+              fallbackText:
+                kind === "title"
+                  ? "질문을 입력해 주세요"
+                  : "참여 안내를 입력해 주세요",
+              textStyle: {
+                fontSize: kind === "title" ? 72 : 30,
+                fontWeight: kind === "title" ? "bold" : "normal",
+                align: "center",
+                verticalAlign: "middle",
+                autoFit: "shrink-text"
+              }
+            }
+          };
+
+    const committed = args.commitPatch((currentDeck) =>
+      createAddElementPatch(currentDeck, slide.slideId, element)
+    );
+    if (!committed) return false;
+    args.setSelectedElementIds([elementId]);
+    args.setEditingElementId(null);
+    args.setInsertTool("select");
+    return true;
+  }
+
   function addChartElement(type: ChartInsertType = "bar") {
     if (!canEditSlideCanvas(args.currentSlide)) return;
     const elementId = createElementId(args.deck);
@@ -1426,6 +1514,7 @@ export function useEditorCanvasCommands(args: {
       addChartElement,
       addActivityResultsSlide,
       addActivityQrElement,
+      addActivityRuntimeElement,
       addIconElement,
       addSlide,
       addActivitySlide,
