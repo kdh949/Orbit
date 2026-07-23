@@ -158,7 +158,18 @@ def _content_planning(
             "content plan is outside the requested slide range",
         )
     return StageExecutionResult(
-        {"contentPlan": content_plan.model_dump(by_alias=True, mode="json")},
+        {
+            "contentPlan": content_plan.model_dump(by_alias=True, mode="json"),
+            "outline": [
+                {
+                    "order": slide.order,
+                    "title": (
+                        slide.value_for("title") or slide.values[0]
+                    ).content[:500],
+                }
+                for slide in content_plan.slides
+            ],
+        },
         slide_count,
         sum(len(slide.values) for slide in content_plan.slides),
         [],
@@ -360,17 +371,18 @@ def _materialization(
             payload.job_id,
             payload.project_id,
             payload.template_id,
-            loaded.source_package,
+            package_bytes,
         )
     )
     if (
-        baseline.size != len(loaded.source_package)
-        or baseline.original_name != f"{payload.template_id}-source.pptx"
+        baseline.size != len(package_bytes)
+        or baseline.original_name
+        != f"{payload.template_id}-generated-baseline.pptx"
         or baseline.file_id == current.file_id
     ):
         raise GenerationPipelineError(
             "OOXML_REFERENCE_BASELINE_ASSET_MISMATCH",
-            "staged baseline package does not match the approved source package",
+            "staged baseline package does not match the generated package",
         )
     clone = _clone_identity(loaded, plan)
     internal_manifest = _materialization_manifest(

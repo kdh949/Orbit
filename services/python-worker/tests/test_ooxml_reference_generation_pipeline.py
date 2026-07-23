@@ -106,10 +106,15 @@ def test_all_stages_execute_real_clone_slot_fidelity_and_materialization_path(
     assert materialization["jobResult"]["fidelityReport"]["status"] == "passed"
     assert materialization["baselinePackage"] == {
         "fileId": "file-baseline",
-        "originalName": "operating-review-source.pptx",
-        "size": runtime.source_size,
+        "originalName": "operating-review-generated-baseline.pptx",
+        "size": runtime.current_package_size,
     }
-    assert runtime.baseline_package == runtime.source_bytes
+    assert runtime.baseline_package == runtime.current_package
+    assert runtime.baseline_package != runtime.source_bytes
+    assert by_stage["content-planning"].artifact["outline"] == [
+        {"order": 1, "title": "운영 리뷰"},
+        {"order": 2, "title": "다음 단계"},
+    ]
     assert materialization["renderAssets"] == [
         {
             "fileId": "file-render-job-1-001",
@@ -328,6 +333,10 @@ class _FakeRuntime:
         return hashlib.sha256(self._packages["file-current-job-1"]).hexdigest()
 
     @property
+    def current_package(self) -> bytes:
+        return self._packages["file-current-job-1"]
+
+    @property
     def baseline_package(self) -> bytes:
         return self._baseline_packages["file-baseline"]
 
@@ -450,7 +459,7 @@ class _FakeRuntime:
         self._baseline_packages["file-baseline"] = content
         return GeneratedAsset(
             file_id="file-baseline",
-            original_name="operating-review-source.pptx",
+            original_name="operating-review-generated-baseline.pptx",
             size=len(content),
         )
 

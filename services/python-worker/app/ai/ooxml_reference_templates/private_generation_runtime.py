@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import posixpath
 import re
 import shutil
 import subprocess
@@ -21,6 +22,10 @@ from app.ai.ooxml_reference_templates.catalog_transport import (
     OoxmlReferenceTemplateCatalogRuntime,
     S3ObjectClient,
     create_s3_object_client,
+)
+from app.ai.ooxml_reference_templates.calibration import (
+    CalibrationObjectClient,
+    load_private_fidelity_calibration,
 )
 from app.ai.ooxml_reference_templates.clone import clone_source_slides
 from app.ai.deck_generation.models import (
@@ -469,7 +474,7 @@ class PrivateOoxmlReferenceGenerationRuntime:
             project_id=project_id,
             generation_id=job_id,
             file_id=_generated_file_id(project_id, job_id, "baseline-package"),
-            original_name=f"{template_id}-source.pptx",
+            original_name=f"{template_id}-generated-baseline.pptx",
             content=content,
             content_type=PPTX_CONTENT_TYPE,
         )
@@ -595,6 +600,10 @@ class PrivateOoxmlReferenceGenerationRuntime:
             )
         try:
             environment = dict(self._render_environment())
+            if environment.pop("resolvePackageFonts", False) is True:
+                environment["fontFiles"] = _resolved_package_font_files(
+                    package_bytes
+                )
         except Exception as error:
             raise PrivateGenerationRuntimeError(
                 "OOXML_REFERENCE_RENDER_ENVIRONMENT_UNAVAILABLE",
@@ -869,17 +878,23 @@ def build_private_generation_runtime(
         or not config.ooxml_reference_template_allowlist
     ):
         return None
+    storage_client = cast(
+        PrivateS3ObjectClient,
+        client or create_s3_object_client(config),
+    )
+    calibration = load_private_fidelity_calibration(
+        cast(CalibrationObjectClient, storage_client),
+        config.s3_bucket,
+    )
     return PrivateOoxmlReferenceGenerationRuntime(
         catalog=catalog,
-        storage_client=cast(
-            PrivateS3ObjectClient,
-            client or create_s3_object_client(config),
-        ),
+        storage_client=storage_client,
         bucket=config.s3_bucket,
         database_url=config.database_url,
         embedding_model=config.openai_embedding_model,
         content_model=config.openai_model,
         api_key=config.openai_api_key,
+        fidelity_calibration=calibration,
     )
 
 
@@ -980,19 +995,28 @@ def _locked_snapshot(
     shapes: list[dict[str, Any]] = []
     for z_index, element in enumerate(_shape_elements(root)):
         shape_id = _shape_id(element)
-        if not shape_id or shape_id in slot_shape_ids:
+        if not shape_id:
             continue
         shapes.append(
             {
                 "shapeId": shape_id,
                 "geometry": {
-                    "transform": _shape_transform(element),
+                    "transform": _shape_geometry(element),
                     "zIndex": z_index,
                 },
-                "style": _locked_style_sha256(element),
+                "style": _locked_style_sha256(
+                    element,
+                    mutable_content=shape_id in slot_shape_ids,
+                ),
             }
         )
-    return {"shapes": shapes}
+    return {
+        "shapes": shapes,
+        "relationships": _locked_relationship_snapshot(
+            package_bytes,
+            slide_part,
+        ),
+    }
 
 
 def _read_package_part(package_bytes: bytes, part: str) -> bytes:
@@ -1054,13 +1078,116 @@ def _shape_transform(element: ET.Element) -> tuple[int, int, int, int] | None:
     return None
 
 
-def _locked_style_sha256(element: ET.Element) -> str:
+def _shape_geometry(element: ET.Element) -> dict[str, int | bool] | None:
+    transform = _shape_transform(element)
+    if transform is None:
+        return None
+    xfrm = next(
+        (
+            candidate
+            for candidate in element.iter()
+            if _local_name(candidate.tag) == "xfrm"
+        ),
+        None,
+    )
+    if xfrm is None:
+        return None
+    x, y, cx, cy = transform
+    return {
+        "x": x,
+        "y": y,
+        "cx": cx,
+        "cy": cy,
+        "rotation": int(xfrm.get("rot", "0")),
+        "flipH": xfrm.get("flipH", "0") in {"1", "true"},
+        "flipV": xfrm.get("flipV", "0") in {"1", "true"},
+    }
+
+
+def _locked_style_sha256(
+    element: ET.Element,
+    *,
+    mutable_content: bool,
+) -> str:
     clone = ET.fromstring(ET.tostring(element, encoding="utf-8"))
     for parent in clone.iter():
         for child in list(parent):
             if _local_name(child.tag) in {"txBody", "xfrm"}:
                 parent.remove(child)
+        if mutable_content:
+            if _local_name(parent.tag) == "t":
+                parent.text = ""
+            if _local_name(parent.tag) == "blip":
+                for attribute in list(parent.attrib):
+                    if _local_name(attribute) in {"embed", "link"}:
+                        parent.attrib.pop(attribute)
     return _sha256(ET.tostring(clone, encoding="utf-8"))
+
+
+def _locked_relationship_snapshot(
+    package_bytes: bytes,
+    slide_part: str,
+) -> dict[str, dict[str, str]]:
+    relationship_types = (
+        ("layout", "slideLayout"),
+        ("master", "slideMaster"),
+        ("theme", "theme"),
+    )
+    snapshot: dict[str, dict[str, str]] = {}
+    current_part = slide_part
+    with zipfile.ZipFile(BytesIO(package_bytes), "r") as package:
+        for role, relationship_suffix in relationship_types:
+            rels_part = posixpath.join(
+                posixpath.dirname(current_part),
+                "_rels",
+                f"{posixpath.basename(current_part)}.rels",
+            )
+            try:
+                root = ET.fromstring(package.read(rels_part))
+            except (KeyError, ET.ParseError) as error:
+                raise PrivateGenerationRuntimeError(
+                    "OOXML_REFERENCE_PACKAGE_VALIDATION_FAILED",
+                    "locked relationship metadata cannot be read",
+                ) from error
+            relationship = next(
+                (
+                    item
+                    for item in root
+                    if str(item.get("Type", "")).endswith(
+                        f"/{relationship_suffix}"
+                    )
+                    and item.get("TargetMode") != "External"
+                ),
+                None,
+            )
+            if relationship is None or not relationship.get("Target"):
+                raise PrivateGenerationRuntimeError(
+                    "OOXML_REFERENCE_PACKAGE_VALIDATION_FAILED",
+                    "locked relationship chain is incomplete",
+                )
+            current_part = posixpath.normpath(
+                posixpath.join(
+                    posixpath.dirname(current_part),
+                    str(relationship.get("Target")),
+                )
+            )
+            if current_part.startswith("../") or current_part.startswith("/"):
+                raise PrivateGenerationRuntimeError(
+                    "OOXML_REFERENCE_PACKAGE_VALIDATION_FAILED",
+                    "locked relationship target escapes the package",
+                )
+            try:
+                content = package.read(current_part)
+            except KeyError as error:
+                raise PrivateGenerationRuntimeError(
+                    "OOXML_REFERENCE_PACKAGE_VALIDATION_FAILED",
+                    "locked relationship target is missing",
+                ) from error
+            snapshot[role] = {
+                "part": current_part,
+                "sha256": _sha256(content),
+            }
+    return snapshot
 
 
 def _local_name(tag: str) -> str:
@@ -1079,9 +1206,8 @@ def _manifest_sha256(loaded: LoadedReferenceTemplate) -> str:
 
 def _libreoffice_render_environment() -> Mapping[str, Any]:
     office = shutil.which("libreoffice") or shutil.which("soffice")
-    font_match = shutil.which("fc-match")
-    if office is None or font_match is None:
-        raise RuntimeError("LibreOffice and fontconfig are required")
+    if office is None:
+        raise RuntimeError("LibreOffice is required")
     office_result = subprocess.run(
         [office, "--version"],
         check=True,
@@ -1089,28 +1215,70 @@ def _libreoffice_render_environment() -> Mapping[str, Any]:
         text=True,
         timeout=30,
     )
-    font_result = subprocess.run(
-        [font_match, "sans-serif", "--format", "%{family}\n%{file}\n"],
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=10,
-    )
-    lines = [line.strip() for line in font_result.stdout.splitlines() if line.strip()]
-    if len(lines) < 2:
-        raise RuntimeError("resolved font metadata is incomplete")
-    font_path = Path(lines[1])
     return {
         "renderer": "libreoffice-pdf-pymupdf",
         "rendererVersion": office_result.stdout.strip(),
-        "fontFiles": [
+        "resolvePackageFonts": True,
+    }
+
+
+def _resolved_package_font_files(package_bytes: bytes) -> list[dict[str, str]]:
+    font_match = shutil.which("fc-match")
+    if font_match is None:
+        raise RuntimeError("fontconfig is required")
+    requested: set[str] = set()
+    with zipfile.ZipFile(BytesIO(package_bytes), "r") as package:
+        for name in package.namelist():
+            if not name.endswith(".xml") or not name.startswith("ppt/"):
+                continue
+            try:
+                root = ET.fromstring(package.read(name))
+            except ET.ParseError:
+                continue
+            for element in root.iter():
+                typeface = element.get("typeface")
+                if (
+                    typeface
+                    and typeface.strip()
+                    and not typeface.startswith("+")
+                ):
+                    requested.add(typeface.strip())
+    if not requested or len(requested) > 256:
+        raise RuntimeError("package font inventory is invalid")
+    resolved: list[dict[str, str]] = []
+    for requested_family in sorted(requested, key=str.casefold):
+        result = subprocess.run(
+            [
+                font_match,
+                requested_family,
+                "--format",
+                "%{family}\n%{file}\n",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        if len(lines) < 2:
+            raise RuntimeError("resolved font metadata is incomplete")
+        resolved_families = {
+            family.strip().casefold()
+            for family in lines[0].split(",")
+            if family.strip()
+        }
+        if requested_family.casefold() not in resolved_families:
+            raise RuntimeError("package font substitution is not allowed")
+        font_path = Path(lines[1])
+        resolved.append(
             {
+                "requestedFamily": requested_family,
                 "family": lines[0],
-                "role": "body",
+                "role": "package-requested",
                 "sha256": _sha256(font_path.read_bytes()),
             }
-        ],
-    }
+        )
+    return resolved
 
 
 def _font_families() -> set[str]:

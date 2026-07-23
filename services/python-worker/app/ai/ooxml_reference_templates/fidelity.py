@@ -70,6 +70,7 @@ def evaluate_ooxml_reference_fidelity(
     slide_reports: list[dict[str, Any]] = []
     geometry_drift_count = 0
     style_drift_count = 0
+    relationship_drift_count = 0
     locked_region_drift_count = 0
     locked_scores: list[float] = []
     whole_scores: list[float] = []
@@ -84,6 +85,7 @@ def evaluate_ooxml_reference_fidelity(
         locked_scores.append(float(report["lockedRegionSsim"]))
         geometry_drift_count += int(report["lockedGeometryDriftCount"])
         style_drift_count += int(report["lockedStyleDriftCount"])
+        relationship_drift_count += int(report["lockedRelationshipDriftCount"])
         locked_region_drift_count += int(report["lockedRegionDriftCount"])
     if geometry_drift_count:
         structural_issues.append(
@@ -91,6 +93,10 @@ def evaluate_ooxml_reference_fidelity(
         )
     if style_drift_count:
         structural_issues.append("OOXML_REFERENCE_FIDELITY_LOCKED_STYLE_DRIFT")
+    if relationship_drift_count:
+        structural_issues.append(
+            "OOXML_REFERENCE_FIDELITY_LOCKED_RELATIONSHIP_DRIFT"
+        )
     if any(score < float(threshold["lockedRegionSsimThreshold"]) for score in locked_scores):
         structural_issues.append("OOXML_REFERENCE_FIDELITY_LOCKED_PIXEL_DRIFT")
 
@@ -168,7 +174,7 @@ def _evaluate_slide(
         _png_bytes(source_image), _png_bytes(locked_generated)
     )
     mask_pixels = sum(mask_image.histogram()[1:])
-    geometry_drift, style_drift = _locked_snapshot_drift(
+    geometry_drift, style_drift, relationship_drift = _locked_snapshot_drift(
         source_locked, generated_locked
     )
     pixel_drift = int(locked_ssim < threshold)
@@ -183,7 +189,10 @@ def _evaluate_slide(
         "lockedRegionSsim": locked_ssim,
         "lockedGeometryDriftCount": geometry_drift,
         "lockedStyleDriftCount": style_drift,
-        "lockedRegionDriftCount": geometry_drift + style_drift + pixel_drift,
+        "lockedRelationshipDriftCount": relationship_drift,
+        "lockedRegionDriftCount": (
+            geometry_drift + style_drift + relationship_drift + pixel_drift
+        ),
     }
 
 
@@ -212,7 +221,7 @@ def _comparison_images(
 
 def _locked_snapshot_drift(
     source_snapshot: Mapping[str, Any], generated_snapshot: Mapping[str, Any]
-) -> tuple[int, int]:
+) -> tuple[int, int, int]:
     source_shapes = _shape_map(source_snapshot)
     generated_shapes = _shape_map(generated_snapshot)
     identities = set(source_shapes) | set(generated_shapes)
@@ -227,7 +236,11 @@ def _locked_snapshot_drift(
             continue
         geometry += int(source.get("geometry") != generated.get("geometry"))
         style += int(source.get("style") != generated.get("style"))
-    return geometry, style
+    relationship = int(
+        source_snapshot.get("relationships")
+        != generated_snapshot.get("relationships")
+    )
+    return geometry, style, relationship
 
 
 def _shape_map(snapshot: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:

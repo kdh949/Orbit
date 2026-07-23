@@ -82,6 +82,11 @@ def _calibration(template_ids: list[str] | None = None) -> dict[str, object]:
 
 def _locked_snapshot() -> dict[str, object]:
     return {
+        "relationships": {
+            "layout": {"part": "ppt/slideLayouts/slideLayout1.xml", "sha256": SHA256},
+            "master": {"part": "ppt/slideMasters/slideMaster1.xml", "sha256": SHA256},
+            "theme": {"part": "ppt/theme/theme1.xml", "sha256": SHA256},
+        },
         "shapes": [
             {
                 "shapeId": "7",
@@ -163,6 +168,10 @@ def test_generated_comparison_excludes_intended_slot_mask_from_locked_region() -
     [
         ("geometry", "OOXML_REFERENCE_FIDELITY_LOCKED_GEOMETRY_DRIFT"),
         ("style", "OOXML_REFERENCE_FIDELITY_LOCKED_STYLE_DRIFT"),
+        (
+            "relationship",
+            "OOXML_REFERENCE_FIDELITY_LOCKED_RELATIONSHIP_DRIFT",
+        ),
         ("package", "OOXML_REFERENCE_PACKAGE_VALIDATION_FAILED"),
     ],
 )
@@ -173,6 +182,8 @@ def test_known_drift_fixture_is_a_hard_failure(drift: str, issue_code: str) -> N
         generated["shapes"][0]["geometry"]["x"] = 11
     elif drift == "style":
         generated["shapes"][0]["style"]["fill"] = "#F8FAFC"
+    elif drift == "relationship":
+        generated["relationships"]["theme"]["sha256"] = "d" * 64
     else:
         warnings = ["UNRESOLVED_RELATIONSHIP"]
 

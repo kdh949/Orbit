@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import base64
+import json
 from io import BytesIO
 from types import SimpleNamespace
 from typing import Any
@@ -13,6 +14,11 @@ from pptx import Presentation
 
 from app.ai.ooxml_reference_templates.catalog_transport import (
     VerifiedPrivateCatalogSource,
+)
+from app.ai.ooxml_reference_templates.calibration import (
+    CALIBRATION_CONTENT_TYPE,
+    CALIBRATION_OBJECT_KEY,
+    PrivateFidelityCalibrationError,
 )
 from app.ai.ooxml_reference_templates.fidelity import (
     EXPECTED_TEMPLATE_IDS,
@@ -432,6 +438,16 @@ def test_render_runtime_uses_pptx_renderer_and_existing_fidelity_gate() -> None:
         == validation.assets
     )
     assert all("projects/" not in str(slide) for slide in validation.slides)
+    assert all(
+        {shape["shapeId"] for shape in slide["sourceLockedSnapshot"]["shapes"]}
+        == {"2"}
+        for slide in validation.slides
+    )
+    assert all(
+        set(slide["sourceLockedSnapshot"]["relationships"])
+        == {"layout", "master", "theme"}
+        for slide in validation.slides
+    )
 
 
 def test_image_slot_reads_only_project_scoped_private_asset_metadata() -> None:
@@ -508,6 +524,8 @@ def test_main_wiring_is_flag_and_exact_allowlist_gated() -> None:
         client=FakeS3Client(),
     )
     enabled = SimpleNamespace()
+    enabled_client = FakeS3Client()
+    _seed_calibration(enabled_client)
     configure_ooxml_reference_template_catalog(
         enabled,
         load_config(
@@ -519,7 +537,7 @@ def test_main_wiring_is_flag_and_exact_allowlist_gated() -> None:
                 ),
             }
         ),
-        client=FakeS3Client(),
+        client=enabled_client,
     )
 
     assert disabled.ooxml_reference_generation_runtime is None
@@ -527,6 +545,31 @@ def test_main_wiring_is_flag_and_exact_allowlist_gated() -> None:
         enabled.ooxml_reference_generation_runtime,
         PrivateOoxmlReferenceGenerationRuntime,
     )
+
+
+def test_enabled_main_wiring_fails_closed_without_private_calibration() -> None:
+    state = SimpleNamespace()
+
+    with pytest.raises(PrivateFidelityCalibrationError) as caught:
+        configure_ooxml_reference_template_catalog(
+            state,
+            load_config(
+                {
+                    **VALID_ENV,
+                    "AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED": "true",
+                    "AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST": (
+                        "operating-review@1"
+                    ),
+                }
+            ),
+            client=FakeS3Client(),
+        )
+
+    assert (
+        caught.value.code
+        == "OOXML_REFERENCE_FIDELITY_CALIBRATION_UNAVAILABLE"
+    )
+    assert CALIBRATION_OBJECT_KEY not in str(caught.value)
 
 
 def _runtime(
@@ -622,6 +665,7 @@ def _png() -> bytes:
 
 def _calibration() -> dict[str, object]:
     return {
+        "schemaVersion": 1,
         "status": "calibrated",
         "lockedRegionSsimThreshold": 0.998,
         "geometryEdgeTolerancePx": 0,
@@ -636,6 +680,20 @@ def _calibration() -> dict[str, object]:
             }
             for template_id in EXPECTED_TEMPLATE_IDS
         ],
+    }
+
+
+def _seed_calibration(client: FakeS3Client) -> None:
+    content = json.dumps(
+        _calibration(),
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    client.objects[CALIBRATION_OBJECT_KEY] = {
+        "content": content,
+        "content_type": CALIBRATION_CONTENT_TYPE,
+        "sha256": hashlib.sha256(content).hexdigest(),
     }
 
 
