@@ -2518,6 +2518,20 @@ describe("RehearsalWorkspace", () => {
     expect(source).toContain("getTriggerAnimationIdsForSlide,");
   });
 
+  it("routes speech triggers through the settled animation runtime", () => {
+    const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
+    const start = source.indexOf("function handleLivePartialTranscript");
+    const end = source.indexOf("function resetLiveTranscriptForSlide");
+    const handlerBody = source.slice(start, end);
+
+    expect(handlerBody).toContain("enqueueSpeechAnimationTriggers");
+    expect(handlerBody).toContain("newlyDetected.map");
+    expect(source).toContain("settleSpeechAnimationTransition");
+    expect(source).toContain(
+      "onTransitionSettled={handleRehearsalTransitionSettled}",
+    );
+  });
+
   it("computes remaining trigger steps when P4 fixtures inject cue-referenced animations", () => {
     const slide = p0AnimationDeck.slides[0]!;
     const triggerAnimationIds = [

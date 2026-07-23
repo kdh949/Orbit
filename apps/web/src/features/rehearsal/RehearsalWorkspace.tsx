@@ -145,18 +145,23 @@ import { normalizeLiveTranscriptText } from "./stt/liveTranscriptText";
 import { SherpaLiveSttPort } from "./stt/sherpaLiveSttPort";
 import {
   getKeywordOccurrenceTriggerIdsForSlide,
-  resolveCueTriggeredActions,
-  resolveKeywordTriggeredActions,
   getTriggerAnimationIdsForSlide,
-  restoreSlidePlaybackAtStep,
-  resolveManualAnimationPlaybackUpdate,
-  resolveQueuedKeywordOccurrencePlayback,
-  resolveTriggeredActionPlaybackUpdate,
+  type TriggeredActionPlaybackUpdate,
 } from "./playback/triggeredActionPlayback";
+import {
+  advanceSpeechAnimationManually,
+  createSpeechAnimationRuntimeState,
+  enqueueSpeechAnimationTriggers,
+  restoreSpeechAnimationRuntimeAtStep,
+  settleSpeechAnimationTransition,
+  type SpeechAnimationRuntimeState,
+  type SpeechAnimationRuntimeUpdate,
+} from "./playback/speechAnimationRuntime";
 import {
   AnimationFlowNavigator,
   type AnimationFlowNavigation,
 } from "./presenter/AnimationFlowNavigator";
+import type { SlideshowTransitionAddress } from "./presenter/useSlideshowTransitions";
 import {
   DisplayControls,
   type RequestDisplayScreensResult,
@@ -2137,6 +2142,9 @@ export function RehearsalWorkspace(props: {
   const slidePlaybackStateRef = useRef<SlidePlaybackState>(
     createSlidePlaybackState(),
   );
+  const speechAnimationSequenceRef = useRef(0);
+  const speechAnimationRuntimeRef =
+    useRef<SpeechAnimationRuntimeState | null>(null);
   const pendingFlowRestoreRef = useRef<{
     slideId: string;
     stepIndex: number;
@@ -4013,47 +4021,6 @@ export function RehearsalWorkspace(props: {
       confirmedOccurrenceIds: occurrenceState.confirmedOccurrenceIds,
     });
 
-    for (const occurrenceMatch of occurrenceMatches) {
-      setLiveCue(
-        createKeywordOccurrenceAnimationCueEvent({
-          match: occurrenceMatch,
-          slideId: slide.slideId,
-        }),
-      );
-
-    }
-    const pendingOccurrenceIds =
-      pendingKeywordOccurrenceIdsRef.current?.slideId === slide.slideId
-        ? pendingKeywordOccurrenceIdsRef.current.occurrenceIds
-        : [];
-    const queuedOccurrencePlayback = resolveQueuedKeywordOccurrencePlayback({
-      matchedOccurrenceIds: occurrenceMatches.map(
-        (match) => match.occurrenceId,
-      ),
-      pendingOccurrenceIds,
-      playbackState: slidePlaybackStateRef.current,
-      presenterStepIndex: presenterStepIndexRef.current,
-      slide,
-      slideAnimationPlan,
-    });
-    pendingKeywordOccurrenceIdsRef.current = {
-      occurrenceIds: queuedOccurrencePlayback.pendingOccurrenceIds,
-      slideId: slide.slideId,
-    };
-    setPendingKeywordOccurrenceIds(queuedOccurrencePlayback.pendingOccurrenceIds);
-    if (queuedOccurrencePlayback.update) {
-      applyTriggeredPlaybackUpdate(
-        queuedOccurrencePlayback.update,
-        deckSnapshot.slides.length,
-      );
-    }
-    liveKeywordOccurrenceStateRef.current = confirmKeywordOccurrenceMatches(
-      occurrenceState,
-      queuedOccurrencePlayback.consumedOccurrenceIds.map((occurrenceId) => ({
-        occurrenceId,
-      })),
-    );
-
     const previousDetectedIds = new Set(
       liveKeywordStateRef.current?.slideId === slide.slideId
         ? liveKeywordStateRef.current.detectedKeywords.map(
@@ -4061,26 +4028,67 @@ export function RehearsalWorkspace(props: {
           )
         : [],
     );
-    const newlyDetected = analysis.detectedKeywords.find(
+    const newlyDetected = analysis.detectedKeywords.filter(
       (keyword) => !previousDetectedIds.has(keyword.keywordId),
     );
-
-    if (newlyDetected) {
+    const latestOccurrenceMatch = occurrenceMatches.at(-1);
+    if (latestOccurrenceMatch) {
+      setLiveCue(
+        createKeywordOccurrenceAnimationCueEvent({
+          match: latestOccurrenceMatch,
+          slideId: slide.slideId,
+        }),
+      );
+    } else if (newlyDetected[0]) {
       setLiveCue({
         type: "animation-cue",
         slideId: slide.slideId,
-        keywordId: newlyDetected.keywordId,
+        keywordId: newlyDetected[0].keywordId,
         cue: "emphasis",
-        text: newlyDetected.text,
+        text: newlyDetected[0].text,
       });
-
-      applyTriggeredSlideActions(
-        slide,
-        slideAnimationPlan,
-        resolveKeywordTriggeredActions(slide, newlyDetected.keywordId),
-        deckSnapshot.slides.length,
-      );
     }
+
+    speechAnimationSequenceRef.current += 1;
+    const speechSequence = speechAnimationSequenceRef.current;
+    const runtimeUpdate = enqueueSpeechAnimationTriggers({
+      sequence: speechSequence,
+      slide,
+      slideAnimationPlan,
+      state:
+        speechAnimationRuntimeRef.current?.slideId === slide.slideId
+          ? speechAnimationRuntimeRef.current
+          : createSpeechAnimationRuntimeState({
+              playbackState: slidePlaybackStateRef.current,
+              presenterStepIndex: presenterStepIndexRef.current,
+              slideId: slide.slideId,
+            }),
+      triggers: [
+        ...occurrenceMatches.map((match) => ({
+          kind: "keyword-occurrence" as const,
+          keywordId: match.keywordId,
+          occurrenceId: match.occurrenceId,
+        })),
+        ...newlyDetected.map((keyword) => ({
+          kind: "keyword" as const,
+          keywordId: keyword.keywordId,
+        })),
+        ...(isEmphasisCommand(confirmedCommand)
+          ? [
+              {
+                kind: "cue" as const,
+                cue: "emphasis",
+                eventKey: String(speechSequence),
+              },
+            ]
+          : []),
+      ],
+    });
+    applySpeechAnimationRuntimeUpdate(
+      slide,
+      runtimeUpdate,
+      deckSnapshot.slides.length,
+    );
 
     if (isEmphasisCommand(confirmedCommand)) {
       setLiveCue({
@@ -4090,13 +4098,6 @@ export function RehearsalWorkspace(props: {
         cue: "emphasis",
         text: confirmedCommand.phrase,
       });
-
-      applyTriggeredSlideActions(
-        slide,
-        slideAnimationPlan,
-        resolveCueTriggeredActions(slide, "emphasis"),
-        deckSnapshot.slides.length,
-      );
     }
 
     setLiveKeywordState(analysis);
@@ -4109,29 +4110,33 @@ export function RehearsalWorkspace(props: {
     }
   }
 
-  function applyTriggeredSlideActions(
+  function applySpeechAnimationRuntimeUpdate(
     slide: Slide,
-    slideAnimationPlan: ReturnType<typeof createSlideshowAnimationPlan>,
-    actions: Slide["actions"],
+    runtimeUpdate: SpeechAnimationRuntimeUpdate,
     slideCount: number,
   ) {
-    if (actions.length === 0) {
-      return;
-    }
-
-    const playbackUpdate = resolveTriggeredActionPlaybackUpdate({
-      actions,
-      playbackState: slidePlaybackStateRef.current,
-      presenterStepIndex: presenterStepIndexRef.current,
-      slide,
-      slideAnimationPlan,
-    });
-
-    applyTriggeredPlaybackUpdate(playbackUpdate, slideCount);
+    speechAnimationRuntimeRef.current = runtimeUpdate.state;
+    pendingKeywordOccurrenceIdsRef.current = {
+      occurrenceIds: runtimeUpdate.pendingOccurrenceIds,
+      slideId: slide.slideId,
+    };
+    setPendingKeywordOccurrenceIds(runtimeUpdate.pendingOccurrenceIds);
+    liveKeywordOccurrenceStateRef.current = {
+      confirmedOccurrenceIds: runtimeUpdate.state.confirmedOccurrenceIds,
+      slideId: slide.slideId,
+    };
+    applyTriggeredPlaybackUpdate(
+      {
+        playbackState: runtimeUpdate.state.playbackState,
+        presenterStepIndex: runtimeUpdate.state.presenterStepIndex,
+        shouldAdvanceSlide: runtimeUpdate.shouldAdvanceSlide,
+      },
+      slideCount,
+    );
   }
 
   function applyTriggeredPlaybackUpdate(
-    playbackUpdate: ReturnType<typeof resolveTriggeredActionPlaybackUpdate>,
+    playbackUpdate: TriggeredActionPlaybackUpdate,
     slideCount: number,
   ) {
 
@@ -4235,14 +4240,20 @@ export function RehearsalWorkspace(props: {
   function resetLivePlaybackForSlide(slide: Slide | null) {
     resetLiveTranscriptForSlide(slide);
     const nextSlidePlaybackState = createSlidePlaybackState();
+    speechAnimationSequenceRef.current = 0;
+    speechAnimationRuntimeRef.current = slide
+      ? createSpeechAnimationRuntimeState({ slideId: slide.slideId })
+      : null;
     slidePlaybackStateRef.current = nextSlidePlaybackState;
     setSlidePlaybackState(nextSlidePlaybackState);
     setLiveSlideAdvance(null);
   }
 
   function restoreLivePlaybackAtStep(slide: Slide, stepIndex: number) {
-    resetLiveTranscriptForSlide(slide);
-    const restored = restoreSlidePlaybackAtStep({
+    if (speechAnimationRuntimeRef.current?.slideId !== slide.slideId) {
+      resetLiveTranscriptForSlide(slide);
+    }
+    const restored = restoreSpeechAnimationRuntimeAtStep({
       slide,
       slideAnimationPlan: createSlideshowAnimationPlan({
         slide,
@@ -4250,10 +4261,11 @@ export function RehearsalWorkspace(props: {
       }),
       stepIndex,
     });
+    speechAnimationRuntimeRef.current = restored;
     slidePlaybackStateRef.current = restored.playbackState;
     setSlidePlaybackState(restored.playbackState);
     liveKeywordOccurrenceStateRef.current = {
-      confirmedOccurrenceIds: restored.consumedOccurrenceIds,
+      confirmedOccurrenceIds: restored.confirmedOccurrenceIds,
       slideId: slide.slideId,
     };
     pendingKeywordOccurrenceIdsRef.current = {
@@ -4453,57 +4465,52 @@ export function RehearsalWorkspace(props: {
       targetSlideIndex: currentSlideIndexRef.current + 1,
     });
   };
-  const applyManualPlaybackRuntimeState = (
-    playbackUpdate: ReturnType<typeof resolveManualAnimationPlaybackUpdate>,
-  ) => {
-    slidePlaybackStateRef.current = playbackUpdate.playbackState;
-    setSlidePlaybackState(playbackUpdate.playbackState);
-  };
   const handleNextPresenterStep = () => {
     if (!deck || !currentSlide || !slideshowAnimationPlan) return;
     cancelAutoAdvanceForManualCommand();
-    const playbackUpdate = resolveManualAnimationPlaybackUpdate({
-      playbackState: slidePlaybackStateRef.current,
-      presenterStepIndex,
+    const runtimeState =
+      speechAnimationRuntimeRef.current?.slideId === currentSlide.slideId
+        ? speechAnimationRuntimeRef.current
+        : createSpeechAnimationRuntimeState({
+            playbackState: slidePlaybackStateRef.current,
+            presenterStepIndex,
+            slideId: currentSlide.slideId,
+          });
+    const playbackUpdate = advanceSpeechAnimationManually({
       slide: currentSlide,
       slideAnimationPlan: slideshowAnimationPlan,
+      state: runtimeState,
     });
-    if (playbackUpdate.consumedOccurrenceIds.length > 0) {
-      const occurrenceState = getLiveKeywordOccurrenceStateForSlide(
-        liveKeywordOccurrenceStateRef.current,
-        currentSlide.slideId,
-      );
-      liveKeywordOccurrenceStateRef.current = confirmKeywordOccurrenceMatches(
-        occurrenceState,
-        playbackUpdate.consumedOccurrenceIds.map((occurrenceId) => ({ occurrenceId })),
-      );
-      if (pendingKeywordOccurrenceIdsRef.current?.slideId === currentSlide.slideId) {
-        pendingKeywordOccurrenceIdsRef.current = {
-          occurrenceIds: pendingKeywordOccurrenceIdsRef.current.occurrenceIds.filter(
-            (occurrenceId) => !playbackUpdate.consumedOccurrenceIds.includes(occurrenceId),
-          ),
-          slideId: currentSlide.slideId,
-        };
-        setPendingKeywordOccurrenceIds(
-          pendingKeywordOccurrenceIdsRef.current.occurrenceIds,
-        );
-      }
+    applySpeechAnimationRuntimeUpdate(
+      currentSlide,
+      playbackUpdate,
+      deck.slides.length,
+    );
+  };
+  const handleRehearsalTransitionSettled = (
+    address: SlideshowTransitionAddress,
+  ) => {
+    if (
+      !deck ||
+      !currentSlide ||
+      !slideshowAnimationPlan ||
+      speechAnimationRuntimeRef.current?.slideId !== currentSlide.slideId
+    ) {
+      return;
     }
-    applyManualPlaybackRuntimeState(playbackUpdate);
-    const fallbackNextState = getNextPresenterStepState({
-      currentSlideIndex,
-      currentStepIndex: presenterStepIndex,
-      maxStepIndex: slideshowAnimationPlan.maxStepIndex,
-      slideCount: deck.slides.length,
+    const update = settleSpeechAnimationTransition({
+      address,
+      slide: currentSlide,
+      slideAnimationPlan: slideshowAnimationPlan,
+      state: speechAnimationRuntimeRef.current,
     });
-    const nextState = playbackUpdate.shouldAdvanceSlide
-      ? fallbackNextState
-      : { slideIndex: currentSlideIndex, stepIndex: playbackUpdate.presenterStepIndex };
-    void requestPreparedSlideChange({
-      source: "manual",
-      stepIndex: nextState.stepIndex,
-      targetSlideIndex: nextState.slideIndex,
-    });
+    if (update.state !== speechAnimationRuntimeRef.current) {
+      applySpeechAnimationRuntimeUpdate(
+        currentSlide,
+        update,
+        deck.slides.length,
+      );
+    }
   };
   const finishRehearsal = () => {
     const projectId = deck?.projectId ?? props.projectId ?? demoIds.projectId;
@@ -5403,6 +5410,7 @@ export function RehearsalWorkspace(props: {
             deck && currentSlide && presenterScale !== null ? (
               <SlideshowRenderer
                 deck={deck}
+                onTransitionSettled={handleRehearsalTransitionSettled}
                 scale={presenterScale}
                 slideId={currentSlide.slideId}
                 stepIndex={presenterStepIndex}
