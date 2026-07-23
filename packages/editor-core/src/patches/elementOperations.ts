@@ -55,6 +55,27 @@ export function createUpdateElementPropsPatch(
   };
 }
 
+export function createUpdateElementMorphKeyPatch(
+  deck: Deck,
+  slideId: string,
+  elementId: string,
+  morphKey: string | null
+): DeckPatch {
+  return {
+    deckId: deck.deckId,
+    baseVersion: deck.version,
+    source: "user",
+    operations: [
+      {
+        type: "update_element_morph_key",
+        slideId,
+        elementId,
+        morphKey
+      }
+    ]
+  };
+}
+
 export function createDeleteElementPatch(
   deck: Deck,
   slideId: string,

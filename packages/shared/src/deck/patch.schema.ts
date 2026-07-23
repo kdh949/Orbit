@@ -56,6 +56,7 @@ export const deckPatchOperationTypeSchema = z.enum([
   "update_slide_style",
   "add_element",
   "update_element_frame",
+  "update_element_morph_key",
   "update_element_props",
   "delete_element",
   "update_speaker_notes",
@@ -226,6 +227,13 @@ export const updateElementFrameOperationSchema = z.object({
   frame: elementFramePatchSchema
 });
 
+export const updateElementMorphKeyOperationSchema = z.object({
+  type: z.literal("update_element_morph_key"),
+  slideId: deckSlideIdSchema,
+  elementId: deckElementIdSchema,
+  morphKey: deckElementIdSchema.nullable()
+});
+
 export const updateElementPropsOperationSchema = z.object({
   type: z.literal("update_element_props"),
   slideId: deckSlideIdSchema,
@@ -322,6 +330,7 @@ const deckPatchOperationSchemaInternal = z.discriminatedUnion("type", [
   updateSlideStyleOperationSchema,
   addElementOperationSchema,
   updateElementFrameOperationSchema,
+  updateElementMorphKeyOperationSchema,
   updateElementPropsOperationSchema,
   deleteElementOperationSchema,
   updateSpeakerNotesOperationSchema,

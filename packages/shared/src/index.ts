@@ -41,6 +41,7 @@ export * from "./deck/font-catalog";
 export * from "./deck/generate-deck.schema";
 export * from "./deck/id.schema";
 export * from "./deck/keyword-occurrences";
+export * from "./deck/morph-transition";
 export * from "./deck/patch.schema";
 export * from "./deck/pptx-ooxml-generation.schema";
 export * from "./deck/pptx-ooxml-storage.schema";

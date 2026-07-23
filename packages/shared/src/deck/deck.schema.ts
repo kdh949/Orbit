@@ -181,10 +181,17 @@ export const slideKeywordsSchema = z
 
 export const slideOrderSchema = z.number().int().positive();
 
-export const slideTransitionSchema = z.object({
-  type: z.literal("fade"),
-  durationMs: z.number().int().positive()
-});
+export const slideTransitionSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("fade"),
+    durationMs: z.number().int().positive()
+  }),
+  z.object({
+    type: z.literal("morph"),
+    durationMs: z.number().int().min(100).max(3000),
+    mode: z.literal("object")
+  })
+]);
 
 export const importedMainSequenceCoverageSchema = z.enum([
   "unknown",
@@ -474,6 +481,7 @@ export const slideSchema: z.ZodType<Slide, z.ZodTypeDef, unknown> = z
   .superRefine((slide, ctx) => {
     const actionIds = new Set<string>();
     const elementIds = new Set(slide.elements.map((element) => element.elementId));
+    const morphMatchKeys = new Set<string>();
     const keywordIds = new Set(slide.keywords.map((keyword) => keyword.keywordId));
     const semanticCueIds = new Set<string>();
     const keywordOccurrences = new Map(
@@ -486,6 +494,19 @@ export const slideSchema: z.ZodType<Slide, z.ZodTypeDef, unknown> = z
       slide.animations.map((animation) => animation.animationId)
     );
     const focalElementId = slide.aiNotes?.compositionPlan?.primaryFocalElementId;
+
+    slide.elements.forEach((element, elementIndex) => {
+      const matchKey = element.morphKey ?? element.elementId;
+      if (morphMatchKeys.has(matchKey)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["elements", elementIndex, element.morphKey ? "morphKey" : "elementId"],
+          message: "morph match keys must be unique within the same slide"
+        });
+      } else {
+        morphMatchKeys.add(matchKey);
+      }
+    });
 
     if (
       focalElementId !== undefined &&

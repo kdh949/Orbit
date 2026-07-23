@@ -313,6 +313,21 @@ function applyOperation(
       return { ok: true };
     }
 
+    case "update_element_morph_key": {
+      const elementResult = findElementByOperation(deck, operation);
+
+      if (!elementResult.ok) {
+        return elementResult;
+      }
+
+      if (operation.morphKey === null) {
+        delete elementResult.element.morphKey;
+      } else {
+        elementResult.element.morphKey = operation.morphKey;
+      }
+      return { ok: true };
+    }
+
     case "update_element_props": {
       const elementResult = findElementByOperation(deck, operation);
 
@@ -721,7 +736,12 @@ function findElementByOperation(
   deck: Deck,
   operation: Extract<
     DeckPatchOperation,
-    { type: "update_element_frame" | "update_element_props" }
+    {
+      type:
+        | "update_element_frame"
+        | "update_element_morph_key"
+        | "update_element_props";
+    }
   >,
 ): { ok: true; element: DeckElement } | ApplyDeckPatchFailure {
   const slide = findSlide(deck, operation.slideId);

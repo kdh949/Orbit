@@ -110,6 +110,7 @@ export {
   createAddElementPatch,
   createDeleteElementPatch,
   createElementId,
+  createUpdateElementMorphKeyPatch,
   createUpdateElementPropsPatch
 } from "./patches/elementOperations";
 export {

@@ -1290,6 +1290,37 @@ describe("applyDeckPatch", () => {
     expect(clearResult.deck.slides[0]?.transition).toBeUndefined();
   });
 
+  it("sets and clears an element morph key", () => {
+    const deck = createPatchTestDeck();
+    const setResult = applyPatchOrFail(
+      deck,
+      createPatch([
+        {
+          type: "update_element_morph_key",
+          slideId: "slide_1",
+          elementId: "el_1",
+          morphKey: "el_source"
+        }
+      ])
+    );
+
+    expect(setResult.deck.slides[0]?.elements[0]?.morphKey).toBe("el_source");
+
+    const clearResult = applyPatchOrFail(setResult.deck, {
+      ...createPatch([
+        {
+          type: "update_element_morph_key",
+          slideId: "slide_1",
+          elementId: "el_1",
+          morphKey: null
+        }
+      ]),
+      baseVersion: setResult.deck.version
+    });
+
+    expect(clearResult.deck.slides[0]?.elements[0]?.morphKey).toBeUndefined();
+  });
+
   it("rejects a slide action targeting a slide-entry animation chain", () => {
     const deck = createPatchTestDeck();
     deck.slides[0]!.animations[0]!.startMode = "on-slide-enter";

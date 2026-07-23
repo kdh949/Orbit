@@ -69,6 +69,7 @@ export const ooxmlElementEditCapabilitiesSchema = z.object({
 
 export const deckElementBaseSchema = z.object({
   elementId: deckElementIdSchema,
+  morphKey: deckElementIdSchema.optional(),
   ooxmlOrigin: ooxmlOriginSchema.optional(),
   ooxmlEditCapabilities: ooxmlElementEditCapabilitiesSchema.optional(),
   role: deckElementRoleSchema.optional(),

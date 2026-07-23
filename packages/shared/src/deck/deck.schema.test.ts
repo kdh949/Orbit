@@ -63,8 +63,9 @@ type DeckValidationInput = {
     thumbnailUrl: string;
     estimatedSeconds?: number;
     transition?: {
-      type: "fade";
+      type: "fade" | "morph";
       durationMs: number;
+      mode?: "object";
     };
     ooxmlSourceSlidePart?: string;
     importRenderMode?: "editable" | "hybrid" | "snapshot";
@@ -1892,7 +1893,7 @@ describe("deckSchema validation", () => {
     expectInvalidDeck(deck);
   });
 
-  it("accepts an optional fade transition and every animation start mode", () => {
+  it("accepts optional fade and object morph transitions", () => {
     const deck = createValidDeck();
     deck.slides[0].transition = { type: "fade", durationMs: 700 };
     deck.slides[0].animations = [
@@ -1916,6 +1917,17 @@ describe("deckSchema validation", () => {
     expect(parsed.slides[0].transition).toEqual({
       type: "fade",
       durationMs: 700
+    });
+
+    deck.slides[0].transition = {
+      type: "morph",
+      durationMs: 1000,
+      mode: "object"
+    };
+    expect(deckSchema.parse(deck).slides[0].transition).toEqual({
+      type: "morph",
+      durationMs: 1000,
+      mode: "object"
     });
     expect(
       parsed.slides[0].animations.map((animation) => animation.startMode)
@@ -1948,7 +1960,19 @@ describe("deckSchema validation", () => {
 
   it.each([
     { transition: { type: "push", durationMs: 700 }, name: "type" },
-    { transition: { type: "fade", durationMs: 0 }, name: "duration" }
+    { transition: { type: "fade", durationMs: 0 }, name: "fade duration" },
+    {
+      transition: { type: "morph", durationMs: 99, mode: "object" },
+      name: "minimum morph duration"
+    },
+    {
+      transition: { type: "morph", durationMs: 3001, mode: "object" },
+      name: "maximum morph duration"
+    },
+    {
+      transition: { type: "morph", durationMs: 1000, mode: "word" },
+      name: "morph mode"
+    }
   ])("rejects an invalid slide transition $name", ({ transition }) => {
     const deck = createValidDeck();
     deck.slides[0].transition = transition as never;
@@ -1976,6 +2000,22 @@ describe("deckSchema validation", () => {
 
     deck.slides[0].elements[0].zIndex = -1;
 
+    expectInvalidDeck(deck);
+  });
+
+  it("accepts a unique morph key and rejects duplicate effective match keys", () => {
+    const deck = createValidDeck();
+    const sourceElement = deck.slides[0].elements[0];
+    sourceElement.morphKey = "el_source";
+    deck.slides[0].elements.push({
+      ...structuredClone(sourceElement),
+      elementId: "el_2",
+      morphKey: "el_other"
+    });
+
+    expect(deckSchema.safeParse(deck).success).toBe(true);
+
+    deck.slides[0].elements[1].morphKey = "el_source";
     expectInvalidDeck(deck);
   });
 });
@@ -2087,6 +2127,34 @@ describe("deckPatchSchema validation", () => {
           type: "update_slide_transition",
           slideId: "slide_1",
           transition: null
+        }
+      ]
+    };
+
+    expect(deckPatchSchema.safeParse(setPatch).success).toBe(true);
+    expect(deckPatchSchema.safeParse(clearPatch).success).toBe(true);
+  });
+
+  it("accepts setting and clearing an element morph key", () => {
+    const setPatch: unknown = {
+      ...createValidPatch(),
+      operations: [
+        {
+          type: "update_element_morph_key",
+          slideId: "slide_1",
+          elementId: "el_1",
+          morphKey: "el_source"
+        }
+      ]
+    };
+    const clearPatch: unknown = {
+      ...createValidPatch(),
+      operations: [
+        {
+          type: "update_element_morph_key",
+          slideId: "slide_1",
+          elementId: "el_1",
+          morphKey: null
         }
       ]
     };

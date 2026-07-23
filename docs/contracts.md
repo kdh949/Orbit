@@ -448,13 +448,14 @@ DeckPatch 결정 사항:
 - `update_deck`: deck 제목, 전체 발표 목표 시간(`targetDurationMinutes`) 또는 metadata 수정
 - `add_slide`: slide 전체 추가
 - `update_slide`: slide 제목, thumbnail URL 또는 목표 발표 시간(`estimatedSeconds`) 수정. `estimatedSeconds=null`이면 개별 목표 시간을 제거한다.
-- `update_slide_transition`: destination slide의 fade transition 전체 설정 또는 `null`로 제거
+- `update_slide_transition`: destination slide의 fade 또는 object morph transition 전체 설정, `null`로 제거
 - `delete_slide`: slide 삭제
 - `reorder_slides`: slide order 재정렬
 - `update_theme`: deck theme token 부분 수정
 - `update_slide_style`: slide style 부분 수정
 - `add_element`: slide에 element 추가
 - `update_element_frame`: element의 좌표, 크기, 회전, 투명도, zIndex, 잠금, 표시 상태, role 수정
+- `update_element_morph_key`: 이전 슬라이드 element와 연결할 `morphKey` 설정, `null`로 제거
 - `update_element_props`: element props 부분 수정
 - `delete_element`: element 삭제
 - `update_speaker_notes`: 발표자 노트 교체
@@ -490,6 +491,9 @@ patch 적용 규칙:
 
 - `update_theme`, `update_slide_style`, `update_element_frame`, `update_animation`은 전달된 필드만 기존 값에 병합한다. `animationPatch.startMode`는 네 가지 explicit mode 중 하나만 허용한다.
 - `update_slide_transition`은 transition full-state를 교체하고 `null`이면 field를 제거한다.
+- object morph transition은 `{ type: "morph", durationMs, mode: "object" }` 구조이며 `durationMs`는 `100..3000` 범위다.
+- element의 morph match key는 `morphKey ?? elementId`이며 같은 slide 안에서 중복될 수 없다.
+- `update_element_morph_key.morphKey`에 `null`을 전달하면 element의 `morphKey`를 제거한다.
 - `update_slide_style`에서 `layout`, `fontFamily`, `backgroundColor`, `textColor`, `accentColor`, `backgroundImage`에 `null`을 전달하면 해당 slide override를 제거한다.
 - `update_theme.effects.shadow`에 `null`을 전달하면 theme shadow override를 제거한다.
 - `update_element_frame.role`에 `null`을 전달하면 element role을 제거한다.
