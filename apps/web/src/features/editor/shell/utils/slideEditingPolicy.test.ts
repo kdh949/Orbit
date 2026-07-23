@@ -5,7 +5,12 @@ import {
 } from "@orbit/editor-core";
 import { describe, expect, it } from "vitest";
 
-import { canEditSlideCanvas } from "./slideEditingPolicy";
+import {
+  canEditSlideCanvas,
+  canInsertCustomShape,
+  canInsertDataElements,
+  canInsertElementTypeOnSlide
+} from "./slideEditingPolicy";
 
 describe("slide editing policy", () => {
   it("allows canvas editing for content and editable Activity slides", () => {
@@ -24,6 +29,28 @@ describe("slide editing policy", () => {
     expect(canEditSlideCanvas(editableActivitySlide)).toBe(true);
     expect(canEditSlideCanvas(resultSlide)).toBe(false);
     expect(canEditSlideCanvas(null)).toBe(false);
+  });
+
+  it("limits editable Activity slides to copy, images, basic shapes, and runtime slots", () => {
+    const deck = createDemoDeck();
+    const slide = createActivitySlide(deck, "poll", { preset: "blank" });
+
+    for (const type of [
+      "text",
+      "image",
+      "rect",
+      "ellipse",
+      "line",
+      "activity-copy",
+      "activity-qr",
+      "presentation-passcode"
+    ] as const) {
+      expect(canInsertElementTypeOnSlide(slide, type)).toBe(true);
+    }
+    expect(canInsertDataElements(slide)).toBe(false);
+    expect(canInsertCustomShape(slide)).toBe(false);
+    expect(canInsertElementTypeOnSlide(slide, "chart")).toBe(false);
+    expect(canInsertElementTypeOnSlide(slide, "table")).toBe(false);
   });
 
   it("keeps legacy, editable, and hybrid content slides editable but locks snapshots", () => {

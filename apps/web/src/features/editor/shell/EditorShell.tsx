@@ -31,7 +31,11 @@ import type {
 import { useProjectShareAccess } from "./hooks/useProjectShareAccess";
 import { useEditorShellUiStore } from "./editorShellUiStore";
 import { beginHorizontalPaneResize } from "./utils/beginHorizontalPaneResize";
-import { canEditSlideCanvas } from "./utils/slideEditingPolicy";
+import {
+  canEditSlideCanvas,
+  canInsertCustomShape,
+  canInsertDataElements
+} from "./utils/slideEditingPolicy";
 import {
   getAnimationMutationDisabledReason,
   getTransitionMutationDisabledReason
@@ -2223,6 +2227,7 @@ export function EditorShell(props: { projectId?: string }) {
         <section className="stage-pane">
           {!isSlideRehearsalActive ? (
             <EditorToolbar
+              canInsertDataElements={canInsertDataElements(currentSlide)}
               canZoomIn={stageScale < maximumManualEditorZoom}
               canZoomOut={stageScale > minimumManualEditorZoom}
               canMutate={canMutateDeck}
@@ -2701,6 +2706,7 @@ export function EditorShell(props: { projectId?: string }) {
         />
       ) : null}
       <EditorContextMenus
+        canInsertCustomShape={canInsertCustomShape(currentSlide)}
         chartMenuPosition={chartMenuPosition}
         elementContextMenu={elementContextMenu}
         isChartMenuOpen={isChartMenuOpen}

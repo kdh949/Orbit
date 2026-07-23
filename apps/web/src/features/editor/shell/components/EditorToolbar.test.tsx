@@ -8,6 +8,7 @@ describe("EditorToolbar", () => {
   it("disables every canvas editing control for a special slide", () => {
     const html = renderToStaticMarkup(
       <EditorToolbar
+        canInsertDataElements={false}
         canMutate
         canUseCurrentSlide={false}
         canZoomIn
@@ -58,6 +59,7 @@ describe("EditorToolbar", () => {
   it("does not render the floating panel shortcut group", () => {
     const html = renderToStaticMarkup(
       <EditorToolbar
+        canInsertDataElements
         canMutate
         canUseCurrentSlide
         canZoomIn
@@ -96,6 +98,7 @@ describe("EditorToolbar", () => {
   it("renders the collapsed right panel opener next to zoom controls", () => {
     const html = renderToStaticMarkup(
       <EditorToolbar
+        canInsertDataElements
         canMutate
         canUseCurrentSlide
         canZoomIn

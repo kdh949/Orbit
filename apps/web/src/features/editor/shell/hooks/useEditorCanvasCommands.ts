@@ -59,7 +59,12 @@ import {
   getElementLayerOrderUpdates,
   type ElementLayerOrderAction,
 } from "../utils/elementLayerOrder";
-import { canEditSlideCanvas } from "../utils/slideEditingPolicy";
+import {
+  canEditSlideCanvas,
+  canInsertCustomShape,
+  canInsertDataElements,
+  canInsertElementTypeOnSlide
+} from "../utils/slideEditingPolicy";
 import type { PatchProducer } from "./useEditorPersistenceState";
 
 export type ElementFrameChange = {
@@ -580,7 +585,7 @@ export function useEditorCanvasCommands(args: {
   }
 
   function addChartElement(type: ChartInsertType = "bar") {
-    if (!canEditSlideCanvas(args.currentSlide)) return;
+    if (!canInsertDataElements(args.currentSlide)) return;
     const elementId = createElementId(args.deck);
     const redesignPalette = resolveRedesignPalette();
     const primaryColor =
@@ -727,6 +732,7 @@ export function useEditorCanvasCommands(args: {
   function insertShapeElement(shapeType: ShapeInsertType) {
     if (!canEditSlideCanvas(args.currentSlide)) return;
     if (shapeType === "customShape") {
+      if (!canInsertCustomShape(args.currentSlide)) return;
       args.setEditingElementId(null);
       args.setCustomShapeEditElementId(null);
       args.setSelectedElementIds([]);
@@ -1088,6 +1094,14 @@ export function useEditorCanvasCommands(args: {
     if (!canEditSlideCanvas(args.currentSlide) || !copiedElementRef.current) return;
     args.setElementContextMenu(null);
     const { elements, pasteCount, rootElementId } = copiedElementRef.current;
+    if (
+      elements.some(
+        (element) =>
+          !canInsertElementTypeOnSlide(args.currentSlide, element.type)
+      )
+    ) {
+      return;
+    }
     const nextPasteCount = pasteCount + 1;
     cloneElements(elements, rootElementId, nextPasteCount);
     copiedElementRef.current = { elements, pasteCount: nextPasteCount, rootElementId };
@@ -1171,7 +1185,7 @@ export function useEditorCanvasCommands(args: {
   }
 
   function createCustomShape(nodes: CustomShapeNode[], closed: boolean) {
-    if (!canEditSlideCanvas(args.currentSlide) || nodes.length < 2) {
+    if (!canInsertCustomShape(args.currentSlide) || nodes.length < 2) {
       args.setInsertTool("select");
       return;
     }
