@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   decodeEnvValue,
   parseComposeEnvironmentKeys,
+  parseComposeServiceEnvironmentKeys,
   parseEnvFileContent,
   selectDopplerChanges,
   validatePersonalStagingPolicy,
@@ -110,6 +111,28 @@ x-orbit-env: &orbit-env
     "QUOTED_INTERPOLATION",
     "SELF_INTERPOLATED",
   ]);
+});
+
+test("Compose service delivery keeps OOXML rollout flags aligned", () => {
+  const services = parseComposeServiceEnvironmentKeys(`
+services:
+  api:
+    environment:
+      FEATURE_ENABLED: "\${FEATURE_ENABLED:-false}"
+      ALLOWLIST: "\${ALLOWLIST:-}"
+  python-worker:
+    environment:
+      FEATURE_ENABLED: "\${FEATURE_ENABLED:-false}"
+      HARD_CODED: "ignored"
+volumes:
+  data:
+`);
+
+  assert.deepEqual([...services.get("api")].sort(), [
+    "ALLOWLIST",
+    "FEATURE_ENABLED",
+  ]);
+  assert.deepEqual([...services.get("python-worker")], ["FEATURE_ENABLED"]);
 });
 
 test("sync selection never overwrites existing keys or creates manual values", () => {

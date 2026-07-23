@@ -126,6 +126,78 @@ export function parseComposeEnvironmentKeys(content) {
   return keys;
 }
 
+export function parseComposeServiceEnvironmentKeys(content) {
+  const services = new Map();
+  let servicesIndent = null;
+  let serviceIndent = null;
+  let environmentIndent = null;
+  let currentService = null;
+
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+    const indent = rawLine.length - rawLine.trimStart().length;
+
+    if (line === "services:") {
+      servicesIndent = indent;
+      serviceIndent = null;
+      environmentIndent = null;
+      currentService = null;
+      continue;
+    }
+    if (servicesIndent === null) {
+      continue;
+    }
+    if (indent <= servicesIndent) {
+      servicesIndent = null;
+      serviceIndent = null;
+      environmentIndent = null;
+      currentService = null;
+      continue;
+    }
+
+    const service = /^([a-z0-9][a-z0-9_-]*):$/.exec(line);
+    if (service && indent === servicesIndent + 2) {
+      currentService = service[1];
+      serviceIndent = indent;
+      environmentIndent = null;
+      services.set(currentService, new Set());
+      continue;
+    }
+    if (currentService === null || serviceIndent === null) {
+      continue;
+    }
+    if (environmentIndent !== null && indent <= environmentIndent) {
+      environmentIndent = null;
+    }
+    if (line === "environment:" && indent > serviceIndent) {
+      environmentIndent = indent;
+      continue;
+    }
+    if (environmentIndent === null) {
+      continue;
+    }
+
+    const declaration = /^([A-Z][A-Z0-9_]*):\s*(.+)$/.exec(line);
+    if (!declaration) {
+      continue;
+    }
+    const [, key, rawValue] = declaration;
+    const value = rawValue.trim();
+    const quotedValue = /^(?:"([^"]*)"|'([^']*)')$/.exec(value);
+    const interpolation = /^\$\{([A-Z][A-Z0-9_]*)(?::?[-+?][^}]*)?\}$/.exec(
+      quotedValue ? (quotedValue[1] ?? quotedValue[2]) : value,
+    );
+    if (interpolation?.[1] === key) {
+      services.get(currentService).add(key);
+    }
+  }
+
+  return services;
+}
+
 export function collectComposeEnvironmentKeys(files) {
   const keys = new Set();
 
@@ -137,6 +209,10 @@ export function collectComposeEnvironmentKeys(files) {
   }
 
   return keys;
+}
+
+export function collectComposeServiceEnvironmentKeys(file) {
+  return parseComposeServiceEnvironmentKeys(fs.readFileSync(file, "utf8"));
 }
 
 export function validatePersonalStagingPolicy({

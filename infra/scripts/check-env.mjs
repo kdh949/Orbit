@@ -1,5 +1,6 @@
 import {
   collectComposeEnvironmentKeys,
+  collectComposeServiceEnvironmentKeys,
   isBlankEnvValue,
   readEnvFile,
   readPersonalStagingPolicy,
@@ -155,6 +156,22 @@ for (const [file, entries] of envFiles) {
   for (const [key, value] of entries) {
     if (isBlankEnvValue(value) && !allowedEmptyKeys.has(key)) {
       failures.push(`${file} has an empty required env value: ${key}`);
+    }
+  }
+}
+
+const ooxmlReferenceFlagKeys = [
+  "AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED",
+  "AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST",
+];
+const localComposeServiceKeys = collectComposeServiceEnvironmentKeys(
+  "docker-compose.yml",
+);
+for (const service of ["api", "worker", "python-worker"]) {
+  const serviceKeys = localComposeServiceKeys.get(service) ?? new Set();
+  for (const key of ooxmlReferenceFlagKeys) {
+    if (!serviceKeys.has(key)) {
+      failures.push(`docker-compose.yml ${service} missing env delivery: ${key}`);
     }
   }
 }
