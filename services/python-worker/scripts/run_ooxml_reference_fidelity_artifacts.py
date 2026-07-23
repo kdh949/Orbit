@@ -603,13 +603,14 @@ def _font_resolution(
             for family in resolved_family.split(",")
             if family.strip()
         }
+        checksum = _sha256(Path(lines[1]).read_bytes())
         if requested_family.casefold() not in resolved_families:
             return {
                 **base,
                 "status": "substituted",
                 "resolvedFamily": resolved_family,
+                "sha256": checksum,
             }
-        checksum = _sha256(Path(lines[1]).read_bytes())
     except (
         OSError,
         subprocess.CalledProcessError,

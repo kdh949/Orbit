@@ -19,10 +19,12 @@
 - slot edit → sync/export/reopen: `passed` (warning 0, unsupported 0, text retained)
 - edited package SHA-256: `e264c8278c9b18d9f555d22a1d3048a55cce2724ffc8970fc190d26acb7317a4`
 - edited PowerPoint PDF SHA-256: `5335429a9f3ff449b7e801870368e98869f96e917e19a8ef200085d63d1147cb`
+- edited-slot montage: `generated/pending` (locked diff 42px, review pending)
+- edited-slot montage/report SHA-256: `57f334fbc0b6369ff72e4bf8478b501fdc0ab5038599415a4160c6797e0cb1c2` / `9ad9e2e9350b2badabfeb601aa4f7a4e80ad713e7dc2534745666c7ee0814a11`
 - product materialization warning: `0`
 - fidelity artifact: `generated/pending` (structural drift 0, locked diff 85px)
 - source/locked-diff montage SHA-256: `5a8fd7fa0cddae08066e3ffbabb9c32212eef056a556fad614dc46d95a2e75ca` / `bfa0939cc4d6fbee4600f17ef76be98bba00ce110140be4f6f34138a50788371`
-- fidelity report SHA-256: `539089864fcc50bccd6bf5e70153864f2984ae47c1cf1c0b06f1ee5bc2546a06`
+- fidelity report SHA-256: `cb052a1c82489d2452f51f0cc4900bae4f685b204b0e306ec33481f830ac09a0`
 
 Blocker: production managed storage, exact font checksum과 사람 locked-diff/calibration/UX
 승인이 남았다. 기존 drift fixture 대신 quality SHA-256과 일치한 deterministic reproduction을

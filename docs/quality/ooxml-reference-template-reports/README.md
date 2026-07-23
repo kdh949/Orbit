@@ -41,10 +41,23 @@ montage의 사람 승인, exact font checksum 또는 production managed storage�
 renderer version만 기록한다.
 
 LibreOffice 기반 generated fidelity review artifact는
-`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-e`에 있다. 7개/56장의 source,
+`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-f`에 있다. 7개/56장의 source,
 generated, intended-slot mask, locked-diff PNG와 source/generated/locked-diff montage를
 계획 §7.4의 versioned 구조로 생성했고 package/font/fidelity manifest도 함께 기록했다.
 package warning과 geometry/style/relationship drift는 전부 0이다. template별 locked pixel 차이는
 6~615px이며 threshold를 적용하지 않았다. font manifest는 43~50개 substituted family를
-기록한다. report는 `approvalStatus=pending`이고 exact font와
-사람 fidelity 검수 전에는 `passed`로 해석하지 않는다.
+기록하고 exact 38개와 substituted fallback 313개 resolved file checksum을 모두 보존한다.
+fallback checksum은 요청 family 설치 증거가 아니다. report는 `approvalStatus=pending`이고
+exact font와 사람 fidelity 검수 전에는 `passed`로 해석하지 않는다.
+
+실제 text-slot 편집용 B2 visual artifact는
+`/private/tmp/orbit-ooxml-b2-slot-montage-7cg9oi8q`에 있다. 7개 template의 편집 전/후,
+slot mask, locked overlay, montage와 bounded report 43개 파일의 checksum을 재검산했다.
+package/import warning과 structural drift는 0이지만 `operating-review` 42px와 `simple-light`
+72px의 locked pixel이 남아 있고 사람 승인 template은 0개다. 이 LibreOffice 기반 montage-only
+artifact는 기존 PowerPoint/LibreOffice reopen 증거나 full-deck calibration을 대체하지 않는다.
+
+PowerPoint full-deck bundle의 `operating-review` summary는 quality checksum과 일치하는 isolated
+deterministic reproduction PDF를 slot-roundtrip artifact 경로에서 참조한다. full-deck 디렉터리의
+동명 PDF는 그 checksum과 다르므로 디렉터리 하나만 self-contained checksum bundle로 해석하지
+않는다. slot-roundtrip bundle의 7개 edited PPTX/PDF와 reproduction checksum은 모두 일치한다.

@@ -271,3 +271,33 @@ def test_runner_rejects_nonempty_output_directory(
         match="FIDELITY_ARTIFACT_OUTPUT_NOT_EMPTY",
     ):
         runner.run_fidelity_artifacts(plan, output, render_deck=_fake_render)
+
+
+def test_font_manifest_records_substituted_file_checksum_without_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fallback = tmp_path / "fallback.ttf"
+    fallback.write_bytes(b"fallback-font")
+    monkeypatch.setattr(
+        runner.subprocess,
+        "run",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            stdout=f"Fallback Family\n{fallback}\n"
+        ),
+    )
+
+    resolution = runner._font_resolution(
+        "Requested Family",
+        ["generated"],
+        "fc-match",
+    )
+
+    assert resolution == {
+        "requestedFamily": "Requested Family",
+        "roles": ["generated"],
+        "status": "substituted",
+        "resolvedFamily": "Fallback Family",
+        "sha256": hashlib.sha256(b"fallback-font").hexdigest(),
+    }
+    assert str(tmp_path) not in json.dumps(resolution)

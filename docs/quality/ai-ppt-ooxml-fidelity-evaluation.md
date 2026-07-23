@@ -18,12 +18,14 @@ Microsoft PowerPoint 16.111에서 7개 generated 8장 deck과 7개 actual text-s
 edit/export 결과를 각각 open, 8-page PDF render, close, reopen했고 repair/recovery 로그는
 0건이었다. LibreOffice 결과와 별도 artifact로 보관한다. 7개 generated deck의 56장
 source/generated/mask/locked-diff와 세 종류 montage는
-`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-e`에 생성했다. 모든 template의 structural
+`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-f`에 생성했다. 모든 template의 structural
 geometry/style/relationship drift는 0이며 locked pixel 차이는 사람 검수를 위해 수치 그대로
 남겼다. package manifest warning도 7개 모두 0이다. font manifest는 template별 48~56개 explicit
-family 중 4~7개만 exact resolve되고 43~50개가 substituted임을 기록했다. 따라서 renderer가 실제
-resolve한 전체 font checksum과 사람이 승인한 renderer별 threshold
-근거는 아직 완결되지 않았다. 따라서 특정 pixel 차이, SSIM 점수나 종합 점수를 승인 threshold로
+family 중 4~7개만 exact resolve되고 43~50개가 substituted임을 기록했다. exact 38개와 fallback
+substituted 313개를 포함한 351개 resolved font file checksum은 모두 기록·재검산했고 절대 경로는
+manifest에 남기지 않았다. 다만 substituted checksum은 요청 family 설치 증거가 아니므로 요청한
+exact font 환경과 사람이 승인한 renderer별 threshold 근거는 아직 완결되지 않았다. 따라서 특정
+pixel 차이, SSIM 점수나 종합 점수를 승인 threshold로
 간주하지 않으며 제품 rollout을 통과로 표시하지 않는다.
 
 strict Checkpoint C runner의 최신 report는
@@ -158,8 +160,13 @@ renderer/version, `geometryEdgeTolerancePx=0`, threshold와 승인 rationale가 
 - [x] known geometry/style/relationship/package drift fixture가 실패함
 - [x] intended slot mask 밖 drift가 실패함
 - [x] 7개 generated full-deck의 56장 source/generated/mask/locked-diff와 montage가 생성됨
+- [x] 7개 실제 text-slot 편집 전/후/mask/locked-overlay/montage가 생성됨
 - [ ] threshold와 tolerance 근거가 사람 검수됨
 
-exact font inventory와 사람의 locked-diff/threshold 승인이 남아 있으므로 전체 calibration은
+편집 artifact는 `/private/tmp/orbit-ooxml-b2-slot-montage-7cg9oi8q`에 있으며 structural drift와
+package/import warning은 0이다. `operating-review` 42px와 `simple-light` 72px의 locked pixel은
+mask 경계 anti-alias 후보지만 사람이 승인하지 않았으므로 `LOCKED_PIXEL_DIFF_REVIEW_PENDING`이다.
+
+요청한 exact font 설치와 사람의 locked-diff/threshold 승인이 남아 있으므로 전체 calibration은
 `not-calibrated`, `applied=false`를 유지한다. artifact report의 `status=generated`는 파일 생성과
 structural 비교 완료만 뜻하며 `approvalStatus=pending`을 fidelity 승인으로 승격하지 않는다.

@@ -3,8 +3,8 @@
 ## 결론
 
 Checkpoint B2는 아직 승인되지 않았다. 기존 OOXML import/sync/export 경로의 자동 통합
-검증과 승인된 7개 text-slot actual package round-trip은 통과했지만 source/generated/diff
-montage, exact font 환경과 사람 검수 결과가 없다. 이 문서는 통과한 증거와 제품 적용 전
+검증과 승인된 7개 text-slot actual package round-trip 및 편집 전후 visual artifact 생성은
+통과했지만 exact font 환경과 사람 검수 결과가 없다. 이 문서는 통과한 증거와 제품 적용 전
 남은 경계를 구분한다.
 
 ## 자동 검증 증거
@@ -40,6 +40,14 @@ PowerPoint 16.111에서 open, 8-page PDF render, close, reopen했고 repair/reco
 0건이었다. DrawingML letter spacing 지원 후 product materialization warning도 7개 모두
 0건으로 재검증했다.
 
+같은 7개 edit의 baseline/edited/slot-mask/locked-overlay/montage와 bounded report 43개 파일은
+`/private/tmp/orbit-ooxml-b2-slot-montage-7cg9oi8q`에 생성했다. 모든 declared checksum은 실제
+파일과 일치하고 package/import warning 및 geometry/style/relationship drift는 0이다.
+`operating-review` 42px와 `simple-light` 72px의 mask 밖 하단 글리프 경계 차이는 승인
+threshold가 없으므로 `LOCKED_PIXEL_DIFF_REVIEW_PENDING`으로 남겼다. 나머지 5개는 0px다.
+이 artifact의 renderer scope는 LibreOffice PDF/PyMuPDF montage-only이며 기존 PowerPoint 및
+LibreOffice reopen 증거나 full-deck/font calibration을 대체하지 않는다.
+
 ## Task 18에서 필요한 mutation gate
 
 API와 Web 양쪽은 `referenceTemplateSnapshot`과 `slotEditPolicies`를 기준으로 다음 전용
@@ -59,7 +67,7 @@ allowlist를 구현하고 직접 HTTP bypass 회귀 테스트를 통과했다.
 - [x] 승인된 7개 manifest의 실제 text slot edit
 - [x] 해당 edit의 `pptx-ooxml-sync` warning 0건과 최신 package 확인
 - [x] 해당 current package의 export와 PowerPoint/LibreOffice reopen
-- [ ] source/generated/diff montage와 checksum inventory
+- [x] source/generated/diff montage와 checksum inventory
 - [ ] exact font checksum과 renderer별 calibration threshold
 - [ ] 사람 검수 및 7개 확장 승인
 

@@ -123,12 +123,19 @@ content-generated 7개×8장 package/LibreOffice를 검증했다. Microsoft Powe
 reopen했고 repair/recovery 징후는 0건이었다. 이 증거는 LibreOffice 결과와 분리해 외부 QA
 artifact로 보관한다.
 
-그러나 local MinIO는 production private managed storage를 대체하지 않는다. 대상
-QA/운영 환경의 exact font file checksum, full locked diff/montage, 사람이 승인한 renderer별
-calibration threshold와 실제 flag-on vertical E2E가 남아 있다. 따라서 모든 repository
+그러나 local MinIO는 production private managed storage를 대체하지 않는다. generated full-deck
+locked diff/montage와 edited-slot montage는 각각
+`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-f`,
+`/private/tmp/orbit-ooxml-b2-slot-montage-7cg9oi8q`에 생성했지만 사람 승인은 pending이다. 대상
+QA/운영 환경의 requested exact font file checksum, 사람이 승인한 renderer별 calibration
+threshold와 실제 flag-on vertical E2E가 남아 있다. 현재 QA bucket에는 runtime이 요구하는
+`fidelity-calibrations/v1/calibration.json` object가 없으므로 current-branch flag-on worker는
+fail-closed가 정상이며 이를 우회해 smoke를 통과 처리하지 않는다. 따라서 모든 repository
 catalog entry는 disabled이고 제품 rollout은 승인 보류다. 상세 상태는
 `docs/quality/ooxml-reference-template-reports/README.md`를 따른다.
 
 현재 QA fontconfig에서 exact resolve되지 않은 unique 50개 package family는
 `/private/tmp/orbit-ooxml-font-gap-20260723-a.json`에 기록했다. 설치 후에는 모든 family의
 resolved file SHA-256을 다시 생성하고 PowerPoint와 LibreOffice evidence를 별도로 재실행한다.
+현 fidelity manifest의 exact 38개와 substituted fallback 313개 checksum은 현재 renderer가 읽은
+파일 provenance이며 requested exact family 설치 완료를 뜻하지 않는다.

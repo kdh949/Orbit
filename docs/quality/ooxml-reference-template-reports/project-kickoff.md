@@ -19,10 +19,12 @@
 - slot edit → sync/export/reopen: `passed` (warning 0, unsupported 0, text retained)
 - edited package SHA-256: `d99326482a9242af33f832cd1c1012b7db8fec1bcbdb4ac54b66f0d3d17112c3`
 - edited PowerPoint PDF SHA-256: `2bc252503cb5dafba9c0a8962cf93a0ac78dd0d0afce2c9d8c6aefd5b323dc27`
+- edited-slot montage: `generated/pending` (locked diff 0px, human approval pending)
+- edited-slot montage/report SHA-256: `add2f0e627df78cd90d9782dcfdc297cabed04c85a52bcd899c63812ac693376` / `da405b6a85ead6689c3290d25ee4be683a34a3d08ffb9e67296a11653371ea9e`
 - product materialization warning: `0`
 - fidelity artifact: `generated/pending` (structural drift 0, locked diff 6px)
 - source/locked-diff montage SHA-256: `223c614a982252eb4a9a8239dac178b716ad7f58c63dc41d44c150c2cce6cd6e` / `e43f466d270fe8381b4aff8f8924ff3f1bc6032dc5e0df83597895b43f643137`
-- fidelity report SHA-256: `8f42e0aabbcc311b0b8bb5c533440792c53d858f8bc4d7dbee49fbbf79df2875`
+- fidelity report SHA-256: `739ac07c94d642fa7c2aab5eb669b486032bb4877e797caf7e13a33647cb9643`
 
 Blocker: production managed storage, exact font checksum과 사람 locked-diff/calibration/UX
 승인이 남았다.

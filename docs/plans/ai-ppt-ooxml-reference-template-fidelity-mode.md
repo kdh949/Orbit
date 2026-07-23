@@ -679,14 +679,21 @@ source/generated locked diff artifact, exact font checksum 및 사람 검수가 
 #### Checkpoint B2: editor round-trip spike
 
 - [ ] text/image slot 편집 후 기존 `pptx-ooxml-sync` warning 0건
-- [ ] 최신 sync version 확인 후 `deck-export` 성공
-- [ ] slot locator와 decoration lock mapping이 재현되며 product rollout 전 Task 18의 API mutation gate가 필요한 범위를 report에 기록
+- [x] 최신 sync version 확인 후 `deck-export` 성공
+- [x] slot locator와 decoration lock mapping이 재현되며 product rollout 전 Task 18의 API mutation gate가 필요한 범위를 report에 기록
 - [ ] spike report와 montage를 사람이 검수하고 7개 확장 여부를 승인
 
 2026-07-23 승인 text-only 범위에서는 7개 template별 실제 slot 1개를 편집해 sync/export,
 Python/LibreOffice/PowerPoint reopen을 수행했고 warning 0, unsupported 0과 편집 문구 유지를
-확인했다. source/generated/diff montage와 exact font 환경 및 사람 승인이 남아 Checkpoint B2는
-미통과다.
+확인했다. 7개 편집 전/후/mask/locked-overlay/montage 43개 파일도
+`/private/tmp/orbit-ooxml-b2-slot-montage-7cg9oi8q`에 생성했다. geometry/style/relationship drift와
+package/import warning은 모두 0이지만 `operating-review` 42px, `simple-light` 72px의 mask 밖
+글리프 경계 차이는 threshold 없이 `LOCKED_PIXEL_DIFF_REVIEW_PENDING`으로 보존했다. 이 artifact는
+LibreOffice 기반 montage-only 증거이며 PowerPoint/reopen/full-deck/font 증거를 대체하지 않는다.
+사람 검수와 exact font 환경 승인이 남아 Checkpoint B2는 미통과다.
+
+첫 항목은 승인 범위의 actual text slot 7개는 충족했지만 actual image slot annotation이 승인되지
+않았으므로 완료로 표시하지 않는다. image replacement는 synthetic fixture 범위에서만 통과했다.
 
 ### Phase 2: content planning, structured slot과 7개 확장
 
@@ -834,9 +841,11 @@ Python/LibreOffice/PowerPoint reopen을 수행했고 warning 0, unsupported 0과
 overflow/overlap/crop, LibreOffice 56장과 Microsoft PowerPoint 16.111 open/render/reopen을
 통과했다. 실제 7개 text-slot edit/export도 두 renderer에서 reopen했다. 7개 generated deck의
 56장 source/generated/mask/locked-diff와 세 종류 montage는
-`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-e`에 계획 §7.4 구조로 생성했고 모든
+`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-f`에 계획 §7.4 구조로 생성했고 모든
 template의 package warning과 geometry/style/relationship drift는 0이다. font manifest는
-template별 43~50개 substitution을 확인했다. 따라서 exact font checksum, private calibration
+template별 43~50개 substitution을 확인했고 exact/substituted 351개 resolved file checksum을
+모두 기록했다. 다만 313개는 요청 family가 아니라 fallback file checksum이다. 따라서 요청한
+exact font 설치·checksum, private calibration
 threshold와 locked-diff의 사람 승인, production managed storage가 없어 Checkpoint C는 미통과다.
 
 최신 strict runner report는
@@ -1087,7 +1096,8 @@ publication→editor transition을 증명하지 않아 Checkpoint D1은 미통�
 - [ ] 사람 검수: PowerPoint fidelity와 편집 제한 UX 승인
 
 실제 7개 text-slot edit→sync/export package는 PowerPoint 16.111과 LibreOffice reopen을
-통과했고 7개/56장 source/generated/mask/locked-diff와 montage/report를 생성했다. 그러나
+통과했고 7개/56장 source/generated/mask/locked-diff와 montage/report 및 7개 편집 전후
+montage를 생성했다. 그러나
 production private managed storage, 승인 calibration/font artifact, real vertical E2E,
 full regression 재실행과 사람 fidelity/제한 편집 UX 승인이 남아 Checkpoint D2는 미통과다.
 
