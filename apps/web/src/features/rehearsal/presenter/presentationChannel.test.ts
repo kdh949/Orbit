@@ -81,7 +81,19 @@ describe("presentationChannel", () => {
               ],
               presenterOnlyMarker: "슬라이드 창으로 보내면 안 되는 필드",
             }
-          : slide,
+          : {
+              ...slide,
+              elements: slide.elements.map((element, elementIndex) => ({
+                ...element,
+                morphKey:
+                  p0AnimationDeck.slides[0]?.elements[elementIndex]?.elementId,
+              })),
+              transition: {
+                type: "morph" as const,
+                durationMs: 1000,
+                mode: "object" as const,
+              },
+            },
       ),
     };
     const snapshot = createSlideWindowDeckSnapshot(deckWithPrivateNotes);
@@ -97,6 +109,14 @@ describe("presentationChannel", () => {
     expect(snapshot.slides[0]?.speakerNotes).toBe("");
     expect(snapshot.slides[0]?.keywords).toEqual([]);
     expect(snapshot.slides[0]?.actions).toEqual([]);
+    expect(snapshot.slides[1]?.transition).toEqual({
+      type: "morph",
+      durationMs: 1000,
+      mode: "object",
+    });
+    expect(snapshot.slides[1]?.elements[0]?.morphKey).toBe(
+      p0AnimationDeck.slides[0]?.elements[0]?.elementId,
+    );
     expect(serialized).not.toContain("첫 문장입니다");
     expect(serialized).not.toContain("두 번째 슬라이드입니다");
     expect(serialized).not.toContain("kwo_slide_p0_1_kw_private_ai_32_34");

@@ -8,7 +8,8 @@ import {
   type Deck,
   type Slide
 } from "@orbit/shared";
-import { useEffect, useRef, useState } from "react";
+import type Konva from "konva";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getRenderableSlideElements,
   ReadOnlySlideCanvas,
@@ -24,7 +25,9 @@ import {
 } from "../../activity-slides";
 import {
   collectSlideAssetUrls,
-  getReadySlideImage
+  getReadySlideImage,
+  preloadSlideAssets,
+  retainSlideAssetWindow
 } from "../../slides/rendering/slideImageCache";
 
 export type SlideshowRenderMode = "presenter" | "slide-window" | "single-screen";
@@ -53,8 +56,25 @@ export function SlideshowRenderer(props: {
   } = props;
   const playInitialEntryAnimations =
     playInitialEntryAnimationsProp ?? renderMode !== "slide-window";
+  const slideIndex = deck.slides.findIndex(
+    (candidate) => candidate.slideId === slideId
+  );
   const slide = deck.slides.find((candidate) => candidate.slideId === slideId);
   const reducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (!slide || slideIndex < 0) return;
+    void preloadSlideAssets(deck, slide, "high");
+    const previousSlide = deck.slides[slideIndex - 1];
+    const nextSlide = deck.slides[slideIndex + 1];
+    if (previousSlide) {
+      void preloadSlideAssets(deck, previousSlide, "low");
+    }
+    if (nextSlide) {
+      void preloadSlideAssets(deck, nextSlide, "low");
+    }
+    retainSlideAssetWindow(deck, slideIndex);
+  }, [deck, slide, slideIndex]);
 
   if (!slide) {
     return (
@@ -134,8 +154,57 @@ function SlideshowRendererContent(props: {
     stepIndex,
     triggerAnimationIds
   });
+  const outgoingLayerRef = useRef<HTMLDivElement>(null);
+  const incomingLayerRef = useRef<HTMLDivElement>(null);
+  const rendererRootRef = useRef<HTMLDivElement>(null);
+  const outgoingStageRef = useRef<Konva.Stage | null>(null);
+  const incomingStageRef = useRef<Konva.Stage | null>(null);
+  const nodeScaleCacheRef = useRef(new Map<string, MorphNodeBaseScale>());
+  const drivenDestinationRef = useRef<string | null>(null);
+  const applyTransitionFrame = useCallback(
+    (transition: SlideshowCrossFadeState, progress: number) => {
+      const opacities = getCrossFadeLayerOpacities(progress);
+      if (outgoingLayerRef.current) {
+        outgoingLayerRef.current.style.opacity = String(opacities.outgoing);
+      }
+      if (incomingLayerRef.current) {
+        incomingLayerRef.current.style.opacity = String(opacities.incoming);
+      }
+      if (transition.kind !== "morph") return;
+
+      if (drivenDestinationRef.current !== transition.destinationSlideId) {
+        drivenDestinationRef.current = transition.destinationSlideId;
+        nodeScaleCacheRef.current.clear();
+      }
+      const frames = interpolateMorphFrames(transition.plan, progress);
+      const outgoingUpdateCount = applyMorphFramesToStage({
+        frames: frames.source,
+        pairs: transition.plan.pairs,
+        scaleCache: nodeScaleCacheRef.current,
+        side: "source",
+        stage: outgoingStageRef.current
+      });
+      const incomingUpdateCount = applyMorphFramesToStage({
+        frames: frames.destination,
+        pairs: transition.plan.pairs,
+        scaleCache: nodeScaleCacheRef.current,
+        side: "destination",
+        stage: incomingStageRef.current
+      });
+      rendererRootRef.current?.setAttribute(
+        "data-morph-updated-node-count",
+        String(Math.min(outgoingUpdateCount, incomingUpdateCount))
+      );
+    },
+    []
+  );
   const frame = { settledElementStates, slide };
-  const crossFade = useDestinationCrossFade({ deck, frame, reducedMotion });
+  const crossFade = useDestinationCrossFade({
+    deck,
+    frame,
+    onFrame: applyTransitionFrame,
+    reducedMotion
+  });
   const opacities = getCrossFadeLayerOpacities(crossFade?.progress ?? 1);
   const morphFrames =
     crossFade?.kind === "morph"
@@ -160,8 +229,13 @@ function SlideshowRendererContent(props: {
       data-slide-id={slide.slideId}
       data-slide-title={slide.title}
       data-step-index={stepIndex}
+      data-morph-pair-count={
+        crossFade?.kind === "morph" ? crossFade.plan.pairs.length : 0
+      }
+      data-morph-updated-node-count="0"
       data-transition-active={crossFade ? "true" : "false"}
       data-transition-kind={crossFade?.kind ?? "none"}
+      ref={rendererRootRef}
       style={{
         height: deck.canvas.height * scale,
         overflow: "hidden",
@@ -174,6 +248,7 @@ function SlideshowRendererContent(props: {
           aria-hidden="true"
           data-cross-fade-layer="outgoing"
           data-slide-id={crossFade.outgoing.slide.slideId}
+          ref={outgoingLayerRef}
           style={createCrossFadeLayerStyle(opacities.outgoing)}
         >
           <SlideFrame
@@ -182,12 +257,16 @@ function SlideshowRendererContent(props: {
             highlights={[]}
             scale={scale}
             slide={crossFade.outgoing.slide}
+            stageRef={(stage) => {
+              outgoingStageRef.current = stage;
+            }}
           />
         </div>
       ) : null}
       <div
         data-cross-fade-layer="incoming"
         data-slide-id={slide.slideId}
+        ref={incomingLayerRef}
         style={createCrossFadeLayerStyle(
           crossFade ? opacities.incoming : 1
         )}
@@ -198,6 +277,9 @@ function SlideshowRendererContent(props: {
           highlights={highlights}
           scale={scale}
           slide={slide}
+          stageRef={(stage) => {
+            incomingStageRef.current = stage;
+          }}
         />
       </div>
     </div>
@@ -225,6 +307,7 @@ type SlideshowCrossFadeState =
 function useDestinationCrossFade(args: {
   deck: Deck;
   frame: SlideshowCrossFadeFrame;
+  onFrame: (transition: SlideshowCrossFadeState, progress: number) => void;
   reducedMotion: boolean;
 }): SlideshowCrossFadeState | null {
   const previousFrameRef = useRef(args.frame);
@@ -293,7 +376,7 @@ function useDestinationCrossFade(args: {
     const destinationSlideId = args.frame.slide.slideId;
     const startedAt = performance.now();
     activeDestinationRef.current = destinationSlideId;
-    setTransition(
+    const nextTransition: SlideshowCrossFadeState =
       nextTransitionSpec.kind === "morph"
         ? {
             destinationSlideId,
@@ -307,11 +390,12 @@ function useDestinationCrossFade(args: {
             kind: "fade",
             outgoing,
             progress: 0
-          }
-    );
+          };
+    setTransition(nextTransition);
 
     const tick = (now: number) => {
       const progress = Math.min(1, Math.max(0, (now - startedAt) / durationMs));
+      args.onFrame(nextTransition, progress);
 
       if (progress >= 1) {
         frameRequestRef.current = null;
@@ -322,11 +406,6 @@ function useDestinationCrossFade(args: {
         return;
       }
 
-      setTransition((current) =>
-        current?.destinationSlideId === destinationSlideId
-          ? { ...current, progress }
-          : current
-      );
       frameRequestRef.current = requestAnimationFrame(tick);
     };
 
@@ -341,6 +420,7 @@ function useDestinationCrossFade(args: {
   }, [
     args.deck,
     args.frame.slide.slideId,
+    args.onFrame,
     args.reducedMotion,
     durationMs
   ]);
@@ -481,14 +561,72 @@ function createCrossFadeLayerStyle(opacity: number) {
   };
 }
 
+type MorphNodeBaseScale = {
+  scaleX: number;
+  scaleY: number;
+};
+
+function applyMorphFramesToStage(args: {
+  frames: ReturnType<typeof interpolateMorphFrames>["source"];
+  pairs: MorphTransitionPlan["pairs"];
+  scaleCache: Map<string, MorphNodeBaseScale>;
+  side: "source" | "destination";
+  stage: Konva.Stage | null;
+}) {
+  if (!args.stage) return 0;
+  let updatedNodeCount = 0;
+
+  for (const pair of args.pairs) {
+    const elementId =
+      args.side === "source"
+        ? pair.sourceElementId
+        : pair.destinationElementId;
+    const frame = args.frames[elementId];
+    if (!frame) continue;
+    const node = args.stage.findOne<Konva.Node>(
+      (candidate: Konva.Node) =>
+        candidate.getAttr("data-element-id") === elementId
+    );
+    if (!node) continue;
+    const cacheKey = `${args.side}:${elementId}`;
+    let baseScale = args.scaleCache.get(cacheKey);
+    if (!baseScale) {
+      baseScale = {
+        scaleX: node.scaleX(),
+        scaleY: node.scaleY()
+      };
+      args.scaleCache.set(cacheKey, baseScale);
+    }
+    node.setAttrs({
+      rotation: frame.rotation,
+      scaleX:
+        baseScale.scaleX *
+        safeMorphScale(frame.width, pair.sourceFrame.width),
+      scaleY:
+        baseScale.scaleY *
+        safeMorphScale(frame.height, pair.sourceFrame.height),
+      x: frame.x,
+      y: frame.y
+    });
+    updatedNodeCount += 1;
+  }
+  args.stage.batchDraw();
+  return updatedNodeCount;
+}
+
+function safeMorphScale(size: number, baseSize: number) {
+  return baseSize > 0 ? size / baseSize : 1;
+}
+
 function SlideFrame(props: {
   deck: Deck;
   elementStates: Record<string, ElementPresentationState>;
   highlights: SlideRuntimeHighlight[];
   scale: number;
   slide: Deck["slides"][number];
+  stageRef?: (stage: Konva.Stage | null) => void;
 }) {
-  const { deck, elementStates, highlights, scale, slide } = props;
+  const { deck, elementStates, highlights, scale, slide, stageRef } = props;
   const hasRenderableElements =
     getRenderableSlideElements(slide, deck.canvas).length > 0;
   const thumbnailUrl = resolveEditorAssetUrl(slide.thumbnailUrl);
@@ -524,6 +662,7 @@ function SlideFrame(props: {
       highlights={highlights}
       scale={scale}
       slide={slide}
+      stageRef={stageRef}
     />
   );
 }

@@ -193,6 +193,7 @@ function createSlideWindowSlideSnapshot(
     style: slide.style,
     thumbnailUrl: slide.thumbnailUrl,
     title: slide.title,
+    transition: slide.transition,
   };
 
   if (slide.kind === "activity") {
