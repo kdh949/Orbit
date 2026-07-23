@@ -3,8 +3,10 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import zipfile
 from pathlib import Path
 from typing import Any
+from xml.etree import ElementTree as ET
 
 import pytest
 from PIL import Image
@@ -28,6 +30,11 @@ from app.ai.ooxml_reference_templates.generation_runtime import (
 from app.ai.ooxml_reference_templates.models import (
     OoxmlReferenceTemplateGenerationRequest,
     OoxmlReferenceTemplateManifest,
+)
+
+
+EXTENDED_PROPERTIES_NS = (
+    "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"
 )
 
 
@@ -111,6 +118,18 @@ def test_all_stages_execute_real_clone_slot_fidelity_and_materialization_path(
     }
     assert runtime.baseline_package == runtime.current_package
     assert runtime.baseline_package != runtime.source_bytes
+    with zipfile.ZipFile(io.BytesIO(runtime.current_package), "r") as package:
+        app_properties = ET.fromstring(package.read("docProps/app.xml"))
+        current_package_text = b"".join(
+            package.read(item.filename)
+            for item in package.infolist()
+            if item.filename.endswith(".xml")
+        )
+    assert app_properties.findtext(f"{{{EXTENDED_PROPERTIES_NS}}}Slides") == "2"
+    assert (
+        app_properties.find(f"{{{EXTENDED_PROPERTIES_NS}}}TitlesOfParts") is None
+    )
+    assert b"PRIVATE UNSELECTED SOURCE TITLE" not in current_package_text
     assert by_stage["content-planning"].artifact["outline"] == [
         {"order": 1, "title": "운영 리뷰"},
         {"order": 2, "title": "다음 단계"},
@@ -578,6 +597,21 @@ def _source_package(root: Path) -> bytes:
     closing.placeholders[1].text = "Source next step"
     path = root / "source.pptx"
     presentation.save(path)
+    with zipfile.ZipFile(path, "r") as package:
+        entries = {
+            item.filename: package.read(item.filename)
+            for item in package.infolist()
+        }
+    entries["docProps/app.xml"] = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"
+ xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+  <Application>Microsoft PowerPoint</Application><Slides>99</Slides>
+  <HeadingPairs><vt:vector size="2" baseType="variant"><vt:variant><vt:lpstr>Slide Titles</vt:lpstr></vt:variant><vt:variant><vt:i4>99</vt:i4></vt:variant></vt:vector></HeadingPairs>
+  <TitlesOfParts><vt:vector size="1" baseType="lpstr"><vt:lpstr>PRIVATE UNSELECTED SOURCE TITLE</vt:lpstr></vt:vector></TitlesOfParts>
+</Properties>"""
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as package:
+        for name, content in entries.items():
+            package.writestr(name, content)
     return path.read_bytes()
 
 

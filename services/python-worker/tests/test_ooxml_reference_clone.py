@@ -25,6 +25,9 @@ from app.ai.ooxml_reference_templates.package import validate_cloned_package
 PKG_REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 PML_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
 REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+EXTENDED_PROPERTIES_NS = (
+    "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"
+)
 
 
 def _source_package(tmp_path: Path) -> Path:
@@ -71,6 +74,73 @@ def _add_timing(path: Path) -> None:
     )
     entries["ppt/slides/slide1.xml"] = entries["ppt/slides/slide1.xml"].replace(
         b"</p:sld>", timing + b"</p:sld>"
+    )
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as package:
+        for name, content in entries.items():
+            package.writestr(name, content)
+
+
+def _add_stale_document_properties(path: Path) -> None:
+    with zipfile.ZipFile(path, "r") as package:
+        entries = {
+            item.filename: package.read(item.filename)
+            for item in package.infolist()
+        }
+    entries["docProps/app.xml"] = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"
+ xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+  <TotalTime>999</TotalTime><Words>999</Words><Paragraphs>99</Paragraphs>
+  <Application>Microsoft PowerPoint</Application><PresentationFormat>Widescreen</PresentationFormat>
+  <Slides>10</Slides><Notes>10</Notes><HiddenSlides>4</HiddenSlides>
+  <HeadingPairs><vt:vector size="2" baseType="variant"><vt:variant><vt:lpstr>Slide Titles</vt:lpstr></vt:variant><vt:variant><vt:i4>10</vt:i4></vt:variant></vt:vector></HeadingPairs>
+  <TitlesOfParts><vt:vector size="1" baseType="lpstr"><vt:lpstr>PRIVATE UNSELECTED SOURCE TITLE</vt:lpstr></vt:vector></TitlesOfParts>
+  <Company>PRIVATE SOURCE COMPANY</Company><Manager>PRIVATE SOURCE MANAGER</Manager>
+  <Template>PRIVATE SOURCE TEMPLATE</Template><HyperlinkBase>PRIVATE SOURCE PATH</HyperlinkBase>
+  <ScaleCrop>false</ScaleCrop><LinksUpToDate>false</LinksUpToDate><SharedDoc>false</SharedDoc>
+  <HyperlinksChanged>false</HyperlinksChanged><AppVersion>16.0000</AppVersion>
+</Properties>"""
+    entries["docProps/core.xml"] = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
+ xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>PRIVATE SOURCE TITLE</dc:title><dc:creator>PRIVATE SOURCE AUTHOR</dc:creator></cp:coreProperties>"""
+    entries["docProps/custom.xml"] = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties"
+ xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="2" name="private-source"><vt:lpwstr>PRIVATE SOURCE CUSTOM VALUE</vt:lpwstr></property></Properties>"""
+    entries["docProps/thumbnail.jpeg"] = b"PRIVATE SOURCE THUMBNAIL"
+
+    relationships = ET.fromstring(entries["_rels/.rels"])
+    ET.SubElement(
+        relationships,
+        f"{{{PKG_REL_NS}}}Relationship",
+        {
+            "Id": "rIdPrivateThumbnail",
+            "Type": f"{PKG_REL_NS}/metadata/thumbnail",
+            "Target": "docProps/thumbnail.jpeg",
+        },
+    )
+    ET.SubElement(
+        relationships,
+        f"{{{PKG_REL_NS}}}Relationship",
+        {
+            "Id": "rIdPrivateCustom",
+            "Type": f"{REL_NS}/custom-properties",
+            "Target": "docProps/custom.xml",
+        },
+    )
+    entries["_rels/.rels"] = ET.tostring(
+        relationships, encoding="utf-8", xml_declaration=True
+    )
+
+    content_types = ET.fromstring(entries["[Content_Types].xml"])
+    ET.SubElement(
+        content_types,
+        "{http://schemas.openxmlformats.org/package/2006/content-types}Override",
+        {
+            "PartName": "/docProps/custom.xml",
+            "ContentType": "application/vnd.openxmlformats-officedocument.custom-properties+xml",
+        },
+    )
+    entries["[Content_Types].xml"] = ET.tostring(
+        content_types, encoding="utf-8", xml_declaration=True
     )
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as package:
         for name, content in entries.items():
@@ -176,6 +246,50 @@ def test_repeated_clone_allocates_collision_free_package_identities(tmp_path: Pa
 
     assert validate_cloned_package(result.package_bytes) == []
     _assert_existing_inventory_validator_accepts(tmp_path, result.package_bytes, 3)
+
+
+def test_clone_sanitizes_stale_document_properties_and_thumbnail(
+    tmp_path: Path,
+) -> None:
+    source = _source_package(tmp_path)
+    _add_stale_document_properties(source)
+
+    result = clone_source_slides(
+        source.read_bytes(),
+        source_slide_parts=["ppt/slides/slide1.xml", "ppt/slides/slide2.xml"],
+    )
+    parts = _parts(result.package_bytes)
+    app_properties = ET.fromstring(parts["docProps/app.xml"])
+
+    assert app_properties.findtext(f"{{{EXTENDED_PROPERTIES_NS}}}Slides") == "2"
+    assert app_properties.findtext(f"{{{EXTENDED_PROPERTIES_NS}}}HiddenSlides") == "0"
+    for local_name in (
+        "TotalTime",
+        "Words",
+        "Paragraphs",
+        "Notes",
+        "AppVersion",
+        "HeadingPairs",
+        "TitlesOfParts",
+        "Company",
+        "Manager",
+        "Template",
+        "HyperlinkBase",
+    ):
+        assert app_properties.find(f"{{{EXTENDED_PROPERTIES_NS}}}{local_name}") is None
+    assert b"PRIVATE SOURCE" not in parts["docProps/app.xml"]
+    assert b"PRIVATE SOURCE" not in parts["docProps/core.xml"]
+    assert "docProps/custom.xml" not in parts
+    assert "docProps/thumbnail.jpeg" not in parts
+
+    root_relationships = ET.fromstring(parts["_rels/.rels"])
+    root_relationship_types = {
+        item.attrib["Type"].rsplit("/", 1)[-1]
+        for item in root_relationships.findall(f"{{{PKG_REL_NS}}}Relationship")
+    }
+    assert "custom-properties" not in root_relationship_types
+    assert "thumbnail" not in root_relationship_types
+    assert validate_cloned_package(result.package_bytes) == []
 
 
 @pytest.mark.parametrize("slide_count", [8, 9, 10])

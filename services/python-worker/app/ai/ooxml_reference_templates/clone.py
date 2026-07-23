@@ -21,6 +21,13 @@ from app.ai.ooxml_reference_templates.package import validate_cloned_package
 
 
 CONTENT_TYPES_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
+EXTENDED_PROPERTIES_NS = (
+    "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"
+)
+CORE_PROPERTIES_NS = (
+    "http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
+)
+DC_NS = "http://purl.org/dc/elements/1.1/"
 _SLIDE_PART = re.compile(r"^ppt/slides/slide[0-9]+\.xml$")
 class CloneError(ValueError):
     def __init__(self, code: str, detail: str) -> None:
@@ -88,12 +95,18 @@ def clone_source_slides(
     if missing:
         raise CloneError("SOURCE_SLIDE_MISSING", "selected source slide is missing")
 
-    removed_parts = _collect_original_mutable_parts(source_parts)
+    (
+        root_relationships,
+        private_property_parts,
+        retained_property_parts,
+    ) = _sanitize_root_relationships(source_parts)
+    removed_parts = _collect_original_mutable_parts(source_parts) | private_property_parts
     output_parts = {
         name: content
         for name, content in source_parts.items()
         if name not in removed_parts
     }
+    output_parts["_rels/.rels"] = root_relationships
     new_part_sources: dict[str, str] = {}
     counters = _CloneCounters()
     clone_records: list[SlideClone] = []
@@ -221,6 +234,18 @@ def clone_source_slides(
     output_parts["ppt/_rels/presentation.xml.rels"] = _xml_bytes(
         presentation_rels
     )
+    extended_properties_part = retained_property_parts.get("extended-properties")
+    if extended_properties_part in output_parts:
+        output_parts[extended_properties_part] = _sanitized_extended_properties(
+            slide_count=len(clone_records),
+            hidden_slide_count=sum(
+                _is_hidden_slide(source_parts[record.source_slide_part])
+                for record in clone_records
+            ),
+        )
+    core_properties_part = retained_property_parts.get("core-properties")
+    if core_properties_part in output_parts:
+        output_parts[core_properties_part] = _sanitized_core_properties()
     output_parts["[Content_Types].xml"] = _rewrite_content_types(
         source_parts["[Content_Types].xml"], removed_parts, new_part_sources
     )
@@ -288,6 +313,69 @@ def _collect_original_mutable_parts(source_parts: dict[str, bytes]) -> set[str]:
                 }:
                     removed.add(_resolve_target(target, child.attrib["Target"]))
     return {part for part in removed if part in source_parts}
+
+
+def _sanitize_root_relationships(
+    source_parts: dict[str, bytes],
+) -> tuple[bytes, set[str], dict[str, str]]:
+    relationships = ET.fromstring(source_parts["_rels/.rels"])
+    removed_parts: set[str] = set()
+    retained_property_parts: dict[str, str] = {}
+    for relationship in list(relationships):
+        relationship_type = relationship.attrib.get("Type", "").rsplit("/", 1)[-1]
+        if relationship_type in {"core-properties", "extended-properties"}:
+            if relationship_type in retained_property_parts:
+                raise CloneError(
+                    "SOURCE_DOCUMENT_PROPERTIES_INVALID",
+                    f"duplicate {relationship_type} relationship",
+                )
+            retained_property_parts[relationship_type] = _resolve_target(
+                "", relationship.attrib.get("Target", "")
+            )
+            continue
+        if relationship_type not in {"custom-properties", "thumbnail"}:
+            continue
+        target = _resolve_target("", relationship.attrib.get("Target", ""))
+        if target in source_parts:
+            removed_parts.add(target)
+        relationships.remove(relationship)
+    return _xml_bytes(relationships), removed_parts, retained_property_parts
+
+
+def _sanitized_extended_properties(
+    *, slide_count: int, hidden_slide_count: int
+) -> bytes:
+    properties = ET.Element(f"{{{EXTENDED_PROPERTIES_NS}}}Properties")
+    for local_name, value in (
+        ("Application", "ORBIT"),
+        ("Slides", str(slide_count)),
+        ("HiddenSlides", str(hidden_slide_count)),
+        ("ScaleCrop", "false"),
+        ("LinksUpToDate", "false"),
+        ("SharedDoc", "false"),
+        ("HyperlinksChanged", "false"),
+    ):
+        element = ET.SubElement(
+            properties,
+            f"{{{EXTENDED_PROPERTIES_NS}}}{local_name}",
+        )
+        element.text = value
+    return _xml_bytes(properties)
+
+
+def _sanitized_core_properties() -> bytes:
+    properties = ET.Element(f"{{{CORE_PROPERTIES_NS}}}coreProperties")
+    ET.SubElement(properties, f"{{{DC_NS}}}title")
+    return _xml_bytes(properties)
+
+
+def _is_hidden_slide(content: bytes) -> bool:
+    slide = ET.fromstring(content)
+    return slide.attrib.get("show", "true").strip().casefold() in {
+        "0",
+        "false",
+        "off",
+    }
 
 
 def _clone_notes_part(
@@ -497,5 +585,10 @@ def _xml_bytes(root: ET.Element[str]) -> bytes:
         ET.register_namespace(
             "p14", "http://schemas.microsoft.com/office/powerpoint/2012/main"
         )
+    elif namespace == EXTENDED_PROPERTIES_NS:
+        ET.register_namespace("", EXTENDED_PROPERTIES_NS)
+    elif namespace == CORE_PROPERTIES_NS:
+        ET.register_namespace("cp", CORE_PROPERTIES_NS)
+        ET.register_namespace("dc", DC_NS)
     body = bytes(ET.tostring(root, encoding="utf-8", xml_declaration=False))
     return b"<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n" + body
