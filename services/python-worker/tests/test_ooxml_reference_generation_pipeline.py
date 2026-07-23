@@ -27,6 +27,9 @@ from app.ai.ooxml_reference_templates.generation_runtime import (
     ReferenceInput,
     RenderValidationInput,
 )
+from app.ai.ooxml_reference_templates.font_aliases import (
+    approved_font_alias_policy,
+)
 from app.ai.ooxml_reference_templates.models import (
     OoxmlReferenceTemplateGenerationRequest,
     OoxmlReferenceTemplateManifest,
@@ -546,6 +549,10 @@ class _FakeRuntime:
                 "lockedRegionSsimThreshold": 0.99,
                 "geometryEdgeTolerancePx": 0,
                 "rationale": "deterministic fixture",
+                "fontAliasPolicy": approved_font_alias_policy().model_dump(
+                    by_alias=True,
+                    mode="json",
+                ),
                 "identityBaselines": [
                     {
                         "templateId": template_id,

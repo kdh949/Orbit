@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ooxmlReferenceFidelityCalibrationSchema,
+  ooxmlReferenceFontAliasPolicySchema,
   ooxmlReferenceTemplateGenerationJobResultSchema,
   ooxmlReferenceTemplateGenerationJobPayloadSchema,
   ooxmlReferenceTemplateGenerationRequestSchema,
@@ -15,6 +17,73 @@ import {
 } from "./ooxml-reference-template.schema";
 
 const sha256 = "a".repeat(64);
+
+const approvedFontAliasPolicy = {
+  schemaVersion: 1,
+  resolver: "fontconfig",
+  aliases: [
+    {
+      requestedTypeface: "Lora SemiBold",
+      targetFamily: "Lora",
+      targetStyle: "SemiBold",
+      aliasKind: "family-style",
+      axisValues: { GRAD: null, opsz: null, wdth: null, wght: 600 },
+      sourceFontSha256:
+        "822a6621ccbe8d97d20ac88c1c41f5615c9c2c202eaa75f272cd452aac6475a7",
+      license: {
+        spdxId: "OFL-1.1",
+        sha256:
+          "1d9a970809ac804b582a6ce7f0ebc4e7fefcbfd7ff6299cad35ee656a21be716"
+      },
+      approval: { status: "approved", approvedOn: "2026-07-23" }
+    },
+    {
+      requestedTypeface: "Roboto SemiBold",
+      targetFamily: "Roboto",
+      targetStyle: "SemiBold",
+      aliasKind: "family-style",
+      axisValues: { GRAD: null, opsz: null, wdth: 100, wght: 600 },
+      sourceFontSha256:
+        "d7598e12c5dbef095ff8272cfc55da0250bd07fbdecbac8a530b9b277872a134",
+      license: {
+        spdxId: "OFL-1.1",
+        sha256:
+          "061402327a96aadb0bfb694a960ed289ecd38d383e396243831ab81feb109c41"
+      },
+      approval: { status: "approved", approvedOn: "2026-07-23" }
+    },
+    {
+      requestedTypeface: "Roboto Serif 14pt",
+      targetFamily: "Roboto Serif",
+      targetStyle: "Regular",
+      aliasKind: "variable-instance",
+      axisValues: { GRAD: 0, opsz: 14, wdth: 100, wght: 400 },
+      sourceFontSha256:
+        "351ced75f3851806aa6d846b669361521eb1925cfc530396df9c1a1b77061ddb",
+      license: {
+        spdxId: "OFL-1.1",
+        sha256:
+          "34dbfbb43e0b4fdeef445d77b9ac0b988e5ad7a9bbf16808c97b66c66d51f553"
+      },
+      approval: { status: "approved", approvedOn: "2026-07-23" }
+    },
+    {
+      requestedTypeface: "Roboto Serif 14pt Medium",
+      targetFamily: "Roboto Serif",
+      targetStyle: "Medium",
+      aliasKind: "variable-instance",
+      axisValues: { GRAD: 0, opsz: 14, wdth: 100, wght: 500 },
+      sourceFontSha256:
+        "351ced75f3851806aa6d846b669361521eb1925cfc530396df9c1a1b77061ddb",
+      license: {
+        spdxId: "OFL-1.1",
+        sha256:
+          "34dbfbb43e0b4fdeef445d77b9ac0b988e5ad7a9bbf16808c97b66c66d51f553"
+      },
+      approval: { status: "approved", approvedOn: "2026-07-23" }
+    }
+  ]
+};
 
 const createTextSlot = (overrides: Record<string, unknown> = {}) => ({
   slotId: "operating-review-v1-slide-01-title",
@@ -576,6 +645,93 @@ describe("OOXML reference template schemas are strict", () => {
   ])("rejects unknown fields", (schema, payload) => {
     expect(
       schema.safeParse({ ...payload, unexpectedContractField: true }).success
+    ).toBe(false);
+  });
+});
+
+describe("ooxmlReferenceFidelityCalibrationSchema", () => {
+  const calibration = {
+    schemaVersion: 1,
+    status: "calibrated",
+    lockedRegionSsimThreshold: 0.998,
+    geometryEdgeTolerancePx: 0,
+    rationale: "승인된 exact-font identity baseline의 최소값",
+    fontAliasPolicy: approvedFontAliasPolicy,
+    identityBaselines: [
+      "business-review",
+      "market-trends-report",
+      "operating-review",
+      "project-kickoff",
+      "simple-dark",
+      "simple-light",
+      "team-alignment"
+    ].map((templateId, index) => ({
+      templateId,
+      version: 1,
+      renderer: "libreoffice-pdf-pymupdf",
+      rendererVersion: "26.8.0.0",
+      reportSha256: String(index + 1).repeat(64)
+    }))
+  };
+
+  it("accepts the exact approved alias policy", () => {
+    expect(ooxmlReferenceFidelityCalibrationSchema.parse(calibration)).toEqual(
+      calibration
+    );
+  });
+
+  it.each([
+    ["unknown alias", (value: typeof approvedFontAliasPolicy) => {
+      value.aliases[0].targetFamily = "Fallback";
+    }],
+    ["checksum drift", (value: typeof approvedFontAliasPolicy) => {
+      value.aliases[1].sourceFontSha256 = "0".repeat(64);
+    }],
+    ["axis drift", (value: typeof approvedFontAliasPolicy) => {
+      value.aliases[2].axisValues.opsz = 12;
+    }],
+    ["extra key", (value: typeof approvedFontAliasPolicy) => {
+      Object.assign(value.aliases[3], { path: "/private/font.ttf" });
+    }]
+  ])("rejects %s", (_label, mutate) => {
+    const policy = structuredClone(approvedFontAliasPolicy);
+    mutate(policy);
+    expect(ooxmlReferenceFontAliasPolicySchema.safeParse(policy).success).toBe(
+      false
+    );
+  });
+
+  it("rejects Python-coercible keys, booleans, and whitespace drift", () => {
+    const snakeCase = structuredClone(approvedFontAliasPolicy) as Record<
+      string,
+      unknown
+    >;
+    snakeCase.schema_version = snakeCase.schemaVersion;
+    delete snakeCase.schemaVersion;
+
+    expect(
+      ooxmlReferenceFontAliasPolicySchema.safeParse(snakeCase).success
+    ).toBe(false);
+    expect(
+      ooxmlReferenceFontAliasPolicySchema.safeParse({
+        ...approvedFontAliasPolicy,
+        schemaVersion: true
+      }).success
+    ).toBe(false);
+    expect(
+      ooxmlReferenceFontAliasPolicySchema.safeParse({
+        ...approvedFontAliasPolicy,
+        aliases: approvedFontAliasPolicy.aliases.map((alias, index) => ({
+          ...alias,
+          targetFamily: index === 0 ? " Lora " : alias.targetFamily
+        }))
+      }).success
+    ).toBe(false);
+    expect(
+      ooxmlReferenceFidelityCalibrationSchema.safeParse({
+        ...calibration,
+        geometryEdgeTolerancePx: false
+      }).success
     ).toBe(false);
   });
 });

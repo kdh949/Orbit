@@ -19,6 +19,9 @@ from app.ai.ooxml_reference_templates.calibration import (
     CALIBRATION_OBJECT_KEY,
 )
 from app.ai.ooxml_reference_templates.fidelity import EXPECTED_TEMPLATE_IDS
+from app.ai.ooxml_reference_templates.font_aliases import (
+    approved_font_alias_policy,
+)
 from app.ai.ooxml_reference_templates.models import (
     OoxmlReferenceTemplateManifest,
 )
@@ -210,6 +213,10 @@ def _seed_calibration(client: FakeS3Client) -> None:
             "lockedRegionSsimThreshold": 0.998,
             "geometryEdgeTolerancePx": 0,
             "rationale": "approved deterministic identity baselines",
+            "fontAliasPolicy": approved_font_alias_policy().model_dump(
+                by_alias=True,
+                mode="json",
+            ),
             "identityBaselines": [
                 {
                     "templateId": template_id,

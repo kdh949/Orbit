@@ -31,6 +31,6 @@
 - source/locked-diff montage SHA-256: `5a8fd7fa0cddae08066e3ffbabb9c32212eef056a556fad614dc46d95a2e75ca` / `bfa0939cc4d6fbee4600f17ef76be98bba00ce110140be4f6f34138a50788371`
 - fidelity report SHA-256: `08e282f5942d93a56d2e190d5058b6cf94329ba4fea540b789b509752596b2fc`
 
-Blocker: production managed storage, exact font checksum과 calibration/actual editor UX 승인이
+Blocker: production managed storage, 남은 target font checksum과 calibration/actual editor UX 승인이
 남았다. 기존 drift fixture 대신 quality SHA-256과 일치한 deterministic reproduction을
 PowerPoint에서 검증했다.

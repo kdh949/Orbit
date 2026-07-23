@@ -118,9 +118,12 @@ identity-control에서는 locked geometry exact match와 package warning 0건을
 PowerPoint와 LibreOffice 결과는 별도 renderer baseline으로 저장한다. LibreOffice 결과를
 PowerPoint QA로 대체하거나 두 renderer의 정상 차이를 하나의 threshold로 숨기지 않는다.
 
-runtime은 package의 explicit font family를 `fc-match`로 exact resolve하고 실제 font file
-checksum을 기록한다. 요청 family가 resolve된 family 집합에 없으면 substitution으로 보고
-render-validation을 fail-closed한다.
+runtime은 package의 explicit font family를 `fc-match`로 resolve하고 실제 font file checksum을
+기록한다. 기본값은 exact family이며 요청 family가 resolved family 집합에 없으면 substitution으로
+보고 render-validation을 fail-closed한다. 단, 2026-07-23 승인된 공개 OFL alias 4개는 strict
+v1 policy가 지정한 target family/style, variable axis, font SHA-256과 license SHA-256이 모두
+일치할 때만 `approved-alias`로 exact와 동등하게 인정한다. policy checksum도 calibration과
+font manifest에 기록하며 path와 font bytes는 기록하지 않는다.
 
 2026-07-23 현재 QA fontconfig 비교에서는 unique 50개 explicit family가 exact resolve되지
 않았다. `/private/tmp/orbit-ooxml-font-gap-20260723-a.json`의 family를 설치하거나 exact alias와
@@ -142,11 +145,29 @@ threshold 승인이 남아 `runtimeEligible=false`와
 OFL과 바이너리를 함께 보존하고 name table을 검사했다. `Lora SemiBold`와
 `Roboto SemiBold`는 각각 family `Lora`/`Roboto`의 style·full name이며, Roboto Serif
 변수 폰트는 `Roboto Serif`와 `Roboto Serif 20pt`만 노출한다. 따라서 네 요청 문자열 모두
-현재 `fc-match` resolved family exact 규칙을 설치만으로 충족하지 않는다. 공개 파일의
-checksum과 라이선스는 확보했지만 family-plus-style/optical-size alias는 계약 변경이므로
-승인과 테스트 없이 적용하지 않았고, QA font 설치·calibration·strict catalog 상태도
-변경하지 않았다. Google Fonts 저장소는 family 디렉터리의 바이너리와 라이선스를 기준으로
-재배포 조건을 확인해야 한다고 명시한다.
+현재 `fc-match` resolved family exact 규칙을 설치만으로 충족하지 않는다. 사용자는
+2026-07-23 family-plus-style/optical-size alias 계약을 승인했다. 구현은
+`target="pattern"` rewrite만 사용하고 `target="scan"`과 name-table 변조를 금지하며 다음
+exact tuple만 허용한다.
+
+- `Lora SemiBold → Lora / SemiBold / wght=600`
+- `Roboto SemiBold → Roboto / SemiBold / wdth=100,wght=600`
+- `Roboto Serif 14pt → Roboto Serif / Regular / GRAD=0,opsz=14,wdth=100,wght=400`
+- `Roboto Serif 14pt Medium → Roboto Serif / Medium / GRAD=0,opsz=14,wdth=100,wght=500`
+
+canonical policy SHA-256은
+`50307d2da1389072fda2c2fa02007b89cbbd797f7fc4a1fbe3b09d494767b458`이다. 승인 tuple,
+font/OFL checksum 또는 axis가 달라지면 `alias-mismatch`로 fail-closed한다. 격리 Docker
+QA의 7개/139장 integration 증거는
+`/private/tmp/orbit-ooxml-approved-font-alias-runtime-20260723`에 있다. 네 alias는 모두
+`approved-alias`, locked-region 최소 SSIM 1.0, changed pixel 0, structural pass와 checksum
+461/461을 기록했다. overlay는 OOXML reference render와 font-match subprocess에만 적용하고
+일반 renderer에는 주입하지 않는다. family-style은 실제 fontconfig weight/width,
+variable instance는 GRAD/opsz/wdth/wght를 검증한다. 그러나 해당 image에는 전체 대상 폰트가
+없어 exact 4,
+approved-alias 4, substituted 343이며 `runtimeEligible=false`다. 이 결과는 공개 alias
+통합만 입증하고 Microsoft PowerPoint alias 렌더, 나머지 라이선스 폰트, 승인 threshold 또는
+production storage를 입증하지 않는다.
 
 artifact는 Git이 아닌 `/tmp` 또는 승인된 private QA storage에 다음 구조로 둔다.
 
@@ -186,8 +207,9 @@ report checksum, locked-region metric 분포와 structural gate 결과를 포함
 
 활성 runtime은 private storage의 고정된 versioned calibration object를 시작 시 읽고 object
 metadata SHA-256과 strict schema를 검증한다. exact 7개 `templateId@1`, 하나의
-renderer/version, `geometryEdgeTolerancePx=0`, threshold와 승인 rationale가 없으면 runtime
-구성 자체가 실패한다. calibration locator는 report와 로그에 기록하지 않는다.
+renderer/version, `geometryEdgeTolerancePx=0`, threshold, 승인 rationale와 exact approved
+font-alias policy가 없으면 runtime 구성 자체가 실패한다. calibration locator는 report와
+로그에 기록하지 않는다.
 
 7개 측정 후 calibration report는 renderer별 정상 변동, 선택한 tolerance, outlier와 그
 근거를 기록한다. 리뷰 없이 임의 숫자를 추가하거나 낮춰서 실패를 통과시키지 않는다.
@@ -220,11 +242,12 @@ checksum manifest SHA-256은
 - [x] PowerPoint 7개 generated full-deck의 56장 PNG/montage/report가 생성됨
 - [x] 7개 실제 text-slot 편집 전/후/mask/locked-overlay/montage가 생성됨
 - [x] 253개 실제 text-slot의 `bodyPr`/frame/style/locked structure matrix가 통과함
+- [x] 공개 OFL alias 4개의 strict tuple/checksum/axis 계약과 7개/139장 QA integration이 통과함
 - [ ] threshold와 tolerance 근거가 사람 검수됨
 
 편집 artifact는 `/private/tmp/orbit-ooxml-b2-slot-montage-7cg9oi8q`에 있으며 structural drift와
 package/import warning은 0이다. `operating-review` 42px와 `simple-light` 72px의 locked pixel은
-mask 경계 anti-alias 후보지만 사람이 승인하지 않았으므로 `LOCKED_PIXEL_DIFF_REVIEW_PENDING`이다.
+2026-07-23 사람이 slot-mask 경계 anti-aliasing으로 승인했다.
 253-slot 구조 matrix는
 `/private/tmp/orbit-ooxml-actual-text-slot-matrix-v2-20260723-60dgia3v`에 있으며 `bodyPr`,
 `lstStyle`, target frame/style과 locked geometry/style/relationship drift가 모두 0이다.
@@ -232,6 +255,6 @@ mask 경계 anti-alias 후보지만 사람이 승인하지 않았으므로 `LOCK
 non-text/relationship semantics와 unclassified residual drift는 0이다. 이는 실제 image slot 또는
 사람 visual approval을 대체하지 않는다.
 
-요청한 exact font 설치와 사람의 locked-diff/threshold 승인이 남아 있으므로 전체 calibration은
+나머지 대상 font 설치·checksum과 사람의 threshold 승인이 남아 있으므로 전체 calibration은
 `not-calibrated`, `applied=false`를 유지한다. artifact report의 `status=generated`는 파일 생성과
 structural 비교 완료만 뜻하며 `approvalStatus=pending`을 fidelity 승인으로 승격하지 않는다.

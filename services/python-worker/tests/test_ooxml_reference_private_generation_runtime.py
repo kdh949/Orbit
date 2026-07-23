@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 from pptx import Presentation
 
+from app.ai.ooxml_reference_templates import private_generation_runtime
 from app.ai.ooxml_reference_templates.catalog_transport import (
     VerifiedPrivateCatalogSource,
 )
@@ -25,6 +26,9 @@ from app.ai.ooxml_reference_templates.calibration import (
 from app.ai.ooxml_reference_templates.fidelity import (
     EXPECTED_TEMPLATE_IDS,
     evaluate_ooxml_reference_fidelity,
+)
+from app.ai.ooxml_reference_templates.font_aliases import (
+    approved_font_alias_policy,
 )
 from app.ai.ooxml_reference_templates.models import (
     OoxmlReferenceTemplateGenerationRequest,
@@ -455,6 +459,43 @@ def test_render_runtime_uses_pptx_renderer_and_existing_fidelity_gate() -> None:
     )
 
 
+def test_reference_renderer_scopes_fontconfig_to_reference_subprocess(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scoped_environment = {
+        "FONTCONFIG_FILE": "/etc/orbit-fontconfig/fonts.conf",
+    }
+    captured: list[object] = []
+
+    monkeypatch.setattr(
+        private_generation_runtime,
+        "reference_fontconfig_subprocess_environment",
+        lambda: scoped_environment,
+    )
+    monkeypatch.setattr(
+        private_generation_runtime,
+        "render_pptx_to_png_assets",
+        lambda package, canvas, environment=None: captured.extend(
+            [package, canvas, environment]
+        )
+        or [],
+    )
+
+    canvas = private_generation_runtime.CanvasSpec(
+        preset="wide",
+        width=1600,
+        height=900,
+        aspect_ratio="16:9",
+    )
+    result = private_generation_runtime._render_reference_pptx_to_png_assets(
+        b"package",
+        canvas,
+    )
+
+    assert result == []
+    assert captured == [b"package", canvas, scoped_environment]
+
+
 def test_image_slot_reads_only_project_scoped_private_asset_metadata() -> None:
     content = _png()
     key = "projects/project_1/assets/file-image-source.png"
@@ -869,6 +910,10 @@ def _calibration() -> dict[str, object]:
         "lockedRegionSsimThreshold": 0.998,
         "geometryEdgeTolerancePx": 0,
         "rationale": "deterministic renderer identity baselines",
+        "fontAliasPolicy": approved_font_alias_policy().model_dump(
+            by_alias=True,
+            mode="json",
+        ),
         "identityBaselines": [
             {
                 "version": 1,

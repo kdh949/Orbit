@@ -11,7 +11,6 @@ import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from io import BytesIO
-from pathlib import Path
 from typing import Any, Mapping, Protocol, cast
 from urllib.parse import quote
 from xml.etree import ElementTree as ET
@@ -48,6 +47,10 @@ from app.ai.ooxml_reference_templates.generation_runtime import (
     LoadedReferenceTemplate,
     ReferenceInput,
     RenderValidationInput,
+)
+from app.ai.ooxml_reference_templates.font_aliases import (
+    inspect_font_resolution,
+    reference_fontconfig_subprocess_environment,
 )
 from app.ai.ooxml_reference_templates.models import (
     OoxmlReferenceTemplateGenerationRequest,
@@ -209,7 +212,10 @@ class PrivateOoxmlReferenceGenerationRuntime:
             Callable[[GenerateDeckRequest], ContentPlan] | None,
             content_plan_runner,
         )
-        self._render_deck = cast(RenderDeck, render_deck or render_pptx_to_png_assets)
+        self._render_deck = cast(
+            RenderDeck,
+            render_deck or _render_reference_pptx_to_png_assets,
+        )
         self._render_environment = cast(
             RenderEnvironment,
             render_environment or _libreoffice_render_environment,
@@ -602,7 +608,8 @@ class PrivateOoxmlReferenceGenerationRuntime:
             environment = dict(self._render_environment())
             if environment.pop("resolvePackageFonts", False) is True:
                 environment["fontFiles"] = _resolved_package_font_files(
-                    package_bytes
+                    package_bytes,
+                    self._fidelity_calibration.get("fontAliasPolicy"),
                 )
         except Exception as error:
             raise PrivateGenerationRuntimeError(
@@ -1382,7 +1389,21 @@ def _libreoffice_render_environment() -> Mapping[str, Any]:
     }
 
 
-def _resolved_package_font_files(package_bytes: bytes) -> list[dict[str, str]]:
+def _render_reference_pptx_to_png_assets(
+    package_bytes: bytes,
+    canvas: CanvasSpec,
+) -> list[ImportedDesignAsset]:
+    return render_pptx_to_png_assets(
+        package_bytes,
+        canvas,
+        reference_fontconfig_subprocess_environment(),
+    )
+
+
+def _resolved_package_font_files(
+    package_bytes: bytes,
+    font_alias_policy: object | None,
+) -> list[dict[str, Any]]:
     font_match = shutil.which("fc-match")
     if font_match is None:
         raise RuntimeError("fontconfig is required")
@@ -1405,37 +1426,21 @@ def _resolved_package_font_files(package_bytes: bytes) -> list[dict[str, str]]:
                     requested.add(typeface.strip())
     if not requested or len(requested) > 256:
         raise RuntimeError("package font inventory is invalid")
-    resolved: list[dict[str, str]] = []
+    resolved: list[dict[str, Any]] = []
     for requested_family in sorted(requested, key=str.casefold):
-        result = subprocess.run(
-            [
-                font_match,
-                requested_family,
-                "--format",
-                "%{family}\n%{file}\n",
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=10,
+        resolution = inspect_font_resolution(
+            requested_family,
+            ["package-requested"],
+            font_match,
+            cast(Mapping[str, object] | None, font_alias_policy),
         )
-        lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-        if len(lines) < 2:
-            raise RuntimeError("resolved font metadata is incomplete")
-        resolved_families = {
-            family.strip().casefold()
-            for family in lines[0].split(",")
-            if family.strip()
-        }
-        if requested_family.casefold() not in resolved_families:
+        if resolution["status"] not in {"exact", "approved-alias"}:
             raise RuntimeError("package font substitution is not allowed")
-        font_path = Path(lines[1])
         resolved.append(
             {
-                "requestedFamily": requested_family,
-                "family": lines[0],
+                **resolution,
+                "family": resolution["resolvedFamily"],
                 "role": "package-requested",
-                "sha256": _sha256(font_path.read_bytes()),
             }
         )
     return resolved

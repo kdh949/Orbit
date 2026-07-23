@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import zipfile
+from collections.abc import Mapping
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -6113,6 +6114,7 @@ def rewrite_zip(
 def render_pptx_to_png_assets(
     package_bytes: bytes,
     canvas: CanvasSpec,
+    subprocess_environment: Mapping[str, str] | None = None,
 ) -> list[ImportedDesignAsset]:
     executable = shutil.which("libreoffice") or shutil.which("soffice")
     if executable is None:
@@ -6139,6 +6141,7 @@ def render_pptx_to_png_assets(
                 ],
                 check=True,
                 capture_output=True,
+                env=subprocess_environment,
                 text=True,
                 timeout=120,
             )

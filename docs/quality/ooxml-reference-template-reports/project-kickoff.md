@@ -31,5 +31,5 @@
 - source/locked-diff montage SHA-256: `223c614a982252eb4a9a8239dac178b716ad7f58c63dc41d44c150c2cce6cd6e` / `e43f466d270fe8381b4aff8f8924ff3f1bc6032dc5e0df83597895b43f643137`
 - fidelity report SHA-256: `e0bbedb3a292b7219c706f446eb105bc29dd465b222ad411a8831aaafaa21173`
 
-Blocker: production managed storage, exact font checksum과 calibration/actual editor UX 승인이
+Blocker: production managed storage, 남은 target font checksum과 calibration/actual editor UX 승인이
 남았다.

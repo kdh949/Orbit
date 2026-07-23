@@ -8,6 +8,9 @@ from PIL import Image, ImageDraw
 from app.ai.ooxml_reference_templates.fidelity import (
     evaluate_ooxml_reference_fidelity,
 )
+from app.ai.ooxml_reference_templates.font_aliases import (
+    approved_font_alias_policy,
+)
 
 
 TEMPLATE_IDS = [
@@ -67,6 +70,10 @@ def _calibration(template_ids: list[str] | None = None) -> dict[str, object]:
         "lockedRegionSsimThreshold": 0.998,
         "geometryEdgeTolerancePx": 0,
         "rationale": "7개 identity-control baseline의 deterministic renderer 분포",
+        "fontAliasPolicy": approved_font_alias_policy().model_dump(
+            by_alias=True,
+            mode="json",
+        ),
         "identityBaselines": [
             {
                 "templateId": template_id,

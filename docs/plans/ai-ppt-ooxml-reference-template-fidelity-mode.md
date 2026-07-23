@@ -698,9 +698,18 @@ embedded-only/exact-absent family와 사람 threshold 승인이 남아 runtime�
 `/private/tmp/orbit-ooxml-open-font-exact-name-audit-20260723`에서 Google Fonts 바이너리,
 family별 OFL, checksum과 name table을 확인했다. `Lora SemiBold`/`Roboto SemiBold`는
 family가 아니라 style·full name이고 Roboto Serif 배포본은 14pt family를 노출하지 않아,
-현 exact-family 계약에서는 설치만으로 4개 모두 gate를 해소하지 못한다. alias/optical-size
-매핑은 별도 계약 승인 없이는 적용하지 않았으며 QA 설치·calibration·strict 상태도
-변경하지 않았다.
+현 exact-family 계약에서는 설치만으로 4개 모두 gate를 해소하지 못한다. 사용자는
+2026-07-23 네 family-style/optical-size alias tuple을 승인했다. shared Zod/Pydantic mirror,
+fontconfig `target="pattern"` overlay와 runtime resolver는 exact target family/style/axis,
+font SHA-256, OFL SHA-256과 canonical policy SHA-256이 모두 맞을 때만 `approved-alias`로
+통과하고 나머지는 fail-closed한다. `target="scan"`과 name-table 변조는 사용하지 않는다.
+격리 Docker QA의
+`/private/tmp/orbit-ooxml-identity-calibration-candidate-approved-aliases-scoped-20260723-e`는
+7개/139장, SSIM 1.0, changed pixel 0, structural pass, checksum 461/461과 alias 4/4를
+확인했다. overlay는 reference render/font-match subprocess에만 적용했고 일반 renderer에는
+주입하지 않았다. family-style의 actual weight/width와 variable instance axis도 검증했다.
+전체 target font가 없는 image여서 exact 4/approved-alias 4/substituted 343,
+`runtimeEligible=false`이며 threshold·calibration status와 strict catalog는 변경하지 않았다.
 
 **Dependencies:** Tasks 5, 6, 7
 
@@ -1207,8 +1216,9 @@ template snapshot, UI slot edit, sync freshness/warning 0, PPTX export/package�
 통과했고 7개/56장 source/generated/mask/locked-diff와 montage/report 및 7개 편집 전후
 montage를 생성했다. 별도 승인된 actual image slot 5개도 capacity·relationship을 보존한
 sync/export 후 PowerPoint 16.111과 LibreOffice에서 5/5 render/reopen을 통과했다. 그러나
-production private managed storage, 승인 calibration/font artifact, real vertical E2E와 사람
-fidelity/제한 편집 UX 승인이 남아 Checkpoint D2는 미통과다. 2026-07-23 최종 repository
+production private managed storage, 승인 calibration/font artifact, real vertical E2E와 실제
+flag-on Deck의 제한 편집 UX 승인이 남아 Checkpoint D2는 미통과다. PowerPoint fidelity 사람
+검수는 2026-07-23 승인됐다. 최종 repository
 build/lint/test와 current-branch Python worker를 사용한 PostgreSQL PPTX round-trip 7개,
 `/createdeck` Playwright 2개는 재실행해 통과했다.
 
@@ -1252,6 +1262,7 @@ ooxml-reference-template.job.failed
 | Editor/API        | slot-only mutation allowlist                  | merge 차단               |
 | Sync/export       | current version, zero warning, reopen         | release 차단             |
 | Visual            | locked region + intended slot mask            | template activation 차단 |
+| Font provenance   | exact 또는 승인 alias tuple/checksum/axis     | template activation 차단 |
 | PowerPoint        | actual Microsoft PowerPoint render/reopen     | rollout 차단             |
 | System regression | native design pack and import path            | merge 차단               |
 

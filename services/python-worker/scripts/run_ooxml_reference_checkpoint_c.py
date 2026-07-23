@@ -33,6 +33,9 @@ from app.ai.ooxml_reference_templates.annotation import (  # noqa: E402
 from app.ai.ooxml_reference_templates.fidelity import (  # noqa: E402
     EXPECTED_TEMPLATE_IDS,
 )
+from app.ai.ooxml_reference_templates.font_aliases import (  # noqa: E402
+    reference_fontconfig_subprocess_environment,
+)
 from app.ai.ooxml_reference_templates.package import (  # noqa: E402
     validate_cloned_package,
 )
@@ -189,10 +192,12 @@ def render_with_libreoffice(
             issue_codes=("LIBREOFFICE_UNAVAILABLE",),
         )
     try:
+        subprocess_environment = reference_fontconfig_subprocess_environment()
         version_result = subprocess.run(
             [executable, "--version"],
             check=True,
             capture_output=True,
+            env=subprocess_environment,
             text=True,
             timeout=30,
         )
@@ -206,6 +211,7 @@ def render_with_libreoffice(
                 height=height,
                 aspect_ratio=aspect_ratio,
             ),
+            subprocess_environment,
         )
         pngs = tuple(
             base64.b64decode(asset.content_base64, validate=True)

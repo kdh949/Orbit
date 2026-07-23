@@ -5,7 +5,6 @@ import hashlib
 import json
 import math
 import shutil
-import subprocess
 import sys
 import zipfile
 from collections.abc import Callable, Mapping, Sequence
@@ -34,6 +33,12 @@ from app.ai.ooxml_reference_templates.clone import (  # noqa: E402
 from app.ai.ooxml_reference_templates.fidelity import (  # noqa: E402
     EXPECTED_TEMPLATE_IDS,
     _locked_snapshot_drift,
+)
+from app.ai.ooxml_reference_templates.font_aliases import (  # noqa: E402
+    ApprovedFontAliasPolicy,
+    approved_font_alias_policy,
+    canonical_font_alias_policy_sha256,
+    inspect_font_resolution,
 )
 from app.ai.ooxml_reference_templates.private_generation_runtime import (  # noqa: E402
     PrivateGenerationRuntimeError,
@@ -516,6 +521,7 @@ def _font_manifest(
     template_version: int,
     renderer_version: str | None,
 ) -> dict[str, Any]:
+    alias_policy = approved_font_alias_policy()
     family_roles: dict[str, set[str]] = {}
     for role, package in (
         ("source-clone", source_package),
@@ -527,10 +533,17 @@ def _font_manifest(
         raise FidelityArtifactRunnerError("FIDELITY_FONT_INVENTORY_INVALID")
     font_match = shutil.which("fc-match")
     fonts = [
-        _font_resolution(family, sorted(roles), font_match)
+        _font_resolution(
+            family,
+            sorted(roles),
+            font_match,
+            alias_policy,
+        )
         for family, roles in sorted(family_roles.items(), key=lambda item: item[0].casefold())
     ]
-    passed = bool(fonts) and all(font["status"] == "exact" for font in fonts)
+    passed = bool(fonts) and all(
+        font["status"] in {"exact", "approved-alias"} for font in fonts
+    )
     return {
         "schemaVersion": 1,
         "templateId": template_id,
@@ -538,6 +551,7 @@ def _font_manifest(
         "renderer": "libreoffice-pdf-pymupdf",
         "rendererVersion": renderer_version,
         "status": "passed" if passed else "pending",
+        "aliasPolicySha256": canonical_font_alias_policy_sha256(alias_policy),
         "fontCount": len(fonts),
         "issueCodes": [] if passed else ["FONT_AVAILABILITY_VALIDATION_PENDING"],
         "fonts": fonts,
@@ -576,53 +590,14 @@ def _font_resolution(
     requested_family: str,
     roles: list[str],
     font_match: str | None,
+    alias_policy: ApprovedFontAliasPolicy | None = None,
 ) -> dict[str, Any]:
-    base: dict[str, Any] = {
-        "requestedFamily": requested_family,
-        "roles": roles,
-        "status": "unavailable",
-        "resolvedFamily": None,
-        "sha256": None,
-    }
-    if font_match is None:
-        return base
-    try:
-        result = subprocess.run(
-            [font_match, requested_family, "--format", "%{family}\n%{file}\n"],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-        if len(lines) < 2:
-            return base
-        resolved_family = lines[0][:500]
-        resolved_families = {
-            family.strip().casefold()
-            for family in resolved_family.split(",")
-            if family.strip()
-        }
-        checksum = _sha256(Path(lines[1]).read_bytes())
-        if requested_family.casefold() not in resolved_families:
-            return {
-                **base,
-                "status": "substituted",
-                "resolvedFamily": resolved_family,
-                "sha256": checksum,
-            }
-    except (
-        OSError,
-        subprocess.CalledProcessError,
-        subprocess.TimeoutExpired,
-    ):
-        return base
-    return {
-        **base,
-        "status": "exact",
-        "resolvedFamily": resolved_family,
-        "sha256": checksum,
-    }
+    return inspect_font_resolution(
+        requested_family,
+        roles,
+        font_match,
+        alias_policy or approved_font_alias_policy(),
+    )
 
 
 def _failed_report(

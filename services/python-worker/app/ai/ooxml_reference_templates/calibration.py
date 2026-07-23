@@ -6,9 +6,17 @@ import re
 from collections.abc import Mapping
 from typing import Annotated, Any, Literal, Protocol, Self, cast
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from app.ai.ooxml_reference_templates.fidelity import EXPECTED_TEMPLATE_IDS
+from app.ai.ooxml_reference_templates.font_aliases import ApprovedFontAliasPolicy
 
 
 CALIBRATION_OBJECT_KEY = (
@@ -36,7 +44,9 @@ class _StrictModel(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         frozen=True,
-        populate_by_name=True,
+        strict=True,
+        validate_by_alias=True,
+        validate_by_name=False,
         alias_generator=lambda value: "".join(
             [
                 value.split("_")[0],
@@ -56,6 +66,13 @@ class IdentityBaseline(_StrictModel):
     renderer_version: Annotated[str, Field(min_length=1, max_length=100)]
     report_sha256: Sha256
 
+    @field_validator("version", mode="before")
+    @classmethod
+    def validate_version_type(cls, value: object) -> object:
+        if type(value) is not int:
+            raise ValueError("version must be an integer")
+        return value
+
 
 class PrivateFidelityCalibration(_StrictModel):
     schema_version: Literal[1]
@@ -63,7 +80,15 @@ class PrivateFidelityCalibration(_StrictModel):
     locked_region_ssim_threshold: float = Field(gt=0, le=1)
     geometry_edge_tolerance_px: Literal[0]
     rationale: Annotated[str, Field(min_length=1, max_length=500)]
+    font_alias_policy: ApprovedFontAliasPolicy
     identity_baselines: list[IdentityBaseline] = Field(min_length=7, max_length=7)
+
+    @field_validator("schema_version", "geometry_edge_tolerance_px", mode="before")
+    @classmethod
+    def validate_integer_literal_type(cls, value: object) -> object:
+        if type(value) is not int:
+            raise ValueError("integer literal must be an integer")
+        return value
 
     @model_validator(mode="after")
     def validate_complete_renderer_baselines(self) -> Self:

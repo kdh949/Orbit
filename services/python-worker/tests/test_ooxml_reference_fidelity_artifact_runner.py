@@ -11,6 +11,7 @@ from PIL import Image
 from pptx import Presentation
 
 from scripts import run_ooxml_reference_fidelity_artifacts as runner
+from app.ai.ooxml_reference_templates import font_aliases
 
 
 TEMPLATE_IDS = [
@@ -280,10 +281,13 @@ def test_font_manifest_records_substituted_file_checksum_without_path(
     fallback = tmp_path / "fallback.ttf"
     fallback.write_bytes(b"fallback-font")
     monkeypatch.setattr(
-        runner.subprocess,
+        font_aliases.subprocess,
         "run",
         lambda *_args, **_kwargs: SimpleNamespace(
-            stdout=f"Fallback Family\n{fallback}\n"
+            stdout=(
+                f"Fallback Family\x1fRegular\x1fFallback Regular\x1f"
+                f"\x1f80\x1f100\x1f{fallback}"
+            )
         ),
     )
 

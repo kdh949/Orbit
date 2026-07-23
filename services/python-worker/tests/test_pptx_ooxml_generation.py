@@ -13,6 +13,7 @@ from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.util import Inches
 
+from app.ai import pptx_ooxml_generation
 from app.ai.pptx_ooxml_generation import (
     PptxRenderUnavailableError,
     generate_pptx_ooxml,
@@ -1032,6 +1033,36 @@ def test_renders_slide_pngs_when_libreoffice_is_available(tmp_path: Path) -> Non
     assert len(assets) == 1
     assert assets[0].mime_type == "image/png"
     assert base64.b64decode(assets[0].content_base64).startswith(b"\x89PNG")
+
+
+def test_generic_renderer_does_not_inject_reference_fontconfig(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_environment: list[object] = []
+
+    def fake_run(args: list[str], **kwargs: object) -> object:
+        captured_environment.append(kwargs.get("env"))
+        output = Path(args[args.index("--outdir") + 1]) / "source.pdf"
+        output.write_bytes(b"%PDF")
+        return object()
+
+    monkeypatch.setattr(pptx_ooxml_generation.shutil, "which", lambda _name: "soffice")
+    monkeypatch.setattr(pptx_ooxml_generation.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        pptx_ooxml_generation,
+        "render_pdf_to_png_assets",
+        lambda _path, _canvas: [],
+    )
+    canvas = type(
+        "Canvas",
+        (),
+        {"width": 1600, "height": 900, "preset": "wide", "aspect_ratio": "16:9"},
+    )()
+
+    result = render_pptx_to_png_assets(b"package", canvas)
+
+    assert result == []
+    assert captured_environment == [None]
 
 
 def test_shape_fallback_assets_crop_from_slide_render() -> None:

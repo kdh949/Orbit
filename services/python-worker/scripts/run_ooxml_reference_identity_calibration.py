@@ -31,6 +31,9 @@ from app.ai.ooxml_reference_templates.fidelity import (  # noqa: E402
     EXPECTED_TEMPLATE_IDS,
     _locked_snapshot_drift,
 )
+from app.ai.ooxml_reference_templates.font_aliases import (  # noqa: E402
+    approved_font_alias_policy,
+)
 from app.ai.ooxml_reference_templates.package import (  # noqa: E402
     validate_cloned_package,
 )
@@ -502,6 +505,9 @@ def _candidate_baseline(
     substituted_count = sum(
         font.get("status") == "substituted" for font in font_manifest["fonts"]
     )
+    approved_alias_count = sum(
+        font.get("status") == "approved-alias" for font in font_manifest["fonts"]
+    )
     unavailable_count = sum(
         font.get("status") == "unavailable" for font in font_manifest["fonts"]
     )
@@ -520,6 +526,7 @@ def _candidate_baseline(
         "fontStatus": report["fontStatus"],
         "exactFontCount": exact_count,
         "substitutedFontCount": substituted_count,
+        "approvedAliasFontCount": approved_alias_count,
         "unavailableFontCount": unavailable_count,
         "slideCount": report["slideCount"],
         "minimumLockedRegionSsim": metrics["minimumLockedRegionSsim"],
@@ -559,11 +566,11 @@ def _calibration_candidate(
         float(baseline["minimumLockedRegionSsim"])
         for baseline in baselines
     )
-    exact_fonts = all(
+    approved_fonts = all(
         baseline["fontStatus"] == "passed" for baseline in baselines
     )
     issue_codes = {"HUMAN_FIDELITY_REVIEW_PENDING"}
-    if not exact_fonts:
+    if not approved_fonts:
         issue_codes.add("FONT_AVAILABILITY_VALIDATION_PENDING")
     if any(int(baseline["totalChangedPixelCount"]) for baseline in baselines):
         issue_codes.add("IDENTITY_PIXEL_DIFF_REVIEW_PENDING")
@@ -578,7 +585,7 @@ def _calibration_candidate(
         "rendererVersion": renderer_version,
         "measuredMinimumLockedRegionSsim": measured_minimum,
         "proposedLockedRegionSsimThreshold": (
-            measured_minimum if exact_fonts else None
+            measured_minimum if approved_fonts else None
         ),
         "geometryEdgeTolerancePx": 0,
         "rationale": (
@@ -586,6 +593,10 @@ def _calibration_candidate(
             "exact-font and human approval are still required."
         ),
         "rationaleApprovalStatus": "pending",
+        "fontAliasPolicy": approved_font_alias_policy().model_dump(
+            by_alias=True,
+            mode="json",
+        ),
         "issueCodes": sorted(issue_codes),
         "identityBaselines": baselines,
     }

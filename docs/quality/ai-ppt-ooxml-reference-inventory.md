@@ -47,9 +47,10 @@ repository catalog status는 7개 모두 `disabled`다. QA-active manifest는 ca
 feature flag와 exact allowlist가 없으므로 runtime eligible하지 않고 production publication
 증거도 아니다. production rollout도 계속 `disabled`다.
 Microsoft PowerPoint 16.111에서 7개 generated deck과 actual slot-edit/export deck의
-open/render/reopen은 별도로 검증했다. 그러나 embedded/exact font file checksum과 production
-private managed storage, full fidelity 사람 승인이 남아 repository catalog의 7개 template은
-모두 `disabled`다. 원본, font, render artifact와 storage secret은 Git에 저장하지 않는다.
+open/render/reopen은 별도로 검증했고 2026-07-23 사람이 fidelity를 승인했다. 그러나 남은
+target font의 exact/approved-alias checksum, production private managed storage와 실제
+flag-on 제한 편집 UX 승인이 없어 repository catalog의 7개 template은 모두 `disabled`다.
+원본, font, render artifact와 storage secret은 Git에 저장하지 않는다.
 
 현재 LibreOffice/fontconfig QA runtime에서 package의 모든 explicit `typeface`를 exact family로
 대조하면 unique 50개 family가 미설치 또는 exact alias 불일치다. 목록은
@@ -65,6 +66,16 @@ document-embedded only이고, 4개는 exact local/embedded family가 없거나 a
 (`SHA-256 494208e0196867805d29e1a727e7a8e1e92a7a6a361c7496632d2da92bd758b0`)에
 있다. Microsoft/Office font의 cross-application 사용 권한과 embedded font 추출 권한을
 추정하지 않으며 이 진단으로 `FONT_AVAILABILITY_VALIDATION_PENDING`을 해제하지 않는다.
+
+공개 OFL 후보 4개는 2026-07-23 승인된 v1 alias policy로만 허용한다. canonical policy
+SHA-256은
+`50307d2da1389072fda2c2fa02007b89cbbd797f7fc4a1fbe3b09d494767b458`이며 family/style,
+variable axis, font/OFL checksum이 모두 일치해야 한다. 격리 Docker QA의 7개/139장 결과는
+`/private/tmp/orbit-ooxml-approved-font-alias-runtime-20260723`에 있고 alias 4/4,
+SSIM 1.0, changed pixel 0, structural pass와 checksum 461/461을 확인했다. 전체 target
+font가 없는 image에서 substituted 343이 남았으므로 font blocker와 `disabled` 상태는
+유지한다. alias overlay는 reference subprocess에만 적용하며 일반 renderer의 fontconfig는
+변경하지 않는다.
 
 ## Security preflight
 

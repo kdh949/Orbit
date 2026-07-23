@@ -7,7 +7,12 @@ from statistics import fmean
 from typing import Any, Literal, Mapping, cast
 
 from PIL import Image
+from pydantic import ValidationError
 
+from app.ai.ooxml_reference_templates.font_aliases import (
+    ApprovedFontAliasPolicy,
+    canonical_font_alias_policy_sha256,
+)
 from app.ai.pptx_quality import image_ssim
 
 
@@ -295,6 +300,12 @@ def _environment_complete(environment: Mapping[str, Any]) -> bool:
 def _threshold_report(
     calibration: Mapping[str, Any], environment: Mapping[str, Any]
 ) -> dict[str, Any]:
+    try:
+        alias_policy = ApprovedFontAliasPolicy.model_validate(
+            calibration.get("fontAliasPolicy")
+        )
+    except ValidationError:
+        alias_policy = None
     baselines = calibration.get("identityBaselines")
     valid_baselines = [
         baseline
@@ -317,6 +328,7 @@ def _threshold_report(
         and isinstance(calibration.get("geometryEdgeTolerancePx"), int)
         and isinstance(calibration.get("rationale"), str)
         and bool(calibration.get("rationale"))
+        and alias_policy is not None
     )
     return {
         "status": "calibrated" if calibrated else "not-calibrated",
@@ -329,6 +341,11 @@ def _threshold_report(
             "geometryEdgeTolerancePx"
         ) if calibrated else None,
         "rationale": calibration.get("rationale") if calibrated else None,
+        "fontAliasPolicySha256": (
+            canonical_font_alias_policy_sha256(alias_policy)
+            if calibrated and alias_policy is not None
+            else None
+        ),
     }
 
 

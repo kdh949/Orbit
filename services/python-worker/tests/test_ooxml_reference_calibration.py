@@ -14,6 +14,9 @@ from app.ai.ooxml_reference_templates.calibration import (
     load_private_fidelity_calibration,
 )
 from app.ai.ooxml_reference_templates.fidelity import EXPECTED_TEMPLATE_IDS
+from app.ai.ooxml_reference_templates.font_aliases import (
+    approved_font_alias_policy,
+)
 
 
 class CalibrationClient:
@@ -55,6 +58,14 @@ def test_private_calibration_requires_exact_seven_template_renderer_baselines() 
             {"rendererVersion": "different"}
         ),
         lambda value: value.update({"storageKey": "private/path"}),
+        lambda value: value["fontAliasPolicy"]["aliases"][0].update(
+            {"targetFamily": "Fallback"}
+        ),
+        lambda value: value.update(
+            {"font_alias_policy": value.pop("fontAliasPolicy")}
+        ),
+        lambda value: value.update({"geometryEdgeTolerancePx": False}),
+        lambda value: value["identityBaselines"][0].update({"version": True}),
     ],
 )
 def test_private_calibration_rejects_incomplete_or_unknown_contract(
@@ -94,6 +105,10 @@ def _calibration() -> dict[str, Any]:
         "lockedRegionSsimThreshold": 0.998,
         "geometryEdgeTolerancePx": 0,
         "rationale": "approved deterministic LibreOffice identity baselines",
+        "fontAliasPolicy": approved_font_alias_policy().model_dump(
+            by_alias=True,
+            mode="json",
+        ),
         "identityBaselines": [
             {
                 "templateId": template_id,

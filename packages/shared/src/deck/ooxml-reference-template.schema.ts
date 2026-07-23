@@ -20,6 +20,9 @@ import {
 import { templateBlueprintIdSchema } from "./template-blueprint.schema";
 
 export {
+  ooxmlReferenceFidelityCalibrationSchema,
+  ooxmlReferenceFontAliasPolicySchema,
+  ooxmlReferenceFontAliasSchema,
   ooxmlReferenceDeckSnapshotSchema,
   ooxmlReferenceSha256Schema,
   ooxmlReferenceTemplateIdSchema,

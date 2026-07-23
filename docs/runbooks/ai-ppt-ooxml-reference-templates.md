@@ -31,11 +31,12 @@ template을 allowlist에 넣기 전에 다음 증거가 같은 exact version에 
 
 - private managed storage의 immutable source와 preview, source SHA-256 일치
 - strict catalog manifest와 승인된 slot annotation
-- source 사용 권리와 font 설치/대체 정책 승인
+- source 사용 권리와 exact/approved-alias font 설치 정책 승인
 - full-deck package validation, PowerPoint와 LibreOffice 각각의 render/reopen
 - slot 편집 후 sync/export/reopen warning 0건
 - template별 fidelity report와 사람 검수 승인
-- private calibration artifact의 exact 7개 identity baseline, renderer/version, font checksum과 승인 threshold
+- private calibration artifact의 exact 7개 identity baseline, renderer/version, font checksum,
+  exact approved-alias policy와 승인 threshold
 
 하나라도 없으면 catalog entry의 `enabled`를 유지하지 않고 allowlist에 추가하지 않는다.
 LibreOffice 결과는 Microsoft PowerPoint 승인을 대체하지 않는다.
@@ -155,11 +156,14 @@ manifest 게시 전 상태를 보존한다. 현재 QA storage의 7개 active man
 SHA-256은 `455ec8689f1000b4360a0583b84df8af7955be56e034bc264119e41b66c965b6`이다. 이 상태는
 QA-only이며 repository/production status는 7개 모두 `disabled`다.
 
-그러나 local MinIO는 production private managed storage를 대체하지 않는다. generated full-deck
+그러나 local MinIO는 production private managed storage를 대체하지 않는다. 사용자는 production
+asset publication을 실제 배포 시 수행하기로 했으므로 지금은 rollout blocker로 유지한다.
+generated full-deck
 locked diff/montage와 edited-slot montage는 각각
 `/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-g`,
-`/private/tmp/orbit-ooxml-b2-slot-montage-7cg9oi8q`에 생성했지만 사람 승인은 pending이다. 대상
-QA/운영 환경의 requested exact font file checksum, 사람이 승인한 renderer별 calibration
+`/private/tmp/orbit-ooxml-b2-slot-montage-7cg9oi8q`에 생성했고 2026-07-23 사람이 fidelity를
+승인했다. 실제 flag-on Deck의 제한 편집 UX는 runtime asset이 없어 아직 승인 증거가 없다. 대상
+QA/운영 환경의 exact 또는 approved-alias font file checksum, 사람이 승인한 renderer별 calibration
 threshold와 실제 flag-on vertical E2E가 남아 있다. 현재 QA bucket에는 runtime이 요구하는
 `fidelity-calibrations/v1/calibration.json` object가 없으므로 current-branch flag-on worker는
 fail-closed가 정상이며 이를 우회해 smoke를 통과 처리하지 않는다. 따라서 모든 repository
@@ -185,10 +189,22 @@ Microsoft/Office asset의 cross-application license와 embedded font 추출 권�
 OFL은 `/private/tmp/orbit-ooxml-open-font-exact-name-audit-20260723`에서 checksum과 name
 table을 검증했다. `Lora SemiBold`/`Roboto SemiBold`는 exact family가 아니라 style·full
 name이고, 배포 중인 Roboto Serif 변수 폰트는 14pt family를 노출하지 않는다. 따라서
-현재 exact-family gate를 유지한 채 파일을 설치하는 것만으로는 해당 4개를 해소할 수 없다.
-exact family 바이너리를 제공하거나 family-plus-style/optical-size alias 계약을 별도로
-승인한 뒤 shared validation, renderer resolver와 regression test를 함께 바꿔야 한다.
-그 결정 전에는 font metadata를 변경하거나 alias를 임의 적용하지 않는다.
+exact-family gate를 유지한 채 파일을 설치하는 것만으로는 해당 4개를 해소할 수 없다.
+2026-07-23 승인된 v1 alias 계약은 네 요청 typeface만 family/style/axis/font SHA/OFL SHA가
+정확히 일치할 때 `approved-alias`로 허용한다. `target="pattern"`만 사용하고 font metadata와
+`target="scan"`은 변경하지 않는다. canonical policy SHA-256은
+`50307d2da1389072fda2c2fa02007b89cbbd797f7fc4a1fbe3b09d494767b458`이다. 설치 후 resolver
+결과가 policy와 다르면 allowlist를 열지 않고 `OOXML_REFERENCE_FONT_*`로 fail-closed한다.
+
+격리 QA image에서 public font와 policy를 설치한 7개/139장 identity integration은
+`/private/tmp/orbit-ooxml-approved-font-alias-runtime-20260723`에 있다. 네 alias는
+`approved-alias`, SSIM 1.0, changed pixel 0, structural pass, checksum 461/461이었다. 다만
+overlay는 OOXML reference render/font-match subprocess에만 적용하며 일반 생성 renderer에는
+주입하지 않는다. family-style actual weight/width와 variable axis를 모두 재검증했다. 전체
+폰트가 없는 image라 exact 4/approved-alias 4/substituted 343이고
+`runtimeEligible=false`다. Estrangelo Edessa, Helvetica Neue Medium, OpenAI Sans,
+Phagspa/Microsoft PhagsPa compatibility의 라이선스·바이너리·대상 환경 설치 증거를 확보한 뒤
+같은 image와 실제 PowerPoint 환경에서 다시 측정한다.
 
 승인/disabled canonical manifest 기반 LibreOffice 26.8 identity candidate는
 `/private/tmp/orbit-ooxml-identity-calibration-candidate-20260723-b`에 있다. 7개/139장의
@@ -213,8 +229,8 @@ actual image edit→sync→export→PowerPoint/LibreOffice reopen도 5/5 통과�
 font/calibration, repository annotation-review 계약 version-up, production publication 전에는
 version 2를 QA bucket, allowlist 또는 repository catalog에 추가하거나 활성화하지 않는다.
 
-2026-07-23 최종 회귀에서는 repository build 10/10, lint/test 17/17, Python pytest
-1,074 passed/1 skipped,
+2026-07-23 승인 alias strict/scoped 반영 후 최종 회귀에서는 repository build 10/10,
+lint/test 17/17, Python pytest 1,091 passed,
 current-branch Python worker의 PostgreSQL PPTX round-trip 7개와 `/createdeck` Chrome Playwright
 2개를 통과했다. 같은 실행의 no-mock spec 1개는 opt-in gate로 skip됐다. route-mocked
 Playwright는 실제 API→queue→private publication vertical 증거가 아니다. 별도 opt-in spec은

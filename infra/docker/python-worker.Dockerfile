@@ -17,6 +17,11 @@ RUN pip install --no-cache-dir uv
 COPY services/python-worker/pyproject.toml services/python-worker/uv.lock ./
 RUN uv sync --locked
 
+COPY services/python-worker/config/ooxml-reference-fontconfig.conf \
+  /etc/orbit-fontconfig/fonts.conf
+COPY services/python-worker/config/ooxml-reference-font-aliases.conf \
+  /etc/orbit-fontconfig/ooxml-reference-font-aliases.conf
+
 COPY services/python-worker/ ./
 
 EXPOSE 8000

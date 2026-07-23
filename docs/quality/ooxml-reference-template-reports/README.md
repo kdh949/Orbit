@@ -83,6 +83,16 @@ drift도 0이다. 461개 checksum은 모두 재계산 일치하지만 font는 ex
 candidate는 `runtimeEligible=false`, proposed threshold는 `null`이며 Task 8 approval을
 충족하지 않는다.
 
+2026-07-23 승인된 공개 OFL alias 4개의 strict runtime integration은
+`/private/tmp/orbit-ooxml-approved-font-alias-runtime-20260723`에 있다. policy SHA-256은
+`50307d2da1389072fda2c2fa02007b89cbbd797f7fc4a1fbe3b09d494767b458`이고 family/style,
+variable axis, font/OFL checksum이 일치할 때만 `approved-alias`로 인정한다. 격리 Docker
+QA에서 7개/139장, alias 4/4, SSIM 1.0, changed pixel 0, structural pass와 checksum
+461/461을 확인했다. overlay는 reference subprocess에만 적용하고 family-style actual
+weight/width와 variable axis를 검증한다. 다만 전체 target font가 없는 image라 exact 4/approved-alias 4/
+substituted 343이며 `runtimeEligible=false`다. Microsoft PowerPoint alias rendering,
+나머지 licensed font, calibration threshold와 production storage는 계속 pending이다.
+
 PowerPoint app bundle과 Office CloudFonts를 읽기 전용으로 연결한 후의 별도 diagnostic
 candidate는
 `/private/tmp/orbit-ooxml-identity-calibration-candidate-office-fonts-20260723-a`에 있다.
