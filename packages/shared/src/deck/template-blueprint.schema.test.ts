@@ -1022,6 +1022,109 @@ describe("pptxOoxmlGeneration schemas", () => {
     expect(legacy.slotEditPolicies).toEqual([]);
   });
 
+  it("requires immutable capacity on image slot edit policies", () => {
+    const base = {
+      templateId: "template_image_policy",
+      sourceFileId: "file_image_policy",
+      referenceTemplateSnapshot: {
+        catalogTemplateId: "simple-dark",
+        catalogTemplateVersion: 2,
+        sourceSha256: "a".repeat(64),
+        sourceSlideIds: ["simple-dark-slide-001"],
+        slotAssignmentCount: 1,
+      },
+      slides: [
+        {
+          slideId: "slide_1",
+          slideIndex: 1,
+          sourceSlideIndex: 1,
+          elementSources: [
+            {
+              elementId: "el_image",
+              elementType: "image",
+              ooxmlOrigin: "imported",
+              slidePart: "ppt/slides/slide1.xml",
+              shapeId: "7",
+              sourceType: "image",
+              writable: true,
+            },
+          ],
+        },
+      ],
+    };
+    const imageCapacity = {
+      minAspectRatio: 0.75,
+      maxAspectRatio: 0.75,
+      cropPolicy: "preserve-frame" as const,
+      alphaRequired: false,
+      maskRequired: false,
+    };
+
+    expect(
+      templateBlueprintSchema.parse({
+        ...base,
+        slotEditPolicies: [
+          {
+            slotId: "simple-dark-v2-slide-001-image",
+            elementId: "el_image",
+            mutationPolicy: ["image-source"],
+            frameLocked: true,
+            imageCapacity,
+          },
+        ],
+      }).slotEditPolicies[0]?.imageCapacity,
+    ).toEqual(imageCapacity);
+    expect(() =>
+      templateBlueprintSchema.parse({
+        ...base,
+        slotEditPolicies: [
+          {
+            slotId: "simple-dark-v2-slide-001-image",
+            elementId: "el_image",
+            mutationPolicy: ["image-source"],
+            frameLocked: true,
+          },
+        ],
+      }),
+    ).toThrow();
+    expect(() =>
+      templateBlueprintSchema.parse({
+        ...base,
+        slotEditPolicies: [
+          {
+            slotId: "simple-dark-v2-slide-001-image",
+            elementId: "el_image",
+            mutationPolicy: ["image-source"],
+            frameLocked: true,
+            imageCapacity: {
+              ...imageCapacity,
+              maxAspectRatio: Number.POSITIVE_INFINITY,
+            },
+          },
+        ],
+      }),
+    ).toThrow();
+    expect(() =>
+      templateBlueprintSchema.parse({
+        ...base,
+        slotEditPolicies: [
+          {
+            slotId: "simple-dark-v2-slide-001-image",
+            elementId: "el_image",
+            mutationPolicy: ["image-source"],
+            frameLocked: true,
+            imageCapacity: {
+              minAspectRatio: 0.75,
+              maxAspectRatio: 0.75,
+              cropPolicy: "preserve-frame",
+              alphaRequired: false,
+            },
+          },
+        ],
+      }),
+    ).toThrow();
+  });
+
   it("recovers legacy slide mappings from deck order without parsing slide IDs", () => {
     const blueprint = templateBlueprintSchema.parse({
       templateId: "template_file_1",

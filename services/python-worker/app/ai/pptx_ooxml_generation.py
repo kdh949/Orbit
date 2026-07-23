@@ -33,6 +33,9 @@ from app.ai.ooxml_reference_templates.chart_sync import (
     ChartDataSyncError,
     sync_chart_data,
 )
+from app.ai.ooxml_reference_templates.models import (
+    ReferenceTemplateImageSlotCapacity,
+)
 from app.ai.pptx_design_importer import (
     CANVAS_HEIGHT,
     CANVAS_WIDTH,
@@ -1823,6 +1826,19 @@ def apply_sync_operation(
             if str(candidate.get("slidePart", "")) == slide_part
             and str(candidate.get("shapeId", "")) == str(source.get("shapeId", ""))
         )
+        reference_image_policy = reference_image_slot_policy(
+            template_blueprint,
+            element_id,
+        )
+        if (
+            source.get("elementType") == "image"
+            and isinstance(
+                template_blueprint.get("referenceTemplateSnapshot"),
+                dict,
+            )
+            and reference_image_policy is None
+        ):
+            return "PROPS_FIELDS_UNSUPPORTED"
         props_reason = validate_source_props_update(
             source,
             shape,
@@ -1830,6 +1846,7 @@ def apply_sync_operation(
             scale,
             source_package,
             source_shape_cohort_size,
+            reference_image_policy=reference_image_policy,
         )
         if props_reason is not None:
             return props_reason
@@ -1845,6 +1862,8 @@ def apply_sync_operation(
             source_key,
             warnings,
             element_id,
+            source_package=source_package,
+            reference_image_policy=reference_image_policy,
             preserve_text_body_properties=isinstance(
                 template_blueprint.get("referenceTemplateSnapshot"),
                 dict,
@@ -2220,6 +2239,8 @@ def validate_source_props_update(
     scale: PackageFrameScale,
     source_package: zipfile.ZipFile,
     source_shape_cohort_size: int,
+    *,
+    reference_image_policy: dict[str, Any] | None = None,
 ) -> PptxOoxmlUnsupportedReasonCode | None:
     prop_names = set(props)
     element_type = str(source.get("elementType", ""))
@@ -2281,6 +2302,21 @@ def validate_source_props_update(
         capabilities = dict_value(source, "ooxmlEditCapabilities")
         if element_type != "image":
             return "ELEMENT_TYPE_MISMATCH"
+        if reference_image_policy is not None:
+            try:
+                ReferenceTemplateImageSlotCapacity.model_validate(
+                    reference_image_policy.get("imageCapacity")
+                )
+            except (TypeError, ValueError):
+                return "PROPS_FIELDS_UNSUPPORTED"
+            if "crop" in props:
+                return "PROPS_FIELDS_UNSUPPORTED"
+        if "alt" in props and (
+            not isinstance(props.get("alt"), str)
+            or len(cast(str, props["alt"])) > 500
+            or not valid_xml_10_text(cast(str, props["alt"]))
+        ):
+            return "PROPS_FIELDS_UNSUPPORTED"
         if {"src", "alt"}.intersection(prop_names) and (
             shape.tag != P_PIC
             or source.get("ooxmlOrigin") == "imported"
@@ -3053,6 +3089,8 @@ def update_shape_props(
     warnings: list[str],
     element_id: str,
     *,
+    source_package: zipfile.ZipFile,
+    reference_image_policy: dict[str, Any] | None = None,
     preserve_text_body_properties: bool = False,
 ) -> bool:
     changed = False
@@ -3095,11 +3133,18 @@ def update_shape_props(
             added_entries,
             warnings,
             element_id,
+            source_package=source_package,
+            reference_image_policy=reference_image_policy,
         )
         if relationship_id is None:
             return False
         source["relationshipId"] = relationship_id
         updated_sources[source_key] = dict(source)
+        changed = True
+    if "alt" in props:
+        if not set_picture_alt_text(shape, props.get("alt")):
+            warnings.append(f"OOXML image alt sync skipped for {element_id}.")
+            return False
         changed = True
     if "crop" in props:
         crop_value = props.get("crop")
@@ -3266,6 +3311,9 @@ def replace_picture_media_relationship(
     added_entries: dict[str, bytes],
     warnings: list[str],
     element_id: str,
+    *,
+    source_package: zipfile.ZipFile,
+    reference_image_policy: dict[str, Any] | None = None,
 ) -> str | None:
     if shape.tag != P_PIC:
         warnings.append(f"OOXML image source is not a picture for {element_id}.")
@@ -3296,6 +3344,22 @@ def replace_picture_media_relationship(
         warnings.append(f"OOXML content types missing for {element_id}.")
         return None
 
+    if reference_image_policy is not None:
+        return replace_reference_picture_media(
+            shape=shape,
+            slide_part=slide_part,
+            relationship_id=expected_relationship_id,
+            mime_type=mime_type,
+            image_blob=image_blob,
+            content_types_xml=content_types_xml,
+            image_capacity=reference_image_policy.get("imageCapacity"),
+            package_entries=package_entries,
+            added_entries=added_entries,
+            source_package=source_package,
+            warnings=warnings,
+            element_id=element_id,
+        )
+
     extension = extension_for_mime_type(mime_type)
     media_token = safe_package_token(
         f"{Path(slide_part).stem}_{source.get('shapeId', 'image')}"
@@ -3318,11 +3382,196 @@ def replace_picture_media_relationship(
     return relationship_id
 
 
+def replace_reference_picture_media(
+    *,
+    shape: ET.Element[Any],
+    slide_part: str,
+    relationship_id: str,
+    mime_type: str,
+    image_blob: bytes,
+    content_types_xml: bytes,
+    image_capacity: Any,
+    package_entries: dict[str, bytes],
+    added_entries: dict[str, bytes],
+    source_package: zipfile.ZipFile,
+    warnings: list[str],
+    element_id: str,
+) -> str | None:
+    if mime_type not in {"image/png", "image/jpeg"}:
+        warnings.append(
+            f"OOXML reference image format unsupported for {element_id}."
+        )
+        return None
+    capacity_error = reference_image_capacity_error(
+        shape,
+        image_blob,
+        image_capacity,
+    )
+    if capacity_error is not None:
+        warnings.append(
+            f"OOXML reference image capacity {capacity_error} for {element_id}."
+        )
+        return None
+    rels_part = rels_part_for_slide_part(slide_part)
+    rels_xml = package_entries.get(rels_part)
+    slide_xml = package_entries.get(slide_part)
+    if rels_xml is None or slide_xml is None:
+        warnings.append(
+            f"OOXML reference image locator missing for {element_id}."
+        )
+        return None
+    try:
+        relationships = ET.fromstring(rels_xml)
+        slide = ET.fromstring(slide_xml)
+    except ET.ParseError:
+        warnings.append(
+            f"OOXML reference image locator invalid for {element_id}."
+        )
+        return None
+    matches = [
+        relationship
+        for relationship in list(relationships)
+        if relationship.get("Id") == relationship_id
+        and relationship.get("Type") == IMAGE_REL_TYPE
+        and relationship.get("TargetMode") != "External"
+    ]
+    if len(matches) != 1:
+        warnings.append(
+            f"OOXML reference image relationship invalid for {element_id}."
+        )
+        return None
+    target = str(matches[0].get("Target", ""))
+    media_part = resolve_relationship_part(slide_part, target)
+    if not media_part.startswith("ppt/media/") or ".." in media_part:
+        warnings.append(
+            f"OOXML reference image target invalid for {element_id}."
+        )
+        return None
+    effective_content_type = effective_part_content_type(
+        content_types_xml,
+        media_part,
+    )
+    if effective_content_type != mime_type:
+        warnings.append(
+            f"OOXML reference image format mismatch for {element_id}."
+        )
+        return None
+    embed_attribute = f"{{{REL_NS}}}embed"
+    embed_count = sum(
+        blip.get(embed_attribute) == relationship_id
+        for blip in slide.iter(A_BLIP)
+    )
+    relationship_count = package_image_relationship_reference_count(
+        source_package,
+        package_entries,
+        media_part,
+    )
+    if embed_count != 1 or relationship_count != 1:
+        warnings.append(
+            f"OOXML reference image media is shared for {element_id}."
+        )
+        return None
+    if (
+        media_part not in source_package.namelist()
+        and media_part not in added_entries
+        and media_part not in package_entries
+    ):
+        warnings.append(
+            f"OOXML reference image media missing for {element_id}."
+        )
+        return None
+    package_entries[media_part] = image_blob
+    added_entries.pop(media_part, None)
+    return relationship_id
+
+
+def reference_image_slot_policy(
+    template_blueprint: dict[str, Any],
+    element_id: str,
+) -> dict[str, Any] | None:
+    if not isinstance(
+        template_blueprint.get("referenceTemplateSnapshot"),
+        dict,
+    ):
+        return None
+    for policy in template_blueprint.get("slotEditPolicies", []):
+        if (
+            isinstance(policy, dict)
+            and policy.get("elementId") == element_id
+            and policy.get("mutationPolicy") == ["image-source"]
+        ):
+            return policy
+    return None
+
+
+def reference_image_capacity_error(
+    shape: ET.Element[Any],
+    image_blob: bytes,
+    raw_capacity: Any,
+) -> str | None:
+    try:
+        capacity = ReferenceTemplateImageSlotCapacity.model_validate(raw_capacity)
+        with Image.open(BytesIO(image_blob)) as image:
+            width = image.width
+            height = image.height
+            has_alpha = "A" in image.getbands()
+    except (OSError, TypeError, ValueError):
+        return "is invalid"
+    aspect_ratio = width / height
+    if not capacity.min_aspect_ratio <= aspect_ratio <= capacity.max_aspect_ratio:
+        return "aspect ratio exceeded"
+    if capacity.alpha_required and not has_alpha:
+        return "requires alpha"
+    if capacity.mask_required:
+        geometry = next(
+            (
+                node
+                for node in shape.iter()
+                if local_name(node) == "prstGeom"
+            ),
+            None,
+        )
+        if geometry is None or geometry.get("prst") in {None, "rect"}:
+            return "requires mask"
+    return None
+
+
+def set_picture_alt_text(shape: ET.Element[Any], value: Any) -> bool:
+    if (
+        shape.tag != P_PIC
+        or not isinstance(value, str)
+        or len(value) > 500
+        or not valid_xml_10_text(value)
+    ):
+        return False
+    non_visual = first_local_child(shape, "nvPicPr")
+    c_nv_pr = (
+        first_local_child(non_visual, "cNvPr")
+        if non_visual is not None
+        else None
+    )
+    if c_nv_pr is None:
+        return False
+    c_nv_pr.set("descr", value)
+    return True
+
+
+def valid_xml_10_text(value: str) -> bool:
+    return all(
+        code_point in {0x9, 0xA, 0xD}
+        or 0x20 <= code_point <= 0xD7FF
+        or 0xE000 <= code_point <= 0xFFFD
+        or 0x10000 <= code_point <= 0x10FFFF
+        for code_point in map(ord, value)
+    )
+
+
 def is_image_relationship(rels_xml: bytes, relationship_id: str) -> bool:
     root = ET.fromstring(rels_xml)
     return any(
         child.get("Id") == relationship_id
         and child.get("Type") == IMAGE_REL_TYPE
+        and child.get("TargetMode") != "External"
         for child in list(root)
     )
 
@@ -5121,6 +5370,8 @@ def package_image_relationship_reference_count(
         for relationship in list(root):
             if relationship.get("Type") != IMAGE_REL_TYPE:
                 continue
+            if relationship.get("TargetMode") == "External":
+                continue
             target = str(relationship.get("Target", ""))
             if resolve_relationship_part(source_part, target) == media_part:
                 count += 1
@@ -5801,6 +6052,39 @@ def ensure_content_type_default(
         {"Extension": extension, "ContentType": mime_type},
     )
     return xml_bytes(root)
+
+
+def effective_part_content_type(
+    content_types_xml: bytes,
+    part_name: str,
+) -> str | None:
+    try:
+        root = ET.fromstring(content_types_xml)
+    except ET.ParseError:
+        return None
+    if root.tag != f"{{{CONTENT_TYPES_NS}}}Types":
+        return None
+    normalized_part_name = f"/{part_name.lstrip('/')}"
+    overrides = [
+        str(child.get("ContentType", ""))
+        for child in list(root)
+        if child.tag == f"{{{CONTENT_TYPES_NS}}}Override"
+        and child.get("PartName") == normalized_part_name
+    ]
+    if len(overrides) == 1 and overrides[0]:
+        return overrides[0]
+    if overrides:
+        return None
+    extension = Path(part_name).suffix.casefold().lstrip(".")
+    defaults = [
+        str(child.get("ContentType", ""))
+        for child in list(root)
+        if child.tag == f"{{{CONTENT_TYPES_NS}}}Default"
+        and str(child.get("Extension", "")).casefold() == extension
+    ]
+    if len(defaults) != 1 or not defaults[0]:
+        return None
+    return defaults[0]
 
 
 def rewrite_zip(

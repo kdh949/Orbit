@@ -131,14 +131,21 @@ def replace_image_slot(
             "annotated image media target is shared by another package consumer",
             package_bytes=package_bytes,
         )
-    expected_suffix = ".png" if mime_type == "image/png" else ".jpeg"
-    if PurePosixPath(media_part).suffix.casefold() not in {
-        expected_suffix,
-        ".jpg" if expected_suffix == ".jpeg" else expected_suffix,
-    }:
+    try:
+        effective_content_type = _effective_content_type(
+            entries["[Content_Types].xml"],
+            media_part,
+        )
+    except (KeyError, ET.ParseError) as error:
+        raise SlotCapacityError(
+            "OOXML_REFERENCE_IMAGE_LOCATOR_INVALID",
+            "image media content type cannot be resolved",
+            package_bytes=package_bytes,
+        ) from error
+    if effective_content_type != mime_type:
         raise SlotCapacityError(
             "OOXML_REFERENCE_IMAGE_FORMAT_MISMATCH",
-            "replacement MIME type does not match the immutable media locator",
+            "replacement MIME type does not match the immutable media content type",
             package_bytes=package_bytes,
         )
     if media_part not in entries:
@@ -190,6 +197,31 @@ def _resolve_target(source_part: str, target: str) -> str:
     if target.startswith("/"):
         return target.lstrip("/")
     return posixpath.normpath(posixpath.join(posixpath.dirname(source_part), target))
+
+
+def _effective_content_type(content_types_xml: bytes, part_name: str) -> str | None:
+    root = ET.fromstring(content_types_xml)
+    normalized_part_name = f"/{part_name.lstrip('/')}"
+    overrides = [
+        str(child.attrib.get("ContentType", ""))
+        for child in list(root)
+        if child.tag.endswith("Override")
+        and child.attrib.get("PartName") == normalized_part_name
+    ]
+    if len(overrides) == 1 and overrides[0]:
+        return overrides[0]
+    if overrides:
+        return None
+    extension = PurePosixPath(part_name).suffix.casefold().lstrip(".")
+    defaults = [
+        str(child.attrib.get("ContentType", ""))
+        for child in list(root)
+        if child.tag.endswith("Default")
+        and str(child.attrib.get("Extension", "")).casefold() == extension
+    ]
+    if len(defaults) != 1 or not defaults[0]:
+        return None
+    return defaults[0]
 
 
 def _read_package(

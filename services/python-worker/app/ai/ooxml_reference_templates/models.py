@@ -7,6 +7,7 @@ from pydantic import (
     ConfigDict,
     Field,
     RootModel,
+    field_validator,
     model_validator,
 )
 from pydantic.alias_generators import to_camel
@@ -56,16 +57,81 @@ class OoxmlTextSlotCapacity(StrictModel):
 
 
 class OoxmlImageSlotCapacity(StrictModel):
-    min_aspect_ratio: float = Field(gt=0)
-    max_aspect_ratio: float = Field(gt=0)
+    min_aspect_ratio: float = Field(
+        gt=0,
+        allow_inf_nan=False,
+        strict=True,
+    )
+    max_aspect_ratio: float = Field(
+        gt=0,
+        allow_inf_nan=False,
+        strict=True,
+    )
     crop_policy: Literal["preserve-frame", "cover", "contain"]
-    alpha_required: bool = False
-    mask_required: bool = False
+    alpha_required: bool = Field(default=False, strict=True)
+    mask_required: bool = Field(default=False, strict=True)
 
     @model_validator(mode="after")
     def validate_aspect_ratio_range(self) -> OoxmlImageSlotCapacity:
         if self.min_aspect_ratio > self.max_aspect_ratio:
             raise ValueError("minimum aspect ratio must not exceed maximum")
+        return self
+
+
+class ReferenceTemplateImageSlotCapacity(StrictModel):
+    min_aspect_ratio: float = Field(
+        gt=0,
+        allow_inf_nan=False,
+        strict=True,
+    )
+    max_aspect_ratio: float = Field(
+        gt=0,
+        allow_inf_nan=False,
+        strict=True,
+    )
+    crop_policy: Literal["preserve-frame", "cover", "contain"]
+    alpha_required: bool = Field(strict=True)
+    mask_required: bool = Field(strict=True)
+
+    @model_validator(mode="after")
+    def validate_aspect_ratio_range(
+        self,
+    ) -> ReferenceTemplateImageSlotCapacity:
+        if self.min_aspect_ratio > self.max_aspect_ratio:
+            raise ValueError("minimum aspect ratio must not exceed maximum")
+        return self
+
+
+class ReferenceTemplateSlotEditPolicy(StrictModel):
+    slot_id: Annotated[str, Field(min_length=1, max_length=160)]
+    element_id: Annotated[
+        str,
+        Field(pattern=r"^el_[A-Za-z0-9_-]+$"),
+    ]
+    mutation_policy: list[MutationPolicy] = Field(min_length=1, max_length=4)
+    frame_locked: bool = Field(strict=True)
+    image_capacity: ReferenceTemplateImageSlotCapacity | None = None
+
+    @field_validator("element_id", mode="before")
+    @classmethod
+    def reject_normalized_element_id(cls, value: object) -> object:
+        if not isinstance(value, str) or value != value.strip():
+            raise ValueError("element ID must already be canonical")
+        return value
+
+    @model_validator(mode="after")
+    def validate_image_capacity(self) -> ReferenceTemplateSlotEditPolicy:
+        if self.frame_locked is not True:
+            raise ValueError("reference template slot frame must be locked")
+        is_image_policy = self.mutation_policy == ["image-source"]
+        if is_image_policy and self.image_capacity is None:
+            raise ValueError(
+                "image slot edit policies require immutable image capacity"
+            )
+        if not is_image_policy and self.image_capacity is not None:
+            raise ValueError(
+                "image capacity is only valid for image slot edit policies"
+            )
         return self
 
 

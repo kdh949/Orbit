@@ -9,6 +9,7 @@ from app.ai.ooxml_reference_templates.models import (
     OoxmlReferenceTemplateGenerationRequest,
     OoxmlReferenceTemplateManifest,
     OoxmlTemplateSelection,
+    ReferenceTemplateSlotEditPolicy,
 )
 
 
@@ -123,6 +124,116 @@ def test_manifest_mirror_accepts_strict_active_template() -> None:
 
     assert parsed.template_id == "operating-review"
     assert parsed.source_slides[0].slots[0].mutation_policy == ["text-content"]
+
+
+def test_materialized_image_policy_requires_manifest_capacity_mirror() -> None:
+    capacity = {
+        "minAspectRatio": 0.75,
+        "maxAspectRatio": 0.75,
+        "cropPolicy": "preserve-frame",
+        "alphaRequired": False,
+        "maskRequired": False,
+    }
+    parsed = ReferenceTemplateSlotEditPolicy.model_validate(
+        {
+            "slotId": "simple-dark-v2-slide-001-image",
+            "elementId": "el_image",
+            "mutationPolicy": ["image-source"],
+            "frameLocked": True,
+            "imageCapacity": capacity,
+        }
+    )
+
+    assert parsed.image_capacity is not None
+    assert parsed.image_capacity.model_dump(by_alias=True) == capacity
+    with pytest.raises(ValidationError):
+        ReferenceTemplateSlotEditPolicy.model_validate(
+            {
+                "slotId": "simple-dark-v2-slide-001-image",
+                "elementId": "el_image",
+                "mutationPolicy": ["image-source"],
+                "frameLocked": True,
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("elementId", "not_el_prefixed"),
+        ("elementId", " el_image "),
+        ("frameLocked", 1),
+        (
+            "imageCapacity",
+            {
+                "minAspectRatio": 0.75,
+                "maxAspectRatio": 0.75,
+                "cropPolicy": "preserve-frame",
+                "maskRequired": False,
+            },
+        ),
+        (
+            "imageCapacity",
+            {
+                "minAspectRatio": 0.75,
+                "maxAspectRatio": 0.75,
+                "cropPolicy": "preserve-frame",
+                "alphaRequired": False,
+            },
+        ),
+        (
+            "imageCapacity",
+            {
+                "minAspectRatio": 0.75,
+                "maxAspectRatio": float("inf"),
+                "cropPolicy": "preserve-frame",
+                "alphaRequired": False,
+                "maskRequired": False,
+            },
+        ),
+        (
+            "imageCapacity",
+            {
+                "minAspectRatio": "0.75",
+                "maxAspectRatio": 0.75,
+                "cropPolicy": "preserve-frame",
+                "alphaRequired": False,
+                "maskRequired": False,
+            },
+        ),
+        (
+            "imageCapacity",
+            {
+                "minAspectRatio": 0.75,
+                "maxAspectRatio": 0.75,
+                "cropPolicy": "preserve-frame",
+                "alphaRequired": 0,
+                "maskRequired": "false",
+            },
+        ),
+    ],
+)
+def test_materialized_image_policy_rejects_zod_parity_violations(
+    field: str,
+    value: object,
+) -> None:
+    payload: dict[str, object] = {
+        "slotId": "simple-dark-v2-slide-001-image",
+        "elementId": "el_image",
+        "mutationPolicy": ["image-source"],
+        "frameLocked": True,
+        "imageCapacity": {
+            "minAspectRatio": 0.75,
+            "maxAspectRatio": 0.75,
+            "cropPolicy": "preserve-frame",
+            "alphaRequired": False,
+            "maskRequired": False,
+        },
+    }
+    payload[field] = value
+
+    with pytest.raises(ValidationError):
+        ReferenceTemplateSlotEditPolicy.model_validate(payload)
 
 
 @pytest.mark.parametrize("unknown_field", ["sourcePath", "rawXml", "storageKey"])

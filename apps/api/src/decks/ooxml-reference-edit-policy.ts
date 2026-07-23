@@ -190,9 +190,18 @@ function invalidSlotPropsReason(
     return null;
   }
   if (mutation === "image-source" && element.type === "image") {
-    return onlyKeys(propNames, ["src", "alt"])
-      ? null
-      : "image slots only allow src and alt props";
+    if (!onlyKeys(propNames, ["src", "alt"])) {
+      return "image slots only allow src and alt props";
+    }
+    if (
+      "alt" in props &&
+      (typeof props.alt !== "string" ||
+        props.alt.length > 500 ||
+        !isXml10Text(props.alt))
+    ) {
+      return "image slot alt text is not XML-safe";
+    }
+    return null;
   }
   if (mutation === "table-cell-text" && element.type === "table") {
     if (!onlyKeys(propNames, ["rows"])) {
@@ -212,6 +221,26 @@ function invalidSlotPropsReason(
 
 function sameNonTextStructure(current: unknown, next: unknown): boolean {
   return isDeepStrictEqual(stripTextValues(current), stripTextValues(next));
+}
+
+function isXml10Text(value: string): boolean {
+  for (const character of value) {
+    const codePoint = character.codePointAt(0);
+    if (
+      codePoint === undefined ||
+      !(
+        codePoint === 0x9 ||
+        codePoint === 0xa ||
+        codePoint === 0xd ||
+        (codePoint >= 0x20 && codePoint <= 0xd7ff) ||
+        (codePoint >= 0xe000 && codePoint <= 0xfffd) ||
+        (codePoint >= 0x10000 && codePoint <= 0x10ffff)
+      )
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function stripTextValues(value: unknown): unknown {

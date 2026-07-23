@@ -13,6 +13,8 @@ from app.ai.ooxml_reference_templates.chart_sync import (
 from app.ai.ooxml_reference_templates.models import (
     OoxmlReferenceTemplateManifest,
     OoxmlTemplateSnapshot,
+    ReferenceTemplateImageSlotCapacity,
+    ReferenceTemplateSlotEditPolicy,
 )
 from app.ai.pptx_ooxml_generation import generate_pptx_ooxml
 
@@ -158,13 +160,25 @@ def materialize_reference_package(
             capabilities["frame"] = False
             matches[0]["ooxmlEditCapabilities"] = capabilities
         matching_elements[0]["locked"] = False
+        policy = ReferenceTemplateSlotEditPolicy(
+            slot_id=slot.slot_id,
+            element_id=element_id,
+            mutation_policy=list(slot.mutation_policy),
+            frame_locked=True,
+            image_capacity=(
+                ReferenceTemplateImageSlotCapacity.model_validate(
+                    slot.capacity.model_dump(by_alias=True, mode="json")
+                )
+                if slot.content_type == "image"
+                else None
+            ),
+        )
         policies.append(
-            {
-                "slotId": slot.slot_id,
-                "elementId": element_id,
-                "mutationPolicy": list(slot.mutation_policy),
-                "frameLocked": True,
-            }
+            policy.model_dump(
+                by_alias=True,
+                mode="json",
+                exclude_none=True,
+            )
         )
     template_blueprint["slotEditPolicies"] = policies
 

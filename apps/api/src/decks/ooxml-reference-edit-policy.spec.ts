@@ -103,7 +103,17 @@ const blueprint = templateBlueprintSchema.parse({
     mutationPolicy: ["text-content"],
     frameLocked: true,
   }, {
-    slotId: "slot_image", elementId: "el_image", mutationPolicy: ["image-source"], frameLocked: true,
+    slotId: "slot_image",
+    elementId: "el_image",
+    mutationPolicy: ["image-source"],
+    frameLocked: true,
+    imageCapacity: {
+      minAspectRatio: 1,
+      maxAspectRatio: 2,
+      cropPolicy: "preserve-frame",
+      alphaRequired: false,
+      maskRequired: false,
+    },
   }, {
     slotId: "slot_table", elementId: "el_table", mutationPolicy: ["table-cell-text"], frameLocked: true,
   }, {
@@ -164,6 +174,18 @@ describe("OOXML reference edit policy", () => {
     expect(findReferencePatchViolation(deck, blueprint, [{
       type: "update_element_props", slideId: "slide_1", elementId: "el_chart", props: { type: "line" },
     }])?.reason).toContain("only allow data");
+  });
+
+  it.each([
+    "bad\u0000alt",
+    "x".repeat(501),
+  ])("blocks image alt text that cannot be serialized safely", (alt) => {
+    expect(findReferencePatchViolation(deck, blueprint, [{
+      type: "update_element_props",
+      slideId: "slide_1",
+      elementId: "el_image",
+      props: { alt },
+    }])?.reason).toContain("XML-safe");
   });
 
   it.each([

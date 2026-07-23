@@ -279,14 +279,53 @@ export const templateBlueprintSlotSchema = z.object({
   source: templateSlotSourceSchema,
 });
 
+export const referenceTemplateImageSlotCapacitySchema = z
+  .object({
+    minAspectRatio: z.number().finite().positive(),
+    maxAspectRatio: z.number().finite().positive(),
+    cropPolicy: z.enum(["preserve-frame", "cover", "contain"]),
+    alphaRequired: z.boolean(),
+    maskRequired: z.boolean(),
+  })
+  .strict()
+  .superRefine((capacity, ctx) => {
+    if (capacity.minAspectRatio > capacity.maxAspectRatio) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "minimum aspect ratio must not exceed maximum",
+        path: ["minAspectRatio"],
+      });
+    }
+  });
+
 export const referenceTemplateSlotEditPolicySchema = z
   .object({
     slotId: z.string().trim().min(1).max(160),
     elementId: deckElementIdSchema,
     mutationPolicy: z.array(ooxmlTemplateSlotMutationSchema).min(1).max(4),
     frameLocked: z.literal(true),
+    imageCapacity: referenceTemplateImageSlotCapacitySchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((policy, ctx) => {
+    const isImagePolicy =
+      policy.mutationPolicy.length === 1 &&
+      policy.mutationPolicy[0] === "image-source";
+    if (isImagePolicy && policy.imageCapacity === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "image slot edit policies require immutable image capacity",
+        path: ["imageCapacity"],
+      });
+    }
+    if (!isImagePolicy && policy.imageCapacity !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "image capacity is only valid for image slot edit policies",
+        path: ["imageCapacity"],
+      });
+    }
+  });
 
 export const templateBlueprintSlideSchema = z
   .object({
