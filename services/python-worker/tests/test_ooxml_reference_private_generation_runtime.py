@@ -32,6 +32,8 @@ from app.ai.ooxml_reference_templates.private_generation_runtime import (
     PrivateGenerationRuntimeError,
     PrivateOoxmlReferenceGenerationRuntime,
     ProjectImageAsset,
+    _locked_snapshot,
+    _slot_mask_png,
     generated_storage_key,
 )
 from app.ai.deck_generation.models import (
@@ -661,6 +663,42 @@ def _png() -> bytes:
     output = BytesIO()
     Image.new("RGB", (160, 90), "white").save(output, format="PNG")
     return output.getvalue()
+
+
+@pytest.mark.parametrize("layout_index", [0, 1])
+def test_fidelity_geometry_resolves_inherited_placeholder_chain(
+    layout_index: int,
+) -> None:
+    presentation = Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[layout_index])
+    title = slide.shapes.title
+    assert title is not None
+    title.text = "Inherited placeholder"
+    output = BytesIO()
+    presentation.save(output)
+    package = output.getvalue()
+    shape_id = str(title.shape_id)
+
+    mask = _slot_mask_png(
+        package,
+        "ppt/slides/slide1.xml",
+        {shape_id},
+        presentation.slide_width,
+        presentation.slide_height,
+        _png(),
+    )
+    with Image.open(BytesIO(mask)) as image:
+        assert image.getbbox() is not None
+
+    snapshot = _locked_snapshot(
+        package,
+        "ppt/slides/slide1.xml",
+        {shape_id},
+    )
+    title_snapshot = next(
+        shape for shape in snapshot["shapes"] if shape["shapeId"] == shape_id
+    )
+    assert title_snapshot["geometry"]["transform"] is not None
 
 
 def _calibration() -> dict[str, object]:

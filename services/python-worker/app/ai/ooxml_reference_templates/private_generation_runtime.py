@@ -963,11 +963,15 @@ def _slot_mask_png(
         shape_id = _shape_id(element)
         if shape_id not in slot_shape_ids:
             continue
-        transform = _shape_transform(element)
+        transform = _resolved_shape_transform(
+            package_bytes,
+            slide_part,
+            element,
+        )
         if transform is None:
             raise PrivateGenerationRuntimeError(
                 "OOXML_REFERENCE_SLOT_MASK_UNAVAILABLE",
-                "annotated slot has no explicit source geometry",
+                "annotated slot geometry cannot be resolved from its placeholder chain",
             )
         x, y, cx, cy = transform
         left = round(x * width / canvas_width_emu)
@@ -1001,7 +1005,11 @@ def _locked_snapshot(
             {
                 "shapeId": shape_id,
                 "geometry": {
-                    "transform": _shape_geometry(element),
+                    "transform": _resolved_shape_geometry(
+                        package_bytes,
+                        slide_part,
+                        element,
+                    ),
                     "zIndex": z_index,
                 },
                 "style": _locked_style_sha256(
@@ -1078,14 +1086,157 @@ def _shape_transform(element: ET.Element) -> tuple[int, int, int, int] | None:
     return None
 
 
-def _shape_geometry(element: ET.Element) -> dict[str, int | bool] | None:
-    transform = _shape_transform(element)
+def _resolved_shape_transform(
+    package_bytes: bytes,
+    slide_part: str,
+    element: ET.Element,
+) -> tuple[int, int, int, int] | None:
+    resolved = _resolved_shape_transform_element(
+        package_bytes,
+        slide_part,
+        element,
+    )
+    return _shape_transform(resolved) if resolved is not None else None
+
+
+def _resolved_shape_transform_element(
+    package_bytes: bytes,
+    slide_part: str,
+    element: ET.Element,
+) -> ET.Element | None:
+    if _shape_transform(element) is not None:
+        return element
+    placeholder = _placeholder_identity(element)
+    if placeholder is None:
+        return None
+    current_part = slide_part
+    for relationship_suffix in ("slideLayout", "slideMaster"):
+        current_part = _related_package_part(
+            package_bytes,
+            current_part,
+            relationship_suffix,
+        )
+        root = ET.fromstring(_read_package_part(package_bytes, current_part))
+        inherited = _matching_placeholder_shape(
+            root,
+            placeholder,
+            prefer_type=relationship_suffix == "slideMaster",
+        )
+        if inherited is not None and _shape_transform(inherited) is not None:
+            return inherited
+        if inherited is not None:
+            placeholder = _placeholder_identity(inherited) or placeholder
+    return None
+
+
+def _placeholder_identity(element: ET.Element) -> tuple[str, str] | None:
+    placeholder = next(
+        (
+            candidate
+            for candidate in element.iter()
+            if _local_name(candidate.tag) == "ph"
+        ),
+        None,
+    )
+    if placeholder is None:
+        return None
+    return (
+        placeholder.get("idx", "0"),
+        placeholder.get("type", "obj"),
+    )
+
+
+def _matching_placeholder_shape(
+    root: ET.Element,
+    placeholder: tuple[str, str],
+    *,
+    prefer_type: bool,
+) -> ET.Element | None:
+    matching_index: list[ET.Element] = []
+    matching_type: list[ET.Element] = []
+    for candidate in _shape_elements(root):
+        identity = _placeholder_identity(candidate)
+        if identity is None:
+            continue
+        if identity[0] == placeholder[0]:
+            matching_index.append(candidate)
+        if identity[1] == placeholder[1]:
+            matching_type.append(candidate)
+    preferred, fallback = (
+        (matching_type, matching_index)
+        if prefer_type and placeholder[1] != "obj"
+        else (matching_index, matching_type)
+    )
+    if len(preferred) == 1:
+        return preferred[0]
+    return fallback[0] if len(fallback) == 1 else None
+
+
+def _related_package_part(
+    package_bytes: bytes,
+    current_part: str,
+    relationship_suffix: str,
+) -> str:
+    rels_part = posixpath.join(
+        posixpath.dirname(current_part),
+        "_rels",
+        f"{posixpath.basename(current_part)}.rels",
+    )
+    try:
+        root = ET.fromstring(_read_package_part(package_bytes, rels_part))
+    except ET.ParseError as error:
+        raise PrivateGenerationRuntimeError(
+            "OOXML_REFERENCE_PACKAGE_VALIDATION_FAILED",
+            "placeholder relationship metadata cannot be read",
+        ) from error
+    relationship = next(
+        (
+            item
+            for item in root
+            if str(item.get("Type", "")).endswith(f"/{relationship_suffix}")
+            and item.get("TargetMode") != "External"
+        ),
+        None,
+    )
+    if relationship is None or not relationship.get("Target"):
+        raise PrivateGenerationRuntimeError(
+            "OOXML_REFERENCE_PACKAGE_VALIDATION_FAILED",
+            "placeholder relationship chain is incomplete",
+        )
+    related_part = posixpath.normpath(
+        posixpath.join(
+            posixpath.dirname(current_part),
+            str(relationship.get("Target")),
+        )
+    )
+    if related_part.startswith("../") or related_part.startswith("/"):
+        raise PrivateGenerationRuntimeError(
+            "OOXML_REFERENCE_PACKAGE_VALIDATION_FAILED",
+            "placeholder relationship target escapes the package",
+        )
+    _read_package_part(package_bytes, related_part)
+    return related_part
+
+
+def _resolved_shape_geometry(
+    package_bytes: bytes,
+    slide_part: str,
+    element: ET.Element,
+) -> dict[str, int | bool] | None:
+    resolved = _resolved_shape_transform_element(
+        package_bytes,
+        slide_part,
+        element,
+    )
+    if resolved is None:
+        return None
+    transform = _shape_transform(resolved)
     if transform is None:
         return None
     xfrm = next(
         (
             candidate
-            for candidate in element.iter()
+            for candidate in resolved.iter()
             if _local_name(candidate.tag) == "xfrm"
         ),
         None,
