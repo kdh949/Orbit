@@ -1,15 +1,19 @@
 .diagnostic-drawer {
-  background: color-mix(in srgb, var(--color-surface-primary, #fff) 96%, #edf3ff);
-  border-left: 1px solid var(--color-border-subtle, #d8dfeb);
-  box-shadow: -12px 0 36px rgba(18, 28, 45, 0.18);
-  color: var(--color-text-primary, #172033);
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-surface-container-lowest) 96%,
+    var(--redesign-color-primary-subtle)
+  );
+  border-left: 1px solid var(--redesign-color-outline-variant);
+  box-shadow: var(--redesign-shadow-overlay);
+  color: var(--redesign-color-on-surface);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--redesign-space-3);
   height: 100dvh;
   inset: 0 0 0 auto;
   overflow: auto;
-  padding: 16px;
+  padding: var(--redesign-space-4);
   position: fixed;
   width: min(440px, 42vw);
   z-index: 10000;
@@ -18,16 +22,16 @@
 .diagnostic-drawer button,
 .diagnostic-drawer input,
 .diagnostic-drawer select {
-  border: 1px solid var(--color-border-default, #bcc6d7);
-  border-radius: 7px;
+  border: 1px solid var(--redesign-color-outline);
+  border-radius: var(--redesign-radius-lg);
   font: inherit;
-  min-height: 32px;
+  min-height: var(--redesign-space-8);
 }
 
 .diagnostic-drawer button {
-  background: var(--color-surface-primary, #fff);
+  background: var(--redesign-color-surface-container-lowest);
   cursor: pointer;
-  padding: 5px 10px;
+  padding: var(--redesign-space-1) var(--redesign-space-3);
 }
 
 .diagnostic-drawer button:disabled {
@@ -44,70 +48,74 @@
 .diagnostic-drawer__header p,
 .diagnostic-drawer__message,
 .diagnostic-drawer__warning {
-  font-size: 12px;
+  font-size: var(--redesign-type-label-sm-size);
   line-height: 1.45;
-  margin: 7px 0 0;
+  margin: var(--redesign-space-2) 0 0;
 }
 
 .diagnostic-drawer__status {
-  border-radius: 999px;
-  font-size: 11px;
-  padding: 4px 8px;
+  border-radius: var(--redesign-radius-full);
+  font-size: var(--redesign-type-label-xs-size);
+  padding: var(--redesign-space-1) var(--redesign-space-2);
 }
 
 .diagnostic-drawer__status--full {
-  background: #ffead7;
-  color: #8f3b00;
+  background: var(--redesign-color-tag-orange-container);
+  color: var(--redesign-color-tag-orange);
 }
 
 .diagnostic-drawer__status--metadata {
-  background: #e2edff;
-  color: #164a96;
+  background: var(--redesign-color-tag-blue-container);
+  color: var(--redesign-color-tag-blue);
 }
 
 .diagnostic-drawer__status--off {
-  background: #e8ebf0;
-  color: #4b5565;
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-on-surface-variant);
 }
 
 .diagnostic-drawer__warning {
-  background: #fff4d6;
-  border-radius: 8px;
-  color: #704b00;
-  padding: 9px;
+  background: var(--redesign-color-warning-container);
+  border-radius: var(--redesign-radius-lg);
+  color: var(--redesign-color-on-warning-container);
+  padding: var(--redesign-space-2);
 }
 
 .diagnostic-drawer__actions,
 .diagnostic-drawer__filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: var(--redesign-space-2);
 }
 
 .diagnostic-drawer__summary {
   display: grid;
-  gap: 6px;
+  gap: var(--redesign-space-2);
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 0;
 }
 
 .diagnostic-drawer__summary > div {
-  background: rgba(117, 139, 176, 0.08);
-  border-radius: 7px;
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-primary) 8%,
+    transparent
+  );
+  border-radius: var(--redesign-radius-lg);
   min-width: 0;
-  padding: 8px;
+  padding: var(--redesign-space-2);
 }
 
 .diagnostic-drawer__summary dt,
 .diagnostic-drawer__filters label,
 .diagnostic-drawer__session {
-  color: var(--color-text-secondary, #5b6576);
-  font-size: 11px;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-xs-size);
 }
 
 .diagnostic-drawer__summary dd {
-  font-size: 12px;
-  margin: 3px 0 0;
+  font-size: var(--redesign-type-label-sm-size);
+  margin: var(--redesign-space-1) 0 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -117,7 +125,7 @@
   display: flex;
   flex: 1 1 120px;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--redesign-space-1);
 }
 
 .diagnostic-drawer__session select {
@@ -128,67 +136,71 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 7px;
+  gap: var(--redesign-space-2);
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
 .diagnostic-drawer__timeline > li {
-  border: 1px solid var(--color-border-subtle, #d8dfeb);
-  border-radius: 8px;
-  padding: 8px;
+  border: 1px solid var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius-lg);
+  padding: var(--redesign-space-2);
 }
 
 .diagnostic-drawer__timeline > li > div {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--redesign-space-2);
 }
 
 .diagnostic-drawer__timeline strong {
-  font-size: 12px;
+  font-size: var(--redesign-type-label-sm-size);
 }
 
 .diagnostic-drawer__timeline span,
 .diagnostic-drawer__timeline em {
-  background: rgba(92, 120, 168, 0.1);
-  border-radius: 4px;
-  font-size: 10px;
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-primary) 10%,
+    transparent
+  );
+  border-radius: var(--redesign-radius);
+  font-size: var(--redesign-type-micro-lg-size);
   font-style: normal;
-  padding: 2px 4px;
+  padding: 2px var(--redesign-space-1);
 }
 
 .diagnostic-drawer__timeline p {
-  color: #9a3b26;
-  font-size: 11px;
-  margin: 5px 0;
+  color: var(--redesign-color-error);
+  font-size: var(--redesign-type-label-xs-size);
+  margin: var(--redesign-space-1) 0;
 }
 
 .diagnostic-drawer__timeline small {
-  color: var(--color-text-secondary, #5b6576);
-  font-size: 10px;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-micro-lg-size);
 }
 
 .diagnostic-drawer__timeline details {
-  font-size: 10px;
-  margin-top: 5px;
+  font-size: var(--redesign-type-micro-lg-size);
+  margin-top: var(--redesign-space-1);
 }
 
 .diagnostic-drawer__timeline pre {
-  background: #111827;
-  border-radius: 6px;
-  color: #dbeafe;
+  background: var(--redesign-color-dark-surface);
+  border-radius: var(--redesign-radius-md);
+  color: var(--redesign-color-on-dark);
   max-height: 220px;
   overflow: auto;
-  padding: 8px;
+  padding: var(--redesign-space-2);
   white-space: pre-wrap;
 }
 
 .diagnostic-drawer__empty {
-  color: var(--color-text-secondary, #5b6576);
-  font-size: 12px;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
   text-align: center;
 }
 
