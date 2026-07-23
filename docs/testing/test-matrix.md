@@ -149,8 +149,9 @@
 annotation은 승인되었다. local QA private storage의 7개 source와 139개 preview checksum도
 검증했지만 production managed storage를 대신하지 않는다. 7개 generated full-deck와 실제
 text-slot edit/export는 PowerPoint 16.111과 LibreOffice에서 별도로 reopen/render를
-통과했다. exact font checksum, full locked diff, 실제 flag-on vertical E2E와 남은 사람
-검수가 필요한 항목은 자동 테스트가 통과해도 `승인 보류`로 유지한다.
+통과했다. 7개/56장 source/generated/mask/locked-diff artifact도 생성했지만 exact font checksum,
+실제 flag-on vertical E2E와 남은 사람 locked-diff 검수가 필요한 항목은 자동 테스트가 통과해도
+`승인 보류`로 유지한다.
 
 | 범위 | 현재 상태 | 자동 검증 앵커 | 남은 승인 증거 |
 | --- | --- | --- | --- |
@@ -163,14 +164,14 @@ text-slot edit/export는 PowerPoint 16.111과 LibreOffice에서 별도로 reopen
 | Checkpoint B1 | actual-source 기계 검증 통과, 승인 보류 | 7개/139장 identity clone, relationship/package warning 0, slide count 일치, PowerPoint/LibreOffice render/reopen | exact font checksum, full locked diff와 사람 검수 |
 | Task 6 text/image slot | 자동 통과 | text/image capacity·style·media preservation test | 승인 text slot의 production publication과 실제 image slot 승인 |
 | Task 7 materialization | 자동 통과 | generated immutable baseline/current 분리, private source 비노출과 Worker transaction test | actual flag-on private storage publication |
-| Task 8 fidelity harness | 자동 통과 | slot frame/relationship known drift, package font exact resolve, private calibration fail-closed test | 7개 full identity-control diff, exact font environment와 threshold 사람 승인 |
-| Checkpoint B2 | actual text-slot 기계 검증 통과, 승인 보류 | 7개 sync/export warning 0, Python/LibreOffice/PowerPoint reopen과 text 유지 | production publication, source/generated/diff montage와 사람 검수 |
+| Task 8 fidelity harness | 자동 통과 | inherited placeholder frame, slot frame/relationship known drift, package font exact resolve, private calibration fail-closed test와 7개/56장 artifact runner | 7개 full identity-control diff, exact font environment와 threshold 사람 승인 |
+| Checkpoint B2 | actual text-slot 기계 검증 통과, 승인 보류 | 7개 sync/export warning 0, Python/LibreOffice/PowerPoint reopen과 text 유지 | edited-slot source/generated/diff montage, production publication과 사람 검수 |
 | Task 9 content/sequence planner | 자동 통과 | 7-family table-driven role/capacity/evidence/repetition tests | 승인 annotation의 production runtime fixture |
 | Task 10 table slot | 자동 통과 | reference table replacement + 기존 table sync 26 tests | 실제 template table fixture/reopen |
 | Task 11a chart package replacement | 자동 통과 | chart/workbook atomic replacement test, PowerPoint/LibreOffice fixture reopen | 실제 template chart montage와 사람 검수 |
 | Task 11b chart targeted sync | 자동 통과 | chart data patch → workbook/chart atomic sync/reopen test | 실제 template chart slot 편집 artifact |
-| Task 12 7-template 확장 | 7개 actual 8장 generation과 text-slot edit 검증 통과 | package warning·overflow·overlap·crop 0, LibreOffice 56장, PowerPoint 7×8장, template별 checksum/report | production publication, full locked montage와 exact font QA |
-| Checkpoint C | 자동 검증 7/7 통과, strict 상태 `failed` | 7개 actual full-deck sequence/package/PowerPoint/LibreOffice와 actual slot sync/reopen; strict evidence는 `FONT_AVAILABILITY_VALIDATION_PENDING` 유지 | exact font 설치/checksum, production storage, full fidelity artifact와 사람 승인 |
+| Task 12 7-template 확장 | 7개 actual 8장 generation과 text-slot edit 검증 통과 | package warning·overflow·overlap·crop 0, LibreOffice 56장, PowerPoint 7×8장, template별 checksum/report와 locked montage | production publication, exact font QA와 사람 검수 |
+| Checkpoint C | 자동 검증 7/7 통과, strict 상태 `failed` | 7개 actual full-deck sequence/package/PowerPoint/LibreOffice, actual slot sync/reopen과 `/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-e`; strict evidence는 `FONT_AVAILABILITY_VALIDATION_PENDING` 유지 | exact font 설치/checksum, production storage와 사람 fidelity 승인 |
 | Task 13 별도 Job/API/Worker | 자동 통과 | generated baseline privacy, private calibration, bounded issue 전달, atomic publication gate test | calibration object를 사용한 actual flag-on storage smoke |
 | Task 14 catalog/preview API | local QA active manifest smoke 통과, repository 전체 disabled | catalog projection/auth/checksum/preview-missing test와 Python option projection | production publication |
 | Task 15 generation preview polling | producer/consumer 자동 통과 | content outline, slide-render shard, completed-prefix와 read-only transition test | actual Job polling artifact |
@@ -180,7 +181,7 @@ text-slot edit/export는 PowerPoint 16.111과 LibreOffice에서 별도로 reopen
 | Task 18 slot-only editor/API policy | 자동 통과 | toolbar/canvas/keyboard/drop gate, API patch/PUT bypass 409, 일반 Deck 회귀 | 제한 편집 UX 사람 검수 |
 | Task 19 sync freshness/export gate | actual 7-template 기계 검증 통과 | API/Worker 회귀, PostgreSQL+Python round-trip, 7개 text edit→warning 0→export→PowerPoint/LibreOffice reopen | 사람 제한 편집 UX 승인 |
 | Task 20 flag/runbook/E2E | 자동 통과 | exact `template-id@version` config/API test, flag off/on `/createdeck` Playwright 2 tests, generation→제한 편집→sync gate→export mock product path | local Compose flag on actual source smoke와 운영 지표 관찰 |
-| Checkpoint D2 | 부분 통과, 승인 보류 | `/createdeck` fixture E2E, flag off/allowlist rollback, actual 7개 edit/export PowerPoint/LibreOffice | real API→queue→publication E2E, production storage, full regression과 사람 승인 |
+| Checkpoint D2 | 부분 통과, 승인 보류 | `/createdeck` fixture E2E, flag off/allowlist rollback, actual 7개 edit/export PowerPoint/LibreOffice와 7개/56장 fidelity artifact | real API→queue→publication E2E, production storage, full regression, exact font와 사람 승인 |
 
 최종 gate는 계획 문서의 전체 검증 매트릭스를 따른다. LibreOffice 결과를 Microsoft
 PowerPoint QA로 대체하지 않으며, `not-run` 환경 증거를 `passed`로 승격하지 않는다.

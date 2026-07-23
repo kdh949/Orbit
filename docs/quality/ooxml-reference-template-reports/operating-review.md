@@ -20,8 +20,10 @@
 - edited package SHA-256: `e264c8278c9b18d9f555d22a1d3048a55cce2724ffc8970fc190d26acb7317a4`
 - edited PowerPoint PDF SHA-256: `5335429a9f3ff449b7e801870368e98869f96e917e19a8ef200085d63d1147cb`
 - product materialization warning: `0`
-- fidelity artifact location: private QA artifact retained outside Git
+- fidelity artifact: `generated/pending` (structural drift 0, locked diff 85px)
+- source/locked-diff montage SHA-256: `5a8fd7fa0cddae08066e3ffbabb9c32212eef056a556fad614dc46d95a2e75ca` / `bfa0939cc4d6fbee4600f17ef76be98bba00ce110140be4f6f34138a50788371`
+- fidelity report SHA-256: `539089864fcc50bccd6bf5e70153864f2984ae47c1cf1c0b06f1ee5bc2546a06`
 
-Blocker: production managed storage, exact font checksum, full locked diff와 사람 calibration/UX
+Blocker: production managed storage, exact font checksum과 사람 locked-diff/calibration/UX
 승인이 남았다. 기존 drift fixture 대신 quality SHA-256과 일치한 deterministic reproduction을
 PowerPoint에서 검증했다.

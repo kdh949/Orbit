@@ -16,9 +16,14 @@ checksum과 locked overlay 승인 대신으로 사용하지 않는다.
 
 Microsoft PowerPoint 16.111에서 7개 generated 8장 deck과 7개 actual text-slot
 edit/export 결과를 각각 open, 8-page PDF render, close, reopen했고 repair/recovery 로그는
-0건이었다. LibreOffice 결과와 별도 artifact로 보관한다. 다만 renderer가 실제 resolve한
-전체 font checksum, source/generated locked overlay와 사람이 승인한 renderer별 threshold
-근거는 아직 완결되지 않았다. 따라서 특정 SSIM 점수나 종합 점수를 승인 threshold로
+0건이었다. LibreOffice 결과와 별도 artifact로 보관한다. 7개 generated deck의 56장
+source/generated/mask/locked-diff와 세 종류 montage는
+`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-e`에 생성했다. 모든 template의 structural
+geometry/style/relationship drift는 0이며 locked pixel 차이는 사람 검수를 위해 수치 그대로
+남겼다. package manifest warning도 7개 모두 0이다. font manifest는 template별 48~56개 explicit
+family 중 4~7개만 exact resolve되고 43~50개가 substituted임을 기록했다. 따라서 renderer가 실제
+resolve한 전체 font checksum과 사람이 승인한 renderer별 threshold
+근거는 아직 완결되지 않았다. 따라서 특정 pixel 차이, SSIM 점수나 종합 점수를 승인 threshold로
 간주하지 않으며 제품 rollout을 통과로 표시하지 않는다.
 
 strict Checkpoint C runner의 최신 report는
@@ -48,6 +53,11 @@ slot replacement 결과를 source와 비교한다. manifest locator로 만든 in
 안의 pixel 변화만 의도된 변경으로 제외한다. mask 밖은 locked region이며 geometry,
 style, relationship 및 시각 drift를 평가한다. mask가 shape frame 밖으로 확장되거나 locked
 object와 교차하면 hard failure다.
+
+placeholder slot에 직접 `a:xfrm`이 없으면 slide layout과 master의 `p:ph` 상속 chain을
+해석한다. slide→layout은 exact `idx`, layout→master는 `ctrTitle→title`과 content 계열→`body`
+의미 type을 사용하고 unique match만 허용한다. 상속 geometry가 없거나 모호하면 mask를
+추정하지 않고 fail-closed한다.
 
 per-slide report는 최소한 다음을 기록한다.
 
@@ -103,9 +113,11 @@ artifact는 Git이 아닌 `/tmp` 또는 승인된 private QA storage에 다음 �
 {templateId}/v{version}/
   baseline/source-slide-*.png
   generated/generated-slide-*.png
+  diff/intended-slot-mask-slide-*.png
   diff/locked-overlay-slide-*.png
   montage/source.png
   montage/generated.png
+  montage/locked-diff.png
   manifests/package.json
   manifests/font.json
   manifests/fidelity-report.json
@@ -145,7 +157,9 @@ renderer/version, `geometryEdgeTolerancePx=0`, threshold와 승인 rationale가 
 - [x] PowerPoint와 LibreOffice renderer별 결과가 분리됨
 - [x] known geometry/style/relationship/package drift fixture가 실패함
 - [x] intended slot mask 밖 drift가 실패함
+- [x] 7개 generated full-deck의 56장 source/generated/mask/locked-diff와 montage가 생성됨
 - [ ] threshold와 tolerance 근거가 사람 검수됨
 
-exact font inventory, full locked diff artifact와 사람 threshold 승인이 남아 있으므로 전체
-calibration은 `not-calibrated`, `applied=false`를 유지한다.
+exact font inventory와 사람의 locked-diff/threshold 승인이 남아 있으므로 전체 calibration은
+`not-calibrated`, `applied=false`를 유지한다. artifact report의 `status=generated`는 파일 생성과
+structural 비교 완료만 뜻하며 `approvalStatus=pending`을 fidelity 승인으로 승격하지 않는다.

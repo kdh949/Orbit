@@ -20,7 +20,9 @@
 - edited package SHA-256: `d99326482a9242af33f832cd1c1012b7db8fec1bcbdb4ac54b66f0d3d17112c3`
 - edited PowerPoint PDF SHA-256: `2bc252503cb5dafba9c0a8962cf93a0ac78dd0d0afce2c9d8c6aefd5b323dc27`
 - product materialization warning: `0`
-- fidelity artifact location: private QA artifact retained outside Git
+- fidelity artifact: `generated/pending` (structural drift 0, locked diff 6px)
+- source/locked-diff montage SHA-256: `223c614a982252eb4a9a8239dac178b716ad7f58c63dc41d44c150c2cce6cd6e` / `e43f466d270fe8381b4aff8f8924ff3f1bc6032dc5e0df83597895b43f643137`
+- fidelity report SHA-256: `8f42e0aabbcc311b0b8bb5c533440792c53d858f8bc4d7dbee49fbbf79df2875`
 
-Blocker: production managed storage, exact font checksum, full locked diff와 사람 calibration/UX
+Blocker: production managed storage, exact font checksum과 사람 locked-diff/calibration/UX
 승인이 남았다.

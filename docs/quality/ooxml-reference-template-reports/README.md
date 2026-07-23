@@ -8,15 +8,15 @@ content-generated 8장 full-deck 7개는 package warning 0, `python-pptx` reopen
 LibreOffice PDF/PNG render를 통과했다. local QA private storage의 153개 current object도
 checksum과 private ACL을 검증했지만 production managed storage를 대신하지 않는다.
 
-| template                                          | version | slides | identity clone | actual full-deck | actual slot edit | PowerPoint | rollout  |
-| ------------------------------------------------- | ------: | -----: | -------------- | ---------------- | ---------------- | ---------- | -------- |
-| [`simple-light`](simple-light.md)                 |       1 |     26 | passed         | passed           | passed           | passed     | disabled |
-| [`simple-dark`](simple-dark.md)                   |       1 |     26 | passed         | passed           | passed           | passed     | disabled |
-| [`operating-review`](operating-review.md)         |       1 |     31 | passed         | passed           | passed           | passed     | disabled |
-| [`business-review`](business-review.md)           |       1 |     14 | passed         | passed           | passed           | passed     | disabled |
-| [`project-kickoff`](project-kickoff.md)           |       1 |     12 | passed         | passed           | passed           | passed     | disabled |
-| [`team-alignment`](team-alignment.md)             |       1 |     24 | passed         | passed           | passed           | passed     | disabled |
-| [`market-trends-report`](market-trends-report.md) |       1 |      6 | passed         | passed           | passed           | passed     | disabled |
+| template                                          | version | slides | identity clone | actual full-deck | actual slot edit | fidelity artifact | PowerPoint | rollout  |
+| ------------------------------------------------- | ------: | -----: | -------------- | ---------------- | ---------------- | ----------------- | ---------- | -------- |
+| [`simple-light`](simple-light.md)                 |       1 |     26 | passed         | passed           | passed           | generated/pending | passed     | disabled |
+| [`simple-dark`](simple-dark.md)                   |       1 |     26 | passed         | passed           | passed           | generated/pending | passed     | disabled |
+| [`operating-review`](operating-review.md)         |       1 |     31 | passed         | passed           | passed           | generated/pending | passed     | disabled |
+| [`business-review`](business-review.md)           |       1 |     14 | passed         | passed           | passed           | generated/pending | passed     | disabled |
+| [`project-kickoff`](project-kickoff.md)           |       1 |     12 | passed         | passed           | passed           | generated/pending | passed     | disabled |
+| [`team-alignment`](team-alignment.md)             |       1 |     24 | passed         | passed           | passed           | generated/pending | passed     | disabled |
+| [`market-trends-report`](market-trends-report.md) |       1 |      6 | passed         | passed           | passed           | generated/pending | passed     | disabled |
 
 `actual full-deck`은 승인된 source와 manifest로 각 8장을 생성해 package, sequence,
 capacity, overflow/overlap/crop과 LibreOffice 렌더를 검증한 결과다. Microsoft PowerPoint
@@ -39,3 +39,12 @@ match는 0건이고 종료 후 열린 presentation도 0개다. 이 자동 검증
 montage의 사람 승인, exact font checksum 또는 production managed storage를 대신하지 않는다.
 승인 artifact는 Git에 커밋하지 않고 private QA storage에 보관하며 report에는 checksum과
 renderer version만 기록한다.
+
+LibreOffice 기반 generated fidelity review artifact는
+`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-e`에 있다. 7개/56장의 source,
+generated, intended-slot mask, locked-diff PNG와 source/generated/locked-diff montage를
+계획 §7.4의 versioned 구조로 생성했고 package/font/fidelity manifest도 함께 기록했다.
+package warning과 geometry/style/relationship drift는 전부 0이다. template별 locked pixel 차이는
+6~615px이며 threshold를 적용하지 않았다. font manifest는 43~50개 substituted family를
+기록한다. report는 `approvalStatus=pending`이고 exact font와
+사람 fidelity 검수 전에는 `passed`로 해석하지 않는다.

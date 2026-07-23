@@ -656,14 +656,14 @@ source/generated locked diff artifact, exact font checksum 및 사람 검수가 
 
 **Acceptance criteria:**
 
-- [ ] intended slot mask와 locked region을 분리한 per-slide/whole-deck report가 생성된다.
-- [ ] renderer/font/version/checksum이 없으면 측정을 통과로 표시하지 않는다.
+- [x] intended slot mask와 locked region을 분리한 per-slide/whole-deck report가 생성된다.
+- [x] renderer/font/version/checksum이 없으면 측정을 통과로 표시하지 않는다.
 - [ ] threshold는 7개 identity baseline 측정값과 근거를 함께 기록한다.
 
 **Verification:**
 
-- [ ] known drift fixture가 geometry/style/package failure를 재현한다.
-- [ ] no-op identity fixture가 locked-region gate를 통과한다.
+- [x] known drift fixture가 geometry/style/package failure를 재현한다.
+- [x] no-op identity fixture가 locked-region gate를 통과한다.
 
 **Dependencies:** Tasks 5, 6, 7
 
@@ -828,13 +828,16 @@ Python/LibreOffice/PowerPoint reopen을 수행했고 warning 0, unsupported 0과
 - [ ] overflow, overlap, crop error 0건
 - [ ] text/image/table/chart supported fixture 통과
 - [ ] chart slot editor mutation의 targeted sync/reopen 통과
-- [ ] template별 source/generated/diff/montage/report 존재
+- [x] template별 source/generated/diff/montage/report 존재
 
 2026-07-23 7개 template의 deterministic 8장 package는 sequence, package,
 overflow/overlap/crop, LibreOffice 56장과 Microsoft PowerPoint 16.111 open/render/reopen을
-통과했다. 실제 7개 text-slot edit/export도 두 renderer에서 reopen했다. 다만 full locked
-source/generated/diff artifact, exact font checksum, private calibration threshold의 사람 승인과
-production managed storage가 없어 Checkpoint C는 미통과다.
+통과했다. 실제 7개 text-slot edit/export도 두 renderer에서 reopen했다. 7개 generated deck의
+56장 source/generated/mask/locked-diff와 세 종류 montage는
+`/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-e`에 계획 §7.4 구조로 생성했고 모든
+template의 package warning과 geometry/style/relationship drift는 0이다. font manifest는
+template별 43~50개 substitution을 확인했다. 따라서 exact font checksum, private calibration
+threshold와 locked-diff의 사람 승인, production managed storage가 없어 Checkpoint C는 미통과다.
 
 최신 strict runner report는
 `/private/tmp/orbit-ooxml-checkpoint-c-report-20260723-final-d/summary.json`이다. 자동 검증은
@@ -1078,15 +1081,15 @@ publication→editor transition을 증명하지 않아 Checkpoint D1은 미통�
 
 - [ ] `/createdeck → template 선택 → generation → 제한 편집 → sync → PPTX export` E2E 통과
 - [ ] editor 수정 후 PowerPoint/LibreOffice reopen과 warning 0건
-- [ ] 7개 full-deck fidelity artifact와 report 존재
+- [x] 7개 full-deck fidelity artifact와 report 존재
 - [ ] 기존 System Design Pack, PPTX import, OOXML sync/export regression 통과
 - [ ] flag off와 template allowlist rollback smoke 통과
 - [ ] 사람 검수: PowerPoint fidelity와 편집 제한 UX 승인
 
 실제 7개 text-slot edit→sync/export package는 PowerPoint 16.111과 LibreOffice reopen을
-통과했다. 그러나 production private managed storage, 승인 calibration/font artifact,
-real vertical E2E, full regression 재실행과 사람 fidelity/제한 편집 UX 승인이 남아
-Checkpoint D2는 미통과다.
+통과했고 7개/56장 source/generated/mask/locked-diff와 montage/report를 생성했다. 그러나
+production private managed storage, 승인 calibration/font artifact, real vertical E2E,
+full regression 재실행과 사람 fidelity/제한 편집 UX 승인이 남아 Checkpoint D2는 미통과다.
 
 ## 9. 오류와 관찰 가능성
 
