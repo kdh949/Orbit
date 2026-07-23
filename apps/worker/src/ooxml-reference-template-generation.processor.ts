@@ -106,6 +106,8 @@ type EventSink = {
   error: (event: Record<string, unknown>) => void;
 };
 
+class OoxmlReferencePublicationIdentityError extends Error {}
+
 export type OoxmlReferenceTemplateGenerationProcessorOptions = {
   artifactRepository?: ArtifactRepository;
   runStage?: StageRunner;
@@ -251,6 +253,7 @@ export async function processOoxmlReferenceTemplateGenerationJob(
 
     const materialization = parseMaterialization(dependencies);
     failedStage = "publication";
+    assertPublicationIdentity(materialization, templateId, templateVersion);
     if (
       materialization.jobResult.fidelityReport.status !== "passed" ||
       !materialization.jobResult.fidelityReport.structuralGate.passed
@@ -358,6 +361,26 @@ function parseMaterialization(
   );
 }
 
+function assertPublicationIdentity(
+  materialization: z.infer<typeof materializationArtifactSchema>,
+  templateId: string,
+  templateVersion: number,
+): void {
+  for (const snapshot of [
+    materialization.templateSnapshot,
+    materialization.jobResult.templateSnapshot,
+  ]) {
+    if (
+      snapshot.catalogTemplateId !== templateId ||
+      snapshot.catalogTemplateVersion !== templateVersion
+    ) {
+      throw new OoxmlReferencePublicationIdentityError(
+        "generation result template snapshot does not match request",
+      );
+    }
+  }
+}
+
 function publicationInput(
   projectId: string,
   generationId: string,
@@ -425,6 +448,12 @@ function boundedFailure(
 ): { code: string; retryable: boolean } {
   if (error instanceof OoxmlReferencePythonClientError) {
     return { code: error.code, retryable: error.retryable };
+  }
+  if (error instanceof OoxmlReferencePublicationIdentityError) {
+    return {
+      code: "OOXML_REFERENCE_PUBLICATION_IDENTITY_MISMATCH",
+      retryable: false,
+    };
   }
   return {
     code:

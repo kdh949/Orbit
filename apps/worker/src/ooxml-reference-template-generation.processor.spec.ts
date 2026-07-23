@@ -207,6 +207,71 @@ describe("processOoxmlReferenceTemplateGenerationJob", () => {
     });
     expect(publish).not.toHaveBeenCalled();
   });
+
+  it.each([
+    {
+      label: "catalog template ID",
+      mutate: (artifact: ReturnType<typeof materializationArtifact>) => {
+        artifact.templateSnapshot.catalogTemplateId = "simple-light-v1";
+      },
+    },
+    {
+      label: "catalog template version",
+      mutate: (artifact: ReturnType<typeof materializationArtifact>) => {
+        artifact.templateSnapshot.catalogTemplateVersion = 2;
+      },
+    },
+  ])(
+    "fails closed before publication when the $label differs from the request",
+    async ({ mutate }) => {
+      const database = fakeDatabase();
+      const artifacts = fakeArtifacts();
+      const invalidMaterialization = materializationArtifact();
+      mutate(invalidMaterialization);
+      const runStage = vi.fn(
+        async (input: RunOoxmlReferencePythonStageInput) => {
+          const artifact: JsonPayload =
+            input.stage === "materialization"
+              ? invalidMaterialization
+              : input.stage === "render-validation"
+                ? { renderAssets: [] }
+                : { completedStage: input.stage };
+          return {
+            stage: input.stage,
+            templateId: "operating-review-v1",
+            templateVersion: 1,
+            sourceSlideCount: 2,
+            slotCount: 4,
+            artifact,
+            issueCodes: [],
+          };
+        },
+      );
+      const publish = vi.fn();
+
+      const result = await processOoxmlReferenceTemplateGenerationJob(
+        database.dataSource,
+        "http://python-worker:8000",
+        payload,
+        { artifactRepository: artifacts, runStage, publish },
+      );
+
+      expect(result).toMatchObject({
+        status: "failed",
+        result: null,
+        error: {
+          code: "OOXML_REFERENCE_PUBLICATION_IDENTITY_MISMATCH",
+          failedStage: "publication",
+          retryable: false,
+        },
+      });
+      expect(artifacts.storeSucceeded).not.toHaveBeenCalledWith(
+        expect.objectContaining({ stage: "publication" }),
+        expect.anything(),
+      );
+      expect(publish).not.toHaveBeenCalled();
+    },
+  );
 });
 
 function fakeDatabase() {
