@@ -196,7 +196,12 @@ function createSlideWindowSlideSnapshot(
   };
 
   if (slide.kind === "activity") {
-    return { ...common, kind: "activity", activity: slide.activity };
+    return {
+      ...common,
+      kind: "activity",
+      activity: slide.activity,
+      activityAppearance: slide.activityAppearance
+    };
   }
   if (slide.kind === "activity-results") {
     return {

@@ -131,7 +131,8 @@ export function EditorCanvasStage(props: EditorCanvasStageProps) {
               ...buildSlideBackgroundStyle(props.currentSlide, props.deck)
             }}
           >
-            {props.currentSlide.kind === "activity" ? (
+            {props.currentSlide.kind === "activity" &&
+            props.currentSlide.activityAppearance.mode === "system" ? (
               <div aria-label="잠긴 시스템 레이어" className="activity-editor-system-layer">
                 <ActivitySlidePreview
                   role="audience"
