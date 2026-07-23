@@ -1,6 +1,7 @@
 import type { ActivityResultsSlide, ActivitySlide, Deck } from "@orbit/shared";
 
 import { OrbitBrand } from "../../../components/ui";
+import { ReadOnlySlideCanvas } from "../../slides/rendering";
 import { createActivityThemeStyle } from "../rendering/activityThemeStyle";
 
 const resultLayoutLabels: Record<ActivityResultsSlide["activityResult"]["layout"], string> = {
@@ -10,10 +11,26 @@ const resultLayoutLabels: Record<ActivityResultsSlide["activityResult"]["layout"
 };
 
 export function ActivitySpecialSlideThumbnail(props: {
-  deck: Pick<Deck, "slides" | "theme">;
+  deck: Deck;
   slide: ActivitySlide | ActivityResultsSlide;
 }) {
   if (props.slide.kind === "activity") {
+    if (props.slide.activityAppearance.mode === "editable") {
+      return (
+        <span
+          aria-label={`${props.slide.activity.title} 편집 디자인 미리보기`}
+          className="activity-special-thumbnail activity-special-thumbnail--editable"
+          data-testid="activity-slide-thumbnail"
+        >
+          <ReadOnlySlideCanvas
+            deck={props.deck}
+            scale={192 / props.deck.canvas.width}
+            slide={props.slide}
+          />
+        </span>
+      );
+    }
+
     const firstQuestion = props.slide.activity.questions[0];
     return (
       <span

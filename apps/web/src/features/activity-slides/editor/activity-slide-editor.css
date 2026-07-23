@@ -22,6 +22,18 @@
   grid-template-rows: max-content max-content minmax(0, max-content);
 }
 
+.activity-special-thumbnail--editable {
+  align-items: center;
+  background: transparent;
+  justify-content: center;
+  padding: 0;
+}
+
+.activity-special-thumbnail--editable .orbit-read-only-slide-viewport {
+  max-height: 100%;
+  max-width: 100%;
+}
+
 .activity-special-thumbnail--results {
   align-content: end;
   border-left: 8px solid var(--activity-color-accent);

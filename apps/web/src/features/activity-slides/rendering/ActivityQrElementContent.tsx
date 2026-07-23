@@ -1,15 +1,11 @@
 import { Group as KonvaGroup, Rect as KonvaRect, Text as KonvaText } from "react-konva";
 import type { ComponentType } from "react";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 
 import { createQrDataUrl } from "../../editor/audience-link/audienceLinkUtils";
 import { ImageElementContent } from "../../slides/rendering/ImageElementContent";
-import {
-  getActivityQrRuntimeState,
-  subscribeActivityQrRuntime,
-  type ActivityQrRuntimeState,
-  type ActivityQrRuntimeInput
-} from "./activityQrRuntime";
+import { canonicalActivityUrl } from "./ActivityAudienceSlideRenderer";
+import { useActivityElementRuntime } from "./ActivityElementRuntimeContext";
 
 type KonvaComponent = ComponentType<any>;
 const Group = KonvaGroup as unknown as KonvaComponent;
@@ -22,29 +18,20 @@ export function ActivityQrElementContent(props: {
   frame: { x: number; y: number; width: number; height: number; rotation: number };
   projectId: string;
 }) {
-  const input = useMemo<ActivityQrRuntimeInput>(
-    () => ({
-      activityId: props.activityId,
-      deckId: props.deckId,
-      projectId: props.projectId
-    }),
-    [props.activityId, props.deckId, props.projectId]
-  );
-  const runtime = useSyncExternalStore(
-    (listener) => subscribeActivityQrRuntime(input, listener),
-    () => getActivityQrRuntimeState(input),
-    () => ({ status: "loading", audienceUrl: null } satisfies ActivityQrRuntimeState)
-  );
+  const runtime = useActivityElementRuntime();
+  const audienceUrl = runtime?.audienceUrl
+    ? canonicalActivityUrl(runtime.audienceUrl, props.activityId)
+    : null;
   const [qrDataUrl, setQrDataUrl] = useState("");
 
   useEffect(() => {
     let cancelled = false;
-    if (!runtime.audienceUrl) {
+    if (!audienceUrl) {
       setQrDataUrl("");
       return;
     }
 
-    void createQrDataUrl(runtime.audienceUrl, { width: 640 }).then(
+    void createQrDataUrl(audienceUrl, { width: 640 }).then(
       (nextQrDataUrl) => {
         if (!cancelled) setQrDataUrl(nextQrDataUrl);
       },
@@ -55,7 +42,7 @@ export function ActivityQrElementContent(props: {
     return () => {
       cancelled = true;
     };
-  }, [runtime.audienceUrl]);
+  }, [audienceUrl]);
 
   if (qrDataUrl) {
     return (
@@ -73,12 +60,11 @@ export function ActivityQrElementContent(props: {
     );
   }
 
-  return <QrPlaceholder frame={props.frame} unavailable={runtime.status === "unavailable"} />;
+  return <QrPlaceholder frame={props.frame} />;
 }
 
 function QrPlaceholder(props: {
   frame: { height: number; width: number };
-  unavailable: boolean;
 }) {
   return (
     <Group listening={false}>
@@ -95,7 +81,7 @@ function QrPlaceholder(props: {
         fontSize={14}
         fontStyle="bold"
         padding={16}
-        text={props.unavailable ? "참여 QR 코드\n준비 상태를 확인할 수 없습니다" : "참여 QR 코드\n발표 시작 후 표시됩니다"}
+        text="참여 QR 코드\n발표 시작 후 표시됩니다"
         verticalAlign="middle"
         width={props.frame.width}
         height={props.frame.height}

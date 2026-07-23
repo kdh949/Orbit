@@ -10,6 +10,7 @@ import {
 import type { ComponentType } from "react";
 
 import { getKonvaFontStyle } from "../../editor/canvas/text/textLayout";
+import { useActivityElementRuntime } from "./ActivityElementRuntimeContext";
 
 type KonvaComponent = ComponentType<any>;
 const Group = KonvaGroup as unknown as KonvaComponent;
@@ -20,6 +21,7 @@ export function PresentationPasscodeElementContent(props: {
   elementProps: PresentationPasscodeElementProps;
   frame: { width: number; height: number };
 }) {
+  const runtime = useActivityElementRuntime();
   const labelStyle = props.elementProps.labelTextStyle;
   const codeStyle = props.elementProps.codeTextStyle;
   const labelHeight = Math.min(52, props.frame.height * 0.3);
@@ -55,7 +57,7 @@ export function PresentationPasscodeElementContent(props: {
         height={Math.max(1, props.frame.height - labelHeight)}
         letterSpacing={codeStyle.letterSpacing ?? 12}
         padding={8}
-        text="••••"
+        text={runtime?.displayPasscode ?? "••••"}
         verticalAlign={codeStyle.verticalAlign ?? "middle"}
         width={props.frame.width}
         y={labelHeight}

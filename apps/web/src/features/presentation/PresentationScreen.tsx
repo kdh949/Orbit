@@ -51,6 +51,7 @@ export function PresentationScreen(props: {
   panelSnapshot: SpeechTrackerSnapshot;
   presentationSession?: {
     audienceUrl: string;
+    displayPasscode: string | null;
     sessionId: string;
   };
   presenterScale: number;
@@ -128,6 +129,11 @@ export function PresentationScreen(props: {
           nextSlideContent={
             props.deck && props.nextSlide ? (
               <SlideshowRenderer
+                activityElementRuntime={{
+                  audienceUrl: props.presentationSession?.audienceUrl ?? null,
+                  displayPasscode:
+                    props.presentationSession?.displayPasscode ?? null,
+                }}
                 deck={props.deck}
                 playInitialEntryAnimations={false}
                 renderMode="presenter"
@@ -145,6 +151,11 @@ export function PresentationScreen(props: {
           renderStage={
             props.deck && props.currentSlide ? (
               <SlideshowRenderer
+                activityElementRuntime={{
+                  audienceUrl: props.presentationSession?.audienceUrl ?? null,
+                  displayPasscode:
+                    props.presentationSession?.displayPasscode ?? null,
+                }}
                 deck={props.deck}
                 scale={props.presenterScale}
                 slideId={props.currentSlide.slideId}

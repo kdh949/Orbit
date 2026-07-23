@@ -1,5 +1,5 @@
 import type { Deck } from "@orbit/shared";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   getRenderableSlideElements,
   ReadOnlySlideCanvas,
@@ -13,12 +13,17 @@ import {
   ActivityAudienceRuntime,
   ActivityResultRuntime
 } from "../../activity-slides";
+import {
+  ActivityElementRuntimeProvider,
+  type ActivityElementRuntime
+} from "../../activity-slides/rendering/ActivityElementRuntimeContext";
 
 export type SlideshowRenderMode = "presenter" | "slide-window" | "single-screen";
 
 const emptyTriggerAnimationIds: readonly string[] = [];
 
 export function SlideshowRenderer(props: {
+  activityElementRuntime?: ActivityElementRuntime;
   deck: Deck;
   highlights?: SlideRuntimeHighlight[];
   playInitialEntryAnimations?: boolean;
@@ -80,17 +85,32 @@ export function SlideshowRenderer(props: {
   }
 
   return (
-    <SlideshowRendererContent
-      deck={deck}
-      highlights={highlights}
-      playInitialEntryAnimations={playInitialEntryAnimations}
-      reducedMotion={reducedMotion}
-      renderMode={renderMode}
-      scale={scale}
-      slide={slide}
-      stepIndex={stepIndex}
-      triggerAnimationIds={triggerAnimationIds}
-    />
+    <ActivityElementRuntimeBoundary runtime={props.activityElementRuntime}>
+      <SlideshowRendererContent
+        deck={deck}
+        highlights={highlights}
+        playInitialEntryAnimations={playInitialEntryAnimations}
+        reducedMotion={reducedMotion}
+        renderMode={renderMode}
+        scale={scale}
+        slide={slide}
+        stepIndex={stepIndex}
+        triggerAnimationIds={triggerAnimationIds}
+      />
+    </ActivityElementRuntimeBoundary>
+  );
+}
+
+function ActivityElementRuntimeBoundary(props: {
+  children: ReactNode;
+  runtime?: ActivityElementRuntime;
+}) {
+  return props.runtime ? (
+    <ActivityElementRuntimeProvider value={props.runtime}>
+      {props.children}
+    </ActivityElementRuntimeProvider>
+  ) : (
+    props.children
   );
 }
 

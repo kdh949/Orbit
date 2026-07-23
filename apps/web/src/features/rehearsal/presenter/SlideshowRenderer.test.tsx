@@ -131,7 +131,33 @@ describe("SlideshowRenderer", () => {
     expect(html).toContain('data-testid="read-only-slide-stage"');
     expect(html).toContain(activitySlide.activity.title);
     expect(html).toContain("입장 코드");
+    expect(html).toContain("••••");
     expect(html).not.toContain("청중 참여 장표");
+  });
+
+  it("injects presenter-only runtime values into editable activity elements", () => {
+    const baseDeck = createDemoDeck();
+    const activitySlide = createActivitySlide(baseDeck, "poll", {
+      preset: "spotlight"
+    });
+    const deck = {
+      ...baseDeck,
+      slides: [...baseDeck.slides, activitySlide]
+    };
+    const html = renderToStaticMarkup(
+      <SlideshowRenderer
+        activityElementRuntime={{
+          audienceUrl: "https://orbit.example/audience/session_live",
+          displayPasscode: "4821"
+        }}
+        deck={deck}
+        slideId={activitySlide.slideId}
+        stepIndex={0}
+      />
+    );
+
+    expect(html).toContain("4821");
+    expect(html).not.toContain("••••");
   });
 
   it("falls back to thumbnailUrl when a slide has no renderable elements", () => {

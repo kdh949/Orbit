@@ -16,7 +16,9 @@ import { activityApi } from "../activity-slides/api/activityApi";
 import { normalizePresentationRecordingFile } from "./presentationRecording";
 
 export type PresentationRuntimeIdentity = {
+  accessMode: "passcode" | "public";
   audienceUrl: string;
+  displayPasscode: string | null;
   recordingMode: PresentationRecordingMode;
   runId: string;
   sessionId: string;
@@ -84,13 +86,24 @@ export async function createPresentationRuntime(input: {
   projectId: string;
   recordingMode: PresentationRecordingMode;
 }): Promise<PresentationRuntimeIdentity> {
-  const { audienceUrl, session } = await activityApi.createSession(
+  const current = await activityApi.getCurrentSession(
     input.projectId,
-    {
-      accessMode: "public",
-      deckId: input.deckId,
-      reuseCurrent: true,
-    },
+    input.deckId,
+  );
+  const sessionWithUrl =
+    current.session &&
+    current.audienceUrl &&
+    current.session.deckVersion === input.deckVersion
+      ? { audienceUrl: current.audienceUrl, session: current.session }
+      : await activityApi.createSession(input.projectId, {
+          accessMode: "public",
+          deckId: input.deckId,
+          reuseCurrent: true,
+        });
+  const { audienceUrl, session } = sessionWithUrl;
+  const presenterAccess = await activityApi.getPresenterAccess(
+    input.projectId,
+    session.sessionId,
   );
   const response = await requestJson(
     runsUrl(input.projectId, session.sessionId),
@@ -105,7 +118,9 @@ export async function createPresentationRuntime(input: {
   );
   const { run } = createPresentationRunResponseSchema.parse(response);
   return {
+    accessMode: presenterAccess.accessMode,
     audienceUrl,
+    displayPasscode: presenterAccess.displayPasscode,
     recordingMode: run.recordingMode,
     runId: run.runId,
     sessionId: session.sessionId,

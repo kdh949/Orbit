@@ -2,6 +2,8 @@ import { createActivityResultsSlide, createActivitySlide, createDemoDeck } from 
 import { deckSchema } from "@orbit/shared";
 import type { ActivitySessionResultItem } from "@orbit/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import { forwardRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -22,6 +24,43 @@ import {
   findCurrentActivityResult,
   findActivityResultSource
 } from "./ActivityResultSlideInspector";
+
+vi.mock("react-konva", () => {
+  type MockKonvaProps = {
+    children?: ReactNode;
+    text?: string;
+    [key: string]: any;
+  };
+  const Container = forwardRef<HTMLDivElement, MockKonvaProps>(
+    ({ children, ...props }, ref) => (
+      <div
+        data-testid={
+          typeof props["data-testid"] === "string"
+            ? props["data-testid"]
+            : undefined
+        }
+        ref={ref}
+      >
+        {children}
+      </div>
+    )
+  );
+
+  return {
+    Arrow: Container,
+    Circle: Container,
+    Group: Container,
+    Image: Container,
+    Layer: Container,
+    Line: Container,
+    Rect: Container,
+    RegularPolygon: Container,
+    Shape: Container,
+    Stage: Container,
+    Star: Container,
+    Text: ({ text }: MockKonvaProps) => <span>{text}</span>
+  };
+});
 
 describe("activity slide editor", () => {
   const slide = createActivitySlide(createDemoDeck(), "satisfaction");
@@ -96,6 +135,24 @@ describe("activity slide editor", () => {
     expect(activityHtml).toContain(slide.activity.title);
     expect(resultHtml).toContain('data-testid="activity-results-slide-thumbnail"');
     expect(resultHtml).toContain(`${slide.activity.title} 결과`);
+  });
+
+  it("renders editable activity thumbnails from the concrete canvas", () => {
+    const baseDeck = createDemoDeck();
+    const editableSlide = createActivitySlide(baseDeck, "poll", {
+      preset: "split"
+    });
+    const deck = deckSchema.parse({
+      ...baseDeck,
+      slides: [...baseDeck.slides, editableSlide]
+    });
+    const html = renderToStaticMarkup(
+      <ActivitySpecialSlideThumbnail deck={deck} slide={editableSlide} />
+    );
+
+    expect(html).toContain("편집 디자인 미리보기");
+    expect(html).toContain('data-testid="read-only-slide-stage"');
+    expect(html).toContain("••••");
   });
 
   it("renders editor status, public state, direct link, and QR controls", () => {
