@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { matchKeywordOccurrenceTriggers } from "./keywordOccurrenceRuntime";
+import {
+  evaluateKeywordOccurrenceTriggers,
+  matchKeywordOccurrenceTriggers
+} from "./keywordOccurrenceRuntime";
 
 describe("matchKeywordOccurrenceTriggers", () => {
   const slide = {
@@ -19,6 +22,40 @@ describe("matchKeywordOccurrenceTriggers", () => {
     actions: [],
     animations: []
   };
+
+  it("confidence 미제공을 100%로 만들지 않고 threshold를 명시적으로 우회한다", () => {
+    const result = evaluateKeywordOccurrenceTriggers({
+      slide,
+      targetOccurrenceIds: ["kwo_slide_1_kw_ai_4_6"],
+      transcript: "오늘은 AI",
+      latestTranscript: "AI",
+      confidence: null
+    });
+
+    expect(result.evaluations[0]?.evidence).toMatchObject({
+      confidenceAvailable: false,
+      confidenceValue: null,
+      confidencePassed: true,
+      confidencePolicy: "BYPASS_THRESHOLD_WHEN_UNAVAILABLE"
+    });
+    expect(result.matches).toHaveLength(1);
+  });
+
+  it("낮은 confidence로 탈락한 occurrence의 원인을 반환한다", () => {
+    const result = evaluateKeywordOccurrenceTriggers({
+      slide,
+      targetOccurrenceIds: ["kwo_slide_1_kw_ai_4_6"],
+      transcript: "오늘은 AI",
+      latestTranscript: "AI",
+      confidence: 0.4
+    });
+
+    expect(result.matches).toEqual([]);
+    expect(result.evaluations[0]).toMatchObject({
+      outcome: "rejected",
+      reasons: expect.arrayContaining(["LOW_CONFIDENCE"])
+    });
+  });
 
   it("does not match a later keyword occurrence before script progress reaches its window", () => {
     const matches = matchKeywordOccurrenceTriggers({

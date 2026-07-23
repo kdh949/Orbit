@@ -19,14 +19,48 @@ export type KeywordOccurrenceRuntimeWindow = {
   afterChars: number;
 };
 
-const defaultOccurrenceTriggerWindow: KeywordOccurrenceRuntimeWindow = {
-  beforeChars: 24,
-  afterChars: 36
+export type OccurrenceRejectReason =
+  | "LOW_CONFIDENCE"
+  | "NO_TARGET_OCCURRENCES"
+  | "NOT_TARGET_OCCURRENCE"
+  | "ALREADY_CONFIRMED"
+  | "KEYWORD_NOT_PRESENT"
+  | "OUTSIDE_PROGRESS_WINDOW"
+  | "NOT_SELECTED_FOR_HIT_COUNT"
+  | "KEYWORD_DEFINITION_MISSING";
+
+export type KeywordOccurrenceEvaluation = {
+  keywordId: string;
+  occurrenceId: string;
+  outcome: "accepted" | "rejected";
+  reasons: OccurrenceRejectReason[];
+  evidence: {
+    latestTranscript: string;
+    normalizedLatestTranscript: string;
+    confidenceAvailable: boolean;
+    confidenceValue: number | null;
+    confidenceThreshold: number;
+    confidencePassed: boolean;
+    confidencePolicy:
+      | "BYPASS_THRESHOLD_WHEN_UNAVAILABLE"
+      | "COMPARE_TO_THRESHOLD";
+    keywordTerms: string[];
+    matchedTerms: string[];
+    keywordHitCount: number;
+    previousCharOffset: number;
+    currentCharOffset: number;
+    occurrenceStart: number;
+    occurrenceEnd: number;
+    windowBeforeChars: number;
+    windowAfterChars: number;
+    isTarget: boolean;
+    alreadyConfirmed: boolean;
+    withinProgressWindow: boolean;
+    selectedForTranscriptSpan: boolean;
+  };
 };
 
-const defaultProgressConfidenceThreshold = 0.7;
-
-export function matchKeywordOccurrenceTriggers(options: {
+export type KeywordOccurrenceOptions = {
   slide: Pick<Slide, "slideId" | "speakerNotes" | "keywords">;
   targetOccurrenceIds: readonly string[];
   previousTranscript?: string;
@@ -35,17 +69,39 @@ export function matchKeywordOccurrenceTriggers(options: {
   confidence?: number | null;
   confirmedOccurrenceIds?: readonly string[];
   window?: KeywordOccurrenceRuntimeWindow;
-}): KeywordOccurrenceRuntimeMatch[] {
-  const confidence = options.confidence ?? 1;
-  if (confidence < defaultProgressConfidenceThreshold) {
-    return [];
-  }
+};
 
+const defaultOccurrenceTriggerWindow: KeywordOccurrenceRuntimeWindow = {
+  beforeChars: 24,
+  afterChars: 36
+};
+
+const defaultProgressConfidenceThreshold = 0.7;
+
+export function evaluateKeywordOccurrenceTriggers(
+  options: KeywordOccurrenceOptions
+): {
+  evaluations: KeywordOccurrenceEvaluation[];
+  matches: KeywordOccurrenceRuntimeMatch[];
+} {
+  const confidenceEvaluation =
+    options.confidence == null
+      ? {
+          available: false,
+          value: null,
+          threshold: defaultProgressConfidenceThreshold,
+          passed: true,
+          policy: "BYPASS_THRESHOLD_WHEN_UNAVAILABLE" as const
+        }
+      : {
+          available: true,
+          value: options.confidence,
+          threshold: defaultProgressConfidenceThreshold,
+          passed:
+            options.confidence >= defaultProgressConfidenceThreshold,
+          policy: "COMPARE_TO_THRESHOLD" as const
+        };
   const targetOccurrenceIds = new Set(options.targetOccurrenceIds);
-  if (targetOccurrenceIds.size === 0) {
-    return [];
-  }
-
   const confirmedOccurrenceIds = new Set(options.confirmedOccurrenceIds ?? []);
   const previousCharOffset = estimateScriptProgressOffset(
     options.slide.speakerNotes,
@@ -64,7 +120,7 @@ export function matchKeywordOccurrenceTriggers(options: {
     latestTranscript,
     options.slide.keywords
   );
-  const matchedOccurrenceIds = getMatchedOccurrenceIdsForTranscriptSpan({
+  const occurrenceSelection = getOccurrenceSelectionForTranscriptSpan({
     confirmedOccurrenceIds,
     occurrences: allOccurrences,
     hasProgressSpan: options.previousTranscript !== undefined,
@@ -75,38 +131,123 @@ export function matchKeywordOccurrenceTriggers(options: {
     window
   });
 
-  return allOccurrences.flatMap((occurrence) => {
-    if (
-      !targetOccurrenceIds.has(occurrence.occurrenceId) ||
-      confirmedOccurrenceIds.has(occurrence.occurrenceId)
-    ) {
-      return [];
-    }
-
-    if (!matchedOccurrenceIds.has(occurrence.occurrenceId)) {
-      return [];
-    }
-
+  const evaluations = allOccurrences.map((occurrence) => {
     const keyword = options.slide.keywords.find(
       (candidate) => candidate.keywordId === occurrence.keywordId
     );
-    if (!keyword || (keywordHitCounts.get(keyword.keywordId) ?? 0) === 0) {
-      return [];
+    const keywordHitCount = keyword
+      ? keywordHitCounts.get(keyword.keywordId) ?? 0
+      : 0;
+    const isTarget = targetOccurrenceIds.has(occurrence.occurrenceId);
+    const alreadyConfirmed = confirmedOccurrenceIds.has(
+      occurrence.occurrenceId
+    );
+    const withinProgressWindow =
+      occurrenceSelection.eligibleOccurrenceIds.has(occurrence.occurrenceId);
+    const selectedForTranscriptSpan =
+      occurrenceSelection.selectedOccurrenceIds.has(occurrence.occurrenceId);
+    const reasons: OccurrenceRejectReason[] = [];
+
+    if (!confidenceEvaluation.passed) {
+      reasons.push("LOW_CONFIDENCE");
+    }
+    if (targetOccurrenceIds.size === 0) {
+      reasons.push("NO_TARGET_OCCURRENCES");
+    } else if (!isTarget) {
+      reasons.push("NOT_TARGET_OCCURRENCE");
+    }
+    if (alreadyConfirmed) {
+      reasons.push("ALREADY_CONFIRMED");
+    }
+    if (!keyword) {
+      reasons.push("KEYWORD_DEFINITION_MISSING");
+    } else if (keywordHitCount === 0) {
+      reasons.push("KEYWORD_NOT_PRESENT");
+    }
+    if (
+      isTarget &&
+      !alreadyConfirmed &&
+      keyword &&
+      keywordHitCount > 0
+    ) {
+      if (!withinProgressWindow) {
+        reasons.push("OUTSIDE_PROGRESS_WINDOW");
+      } else if (!selectedForTranscriptSpan) {
+        reasons.push("NOT_SELECTED_FOR_HIT_COUNT");
+      }
     }
 
-    return [
-      {
-        keywordId: occurrence.keywordId,
-        occurrenceId: occurrence.occurrenceId,
-        text: occurrence.text,
-        matchedScriptOffset: occurrence.start,
-        currentCharOffset
+    const keywordTerms = keyword
+      ? Array.from(
+          new Set(
+            [keyword.text, ...keyword.synonyms, ...keyword.abbreviations]
+              .map((term) => normalizeSpeechText(term))
+              .filter(Boolean)
+          )
+        )
+      : [];
+    return {
+      keywordId: occurrence.keywordId,
+      occurrenceId: occurrence.occurrenceId,
+      outcome:
+        reasons.length === 0 ? ("accepted" as const) : ("rejected" as const),
+      reasons,
+      evidence: {
+        latestTranscript: options.latestTranscript,
+        normalizedLatestTranscript: latestTranscript,
+        confidenceAvailable: confidenceEvaluation.available,
+        confidenceValue: confidenceEvaluation.value,
+        confidenceThreshold: confidenceEvaluation.threshold,
+        confidencePassed: confidenceEvaluation.passed,
+        confidencePolicy: confidenceEvaluation.policy,
+        keywordTerms,
+        matchedTerms: keywordTerms.filter((term) =>
+          latestTranscript.includes(term)
+        ),
+        keywordHitCount,
+        previousCharOffset,
+        currentCharOffset,
+        occurrenceStart: occurrence.start,
+        occurrenceEnd: occurrence.end,
+        windowBeforeChars: window.beforeChars,
+        windowAfterChars: window.afterChars,
+        isTarget,
+        alreadyConfirmed,
+        withinProgressWindow,
+        selectedForTranscriptSpan
       }
-    ];
+    };
   });
+
+  const acceptedOccurrenceIds = new Set(
+    evaluations
+      .filter((evaluation) => evaluation.outcome === "accepted")
+      .map((evaluation) => evaluation.occurrenceId)
+  );
+  const matches = allOccurrences.flatMap((occurrence) =>
+    acceptedOccurrenceIds.has(occurrence.occurrenceId)
+      ? [
+          {
+            keywordId: occurrence.keywordId,
+            occurrenceId: occurrence.occurrenceId,
+            text: occurrence.text,
+            matchedScriptOffset: occurrence.start,
+            currentCharOffset
+          }
+        ]
+      : []
+  );
+
+  return { evaluations, matches };
 }
 
-function getMatchedOccurrenceIdsForTranscriptSpan(options: {
+export function matchKeywordOccurrenceTriggers(
+  options: KeywordOccurrenceOptions
+): KeywordOccurrenceRuntimeMatch[] {
+  return evaluateKeywordOccurrenceTriggers(options).matches;
+}
+
+function getOccurrenceSelectionForTranscriptSpan(options: {
   confirmedOccurrenceIds: ReadonlySet<string>;
   occurrences: ReturnType<typeof deriveKeywordOccurrences>;
   hasProgressSpan: boolean;
@@ -116,7 +257,8 @@ function getMatchedOccurrenceIdsForTranscriptSpan(options: {
   spanStart: number;
   window: KeywordOccurrenceRuntimeWindow;
 }) {
-  const occurrenceIds = new Set<string>();
+  const eligibleOccurrenceIds = new Set<string>();
+  const selectedOccurrenceIds = new Set<string>();
 
   for (const keyword of options.slide.keywords) {
     const hitCount = options.keywordHitCounts.get(keyword.keywordId) ?? 0;
@@ -150,6 +292,9 @@ function getMatchedOccurrenceIdsForTranscriptSpan(options: {
         );
       }
     );
+    for (const occurrence of candidates) {
+      eligibleOccurrenceIds.add(occurrence.occurrenceId);
+    }
 
     const orderedCandidates = options.hasProgressSpan
       ? candidates.sort(
@@ -164,11 +309,11 @@ function getMatchedOccurrenceIdsForTranscriptSpan(options: {
       : orderedCandidates;
 
     for (const occurrence of selectedCandidates) {
-      occurrenceIds.add(occurrence.occurrenceId);
+      selectedOccurrenceIds.add(occurrence.occurrenceId);
     }
   }
 
-  return occurrenceIds;
+  return { eligibleOccurrenceIds, selectedOccurrenceIds };
 }
 
 function countKeywordHitsByKeyword(
