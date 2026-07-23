@@ -111,6 +111,29 @@ describe("SlideshowRenderer", () => {
     expect(html).not.toContain('data-testid="read-only-slide-stage"');
   });
 
+  it("renders editable activity slides from their concrete canvas elements", () => {
+    const baseDeck = createDemoDeck();
+    const activitySlide = createActivitySlide(baseDeck, "poll", {
+      preset: "spotlight"
+    });
+    const deck = {
+      ...baseDeck,
+      slides: [...baseDeck.slides, activitySlide]
+    };
+    const html = renderToStaticMarkup(
+      <SlideshowRenderer
+        deck={deck}
+        slideId={activitySlide.slideId}
+        stepIndex={0}
+      />
+    );
+
+    expect(html).toContain('data-testid="read-only-slide-stage"');
+    expect(html).toContain(activitySlide.activity.title);
+    expect(html).toContain("입장 코드");
+    expect(html).not.toContain("청중 참여 장표");
+  });
+
   it("falls back to thumbnailUrl when a slide has no renderable elements", () => {
     const thumbnailDeck = {
       ...p0AnimationDeck,

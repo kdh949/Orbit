@@ -63,7 +63,10 @@ export function SlideshowRenderer(props: {
     );
   }
 
-  if (slide.kind === "activity") {
+  if (
+    slide.kind === "activity" &&
+    slide.activityAppearance.mode === "system"
+  ) {
     return (
       <ActivityAudienceRuntime
         activity={slide.activity}
