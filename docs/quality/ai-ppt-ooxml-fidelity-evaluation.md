@@ -137,6 +137,17 @@ threshold 승인이 남아 `runtimeEligible=false`와
 `proposedLockedRegionSsimThreshold=null`을 유지한다. 진단 분류 SHA-256은
 `494208e0196867805d29e1a727e7a8e1e92a7a6a361c7496632d2da92bd758b0`이다.
 
+남은 family 중 공개 배포 후보 4개는
+`/private/tmp/orbit-ooxml-open-font-exact-name-audit-20260723`에서 Google Fonts의 family별
+OFL과 바이너리를 함께 보존하고 name table을 검사했다. `Lora SemiBold`와
+`Roboto SemiBold`는 각각 family `Lora`/`Roboto`의 style·full name이며, Roboto Serif
+변수 폰트는 `Roboto Serif`와 `Roboto Serif 20pt`만 노출한다. 따라서 네 요청 문자열 모두
+현재 `fc-match` resolved family exact 규칙을 설치만으로 충족하지 않는다. 공개 파일의
+checksum과 라이선스는 확보했지만 family-plus-style/optical-size alias는 계약 변경이므로
+승인과 테스트 없이 적용하지 않았고, QA font 설치·calibration·strict catalog 상태도
+변경하지 않았다. Google Fonts 저장소는 family 디렉터리의 바이너리와 라이선스를 기준으로
+재배포 조건을 확인해야 한다고 명시한다.
+
 artifact는 Git이 아닌 `/tmp` 또는 승인된 private QA storage에 다음 구조로 둔다.
 
 ```text

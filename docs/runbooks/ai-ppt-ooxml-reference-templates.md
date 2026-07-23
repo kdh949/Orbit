@@ -181,6 +181,15 @@ Microsoft/Office asset의 cross-application license와 embedded font 추출 권�
 전에는 app/cache font를 복사하거나 production image에 넣지 않는다. 남은 exact family와
 사람 threshold 승인이 없으므로 calibration object도 게시하지 않는다.
 
+공개 배포 후보인 `Lora`, `Roboto`, `Roboto Serif`의 Google Fonts 바이너리와 family별
+OFL은 `/private/tmp/orbit-ooxml-open-font-exact-name-audit-20260723`에서 checksum과 name
+table을 검증했다. `Lora SemiBold`/`Roboto SemiBold`는 exact family가 아니라 style·full
+name이고, 배포 중인 Roboto Serif 변수 폰트는 14pt family를 노출하지 않는다. 따라서
+현재 exact-family gate를 유지한 채 파일을 설치하는 것만으로는 해당 4개를 해소할 수 없다.
+exact family 바이너리를 제공하거나 family-plus-style/optical-size alias 계약을 별도로
+승인한 뒤 shared validation, renderer resolver와 regression test를 함께 바꿔야 한다.
+그 결정 전에는 font metadata를 변경하거나 alias를 임의 적용하지 않는다.
+
 승인/disabled canonical manifest 기반 LibreOffice 26.8 identity candidate는
 `/private/tmp/orbit-ooxml-identity-calibration-candidate-20260723-b`에 있다. 7개/139장의
 SSIM은 1.0, changed pixel과 structural/package drift는 0이고 461개 checksum이 일치한다.

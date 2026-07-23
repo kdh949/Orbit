@@ -694,6 +694,14 @@ candidate
 resolution은 exact 320/substituted 31, unique substitution 8개로 줄었지만 font license,
 embedded-only/exact-absent family와 사람 threshold 승인이 남아 runtime에는 적용하지 않는다.
 
+공개 배포 후보 4개에 대해서는
+`/private/tmp/orbit-ooxml-open-font-exact-name-audit-20260723`에서 Google Fonts 바이너리,
+family별 OFL, checksum과 name table을 확인했다. `Lora SemiBold`/`Roboto SemiBold`는
+family가 아니라 style·full name이고 Roboto Serif 배포본은 14pt family를 노출하지 않아,
+현 exact-family 계약에서는 설치만으로 4개 모두 gate를 해소하지 못한다. alias/optical-size
+매핑은 별도 계약 승인 없이는 적용하지 않았으며 QA 설치·calibration·strict 상태도
+변경하지 않았다.
+
 **Dependencies:** Tasks 5, 6, 7
 
 **Files likely touched:**
