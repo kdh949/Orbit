@@ -93,10 +93,18 @@ export type OoxmlReferencePythonStageResponse = z.infer<
   typeof stageResponseSchema
 >;
 
-export type OoxmlReferencePythonClientErrorCode =
-  | "OOXML_REFERENCE_PYTHON_UNAVAILABLE"
-  | "OOXML_REFERENCE_PYTHON_FAILED"
-  | "OOXML_REFERENCE_PYTHON_INVALID_RESPONSE";
+export type OoxmlReferencePythonClientErrorCode = `OOXML_REFERENCE_${string}`;
+
+const pythonErrorResponseSchema = z
+  .object({
+    detail: z
+      .object({
+        code: z.string().max(128).regex(/^OOXML_REFERENCE_[A-Z0-9_]+$/),
+        retryable: z.boolean(),
+      })
+      .strict(),
+  })
+  .strict();
 
 export class OoxmlReferencePythonClientError extends Error {
   override readonly name = "OoxmlReferencePythonClientError";
@@ -152,10 +160,10 @@ export async function runOoxmlReferencePythonStage(
   }
 
   if (!response.ok) {
-    await discardBody(response);
+    const bounded = await readBoundedError(response);
     throw new OoxmlReferencePythonClientError(
-      "OOXML_REFERENCE_PYTHON_FAILED",
-      response.status === 429 || response.status >= 500,
+      bounded?.code ?? "OOXML_REFERENCE_PYTHON_FAILED",
+      bounded?.retryable ?? (response.status === 429 || response.status >= 500),
       `OOXML reference template Python stage failed with status ${response.status}.`,
     );
   }
@@ -210,10 +218,42 @@ function assertNoPrivateLocator(value: unknown, seen = new Set<object>()): void 
   }
 }
 
-async function discardBody(response: Response): Promise<void> {
+async function readBoundedError(
+  response: Response,
+): Promise<{ code: OoxmlReferencePythonClientErrorCode; retryable: boolean } | null> {
+  const maxBytes = 8_192;
+  const reader = response.body?.getReader();
+  if (!reader) return null;
+  const chunks: Uint8Array[] = [];
+  let total = 0;
   try {
-    await response.body?.cancel();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    const parsed = pythonErrorResponseSchema.safeParse(
+      JSON.parse(new TextDecoder().decode(bytes)),
+    );
+    return parsed.success
+      ? {
+          code: parsed.data.detail.code as OoxmlReferencePythonClientErrorCode,
+          retryable: parsed.data.detail.retryable,
+        }
+      : null;
   } catch {
-    // Provider details are intentionally discarded.
+    await reader.cancel().catch(() => undefined);
+    return null;
   }
 }

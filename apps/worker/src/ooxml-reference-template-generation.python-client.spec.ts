@@ -115,4 +115,25 @@ describe("runOoxmlReferencePythonStage", () => {
       retryable,
     });
   });
+
+  it("preserves a bounded Python issue code without exposing provider detail", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          detail: {
+            code: "OOXML_REFERENCE_IMAGE_ASSET_UNAVAILABLE",
+            retryable: false,
+          },
+        }),
+        { status: 409 },
+      ),
+    );
+
+    await expect(
+      runOoxmlReferencePythonStage({ ...input, fetchImpl }),
+    ).rejects.toMatchObject({
+      code: "OOXML_REFERENCE_IMAGE_ASSET_UNAVAILABLE",
+      retryable: false,
+    });
+  });
 });

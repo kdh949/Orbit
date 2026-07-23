@@ -20,6 +20,7 @@ import {
 } from "./ooxml-reference-template-generation.python-client";
 import {
   OoxmlReferenceTemplateArtifactRepository,
+  slideRenderShardKey,
 } from "./ooxml-reference-template/artifact-repository";
 import {
   publishOoxmlReferenceMaterialization,
@@ -221,6 +222,14 @@ export async function processOoxmlReferenceTemplateGenerationJob(
       }
       const stored = storedStagePayloadSchema.parse(artifact.payload);
       dependencies.push({ stage, payload: artifact.payload });
+      if (stage === "render-validation") {
+        await storeSlideRenderArtifacts(
+          repository,
+          payload.jobId,
+          payload.projectId,
+          stored.data,
+        );
+      }
       await updateJob(dataSource, payload.jobId, payload.projectId, {
         status: "running",
         progress: stageProgress[stage],
@@ -306,6 +315,34 @@ export async function processOoxmlReferenceTemplateGenerationJob(
       }),
     );
     return failed;
+  }
+}
+
+async function storeSlideRenderArtifacts(
+  repository: ArtifactRepository,
+  jobId: string,
+  projectId: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  const renderAssets = z
+    .object({ renderAssets: z.array(generatedAssetRefSchema).max(500) })
+    .passthrough()
+    .parse(data).renderAssets;
+  for (const [index, asset] of renderAssets.entries()) {
+    const order = index + 1;
+    await repository.storeSucceeded(
+      {
+        jobId,
+        projectId,
+        stage: "slide-render",
+        shardKey: slideRenderShardKey(order),
+      },
+      {
+        slideId: asset.fileId,
+        order,
+        renderAssetFileId: asset.fileId,
+      },
+    );
   }
 }
 

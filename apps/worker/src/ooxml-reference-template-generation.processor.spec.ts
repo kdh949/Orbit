@@ -36,23 +36,37 @@ describe("processOoxmlReferenceTemplateGenerationJob", () => {
       storedArtifact("reference-extract-file", { extracted: true }),
       storedArtifact("source-grounding", { grounded: true }),
     ]);
-    const runStage = vi.fn(async (input: RunOoxmlReferencePythonStageInput) => ({
-      stage: input.stage as
-        | "content-planning"
-        | "template-planning"
-        | "package-generation"
-        | "render-validation"
-        | "materialization",
-      templateId: "operating-review-v1",
-      templateVersion: 1,
-      sourceSlideCount: 3,
-      slotCount: 5,
-      artifact:
+    const runStage = vi.fn(async (input: RunOoxmlReferencePythonStageInput) => {
+      const artifact: JsonPayload =
         input.stage === "materialization"
           ? materializationArtifact()
-          : { completedStage: input.stage },
-      issueCodes: [],
-    }));
+          : input.stage === "render-validation"
+            ? {
+                fidelityReport: passedFidelityReport(),
+                renderAssets: [
+                  {
+                    fileId: "file_render_001",
+                    originalName: "slide-001.png",
+                    size: 100,
+                  },
+                  {
+                    fileId: "file_render_002",
+                    originalName: "slide-002.png",
+                    size: 100,
+                  },
+                ],
+              }
+          : { completedStage: input.stage };
+      return {
+        stage: input.stage,
+        templateId: "operating-review-v1",
+        templateVersion: 1,
+        sourceSlideCount: 3,
+        slotCount: 5,
+        artifact,
+        issueCodes: [],
+      };
+    });
     const publish = vi.fn(async () => {
       database.row.status = "succeeded";
       database.row.progress = 100;
@@ -76,6 +90,22 @@ describe("processOoxmlReferenceTemplateGenerationJob", () => {
     expect(artifacts.storeSucceeded).toHaveBeenCalledWith(
       expect.objectContaining({ stage: "publication" }),
       materializationArtifact().jobResult,
+    );
+    expect(artifacts.storeSucceeded).toHaveBeenCalledWith(
+      expect.objectContaining({ stage: "slide-render", shardKey: "001" }),
+      {
+        slideId: "file_render_001",
+        order: 1,
+        renderAssetFileId: "file_render_001",
+      },
+    );
+    expect(artifacts.storeSucceeded).toHaveBeenCalledWith(
+      expect.objectContaining({ stage: "slide-render", shardKey: "002" }),
+      {
+        slideId: "file_render_002",
+        order: 2,
+        renderAssetFileId: "file_render_002",
+      },
     );
     expect(eventSink.info).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -141,18 +171,23 @@ describe("processOoxmlReferenceTemplateGenerationJob", () => {
     const invalidMaterialization = materializationArtifact();
     invalidMaterialization.jobResult.fidelityReport.status = "not-run";
     invalidMaterialization.jobResult.fidelityReport.structuralGate.passed = false;
-    const runStage = vi.fn(async (input: RunOoxmlReferencePythonStageInput) => ({
-      stage: input.stage as "reference-extract-file",
-      templateId: "operating-review-v1",
-      templateVersion: 1,
-      sourceSlideCount: 2,
-      slotCount: 4,
-      artifact:
+    const runStage = vi.fn(async (input: RunOoxmlReferencePythonStageInput) => {
+      const artifact: JsonPayload =
         input.stage === "materialization"
           ? invalidMaterialization
-          : { completedStage: input.stage },
-      issueCodes: [],
-    }));
+          : input.stage === "render-validation"
+            ? { renderAssets: [] }
+          : { completedStage: input.stage };
+      return {
+        stage: input.stage,
+        templateId: "operating-review-v1",
+        templateVersion: 1,
+        sourceSlideCount: 2,
+        slotCount: 4,
+        artifact,
+        issueCodes: [],
+      };
+    });
     const publish = vi.fn();
 
     const result = await processOoxmlReferenceTemplateGenerationJob(
@@ -248,23 +283,7 @@ function materializationArtifact() {
     sourceSlideIds: ["cover-01"],
     slotAssignmentCount: 1,
   };
-  const fidelityReport = {
-    status: "passed" as "passed" | "not-run",
-    structuralGate: { passed: true, issueCodes: [] as string[] },
-    identityControl: {
-      status: "passed" as const,
-      evaluatedSlideCount: 1,
-      packageWarningCount: 0,
-      lockedGeometryDriftCount: 0,
-    },
-    generatedComparison: {
-      status: "passed" as const,
-      evaluatedSlideCount: 1,
-      lockedRegionDriftCount: 0,
-      slotOverflowCount: 0,
-    },
-    warningCodes: [] as string[],
-  };
+  const fidelityReport = passedFidelityReport();
   return {
     deck: {
       deckId: "deck_reference_1",
@@ -359,5 +378,25 @@ function materializationArtifact() {
       fidelityReport,
       warningCodes: [],
     },
+  };
+}
+
+function passedFidelityReport() {
+  return {
+    status: "passed" as "passed" | "not-run",
+    structuralGate: { passed: true, issueCodes: [] as string[] },
+    identityControl: {
+      status: "passed" as const,
+      evaluatedSlideCount: 1,
+      packageWarningCount: 0,
+      lockedGeometryDriftCount: 0,
+    },
+    generatedComparison: {
+      status: "passed" as const,
+      evaluatedSlideCount: 1,
+      lockedRegionDriftCount: 0,
+      slotOverflowCount: 0,
+    },
+    warningCodes: [] as string[],
   };
 }
