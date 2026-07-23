@@ -87,3 +87,53 @@ PostgreSQL transport의 bootstrap·runner 경계는 `ai_deck.postgres_initialize
 Design Selection 확정 경계는 `ai_ppt.design_selection.selected`를 `info`로 기록한다.
 공통 필드는 `jobId`와 `projectId`만 사용하고 자연어 디자인 요청, palette, font,
 outline, slide content, source metadata, OCR와 provider 응답은 기록하지 않는다.
+
+## 브라우저 로컬 발표 진단
+
+발표, 전체 리허설, 에디터 부분 리허설의 `animationDebug=1` 진단은 위 서버
+로그와 별도인 브라우저 로컬 기록이다. 이 파라미터는 민감한 `full` 기록에 대한
+명시적 opt-in으로 취급하며, 파라미터가 없으면 기록 모드는 `off`다.
+
+### 저장·전송 경계
+
+- 진단 이벤트는 API, WebSocket, telemetry, 서버 stdout/stderr로 전송하지 않는다.
+- 브라우저 IndexedDB의 `diagnosticSessions`, `diagnosticEvents`에만 저장한다.
+- 발표 처리는 저장 성공 여부와 분리한다. Worker, IndexedDB, quota 오류가 나도
+  발표와 애니메이션은 계속하고 최근 500개 이벤트만 메모리에 유지한다.
+- 세션 시작 시 7일이 지난 로컬 세션을 정리한다. 이 보관 기한은 브라우저 로컬
+  저장소에만 적용되며 사용자가 내보낸 파일은 자동 삭제 대상이 아니다.
+- 사용자는 drawer에서 세션을 수동 중지하고, 전체 로컬 기록을 삭제할 수 있다.
+  수동 중지한 같은 페이지에서는 자동 재시작하지 않으며 명시적 시작 또는 페이지
+  재진입이 필요하다.
+
+### 기록 모드와 민감정보
+
+`metadata`는 문자열 원문을 길이·개수 중심 메타데이터로 바꾼다. `full`은 원인
+분리를 위해 transcript, speaker notes, STT bias phrase를 포함할 수 있으므로
+drawer에 현재 모드와 민감정보 안내를 계속 표시한다.
+
+모드와 관계없이 아래 값은 allowlist 밖으로 버리며 IndexedDB와 내보내기 파일에
+남기지 않는다.
+
+- credential, API key, `Authorization`, cookie, token, password
+- SDP, 접근 URL, presigned URL
+- raw audio, `MediaStream`, audio attachment, 파일 base64
+- 전체 오류 message와 stack
+- OpenAI Realtime 원본 payload의 비허용 필드
+
+OpenAI Realtime에서는 진단에 필요한 `event_id`, `item_id`,
+`content_index`, event type과 제한된 전사 결과 필드만 보존한다. 오류는 안전한
+error name/code만 기록한다. `projectIdHash`는 로컬 상관관계용 가명 식별자이며
+암호학적 익명화로 간주하지 않는다.
+
+### 세션과 내보내기
+
+이벤트 envelope은 `schemaVersion`, `sessionId`, `seq`, `wallTimeIso`,
+`monotonicMs`, `level`, `stage`, `name`, `outcome`, `reason`, `trace`,
+`data`를 사용한다. 한 발화는 `triggerTraceId`, React state 변경은
+`stateTransitionId`, renderer 전환은 `transitionId`로 연결한다.
+
+내보내기는 사용자가 drawer에서 요청할 때만 수행한다. `CompressionStream`을
+지원하면 `.jsonl.gz`, 지원하지 않으면 `.jsonl`을 생성한다. File System Access
+API가 없으면 브라우저 Blob download를 사용한다. 내보낸 파일에는 민감한 `full`
+데이터가 포함될 수 있으므로 이슈, PR, 채팅, 서버 로그에 무심코 첨부하지 않는다.
