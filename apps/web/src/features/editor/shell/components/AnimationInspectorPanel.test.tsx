@@ -6,6 +6,10 @@ import { AnimationInspectorPanel } from "./AnimationInspectorPanel";
 import { toAnimationKeywordTriggerOptions } from "./animation";
 import { AnimationCreateFlow } from "./animation/components/AnimationCreateFlow";
 
+vi.mock("../../../rehearsal/presenter/SlideshowRenderer", () => ({
+  SlideshowRenderer: () => null
+}));
+
 describe("AnimationInspectorPanel", () => {
   it("renders animation summary cards for the selected element", () => {
     const deck = createDemoDeck();
