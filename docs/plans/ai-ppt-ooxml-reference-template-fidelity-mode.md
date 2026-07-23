@@ -532,6 +532,11 @@ QA-only이며 calibration object가 없고 feature flag/allowlist도 꺼져 있�
 production rollout은 계속 disabled이고 §15의 production private managed storage도 준비되지
 않았으므로 Checkpoint A의 정식 상태는 승인 보류다.
 
+초기 승인 범위는 version 1 manifest의 253개 text slot이다. 같은 날 actual source image
+후보 5개도 후속 승인했지만, 이 범위는 4개 template-manifest version 2 proposal로만 고정했고
+모두 `disabled`다. 기존 QA-active version 1 manifest, repository catalog와 storage object는
+변경하지 않았다.
+
 ### Phase 1: 한 개 PPTX vertical spike
 
 #### Task 4: spike template 선정과 source slide/slot annotation 도구 구현
@@ -702,7 +707,7 @@ embedded-only/exact-absent family와 사람 threshold 승인이 남아 runtime�
 
 #### Checkpoint B2: editor round-trip spike
 
-- [ ] text/image slot 편집 후 기존 `pptx-ooxml-sync` warning 0건
+- [x] text/image slot 편집 후 기존 `pptx-ooxml-sync` warning 0건
 - [x] 최신 sync version 확인 후 `deck-export` 성공
 - [x] slot locator와 decoration lock mapping이 재현되며 product rollout 전 Task 18의 API mutation gate가 필요한 범위를 report에 기록
 - [ ] spike report와 montage를 사람이 검수하고 7개 확장 여부를 승인
@@ -716,8 +721,6 @@ package/import warning은 모두 0이지만 `operating-review` 42px, `simple-lig
 LibreOffice 기반 montage-only 증거이며 PowerPoint/reopen/full-deck/font 증거를 대체하지 않는다.
 사람 검수와 exact font 환경 승인이 남아 Checkpoint B2는 미통과다.
 
-첫 항목은 승인 범위의 actual text slot 7개는 충족했지만 actual image slot annotation이 승인되지
-않았으므로 완료로 표시하지 않는다. image replacement는 synthetic fixture 범위에서만 통과했다.
 actual source의 direct picture 19개를 읽기 전용 감사한 결과 package-wide exclusive media
 target을 가진 기술 후보는 5개다. source-authored `p:cNvPr@descr`의 정규화된 exact
 replacement intent를 가진 4개는 high-confidence, 나머지 1개는 low-confidence로
@@ -725,8 +728,21 @@ replacement intent를 가진 4개는 high-confidence, 나머지 1개는 low-conf
 독립 slot으로 만들지 않는다. 결과와 checksum은
 `/private/tmp/orbit-ooxml-image-slot-candidates-v2-20260723-8vzdI7`에 보관한다.
 annotation과 runtime은 shared target을 각각 `shared_image_media_target`,
-`OOXML_REFERENCE_IMAGE_MEDIA_SHARED`로 fail-closed하도록 고정했지만, 후보 자체의 사람
-content-bearing/replacement-intent 승인과 actual image round-trip은 아직 미완료다.
+`OOXML_REFERENCE_IMAGE_MEDIA_SHARED`로 fail-closed하도록 고정했다.
+
+2026-07-23 사용자가 low-confidence `simple-dark` cover를 포함한 5개를 모두 승인했다.
+`market-trends-report@2`, `project-kickoff@2`, `simple-dark@2`, `simple-light@2`의
+template-manifest version 2 proposal은 `disabled`로 생성했고 source/QA storage/repository
+catalog mutation은 적용하지 않았다. manifest-derived `imageCapacity`를 materialized
+`slotEditPolicies`에 보존하고 editor sync가 aspect/alpha/mask, effective OPC content type,
+package-wide exclusive media와 기존 relationship을 재검증하도록 고정했다. 실제 5개
+image slot edit→sync/export는 warning/unsupported/package/reimport drift 0, relationship,
+frame/crop/mask/effect와 locked inventory 보존 상태로 LibreOffice와 Microsoft PowerPoint
+16.111의 총 96장 open/render/reopen을 통과했다. 증거는
+`/private/tmp/orbit-ooxml-image-slot-roundtrip-capacity-v2-20260723-a`와
+`/private/tmp/orbit-ooxml-powerpoint-image-slot-roundtrip-capacity-v2-20260723-b`에 있다.
+다만 기존 text-slot locked pixel 차이의 사람 판정, exact font와 전체 fidelity/UX 승인이
+남아 Checkpoint B2 자체는 미통과다.
 
 같은 승인 범위를 253개 text slot 전수로 확장한 수정 전 matrix
 `/private/tmp/orbit-ooxml-actual-text-slot-matrix-20260723-ew36f6m1`에서는 generic sync가
@@ -738,7 +754,8 @@ geometry/style/relationship drift는 모두 0이다. 텍스트 길이 변경에 
 hierarchy rewrite 119건은 `bodyPr`/`lstStyle` exact, 494개 output style subtree의 original
 template byte-equivalence, non-text/relationship semantics와 unclassified residual drift 0으로
 분류했다.
-이 기계 검증은 actual image slot annotation이나 PowerPoint/사람 검수를 대체하지 않는다.
+이 text matrix는 별도 version 2 image proposal/round-trip 증거를 대신하지 않으며 전체
+locked-diff 사람 검수도 대체하지 않는다.
 
 ### Phase 2: content planning, structured slot과 7개 확장
 
@@ -1170,7 +1187,8 @@ template snapshot, UI slot edit, sync freshness/warning 0, PPTX export/package�
 
 실제 7개 text-slot edit→sync/export package는 PowerPoint 16.111과 LibreOffice reopen을
 통과했고 7개/56장 source/generated/mask/locked-diff와 montage/report 및 7개 편집 전후
-montage를 생성했다. 그러나
+montage를 생성했다. 별도 승인된 actual image slot 5개도 capacity·relationship을 보존한
+sync/export 후 PowerPoint 16.111과 LibreOffice에서 5/5 render/reopen을 통과했다. 그러나
 production private managed storage, 승인 calibration/font artifact, real vertical E2E와 사람
 fidelity/제한 편집 UX 승인이 남아 Checkpoint D2는 미통과다. 2026-07-23 최종 repository
 build/lint/test와 current-branch Python worker를 사용한 PostgreSQL PPTX round-trip 7개,

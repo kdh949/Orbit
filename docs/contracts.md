@@ -1229,7 +1229,19 @@ OOXML reference template generation은 historical `ai-template-deck-generation`�
 - `OoxmlReferenceTemplateManifest`는 immutable `templateId`, positive `version`, source SHA-256, canvas, cover/body preview ID와 SHA-256, source slide와 허용 slot annotation, provenance만 저장한다. source filename/path, raw XML, source text, binary, signed URL과 storage key는 저장하지 않는다.
 - active manifest는 `authorizationStatus=approved`, cover/closing role과 하나 이상의 editable slot을 요구한다. source slide/part, slot ID와 authoritative locator는 catalog 안에서 유일해야 한다.
 - image slot은 direct `p:pic`의 internal image relationship과 package-wide exclusive media part만 허용한다. 같은 relationship을 둘 이상의 `a:blip`이 embed하거나 다른 relationship이 같은 media part를 참조하면 annotation은 `shared_image_media_target`, replacement는 `OOXML_REFERENCE_IMAGE_MEDIA_SHARED`로 fail-closed하고 입력 package bytes를 보존한다.
+- reference image slot의 materialized `slotEditPolicies[]`는 manifest-derived `imageCapacity`를
+  필수로 보존한다. editor sync는 replacement 전에 aspect ratio, alpha/mask, effective OPC
+  content type과 internal package-wide exclusive media를 다시 검증한다. 검증 실패 시 original
+  current package bytes를 반환하고 relationship/media part를 추가하거나 바꾸지 않는다.
+  성공 시에도 기존 relationship ID와 media target을 유지한 채 media bytes와 허용된
+  `p:cNvPr@descr` alt text만 변경한다. external relationship은 exclusivity count에 포함하지 않는다.
 - repository-only catalog v2는 각 disabled template에 source authorization과 approved annotation review의 날짜, approved canonical manifest SHA-256, slide/slot 합계, `contentTypes=["text"]`와 검증된 cover/body preview SHA-256만 저장한다. raw locator나 private artifact 경로는 저장하지 않는다. 승인된 source/annotation에는 `SOURCE_AUTHORIZATION_PENDING`, `SOURCE_SLIDE_ANNOTATION_MISSING` blocker를 둘 수 없고 preview checksum이 있으면 `COVER_BODY_PREVIEW_BASELINE_MISSING`도 둘 수 없다. production managed storage, PowerPoint와 font 검증 전에는 각각 `PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED`, `POWERPOINT_QA_PENDING`, `FONT_AVAILABILITY_VALIDATION_PENDING`을 유지한다. 2026-07-23 PowerPoint 16.111의 7개 generated 및 slot-edit package open/render/reopen 검증 후에는 `POWERPOINT_QA_PENDING`을 제거했지만 나머지 두 blocker와 `status=disabled`를 유지한다. 이 metadata는 runtime active manifest나 public API 계약이 아니다.
+- 2026-07-23 후속 승인된 actual image slot 5개는 4개 template-manifest version 2 proposal에만
+  적용하며 모두 `disabled`다. 기존 version 1 manifest, QA storage와 repository catalog는
+  변경하지 않았다. repository catalog에 version 2를 게시하려면 현재
+  `contentTypes=["text"]`인 annotation review 계약과 Zod/Pydantic mirror를 먼저 version-up하고
+  exact version 2 calibration을 별도로 승인해야 한다. 기존 7개 PowerPoint slot-edit 통과는
+  version 1 text edit 증거이며, image 5개 PowerPoint 증거는 별도 private artifact로 유지한다.
 - `OoxmlTemplateSelection`의 `mode=user`는 exact template ID/version을 모두 요구한다. `mode=auto`는 pinned template 필드를 받지 않으며 `/createdeck`의 첫 rollout에서는 사용하지 않는다.
 - `OoxmlReferenceTemplateGenerationRequest`는 topic, prompt, target duration, slide count range, audience/purpose/tone, reference policy/file ID와 template selection만 받는 별도 strict root request다. palette/font override, System Design Pack selector와 `TemplateBlueprint` instance ID를 받지 않는다.
 - BullMQ payload는 strict `{ jobId, projectId, request }`만 허용한다. source text, raw package/XML, storage key와 signed URL을 queue payload나 로그에 넣지 않는다. SQS adapter는 구현 전까지 명시적으로 실패한다.
@@ -1253,7 +1265,7 @@ Python non-2xx 응답의 `{detail:{code,retryable}}`는 8 KiB 이하 strict JSON
 
 `materialization` artifact는 Deck, TemplateBlueprint, template snapshot, public file ID/name/size, quality report와 bounded Job result만 저장한다. immutable baseline은 private catalog의 전체 source가 아니라 slot replacement가 완료된 initial generated package의 별도 project-owned 복제본이며 mutable current package와 file ID를 공유하지 않는다. project storage key는 Worker의 deterministic `projects/{projectId}/ooxml-reference-generations/{generationId}/{fileId}/{encodedOriginalName}` 규칙으로 메모리에서 복원하며 artifact에 기록하지 않는다. `publication`은 fidelity `passed`와 structural gate 성공 이후에만 기존 atomic materialization transaction으로 package/render asset, Deck, TemplateBlueprint와 parent Job success를 함께 반영한다. 어느 stage든 실패하면 bounded error만 기록하며 partial Deck 또는 System Design Pack fallback을 만들지 않는다.
 
-기능 flag와 exact allowlist가 켜진 Python runtime은 private storage의 versioned fidelity calibration object를 시작 시 checksum 검증한다. calibration은 strict schema version, `status=calibrated`, exact 7개 template@1 identity baseline, 하나의 renderer/version, locked-region threshold, `geometryEdgeTolerancePx=0`과 승인 근거를 모두 요구한다. object 부재·checksum drift·renderer baseline 불완전은 runtime을 fail-closed하며 object locator는 response와 로그에 노출하지 않는다.
+기능 flag와 exact allowlist가 켜진 Python runtime은 private storage의 versioned fidelity calibration object를 시작 시 checksum 검증한다. calibration은 strict schema version, `status=calibrated`, exact 7개 template@1 identity baseline, 하나의 renderer/version, locked-region threshold, `geometryEdgeTolerancePx=0`과 승인 근거를 모두 요구한다. object 부재·checksum drift·renderer baseline 불완전은 runtime을 fail-closed하며 object locator는 response와 로그에 노출하지 않는다. disabled template-manifest version 2 image proposal은 현재 calibration 대상이 아니며, 활성화하려면 exact version 2 baseline과 calibration 계약을 새로 고정한다.
 
 generated fidelity는 intended slot pixel mask와 별개로 모든 shape의 frame(`x`,`y`,`cx`,`cy`, rotation, flip, z-order), mutable slot content를 제거한 locked style, slide→layout→master→theme part identity/checksum을 비교한다. slide shape에 `a:xfrm`이 없는 placeholder frame은 `p:ph` identity로 slide→layout은 exact `idx`, layout→master는 OOXML placeholder 의미 type(`ctrTitle→title`, content 계열→`body`)의 unique match를 상속한다. 상속 관계가 누락되거나 모호하면 mask와 locked snapshot을 만들지 않고 `OOXML_REFERENCE_SLOT_MASK_UNAVAILABLE` 또는 package validation error로 fail-closed한다. deterministic renderer provenance는 package가 요청한 모든 explicit font family가 실제 resolve된 file checksum을 기록하며 substitution은 허용하지 않는다.
 
@@ -1261,7 +1273,7 @@ generated fidelity는 intended slot pixel mask와 별개로 모든 shape의 fram
 
 생성된 Deck은 technical origin을 나타내는 `metadata.sourceType="import"`, AI 생성 사실을 나타내는 `metadata.generatedBy="ai"`와 optional `metadata.ooxmlReferenceTemplateSnapshot`을 사용한다. 이 metadata snapshot은 catalog ID/version, source checksum과 generation ID만 포함한다. 기존 `metadata.createdFrom.designReferences`는 빈 배열을 유지한다.
 
-생성 instance의 `TemplateBlueprint`는 optional `referenceTemplateSnapshot`과 `slotEditPolicies[]`를 가질 수 있다. 각 policy는 unique slot ID와 writable imported `elementId`, content type에 맞는 mutation policy, `frameLocked=true`를 요구한다. 이 필드가 없는 기존 import blueprint는 동일하게 parse되고 편집 capability도 바뀌지 않는다. catalog manifest 자체는 `template_blueprints` 테이블에 저장하지 않는다.
+생성 instance의 `TemplateBlueprint`는 optional `referenceTemplateSnapshot`과 `slotEditPolicies[]`를 가질 수 있다. 각 policy는 unique slot ID와 writable imported `elementId`, content type에 맞는 mutation policy, `frameLocked=true`를 요구한다. `image-source` policy는 manifest와 같은 strict `imageCapacity`를 필수로 가지며 다른 mutation policy에는 이를 허용하지 않는다. 이 필드가 없는 기존 import blueprint와 image policy가 없는 version 1 reference blueprint는 동일하게 parse되고 편집 capability도 바뀌지 않는다. catalog manifest 자체는 `template_blueprints` 테이블에 저장하지 않는다.
 
 reference generation은 private catalog 원본을 변경하지 않는다. 완성 package의 immutable baseline, mutable current package와 render asset은 project `design-asset`으로 분리하고 기존 OOXML importer, sync와 export 경로를 사용한다. generation 실패는 System Design Pack으로 fallback하거나 partial Deck을 publication하지 않는다.
 

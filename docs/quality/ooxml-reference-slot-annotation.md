@@ -7,7 +7,9 @@
 catalog에는 원본별 검토 manifest checksum과 합계만 기록하며 private locator, 원문과
 render artifact는 기록하지 않는다.
 
-이 승인은 source authorization과 text-only annotation 범위에 한정된다. 승인된 canonical
+초기 승인은 source authorization과 version 1 text-only annotation 범위다. 2026-07-23
+후속 검수에서 actual image slot 후보 5개도 모두 승인했지만, 4개 template-manifest
+version 2 proposal로만 기록했고 모두 `disabled`다. 승인된 canonical
 manifest와 cover/body를 포함한 139개 preview checksum은 local QA private storage에서
 검증했지만 production managed storage를 대신하지 않는다. Microsoft PowerPoint 16.111의
 generated/slot-edit package open/render/reopen은 별도 통과했지만 embedded/exact font
@@ -157,6 +159,18 @@ relationship, unsupported formula/range, fingerprint drift가 있으면 package 
 | `market-trends-report` | 6 | 17 | `50036ba39076f49a6aa89d72ca5e865ed001cee4c29812179c8deaa44ae8cfc8` |
 | 합계 | 139 | 253 | - |
 
+후속 승인된 disabled template-manifest version 2 proposal은 다음과 같다.
+
+| template-manifest | image slots | total slots | canonical proposal SHA-256 |
+| --- | ---: | ---: | --- |
+| `market-trends-report@2` | 1 | 18 | `d9b038e5587257ce1a7165acf3ba595a7eaa51b231c292749dbd49a432515049` |
+| `project-kickoff@2` | 1 | 22 | `d89dd60f470497353d1a761b3b9455b17a7b0b61786ddc2b0ff9aca7cf7f8b41` |
+| `simple-dark@2` | 2 | 41 | `827571dd744f28009b87c841ec3f666c5bf91ac28a23d06a97ab8d11d2657b2a` |
+| `simple-light@2` | 1 | 40 | `48a416cae873ef3450e3b5de31ee260c0388139142bf9e6aea3f2f786b08b4b5` |
+
+제품/runtime authoritative 합계는 계속 version 1의 253 text slot이다. disabled proposal까지
+포함한 검토 범위만 258 slot이며, version 2를 repository catalog나 allowlist에 게시하지 않았다.
+
 검토 checksum은 승인된 private annotation 내용의 drift를 탐지하기 위한 provenance이며
 runtime publication이나 template 활성화 증거가 아니다. production managed storage와 남은
 외부 gate가 기록되기 전에는 Checkpoint A/B1/C 또는 product rollout을 `passed`로 표시하지
@@ -188,14 +202,25 @@ relationship, media part 존재, package-wide exclusive target, 단일 slide emb
 7개 원본에서는 direct picture 19개 중 기술 후보 5개, shared media 제외 14개였다. direct
 `p:ph` 또는 정규화된 source-authored `p:cNvPr@descr`의 exact allowlist만 명시적 replacement
 intent로 인정하며 `@name`이나 importer/prepared metadata로 추론하지 않는다. 이 기준에서
-high-confidence 후보는 4개, low-confidence 후보는 1개다. artifact는
+high-confidence 후보는 4개, low-confidence 후보는 1개다. pre-approval provenance artifact는
 `/private/tmp/orbit-ooxml-image-slot-candidates-v2-20260723-8vzdI7`에 있으며 candidate
-승인이나 manifest mutation은 적용하지 않았다. `summary.json`과 `CHECKSUMS.sha256`의
+생성 시점에는 승인이나 manifest mutation을 적용하지 않았다. `summary.json`과 `CHECKSUMS.sha256`의
 SHA-256은 각각
 `364bac762d035ce1d01dcfb2e0043f4b5c69e79b8aebd77e402099f946695426`,
 `0b348dca0a7914c7a38c8bb4b6fe71231ae4974135c2d89fb98162a0d344212d`이다.
 
-7개 private 검수 artifact의 139장/253 text-only slot 내용은 승인되었지만 raw annotation,
-source-slide catalog, montage와 원본은 repository에 복사하지 않는다. preview baseline과
-production managed storage publication은 아직 없으며, 자동 fixture와 private 검수 승인은
-PowerPoint/font 검증 또는 runtime 활성화를 대신하지 않는다.
+후속 사용자 결정은 `approve-all-five`이며 검수 기록은
+`/private/tmp/orbit-ooxml-image-slot-human-review-20260723-g8gZtQ`에 있다. disabled proposal은
+`/private/tmp/orbit-ooxml-image-slot-manifest-proposals-v2-20260723-Mi7CX3`, capacity와
+relationship을 보존한 실제 sync/export/LibreOffice 증거는
+`/private/tmp/orbit-ooxml-image-slot-roundtrip-capacity-v2-20260723-a`, Microsoft PowerPoint
+16.111 open/render/reopen 증거는
+`/private/tmp/orbit-ooxml-powerpoint-image-slot-roundtrip-capacity-v2-20260723-b`에 있다.
+5개 모두 warning/unsupported/package/reimport drift 0, LibreOffice와 PowerPoint reopen 및
+target visual review를 통과했다. source manifest, QA storage와 repository catalog mutation은
+적용하지 않았다.
+
+7개 private 검수 artifact의 139장/253 text-only slot과 별도 image 5개는 승인되었지만 raw
+annotation, source-slide catalog, montage와 원본은 repository에 복사하지 않는다. local QA
+preview 검증은 완료됐으나 production publication/calibration은 아직 없으며, 자동 fixture와
+private 검수 승인은 exact font 또는 full fidelity/runtime 활성화를 대신하지 않는다.

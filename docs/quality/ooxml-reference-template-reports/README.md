@@ -3,7 +3,9 @@
 ## 상태 요약
 
 2026-07-23 기준 7개/139장 source inventory와 SHA-256을 재현했고 source 사용 권한과
-139장/253개 text-only slot annotation을 승인했다. actual identity clone 7개와 actual
+139장/253개 version 1 text-only slot annotation을 승인했다. 이후 actual image slot 5개도
+별도 승인해 4개 template-manifest version 2 proposal로 고정했지만 모두 `disabled`이며
+source/QA storage/repository catalog mutation은 적용하지 않았다. actual identity clone 7개와 actual
 content-generated 8장 full-deck 7개는 package warning 0, `python-pptx` reopen과
 LibreOffice PDF/PNG render를 통과했다. local QA private storage의 source 7개, preview
 139개와 QA-active strict manifest 7개, 총 153개 object도 checksum, canonical manifest
@@ -20,6 +22,8 @@ QA strict manifest 게시 전 상태를 보존하며 현재 storage 사실은 �
 승인 provenance와 annotation review는 repository catalog에 반영했지만 repository와 production
 rollout 상태는 모두 `disabled`다. QA bucket에는 runtime calibration object가 없다.
 
+아래 표는 version 1 text-slot runtime baseline이다.
+
 | template                                          | version | slides | identity clone | actual full-deck | actual slot edit | fidelity artifact | PowerPoint | rollout  |
 | ------------------------------------------------- | ------: | -----: | -------------- | ---------------- | ---------------- | ----------------- | ---------- | -------- |
 | [`simple-light`](simple-light.md)                 |       1 |     26 | passed         | passed           | passed           | generated/pending | passed     | disabled |
@@ -34,7 +38,7 @@ rollout 상태는 모두 `disabled`다. QA bucket에는 runtime calibration obje
 capacity, overflow/overlap/crop과 LibreOffice 렌더를 검증한 결과다. Microsoft PowerPoint
 16.111에서도 각 deck의 8장 open, PDF render, close, reopen을 별도로 통과했다.
 
-`actual slot edit`은 template별 승인 text slot 1개를 편집해 sync/export하고 Python importer,
+`actual slot edit`은 version 1 template별 승인 text slot 1개를 편집해 sync/export하고 Python importer,
 LibreOffice와 Microsoft PowerPoint에서 재개방한 결과다. 7개 모두 sync/OOXML package warning
 0, unsupported operation 0, 편집 문구 유지와 PowerPoint 8장 reopen을 확인했다. DrawingML
 letter spacing을 지원한 뒤 product materialization warning도 7개 모두 0건이다.
@@ -97,7 +101,18 @@ high-confidence 4개, low-confidence 1개다. shared media target 14개는 제�
 `summary.json`과 `CHECKSUMS.sha256`의 SHA-256은 각각
 `364bac762d035ce1d01dcfb2e0043f4b5c69e79b8aebd77e402099f946695426`,
 `0b348dca0a7914c7a38c8bb4b6fe71231ae4974135c2d89fb98162a0d344212d`다.
-사람 content-bearing 승인과 actual image round-trip 전에는 manifest/catalog를 변경하지 않는다.
+사용자는 low-confidence cover를 포함한 5개 모두를 승인했다. 4개 disabled
+template-manifest version 2 proposal은
+`/private/tmp/orbit-ooxml-image-slot-manifest-proposals-v2-20260723-Mi7CX3`에 있으며
+source/QA storage/catalog를 변경하지 않았다. capacity·effective content type·exclusive media와
+기존 relationship을 보존한 actual image sync/export 5/5는
+`/private/tmp/orbit-ooxml-image-slot-roundtrip-capacity-v2-20260723-a`에서 LibreOffice
+render/reopen을 통과했고, 별도 Microsoft PowerPoint 16.111 5/5·총 96장 open/render/reopen과
+target visual review는
+`/private/tmp/orbit-ooxml-powerpoint-image-slot-roundtrip-capacity-v2-20260723-b`에서 통과했다.
+round-trip과 PowerPoint summary SHA-256은 각각
+`30a0250f1348e59321147295564bc1fcd95877b7caa9d34019d26d5cb67d71a1`,
+`d173582a2892c831464476ae8fdf7ca6925aeebd5b29da952840aa20644df9b4`다.
 
 승인된 253개 actual text slot의 sync 구조 matrix는 수정 전
 `/private/tmp/orbit-ooxml-actual-text-slot-matrix-20260723-ew36f6m1`, 수정 후

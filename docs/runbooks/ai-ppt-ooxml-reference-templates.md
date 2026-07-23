@@ -116,7 +116,7 @@ rollback 뒤에도 이 경로를 smoke해 복구 가능성을 보존한다.
 
 ## 현재 승인 상태
 
-2026-07-23 기준 source 사용 권리와 139장/253개 text-only slot annotation을 승인했고,
+2026-07-23 기준 source 사용 권리와 139장/253개 version 1 text-only slot annotation을 승인했고,
 local QA MinIO의 source 7개, preview 139개와 QA-active strict manifest 7개, 총 153개
 private object checksum/ACL,
 anonymous HTTP `403`, actual-source identity clone 139장,
@@ -124,6 +124,13 @@ content-generated 7개×8장 package/LibreOffice를 검증했다. Microsoft Powe
 7개 generated deck과 7개 actual slot edit/export deck을 각각 open, PDF render, close,
 reopen했고 repair/recovery 징후는 0건이었다. 이 증거는 LibreOffice 결과와 분리해 외부 QA
 artifact로 보관한다.
+
+후속 검수에서 actual image slot 5개도 모두 승인했다. 4개 template-manifest version 2
+proposal은 `disabled`로만 생성했고 기존 QA-active version 1 manifest, repository catalog와
+storage object는 변경하지 않았다. capacity/relationship 보존 actual sync/export는
+LibreOffice와 Microsoft PowerPoint 16.111에서 5/5 render/reopen을 통과했다. 증거는
+`/private/tmp/orbit-ooxml-image-slot-roundtrip-capacity-v2-20260723-a`와
+`/private/tmp/orbit-ooxml-powerpoint-image-slot-roundtrip-capacity-v2-20260723-b`에 있다.
 
 PowerPoint 16.111 identity-control은
 `/private/tmp/orbit-ooxml-powerpoint-identity-control-20260723-a`에서 7개/139장 source와 raw
@@ -186,17 +193,19 @@ SSIM은 1.0, changed pixel과 structural/package drift는 0이고 461개 checksu
 sync/unsupported/package/reimport warning과 `bodyPr`/`lstStyle`, target frame/style, locked
 geometry/style/relationship drift는 모두 0이다. 119개 hierarchy rewrite도 original style
 template byte-equivalence와 non-text/relationship semantics drift 0으로 분류했다. 이 결과는
-actual image annotation과 사람 fidelity 승인을 대체하지 않는다.
+별도 version 2 image proposal이나 사람 fidelity 승인을 대체하지 않는다.
 
 actual source image 후보는
 `/private/tmp/orbit-ooxml-image-slot-candidates-v2-20260723-8vzdI7`에서 읽기 전용으로
 검사했다. direct picture 19개 중 독립 교체 가능한 후보 5개, 명시적 source replacement
 intent를 가진 high-confidence 4개, low-confidence 1개이며 shared target 14개는 제외했다.
-사람 content-bearing 승인과 actual image edit→sync→export→PowerPoint/LibreOffice reopen
-전에는 image slot을 manifest/catalog에 추가하지 않는다.
+사용자는 5개를 모두 승인했고 4개 template-manifest version 2 proposal은 `disabled`다.
+actual image edit→sync→export→PowerPoint/LibreOffice reopen도 5/5 통과했다. 그러나 exact
+font/calibration, repository annotation-review 계약 version-up, production publication 전에는
+version 2를 QA bucket, allowlist 또는 repository catalog에 추가하거나 활성화하지 않는다.
 
 2026-07-23 최종 회귀에서는 repository build 10/10, lint/test 17/17, Python pytest
-1,048 passed/1 skipped,
+1,074 passed/1 skipped,
 current-branch Python worker의 PostgreSQL PPTX round-trip 7개와 `/createdeck` Chrome Playwright
 2개를 통과했다. 같은 실행의 no-mock spec 1개는 opt-in gate로 skip됐다. route-mocked
 Playwright는 실제 API→queue→private publication vertical 증거가 아니다. 별도 opt-in spec은
