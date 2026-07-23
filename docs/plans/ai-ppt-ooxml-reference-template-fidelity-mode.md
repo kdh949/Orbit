@@ -834,6 +834,12 @@ overflow/overlap/crop, LibreOffice 56장과 Microsoft PowerPoint 16.111 open/ren
 source/generated/diff artifact, exact font checksum, private calibration threshold의 사람 승인과
 production managed storage가 없어 Checkpoint C는 미통과다.
 
+최신 strict runner report는
+`/private/tmp/orbit-ooxml-checkpoint-c-report-20260723-final-d/summary.json`이다. 자동 검증은
+7/7 통과했지만 PowerPoint evidence에 `FONT_AVAILABILITY_VALIDATION_PENDING`을 명시해 전체
+상태를 `failed`로 유지했다. 실제 PowerPoint open/render/reopen 통과만으로 font 설치·checksum
+gate를 대체하지 않는다.
+
 ### Phase 3: 별도 API/Job과 `/createdeck` 제품 연결
 
 #### Task 13: 별도 Job type, queue와 processor vertical slice

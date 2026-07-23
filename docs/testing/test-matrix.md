@@ -170,7 +170,7 @@ text-slot edit/export는 PowerPoint 16.111과 LibreOffice에서 별도로 reopen
 | Task 11a chart package replacement | 자동 통과 | chart/workbook atomic replacement test, PowerPoint/LibreOffice fixture reopen | 실제 template chart montage와 사람 검수 |
 | Task 11b chart targeted sync | 자동 통과 | chart data patch → workbook/chart atomic sync/reopen test | 실제 template chart slot 편집 artifact |
 | Task 12 7-template 확장 | 7개 actual 8장 generation과 text-slot edit 검증 통과 | package warning·overflow·overlap·crop 0, LibreOffice 56장, PowerPoint 7×8장, template별 checksum/report | production publication, full locked montage와 exact font QA |
-| Checkpoint C | 기계 검증 통과, 승인 보류 | 7개 actual full-deck sequence/package/PowerPoint/LibreOffice와 actual slot sync/reopen | production storage, full fidelity artifact와 사람 승인 |
+| Checkpoint C | 자동 검증 7/7 통과, strict 상태 `failed` | 7개 actual full-deck sequence/package/PowerPoint/LibreOffice와 actual slot sync/reopen; strict evidence는 `FONT_AVAILABILITY_VALIDATION_PENDING` 유지 | exact font 설치/checksum, production storage, full fidelity artifact와 사람 승인 |
 | Task 13 별도 Job/API/Worker | 자동 통과 | generated baseline privacy, private calibration, bounded issue 전달, atomic publication gate test | calibration object를 사용한 actual flag-on storage smoke |
 | Task 14 catalog/preview API | local QA active manifest smoke 통과, repository 전체 disabled | catalog projection/auth/checksum/preview-missing test와 Python option projection | production publication |
 | Task 15 generation preview polling | producer/consumer 자동 통과 | content outline, slide-render shard, completed-prefix와 read-only transition test | actual Job polling artifact |

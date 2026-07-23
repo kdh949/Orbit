@@ -16,6 +16,12 @@ edit/export 결과를 각각 open, 8-page PDF render, close, reopen했고 repair
 근거는 아직 완결되지 않았다. 따라서 특정 SSIM 점수나 종합 점수를 승인 threshold로
 간주하지 않으며 제품 rollout을 통과로 표시하지 않는다.
 
+strict Checkpoint C runner의 최신 report는
+`/private/tmp/orbit-ooxml-checkpoint-c-report-20260723-final-d/summary.json`이다. 7개 자동 검증은
+모두 통과했지만 derived PowerPoint evidence에 `FONT_AVAILABILITY_VALIDATION_PENDING`을
+보존했으므로 공식 상태는 `failed`다. 폰트 설치와 exact file checksum을 확인한 뒤에만 이
+warning을 제거하고 Checkpoint를 재실행한다.
+
 실제 7개 package에서 발견된 DrawingML `a:rPr@spc`는 importer, shared rich-text schema,
 editor measure/render, sync와 export까지 보존하도록 구현했다. 같은 deterministic package의
 materialization warning은 7개 모두 0건으로 재검증했다.

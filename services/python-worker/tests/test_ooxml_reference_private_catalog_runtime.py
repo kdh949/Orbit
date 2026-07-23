@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from io import BytesIO
 from typing import Any
 
@@ -13,6 +14,11 @@ from app.ai.ooxml_reference_templates.catalog_transport import (
     S3PrivateOoxmlReferenceTemplateCatalogRuntime,
     build_private_catalog_runtime,
 )
+from app.ai.ooxml_reference_templates.calibration import (
+    CALIBRATION_CONTENT_TYPE,
+    CALIBRATION_OBJECT_KEY,
+)
+from app.ai.ooxml_reference_templates.fidelity import EXPECTED_TEMPLATE_IDS
 from app.ai.ooxml_reference_templates.models import (
     OoxmlReferenceTemplateManifest,
 )
@@ -153,6 +159,7 @@ def test_private_runtime_rejects_non_allowlisted_identity_and_preview_id() -> No
 
 def test_configured_runtime_uses_s3_compatible_private_storage_without_secrets() -> None:
     client = FakeS3Client()
+    _seed_calibration(client)
     config = load_config(
         {
             **VALID_ENV,
@@ -192,6 +199,36 @@ def _seed(
         f"{prefix}/manifest.json",
         canonical_manifest_bytes(manifest),
         "application/json",
+    )
+
+
+def _seed_calibration(client: FakeS3Client) -> None:
+    content = json.dumps(
+        {
+            "schemaVersion": 1,
+            "status": "calibrated",
+            "lockedRegionSsimThreshold": 0.998,
+            "geometryEdgeTolerancePx": 0,
+            "rationale": "approved deterministic identity baselines",
+            "identityBaselines": [
+                {
+                    "templateId": template_id,
+                    "version": 1,
+                    "renderer": "libreoffice-pdf-pymupdf",
+                    "rendererVersion": "26.8.0.0",
+                    "reportSha256": str(index + 1) * 64,
+                }
+                for index, template_id in enumerate(sorted(EXPECTED_TEMPLATE_IDS))
+            ],
+        },
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    client.seed(
+        CALIBRATION_OBJECT_KEY,
+        content,
+        CALIBRATION_CONTENT_TYPE,
     )
 
 
