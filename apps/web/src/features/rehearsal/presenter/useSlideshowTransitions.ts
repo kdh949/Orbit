@@ -16,8 +16,14 @@ export {
   getSlideshowTransitionDurationMs
 } from "./slideshowTransitionTiming";
 
+export type SlideshowTransitionAddress = {
+  slideId: string;
+  stepIndex: number;
+};
+
 export function useSlideshowTransitions(args: {
   deck: Deck;
+  onTransitionSettled?: (address: SlideshowTransitionAddress) => void;
   playInitialEntryAnimations?: boolean;
   reducedMotion: boolean;
   slide: Slide;
@@ -80,6 +86,9 @@ export function useSlideshowTransitions(args: {
   } | null>(null);
   const frameRef = useRef<number | null>(null);
   const settledStatesRef = useRef(targetStates);
+  const settledAddressRef = useRef<string | null>(null);
+  const onTransitionSettledRef = useRef(args.onTransitionSettled);
+  onTransitionSettledRef.current = args.onTransitionSettled;
 
   useEffect(() => {
     const previousAddress = previousAddressRef.current;
@@ -111,6 +120,18 @@ export function useSlideshowTransitions(args: {
         ? plan.triggerSteps[args.stepIndex - 1]?.animations ?? []
         : [];
     const shouldPlayTransition = isInitialEntry || shouldPlaySlideEntry || stepDelta === 1;
+    const transitionAddress = {
+      slideId: args.slide.slideId,
+      stepIndex: args.stepIndex
+    };
+    const notifyTransitionSettled = () => {
+      const addressKey = `${transitionAddress.slideId}:${transitionAddress.stepIndex}`;
+      if (settledAddressRef.current === addressKey) {
+        return;
+      }
+      settledAddressRef.current = addressKey;
+      onTransitionSettledRef.current?.(transitionAddress);
+    };
 
     if (
       args.reducedMotion ||
@@ -118,6 +139,7 @@ export function useSlideshowTransitions(args: {
       !shouldPlayTransition
     ) {
       setDisplayFrame({ slideId: args.slide.slideId, states: targetStates });
+      notifyTransitionSettled();
       return;
     }
 
@@ -151,6 +173,7 @@ export function useSlideshowTransitions(args: {
       } else {
         frameRef.current = null;
         setDisplayFrame({ slideId: args.slide.slideId, states: targetStates });
+        notifyTransitionSettled();
       }
     };
 

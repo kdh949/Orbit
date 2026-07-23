@@ -9,6 +9,7 @@ import {
 import { resolveEditorAssetUrl } from "../../editor/shared/editorAssetUrl";
 import { useReducedMotion } from "./useReducedMotion";
 import { useSlideshowTransitions } from "./useSlideshowTransitions";
+import type { SlideshowTransitionAddress } from "./useSlideshowTransitions";
 import {
   ActivityAudienceRuntime,
   ActivityResultRuntime
@@ -21,6 +22,7 @@ const emptyTriggerAnimationIds: readonly string[] = [];
 export function SlideshowRenderer(props: {
   deck: Deck;
   highlights?: SlideRuntimeHighlight[];
+  onTransitionSettled?: (address: SlideshowTransitionAddress) => void;
   playInitialEntryAnimations?: boolean;
   renderMode?: SlideshowRenderMode;
   scale?: number;
@@ -80,6 +82,7 @@ export function SlideshowRenderer(props: {
     <SlideshowRendererContent
       deck={deck}
       highlights={highlights}
+      onTransitionSettled={props.onTransitionSettled}
       playInitialEntryAnimations={playInitialEntryAnimations}
       reducedMotion={reducedMotion}
       renderMode={renderMode}
@@ -94,6 +97,7 @@ export function SlideshowRenderer(props: {
 function SlideshowRendererContent(props: {
   deck: Deck;
   highlights: SlideRuntimeHighlight[];
+  onTransitionSettled?: (address: SlideshowTransitionAddress) => void;
   playInitialEntryAnimations: boolean;
   reducedMotion: boolean;
   renderMode: SlideshowRenderMode;
@@ -105,6 +109,7 @@ function SlideshowRendererContent(props: {
   const {
     deck,
     highlights,
+    onTransitionSettled,
     playInitialEntryAnimations,
     reducedMotion,
     renderMode,
@@ -115,6 +120,7 @@ function SlideshowRendererContent(props: {
   } = props;
   const { elementStates, settledElementStates } = useSlideshowTransitions({
     deck,
+    onTransitionSettled,
     playInitialEntryAnimations,
     reducedMotion,
     slide,

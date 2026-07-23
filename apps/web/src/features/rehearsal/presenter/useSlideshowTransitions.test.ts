@@ -298,4 +298,18 @@ describe("useSlideshowTransitions helpers", () => {
 
     expect(transitionSelectionBlock).toContain("isSlideChange && args.stepIndex === 0");
   });
+
+  it("reports both animated and immediate transition settlement", () => {
+    const source = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/features/rehearsal/presenter/useSlideshowTransitions.ts"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("onTransitionSettled");
+    expect(source.match(/notifyTransitionSettled\(\)/g)?.length).toBe(2);
+    expect(source).toContain("settledAddressRef");
+  });
 });

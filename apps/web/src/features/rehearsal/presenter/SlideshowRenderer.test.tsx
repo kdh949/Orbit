@@ -65,6 +65,19 @@ vi.mock("react-konva", () => {
 });
 
 describe("SlideshowRenderer", () => {
+  it("forwards the transition settlement callback to the transition hook", () => {
+    const source = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/features/rehearsal/presenter/SlideshowRenderer.tsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("onTransitionSettled");
+    expect(source).toContain("useSlideshowTransitions({");
+  });
+
   it("renders from presenter state props without presenter-only dependencies", () => {
     const html = renderToStaticMarkup(
       <SlideshowRenderer
