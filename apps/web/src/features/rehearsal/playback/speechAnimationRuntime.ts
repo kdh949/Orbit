@@ -1,5 +1,6 @@
 import type { DeckSlideAction, Slide } from "@orbit/shared";
 import type { SlidePlaybackState } from "@orbit/editor-core";
+import type { DiagnosticOutcome } from "../../diagnostics/diagnosticTypes";
 
 import type { SlideshowTransitionAddress } from "../presenter/useSlideshowTransitions";
 import type { SlideshowAnimationPlan } from "../presenter/slideshowStepModel";
@@ -22,7 +23,30 @@ export type SpeechAnimationIntent = {
   intentId: string;
   occurrenceId?: string;
   requiredStepIndex: number;
+  triggerTraceId?: string;
   triggerKey: string;
+};
+
+export type SpeechAnimationRuntimeDecision = {
+  name:
+    | "trigger_received"
+    | "trigger_ignored"
+    | "action_resolved"
+    | "action_rejected"
+    | "intent_queued"
+    | "intent_executed"
+    | "queue_blocked"
+    | "transition_settled"
+    | "transition_settle_rejected";
+  outcome: DiagnosticOutcome;
+  reason?: string;
+  triggerTraceId?: string;
+  triggerKey?: string;
+  actionId?: string;
+  animationId?: string;
+  occurrenceId?: string;
+  currentStepIndex: number;
+  requiredStepIndex?: number;
 };
 
 export type SpeechAnimationRuntimeState = {
@@ -38,6 +62,7 @@ export type SpeechAnimationRuntimeState = {
 
 export type SpeechAnimationRuntimeUpdate = {
   consumedOccurrenceIds: string[];
+  decisions: SpeechAnimationRuntimeDecision[];
   pendingOccurrenceIds: string[];
   shouldAdvanceSlide: boolean;
   state: SpeechAnimationRuntimeState;
@@ -65,36 +90,119 @@ export function enqueueSpeechAnimationTriggers(args: {
   slide: Slide;
   slideAnimationPlan: SlideshowAnimationPlan;
   state: SpeechAnimationRuntimeState;
+  triggerTraceId?: string;
   triggers: readonly SpeechAnimationTrigger[];
 }): SpeechAnimationRuntimeUpdate {
-  if (
-    args.state.slideId !== args.slide.slideId ||
-    args.sequence <= args.state.lastSpeechSequence
-  ) {
-    return unchanged(args.state);
+  if (args.state.slideId !== args.slide.slideId) {
+    return unchanged(args.state, [
+      createDecision(args.state, {
+        name: "trigger_ignored",
+        outcome: "rejected",
+        reason: "SLIDE_MISMATCH",
+        triggerTraceId: args.triggerTraceId
+      })
+    ]);
+  }
+  if (args.sequence <= args.state.lastSpeechSequence) {
+    return unchanged(args.state, [
+      createDecision(args.state, {
+        name: "trigger_ignored",
+        outcome: "rejected",
+        reason: "STALE_SPEECH_SEQUENCE",
+        triggerTraceId: args.triggerTraceId
+      })
+    ]);
   }
 
   const recognizedTriggerKeys = new Set(args.state.recognizedTriggerKeys);
   const pendingIntents = new Map(
     args.state.pendingIntents.map((intent) => [intent.intentId, intent])
   );
+  const decisions: SpeechAnimationRuntimeDecision[] = [];
 
   for (const trigger of args.triggers) {
     const triggerKey = getSpeechAnimationTriggerKey(trigger);
+    decisions.push(
+      createDecision(args.state, {
+        name: "trigger_received",
+        outcome: "received",
+        triggerTraceId: args.triggerTraceId,
+        triggerKey,
+        occurrenceId:
+          trigger.kind === "keyword-occurrence"
+            ? trigger.occurrenceId
+            : undefined
+      })
+    );
     if (recognizedTriggerKeys.has(triggerKey)) {
+      decisions.push(
+        createDecision(args.state, {
+          name: "trigger_ignored",
+          outcome: "rejected",
+          reason: "DUPLICATE_TRIGGER_KEY",
+          triggerTraceId: args.triggerTraceId,
+          triggerKey
+        })
+      );
       continue;
     }
     recognizedTriggerKeys.add(triggerKey);
 
-    for (const action of resolveTriggerActions(args.slide, trigger)) {
+    const actions = resolveTriggerActions(args.slide, trigger);
+    if (actions.length === 0) {
+      decisions.push(
+        createDecision(args.state, {
+          name: "action_rejected",
+          outcome: "rejected",
+          reason: "ACTION_NOT_FOUND",
+          triggerTraceId: args.triggerTraceId,
+          triggerKey
+        })
+      );
+    }
+    for (const action of actions) {
       const requiredStepIndex = getActionRequiredStepIndex(
         action,
         args.slideAnimationPlan
       );
-      if (
-        requiredStepIndex === null ||
-        requiredStepIndex < args.state.presenterStepIndex
-      ) {
+      decisions.push(
+        createDecision(args.state, {
+          name: "action_resolved",
+          outcome: "accepted",
+          triggerTraceId: args.triggerTraceId,
+          triggerKey,
+          actionId: action.actionId,
+          animationId: getActionAnimationId(action),
+          ...(requiredStepIndex === null ? {} : { requiredStepIndex })
+        })
+      );
+      if (requiredStepIndex === null) {
+        decisions.push(
+          createDecision(args.state, {
+            name: "action_rejected",
+            outcome: "rejected",
+            reason: "ANIMATION_NOT_IN_PLAN",
+            triggerTraceId: args.triggerTraceId,
+            triggerKey,
+            actionId: action.actionId,
+            animationId: getActionAnimationId(action)
+          })
+        );
+        continue;
+      }
+      if (requiredStepIndex < args.state.presenterStepIndex) {
+        decisions.push(
+          createDecision(args.state, {
+            name: "action_rejected",
+            outcome: "rejected",
+            reason: "REQUIRED_STEP_BEHIND_CURRENT",
+            triggerTraceId: args.triggerTraceId,
+            triggerKey,
+            actionId: action.actionId,
+            animationId: getActionAnimationId(action),
+            requiredStepIndex
+          })
+        );
         continue;
       }
       const intent: SpeechAnimationIntent = {
@@ -104,15 +212,34 @@ export function enqueueSpeechAnimationTriggers(args: {
           ? { occurrenceId: trigger.occurrenceId }
           : {}),
         requiredStepIndex,
+        ...(args.triggerTraceId === undefined
+          ? {}
+          : { triggerTraceId: args.triggerTraceId }),
         triggerKey
       };
       pendingIntents.set(intent.intentId, intent);
+      decisions.push(
+        createDecision(args.state, {
+          name: "intent_queued",
+          outcome: "queued",
+          ...(requiredStepIndex > args.state.presenterStepIndex
+            ? { reason: "REQUIRED_STEP_AHEAD_CURRENT" }
+            : {}),
+          triggerTraceId: args.triggerTraceId,
+          triggerKey,
+          actionId: action.actionId,
+          animationId: getActionAnimationId(action),
+          occurrenceId: intent.occurrenceId,
+          requiredStepIndex
+        })
+      );
     }
   }
 
   return drainSpeechAnimationRuntime({
     slide: args.slide,
     slideAnimationPlan: args.slideAnimationPlan,
+    decisions,
     state: {
       ...args.state,
       lastSpeechSequence: args.sequence,
@@ -132,12 +259,24 @@ export function settleSpeechAnimationTransition(args: {
     args.state.transition?.slideId !== args.address.slideId ||
     args.state.transition.stepIndex !== args.address.stepIndex
   ) {
-    return unchanged(args.state);
+    return unchanged(args.state, [
+      createDecision(args.state, {
+        name: "transition_settle_rejected",
+        outcome: "rejected",
+        reason: "SETTLE_ADDRESS_MISMATCH"
+      })
+    ]);
   }
 
   return drainSpeechAnimationRuntime({
     slide: args.slide,
     slideAnimationPlan: args.slideAnimationPlan,
+    decisions: [
+      createDecision(args.state, {
+        name: "transition_settled",
+        outcome: "settled"
+      })
+    ],
     state: { ...args.state, transition: null }
   });
 }
@@ -147,11 +286,23 @@ export function advanceSpeechAnimationManually(args: {
   slideAnimationPlan: SlideshowAnimationPlan;
   state: SpeechAnimationRuntimeState;
 }): SpeechAnimationRuntimeUpdate {
-  if (
-    args.state.slideId !== args.slide.slideId ||
-    args.state.transition !== null
-  ) {
-    return unchanged(args.state);
+  if (args.state.slideId !== args.slide.slideId) {
+    return unchanged(args.state, [
+      createDecision(args.state, {
+        name: "queue_blocked",
+        outcome: "rejected",
+        reason: "SLIDE_MISMATCH"
+      })
+    ]);
+  }
+  if (args.state.transition !== null) {
+    return unchanged(args.state, [
+      createDecision(args.state, {
+        name: "queue_blocked",
+        outcome: "queued",
+        reason: "TRANSITION_IN_FLIGHT"
+      })
+    ]);
   }
 
   const currentStepIndex = args.state.presenterStepIndex;
@@ -169,6 +320,9 @@ export function advanceSpeechAnimationManually(args: {
   );
 
   return finalizeUpdate({
+    decisions: executedIntents.map((intent) =>
+      createIntentDecision(args.state, intent, "intent_executed", "accepted")
+    ),
     executedIntents,
     pendingIntents,
     playbackState: playbackUpdate.playbackState,
@@ -198,19 +352,37 @@ export function restoreSpeechAnimationRuntimeAtStep(args: {
 }
 
 function drainSpeechAnimationRuntime(args: {
+  decisions?: SpeechAnimationRuntimeDecision[];
   slide: Slide;
   slideAnimationPlan: SlideshowAnimationPlan;
   state: SpeechAnimationRuntimeState;
 }): SpeechAnimationRuntimeUpdate {
+  const decisions = [...(args.decisions ?? [])];
   if (args.state.transition !== null) {
-    return unchanged(args.state);
+    decisions.push(
+      createDecision(args.state, {
+        name: "queue_blocked",
+        outcome: "queued",
+        reason: "TRANSITION_IN_FLIGHT"
+      })
+    );
+    return unchanged(args.state, decisions);
   }
 
   const executableIntents = args.state.pendingIntents.filter(
     (intent) => intent.requiredStepIndex === args.state.presenterStepIndex
   );
   if (executableIntents.length === 0) {
-    return unchanged(args.state);
+    if (args.state.pendingIntents.length > 0) {
+      decisions.push(
+        createDecision(args.state, {
+          name: "queue_blocked",
+          outcome: "queued",
+          reason: "NO_EXECUTABLE_INTENT"
+        })
+      );
+    }
+    return unchanged(args.state, decisions);
   }
 
   const playbackUpdate = resolveTriggeredActionPlaybackUpdate({
@@ -225,6 +397,17 @@ function drainSpeechAnimationRuntime(args: {
   );
 
   return finalizeUpdate({
+    decisions: [
+      ...decisions,
+      ...executableIntents.map((intent) =>
+        createIntentDecision(
+          args.state,
+          intent,
+          "intent_executed",
+          "accepted"
+        )
+      )
+    ],
     executedIntents: executableIntents,
     pendingIntents: args.state.pendingIntents.filter(
       (intent) => !executedIntentIds.has(intent.intentId)
@@ -237,6 +420,7 @@ function drainSpeechAnimationRuntime(args: {
 }
 
 function finalizeUpdate(args: {
+  decisions: SpeechAnimationRuntimeDecision[];
   executedIntents: readonly SpeechAnimationIntent[];
   pendingIntents: SpeechAnimationIntent[];
   playbackState: SlidePlaybackState;
@@ -280,6 +464,7 @@ function finalizeUpdate(args: {
 
   return {
     consumedOccurrenceIds,
+    decisions: args.decisions,
     pendingOccurrenceIds,
     shouldAdvanceSlide: args.shouldAdvanceSlide,
     state
@@ -343,12 +528,50 @@ function getPendingOccurrenceIds(intents: readonly SpeechAnimationIntent[]) {
 }
 
 function unchanged(
-  state: SpeechAnimationRuntimeState
+  state: SpeechAnimationRuntimeState,
+  decisions: SpeechAnimationRuntimeDecision[] = []
 ): SpeechAnimationRuntimeUpdate {
   return {
     consumedOccurrenceIds: [],
+    decisions,
     pendingOccurrenceIds: getPendingOccurrenceIds(state.pendingIntents),
     shouldAdvanceSlide: false,
     state
   };
+}
+
+function createIntentDecision(
+  state: SpeechAnimationRuntimeState,
+  intent: SpeechAnimationIntent,
+  name: SpeechAnimationRuntimeDecision["name"],
+  outcome: DiagnosticOutcome
+) {
+  return createDecision(state, {
+    name,
+    outcome,
+    triggerTraceId: intent.triggerTraceId,
+    triggerKey: intent.triggerKey,
+    actionId: intent.action.actionId,
+    animationId: getActionAnimationId(intent.action),
+    occurrenceId: intent.occurrenceId,
+    requiredStepIndex: intent.requiredStepIndex
+  });
+}
+
+function createDecision(
+  state: SpeechAnimationRuntimeState,
+  input: Omit<SpeechAnimationRuntimeDecision, "currentStepIndex"> & {
+    currentStepIndex?: number;
+  }
+): SpeechAnimationRuntimeDecision {
+  return {
+    ...input,
+    currentStepIndex: input.currentStepIndex ?? state.presenterStepIndex
+  };
+}
+
+function getActionAnimationId(action: DeckSlideAction) {
+  return action.effect.kind === "play-animation"
+    ? action.effect.animationId
+    : undefined;
 }

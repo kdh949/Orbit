@@ -22,6 +22,7 @@ describe("speechAnimationRuntime", () => {
       slide,
       slideAnimationPlan: plan,
       state: createSpeechAnimationRuntimeState({ slideId: slide.slideId }),
+      triggerTraceId: "speech:item-1:0",
       triggers: [
         { kind: "keyword", keywordId: "kw_first" },
         { kind: "keyword", keywordId: "kw_second" }
@@ -34,6 +35,22 @@ describe("speechAnimationRuntime", () => {
       stepIndex: 1
     });
     expect(first.state.pendingIntents).toHaveLength(1);
+    expect(first.decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "intent_executed",
+          triggerTraceId: "speech:item-1:0"
+        }),
+        expect.objectContaining({
+          name: "intent_queued",
+          reason: "REQUIRED_STEP_AHEAD_CURRENT",
+          triggerTraceId: "speech:item-1:0"
+        })
+      ])
+    );
+    expect(first.state.pendingIntents[0]?.triggerTraceId).toBe(
+      "speech:item-1:0"
+    );
 
     const second = settleSpeechAnimationTransition({
       address: { slideId: slide.slideId, stepIndex: 1 },
@@ -162,6 +179,49 @@ describe("speechAnimationRuntime", () => {
 
     expect(duplicate.state).toBe(first.state);
     expect(staleSettlement.state).toBe(first.state);
+    expect(duplicate.decisions).toEqual([
+      expect.objectContaining({
+        name: "trigger_ignored",
+        reason: "STALE_SPEECH_SEQUENCE"
+      })
+    ]);
+    expect(staleSettlement.decisions).toEqual([
+      expect.objectContaining({
+        name: "transition_settle_rejected",
+        reason: "SETTLE_ADDRESS_MISMATCH"
+      })
+    ]);
+  });
+
+  it("records missing actions without mutating playback state", () => {
+    const slide = createRuntimeSlide();
+    const plan = createSlideshowAnimationPlan({
+      slide,
+      triggerAnimationIds: getTriggerAnimationIdsForSlide(slide)
+    });
+    const initial = createSpeechAnimationRuntimeState({
+      slideId: slide.slideId
+    });
+    const update = enqueueSpeechAnimationTriggers({
+      sequence: 1,
+      slide,
+      slideAnimationPlan: plan,
+      state: initial,
+      triggerTraceId: "speech:item-missing:0",
+      triggers: [{ kind: "keyword", keywordId: "kw_missing" }]
+    });
+
+    expect(update.state.playbackState).toBe(initial.playbackState);
+    expect(update.decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "action_rejected",
+          outcome: "rejected",
+          reason: "ACTION_NOT_FOUND",
+          triggerTraceId: "speech:item-missing:0"
+        })
+      ])
+    );
   });
 });
 
