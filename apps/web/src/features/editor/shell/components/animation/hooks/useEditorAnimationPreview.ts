@@ -91,6 +91,7 @@ export function useEditorAnimationPreview(args: {
 
   return {
     canPlay: Boolean(plan),
+    cancel: cancelPlayback,
     elementStates,
     isPlaying,
     play

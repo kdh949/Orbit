@@ -1,4 +1,9 @@
-import type { Deck, DeckAnimation, Slide } from "@orbit/shared";
+import {
+  evaluateMorphTransitionSupport,
+  type Deck,
+  type DeckAnimation,
+  type Slide
+} from "@orbit/shared";
 
 const genericExportAnimationTypes = new Set<DeckAnimation["type"]>([
   "appear",
@@ -18,6 +23,19 @@ export function getTransitionMutationDisabledReason(
     return "이 슬라이드의 전환 효과는 원본 OOXML에 안전하게 저장할 수 없습니다.";
   }
   return null;
+}
+
+export function getMorphTransitionMutationDisabledReason(
+  deck: Deck,
+  slide: Slide,
+  previousSlide?: Slide
+): string | null {
+  const support = evaluateMorphTransitionSupport({
+    sourceType: deck.metadata.sourceType,
+    previousSlide,
+    destinationSlide: slide
+  });
+  return support.supported ? null : support.message;
 }
 
 export function getAnimationMutationDisabledReason(

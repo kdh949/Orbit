@@ -1,6 +1,7 @@
 import {
   createDemoDeck,
   createDuplicateSlidePatch,
+  createUpdateElementMorphKeyPatch,
   createUpdateActivityDefinitionPatch,
   createUpdateActivityResultDefinitionPatch,
   getElementAnimations,
@@ -33,6 +34,7 @@ import { beginHorizontalPaneResize } from "./utils/beginHorizontalPaneResize";
 import { canEditSlideCanvas } from "./utils/slideEditingPolicy";
 import {
   getAnimationMutationDisabledReason,
+  getMorphTransitionMutationDisabledReason,
   getTransitionMutationDisabledReason
 } from "./utils/motionEditingPolicy";
 import {
@@ -909,6 +911,15 @@ export function EditorShell(props: { projectId?: string }) {
   const transitionMutationDisabledReason = currentSlide
     ? getTransitionMutationDisabledReason(deck, currentSlide)
     : null;
+  const previousSlide =
+    currentSlideIndex > 0 ? deck.slides[currentSlideIndex - 1] : undefined;
+  const morphTransitionMutationDisabledReason = currentSlide
+    ? getMorphTransitionMutationDisabledReason(
+        deck,
+        currentSlide,
+        previousSlide
+      )
+    : null;
   const currentSlideKeywordActionUsage = useMemo(
     () =>
       currentSlide
@@ -1224,6 +1235,7 @@ export function EditorShell(props: { projectId?: string }) {
   );
   const {
     canPlay: canPlayCurrentSlideAnimations,
+    cancel: cancelCurrentSlideAnimationPreview,
     elementStates: animationPreviewElementStates,
     isPlaying: isPlayingCurrentSlideAnimations,
     play: playCurrentSlideAnimations
@@ -2462,8 +2474,25 @@ export function EditorShell(props: { projectId?: string }) {
           animationProperties={
             <>
             <AnimationSlideTransitionEditor
+              deck={deck}
+              morphDisabledReason={morphTransitionMutationDisabledReason}
               mutationDisabledReason={transitionMutationDisabledReason}
+              previousSlide={previousSlide}
+              selectedElement={selectedAnimationPanelElement}
+              slide={currentSlide!}
               transition={currentSlide?.transition}
+              onBeforePreview={cancelCurrentSlideAnimationPreview}
+              onUpdateMorphKey={(elementId, morphKey) => {
+                if (!currentSlide) return;
+                commitPatch((currentDeck) =>
+                  createUpdateElementMorphKeyPatch(
+                    currentDeck,
+                    currentSlide.slideId,
+                    elementId,
+                    morphKey
+                  )
+                );
+              }}
               onUpdateTransition={(transition) => {
                 if (currentSlide) {
                   handleUpdateSlideTransition(currentSlide.slideId, transition);

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   getAnimationMutationDisabledReason,
   getAnimationTypeMutationDisabledReason,
+  getMorphTransitionMutationDisabledReason,
   getTransitionMutationDisabledReason
 } from "./motionEditingPolicy";
 
@@ -54,5 +55,23 @@ describe("motionEditingPolicy", () => {
     expect(getAnimationMutationDisabledReason(deck, slide)).toContain(
       "위치 정보"
     );
+  });
+
+  it("allows morph only between authored content slides after the first slide", () => {
+    const deck = createDemoDeck();
+    const firstSlide = deck.slides[0]!;
+    const secondSlide = deck.slides[1]!;
+
+    expect(
+      getMorphTransitionMutationDisabledReason(deck, secondSlide, firstSlide)
+    ).toBeNull();
+    expect(
+      getMorphTransitionMutationDisabledReason(deck, firstSlide)
+    ).toContain("첫 슬라이드");
+
+    deck.metadata.sourceType = "import";
+    expect(
+      getMorphTransitionMutationDisabledReason(deck, secondSlide, firstSlide)
+    ).toContain("가져온 자료");
   });
 });
