@@ -157,7 +157,7 @@ full-deck artifact와 남은 사람 검수가 필요한 항목은 자동 테스�
 | Task 2 strict 공통 계약 | 자동 통과 | shared Zod/Python mirror contract test | 없음 |
 | Task 3 private catalog | local QA source/preview checksum 검증, repository 전체 disabled | registry/catalog v2 approval/blocker test와 local QA 146-object read-after-write | production managed storage, PowerPoint/font QA |
 | Task 4 annotation pipeline | 자동 통과, 139장/253 text-only slot 승인 | annotation candidate/locator/locked inventory와 catalog approval provenance test | production storage publication과 runtime manifest drift 검증 |
-| Checkpoint A | 2026-07-23 통과 | 7개/139장, strict schema/regression, 승인 manifest와 local QA 153-object checksum/private ACL | product rollout에는 production managed storage, font와 PowerPoint QA가 별도 필요 |
+| Checkpoint A | 자동·사람 검수 충족, 승인 보류 | 7개/139장, strict schema/regression, 승인 manifest와 local QA 153-object checksum/private ACL | §15 production private managed storage publication |
 | Task 5 raw clone | 자동 통과 | clone/package validator test, actual-source 7개/139장 identity clone warning 0과 LibreOffice render/reopen | 승인된 Checkpoint A와 PowerPoint reopen |
 | Checkpoint B1 | actual-source 기계 검증 통과, 승인 보류 | 7개/139장 identity clone, relationship/package warning 0, slide count 일치, LibreOffice render/reopen | Checkpoint A, PowerPoint reopen과 사람 검수 |
 | Task 6 text/image slot | 자동 통과 | text/image capacity·style·media preservation test | 승인 text slot의 production publication과 실제 image slot 승인 |

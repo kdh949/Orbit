@@ -11,8 +11,8 @@ render artifact는 기록하지 않는다.
 manifest와 cover/body를 포함한 139개 preview checksum은 local QA private storage에서
 검증했지만 production managed storage를 대신하지 않는다. PowerPoint QA, embedded font
 resolve와 production publication은 아직 미검증이므로 repository의 7개 template은 모두
-`disabled`다. source/contract 범위의 Checkpoint A는 승인과 local QA strict catalog 검증으로
-통과했지만 B1/C와 rollout 승인은 아니다.
+`disabled`다. source/contract 자동 기준과 사람 승인은 충족했지만 §15의 production private
+managed storage가 없어 Checkpoint A도 정식 통과 처리하지 않는다.
 
 원본 PPTX, 원문 XML, source filename/절대 경로, preview/render binary, font와 storage
 key는 Git·manifest·로그에 넣지 않는다. repository에는 승인 가능한 strict annotation과
@@ -151,8 +151,9 @@ relationship, unsupported formula/range, fingerprint drift가 있으면 package 
 | 합계 | 139 | 253 | - |
 
 검토 checksum은 승인된 private annotation 내용의 drift를 탐지하기 위한 provenance이며
-runtime publication이나 template 활성화 증거가 아니다. 남은 외부 gate가 기록되기 전에는
-Checkpoint B1/C 또는 product rollout을 `passed`로 표시하지 않는다.
+runtime publication이나 template 활성화 증거가 아니다. production managed storage와 남은
+외부 gate가 기록되기 전에는 Checkpoint A/B1/C 또는 product rollout을 `passed`로 표시하지
+않는다.
 
 ## 검수 artifact 생성
 
