@@ -134,6 +134,20 @@ export type {
   TimelineAnimationInput
 } from "./playback/animationTimeline";
 export { getAnimationActionTriggerKeys } from "./playback/slidePlayback";
+export {
+  createMorphTransitionPlan,
+  easeInOutCubic,
+  getMorphMatchKey,
+  interpolateMorphFrames,
+  isMorphGeometryEligible
+} from "./playback/morphTransition";
+export type {
+  MorphElementFrame,
+  MorphElementPair,
+  MorphPresentationFrames,
+  MorphTransitionDiagnostic,
+  MorphTransitionPlan
+} from "./playback/morphTransition";
 export { normalizeLegacyAnimationStartModes } from "./patches/legacyAnimationStartModeMigration";
 export {
   createActivityResultsSlide,
