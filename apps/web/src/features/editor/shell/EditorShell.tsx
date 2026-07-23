@@ -192,7 +192,6 @@ import { useSlidePracticeSession } from "../practice/useSlidePracticeSession";
 import {
   getKeywordOccurrenceTriggerIdsForSlide,
   getTriggerAnimationIdsForSlide,
-  resolveKeywordOccurrenceTriggeredActions,
   resolveKeywordTriggeredActions,
   resolveManualAnimationPlaybackUpdate,
   resolveQueuedKeywordOccurrencePlayback,
@@ -724,19 +723,7 @@ export function EditorShell(props: { projectId?: string }) {
     });
     slideRehearsalPreviousTranscriptRef.current = event.transcript;
 
-    const actionsByOccurrenceId = new Map<string, Slide["actions"]>();
-    for (const occurrenceMatch of occurrenceMatches) {
-      actionsByOccurrenceId.set(
-        occurrenceMatch.occurrenceId,
-        resolveKeywordOccurrenceTriggeredActions(
-          eventSlide,
-          occurrenceMatch.keywordId,
-          occurrenceMatch.occurrenceId
-        )
-      );
-    }
     const queuedOccurrencePlayback = resolveQueuedKeywordOccurrencePlayback({
-      actionsByOccurrenceId,
       matchedOccurrenceIds: occurrenceMatches.map(
         (occurrenceMatch) => occurrenceMatch.occurrenceId
       ),

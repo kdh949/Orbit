@@ -35,7 +35,6 @@ export type QueuedKeywordOccurrencePlaybackUpdate = {
  * so it may run only after every animation step has settled.
  */
 export function resolveQueuedKeywordOccurrencePlayback(args: {
-  actionsByOccurrenceId: ReadonlyMap<string, DeckSlideAction[]>;
   pendingOccurrenceIds: readonly string[];
   matchedOccurrenceIds: readonly string[];
   playbackState: SlidePlaybackState;
@@ -53,11 +52,21 @@ export function resolveQueuedKeywordOccurrencePlayback(args: {
   args.matchedOccurrenceIds.forEach((occurrenceId) => pendingOccurrenceIds.add(occurrenceId));
   const executableActionsByOccurrenceId = new Map(
     Array.from(pendingOccurrenceIds).flatMap((occurrenceId) => {
-      const actions = (args.actionsByOccurrenceId.get(occurrenceId) ?? []).filter(
-        (action) =>
+      const actions = args.slide.actions.filter(
+        (action) => {
+          if (
+            action.trigger.kind !== "keyword-occurrence" ||
+            action.trigger.occurrenceId !== occurrenceId
+          ) {
+            return false;
+          }
+
+          return (
           (action.effect.kind === "play-animation" &&
             currentAnimationIds.has(action.effect.animationId)) ||
           (action.effect.kind === "go-to-next-slide" && canAdvanceSlide)
+          );
+        }
       );
       return actions.length > 0 ? [[occurrenceId, actions] as const] : [];
     })

@@ -16,6 +16,7 @@ type PresentationSpeechState = {
   lastTranscriptActivityAtMs: number | null;
   latestTranscript: string;
   latestTranscriptConfidence: number | null;
+  latestTranscriptSequence: number;
   snapshot: SpeechTrackerSnapshot | null;
   status: "idle" | "starting" | "listening" | "paused" | "stopped" | "error";
   transcript: string;
@@ -27,6 +28,7 @@ const initialState: PresentationSpeechState = {
   lastTranscriptActivityAtMs: null,
   latestTranscript: "",
   latestTranscriptConfidence: null,
+  latestTranscriptSequence: 0,
   snapshot: null,
   status: "idle",
   transcript: "",
@@ -46,6 +48,7 @@ export function usePresentationSpeech(projectId?: string) {
   const inFlightSlideTranscriptRef = useRef("");
   const latestSlideTranscriptBeforeRef = useRef("");
   const latestSlideTranscriptAfterRef = useRef("");
+  const transcriptSequenceRef = useRef(0);
   const unsubscribersRef = useRef<Array<() => void>>([]);
 
   const enterSlide = useCallback((slide: Slide) => {
@@ -138,11 +141,13 @@ export function usePresentationSpeech(projectId?: string) {
             accumulatedListeningMsRef.current +
             Math.max(transcriptActivityAtMs - startedAtRef.current, 0);
           const elapsedMinutes = Math.max(activeListeningMs / 60_000, 1 / 60);
+          transcriptSequenceRef.current += 1;
           setState((current) => ({
             ...current,
             lastTranscriptActivityAtMs: transcriptActivityAtMs,
             latestTranscript: result.text,
             latestTranscriptConfidence: result.confidence ?? null,
+            latestTranscriptSequence: transcriptSequenceRef.current,
             snapshot: tracker.snapshot(),
             transcript: transcriptRef.current,
             wordsPerMinute: Math.round(

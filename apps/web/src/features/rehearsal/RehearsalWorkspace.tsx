@@ -146,7 +146,6 @@ import { SherpaLiveSttPort } from "./stt/sherpaLiveSttPort";
 import {
   getKeywordOccurrenceTriggerIdsForSlide,
   resolveCueTriggeredActions,
-  resolveKeywordOccurrenceTriggeredActions,
   resolveKeywordTriggeredActions,
   getTriggerAnimationIdsForSlide,
   restoreSlidePlaybackAtStep,
@@ -4023,23 +4022,11 @@ export function RehearsalWorkspace(props: {
       );
 
     }
-    const actionsByOccurrenceId = new Map<string, Slide["actions"]>();
-    for (const occurrenceMatch of occurrenceMatches) {
-      actionsByOccurrenceId.set(
-        occurrenceMatch.occurrenceId,
-        resolveKeywordOccurrenceTriggeredActions(
-          slide,
-          occurrenceMatch.keywordId,
-          occurrenceMatch.occurrenceId,
-        ),
-      );
-    }
     const pendingOccurrenceIds =
       pendingKeywordOccurrenceIdsRef.current?.slideId === slide.slideId
         ? pendingKeywordOccurrenceIdsRef.current.occurrenceIds
         : [];
     const queuedOccurrencePlayback = resolveQueuedKeywordOccurrencePlayback({
-      actionsByOccurrenceId,
       matchedOccurrenceIds: occurrenceMatches.map(
         (match) => match.occurrenceId,
       ),
@@ -4062,9 +4049,9 @@ export function RehearsalWorkspace(props: {
     }
     liveKeywordOccurrenceStateRef.current = confirmKeywordOccurrenceMatches(
       occurrenceState,
-      occurrenceMatches.filter((match) =>
-        queuedOccurrencePlayback.consumedOccurrenceIds.includes(match.occurrenceId),
-      ),
+      queuedOccurrencePlayback.consumedOccurrenceIds.map((occurrenceId) => ({
+        occurrenceId,
+      })),
     );
 
     const previousDetectedIds = new Set(

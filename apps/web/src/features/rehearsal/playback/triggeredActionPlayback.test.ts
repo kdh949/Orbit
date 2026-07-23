@@ -121,12 +121,6 @@ describe("triggeredActionPlayback", () => {
     });
     const occurrenceId = "kwo_slide_1_kw_ai_47_49";
     const queued = resolveQueuedKeywordOccurrencePlayback({
-      actionsByOccurrenceId: new Map([
-        [
-          occurrenceId,
-          resolveKeywordOccurrenceTriggeredActions(slide, "kw_ai", occurrenceId),
-        ],
-      ]),
       matchedOccurrenceIds: [occurrenceId],
       pendingOccurrenceIds: [],
       playbackState: { playedAnimationIds: [] },
@@ -177,15 +171,7 @@ describe("triggeredActionPlayback", () => {
       slide,
       triggerAnimationIds: getTriggerAnimationIdsForSlide(slide)
     });
-    const actionsByOccurrenceId = new Map([
-      [
-        occurrenceId,
-        resolveKeywordOccurrenceTriggeredActions(slide, "kw_ai", occurrenceId)
-      ]
-    ]);
-
     const queued = resolveQueuedKeywordOccurrencePlayback({
-      actionsByOccurrenceId,
       matchedOccurrenceIds: [occurrenceId],
       pendingOccurrenceIds: [],
       playbackState: { playedAnimationIds: [] },
@@ -194,7 +180,6 @@ describe("triggeredActionPlayback", () => {
       slideAnimationPlan
     });
     const advanced = resolveQueuedKeywordOccurrencePlayback({
-      actionsByOccurrenceId,
       matchedOccurrenceIds: [occurrenceId],
       pendingOccurrenceIds: queued.pendingOccurrenceIds,
       playbackState: {
@@ -210,6 +195,38 @@ describe("triggeredActionPlayback", () => {
     expect(advanced.pendingOccurrenceIds).toEqual([]);
     expect(advanced.consumedOccurrenceIds).toEqual([occurrenceId]);
     expect(advanced.update?.shouldAdvanceSlide).toBe(true);
+  });
+
+  it("resolves a pending occurrence from the slide after its original speech event", () => {
+    const slide = createSlide();
+    const slideAnimationPlan = createSlideshowAnimationPlan({
+      slide,
+      triggerAnimationIds: getTriggerAnimationIdsForSlide(slide),
+    });
+    const occurrenceId = "kwo_slide_1_kw_ai_47_49";
+
+    const queued = resolveQueuedKeywordOccurrencePlayback({
+      matchedOccurrenceIds: [occurrenceId],
+      pendingOccurrenceIds: [],
+      playbackState: { playedAnimationIds: [] },
+      presenterStepIndex: 0,
+      slide,
+      slideAnimationPlan,
+    });
+    const drained = resolveQueuedKeywordOccurrencePlayback({
+      matchedOccurrenceIds: [],
+      pendingOccurrenceIds: queued.pendingOccurrenceIds,
+      playbackState: { playedAnimationIds: ["anim_legacy"] },
+      presenterStepIndex: 1,
+      slide,
+      slideAnimationPlan,
+    });
+
+    expect(drained.consumedOccurrenceIds).toEqual([occurrenceId]);
+    expect(drained.pendingOccurrenceIds).toEqual([]);
+    expect(drained.update?.playbackState.playedAnimationIds).toContain(
+      "anim_occurrence",
+    );
   });
 
   it("reconstructs played animations and consumed occurrences for a recovery step", () => {

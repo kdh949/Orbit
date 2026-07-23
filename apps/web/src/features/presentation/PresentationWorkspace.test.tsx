@@ -98,6 +98,8 @@ describe("PresentationWorkspace", () => {
     expect(source).toContain("confirmedOccurrenceIds");
     expect(source).toContain("getSlideTranscriptSpan");
     expect(source).toContain("previousTranscript: transcriptSpan.previousTranscript");
+    expect(source).toContain("latestTranscriptSequence");
+    expect(source).toContain("processedSpeechResultSequenceRef");
   });
 
   it("renders the auto-start presenter controls for an Activity slide", () => {

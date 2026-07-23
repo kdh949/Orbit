@@ -53,7 +53,6 @@ import {
   restoreSlidePlaybackAtStep,
   resolveManualAnimationPlaybackUpdate,
   resolveQueuedKeywordOccurrencePlayback,
-  resolveKeywordOccurrenceTriggeredActions,
   resolveKeywordTriggeredActions,
   resolveTriggeredActionPlaybackUpdate,
 } from "../rehearsal/playback/triggeredActionPlayback";
@@ -167,6 +166,7 @@ export function PresentationWorkspace(props: {
     slideId: string;
     stepIndex: number;
   } | null>(null);
+  const processedSpeechResultSequenceRef = useRef(0);
   const advanceControllerStateRef = useRef<AdvanceControllerState>(
     createInitialAdvanceControllerState(),
   );
@@ -754,46 +754,39 @@ export function PresentationWorkspace(props: {
       !slideshowAnimationPlan ||
       runtimePhase !== "active" ||
       speech.state.status !== "listening" ||
-      !speech.state.latestTranscript.trim()
+      speech.state.latestTranscriptSequence <=
+        processedSpeechResultSequenceRef.current
     ) {
       return;
     }
+    processedSpeechResultSequenceRef.current =
+      speech.state.latestTranscriptSequence;
 
     const currentState =
       keywordOccurrenceStateRef.current?.slideId === currentSlide.slideId
         ? keywordOccurrenceStateRef.current
         : { slideId: currentSlide.slideId, confirmedOccurrenceIds: [] };
-    const transcriptSpan = speech.getSlideTranscriptSpan();
-    const matches = matchKeywordOccurrenceTriggers({
-      slide: currentSlide,
-      targetOccurrenceIds: getKeywordOccurrenceTriggerIdsForSlide(currentSlide),
-      previousTranscript: transcriptSpan.previousTranscript,
-      transcript: transcriptSpan.transcript,
-      latestTranscript: speech.state.latestTranscript,
-      confidence: speech.state.latestTranscriptConfidence,
-      confirmedOccurrenceIds: currentState.confirmedOccurrenceIds,
-    });
-    if (matches.length === 0) {
-      return;
-    }
-
-    const actionsByOccurrenceId = new Map<string, Slide["actions"]>();
-    for (const match of matches) {
-      actionsByOccurrenceId.set(
-        match.occurrenceId,
-        resolveKeywordOccurrenceTriggeredActions(
-          currentSlide,
-          match.keywordId,
-          match.occurrenceId,
-        ),
-      );
-    }
     const pendingOccurrenceIds =
       pendingKeywordOccurrenceIdsRef.current?.slideId === currentSlide.slideId
         ? pendingKeywordOccurrenceIdsRef.current.occurrenceIds
         : [];
+    const transcriptSpan = speech.getSlideTranscriptSpan();
+    const matches = speech.state.latestTranscript.trim()
+      ? matchKeywordOccurrenceTriggers({
+          slide: currentSlide,
+          targetOccurrenceIds: getKeywordOccurrenceTriggerIdsForSlide(currentSlide),
+          previousTranscript: transcriptSpan.previousTranscript,
+          transcript: transcriptSpan.transcript,
+          latestTranscript: speech.state.latestTranscript,
+          confidence: speech.state.latestTranscriptConfidence,
+          confirmedOccurrenceIds: currentState.confirmedOccurrenceIds,
+        })
+      : [];
+    if (matches.length === 0 && pendingOccurrenceIds.length === 0) {
+      return;
+    }
+
     const queued = resolveQueuedKeywordOccurrencePlayback({
-      actionsByOccurrenceId,
       matchedOccurrenceIds: matches.map((match) => match.occurrenceId),
       pendingOccurrenceIds,
       playbackState: playbackStateRef.current,
@@ -822,6 +815,7 @@ export function PresentationWorkspace(props: {
     slideshowAnimationPlan,
     speech.state.latestTranscript,
     speech.state.latestTranscriptConfidence,
+    speech.state.latestTranscriptSequence,
     speech.state.status,
   ]);
 
