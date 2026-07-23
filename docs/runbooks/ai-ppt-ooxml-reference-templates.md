@@ -123,6 +123,14 @@ content-generated 7개×8장 package/LibreOffice를 검증했다. Microsoft Powe
 reopen했고 repair/recovery 징후는 0건이었다. 이 증거는 LibreOffice 결과와 분리해 외부 QA
 artifact로 보관한다.
 
+승인 전 검수 snapshot은 `/private/tmp/orbit-ooxml-private-catalog-review-9e2wd3pb`에 그대로
+보존하고, 7개 source와 139장/253개 text-only annotation 승인 후 상태 결정은
+`/private/tmp/orbit-ooxml-private-catalog-decision-3TH9mcuh`에 별도 기록했다.
+`approval-decision.json` SHA-256은
+`2aa4c0d02c181cf22a9e4d0e609c5845f80fdc673783f9cb736463fc4803d707`이다. 이 결정은 local
+QA strict manifest의 `active`/`approved`를 기록하지만 repository/production activation을
+승인하지 않는다.
+
 그러나 local MinIO는 production private managed storage를 대체하지 않는다. generated full-deck
 locked diff/montage와 edited-slot montage는 각각
 `/private/tmp/orbit-ooxml-fidelity-artifacts-20260723-f`,

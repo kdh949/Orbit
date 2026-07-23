@@ -31,6 +31,12 @@ nested OOXML preflight를 통과한 `.xlsx` 수다. `animations`는 slide의 `p:
 
 승인된 canonical manifest와 139개 preview의 checksum은 local QA private storage에서
 read-after-write로 검증됐다. 이 검증은 production managed storage를 대신하지 않는다.
+승인 전 검수 snapshot은 `/private/tmp/orbit-ooxml-private-catalog-review-9e2wd3pb`에
+보존하고, 승인 후 상태 결정은
+`/private/tmp/orbit-ooxml-private-catalog-decision-3TH9mcuh/approval-decision.json`
+(`SHA-256 2aa4c0d02c181cf22a9e4d0e609c5845f80fdc673783f9cb736463fc4803d707`)에
+별도로 기록했다. local QA strict manifest 7개는 `active`/`approved`지만 production
+publication 증거가 아니므로 repository와 production rollout 상태는 계속 `disabled`다.
 Microsoft PowerPoint 16.111에서 7개 generated deck과 actual slot-edit/export deck의
 open/render/reopen은 별도로 검증했다. 그러나 embedded/exact font file checksum과 production
 private managed storage, full fidelity 사람 승인이 남아 repository catalog의 7개 template은

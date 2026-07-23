@@ -7,6 +7,12 @@
 content-generated 8장 full-deck 7개는 package warning 0, `python-pptx` reopen과
 LibreOffice PDF/PNG render를 통과했다. local QA private storage의 153개 current object도
 checksum과 private ACL을 검증했지만 production managed storage를 대신하지 않는다.
+승인 전 검수 snapshot과 승인 후 상태 결정은 각각
+`/private/tmp/orbit-ooxml-private-catalog-review-9e2wd3pb`,
+`/private/tmp/orbit-ooxml-private-catalog-decision-3TH9mcuh`에 분리 보존한다. 후자의
+`approval-decision.json` SHA-256은
+`2aa4c0d02c181cf22a9e4d0e609c5845f80fdc673783f9cb736463fc4803d707`이다. local QA의
+strict manifest 상태가 `active`여도 repository와 production rollout은 `disabled`다.
 
 | template                                          | version | slides | identity clone | actual full-deck | actual slot edit | fidelity artifact | PowerPoint | rollout  |
 | ------------------------------------------------- | ------: | -----: | -------------- | ---------------- | ---------------- | ----------------- | ---------- | -------- |
