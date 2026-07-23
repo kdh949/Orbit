@@ -3,9 +3,11 @@ from __future__ import annotations
 import hashlib
 import base64
 import json
+import zipfile
 from io import BytesIO
 from types import SimpleNamespace
 from typing import Any
+from xml.etree import ElementTree as ET
 
 import pytest
 from fastapi.testclient import TestClient
@@ -728,6 +730,11 @@ def test_fidelity_geometry_resolves_object_placeholder_from_master_body() -> Non
     output = BytesIO()
     presentation.save(output)
     shape_id = str(content.shape_id)
+    assert not _placeholder_has_transform(
+        output.getvalue(),
+        "ppt/slideLayouts/slideLayout2.xml",
+        "1",
+    )
 
     snapshot = _locked_snapshot(
         output.getvalue(),
@@ -738,6 +745,121 @@ def test_fidelity_geometry_resolves_object_placeholder_from_master_body() -> Non
         shape for shape in snapshot["shapes"] if shape["shapeId"] == shape_id
     )
     assert content_snapshot["geometry"]["transform"] is not None
+
+
+def test_fidelity_geometry_rejects_missing_layout_placeholder_chain() -> None:
+    presentation = Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[1])
+    content = slide.placeholders[1]
+    output = BytesIO()
+    presentation.save(output)
+    package = _rewrite_package_xml(
+        output.getvalue(),
+        "ppt/slideLayouts/slideLayout2.xml",
+        _remove_content_placeholder,
+    )
+
+    with pytest.raises(PrivateGenerationRuntimeError) as caught:
+        _slot_mask_png(
+            package,
+            "ppt/slides/slide1.xml",
+            {str(content.shape_id)},
+            presentation.slide_width,
+            presentation.slide_height,
+            _png(),
+        )
+
+    assert caught.value.code == "OOXML_REFERENCE_SLOT_MASK_UNAVAILABLE"
+
+
+def test_fidelity_geometry_rejects_duplicate_layout_relationship() -> None:
+    presentation = Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[0])
+    title = slide.shapes.title
+    assert title is not None
+    output = BytesIO()
+    presentation.save(output)
+    package = _rewrite_package_xml(
+        output.getvalue(),
+        "ppt/slides/_rels/slide1.xml.rels",
+        _duplicate_layout_relationship,
+    )
+
+    with pytest.raises(PrivateGenerationRuntimeError) as caught:
+        _slot_mask_png(
+            package,
+            "ppt/slides/slide1.xml",
+            {str(title.shape_id)},
+            presentation.slide_width,
+            presentation.slide_height,
+            _png(),
+        )
+
+    assert caught.value.code == "OOXML_REFERENCE_PACKAGE_VALIDATION_FAILED"
+
+
+def _rewrite_package_xml(
+    package_bytes: bytes,
+    part: str,
+    transform: Any,
+) -> bytes:
+    output = BytesIO()
+    with zipfile.ZipFile(BytesIO(package_bytes), "r") as source:
+        root = ET.fromstring(source.read(part))
+        transform(root)
+        with zipfile.ZipFile(output, "w") as target:
+            for info in source.infolist():
+                content = (
+                    ET.tostring(root, encoding="utf-8", xml_declaration=True)
+                    if info.filename == part
+                    else source.read(info.filename)
+                )
+                target.writestr(info, content)
+    return output.getvalue()
+
+
+def _placeholder_has_transform(
+    package_bytes: bytes,
+    part: str,
+    placeholder_idx: str,
+) -> bool:
+    with zipfile.ZipFile(BytesIO(package_bytes), "r") as package:
+        root = ET.fromstring(package.read(part))
+    for shape in root.iter():
+        placeholder = next(
+            (item for item in shape.iter() if item.tag.endswith("}ph")),
+            None,
+        )
+        if placeholder is None or placeholder.get("idx", "0") != placeholder_idx:
+            continue
+        return any(item.tag.endswith("}xfrm") for item in shape.iter())
+    raise AssertionError("placeholder is missing from the fixture")
+
+
+def _remove_content_placeholder(root: ET.Element) -> None:
+    sp_tree = next(
+        element for element in root.iter() if element.tag.endswith("}spTree")
+    )
+    for shape in list(sp_tree):
+        placeholder = next(
+            (item for item in shape.iter() if item.tag.endswith("}ph")),
+            None,
+        )
+        if placeholder is not None and placeholder.get("idx") == "1":
+            sp_tree.remove(shape)
+            return
+    raise AssertionError("content placeholder is missing from the fixture")
+
+
+def _duplicate_layout_relationship(root: ET.Element) -> None:
+    relationship = next(
+        item
+        for item in root
+        if str(item.get("Type", "")).endswith("/slideLayout")
+    )
+    duplicate = ET.fromstring(ET.tostring(relationship, encoding="utf-8"))
+    duplicate.set("Id", "rId999")
+    root.append(duplicate)
 
 
 def _calibration() -> dict[str, object]:

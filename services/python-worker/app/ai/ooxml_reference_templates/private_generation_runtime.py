@@ -1122,10 +1122,11 @@ def _resolved_shape_transform_element(
             placeholder,
             prefer_type=relationship_suffix == "slideMaster",
         )
-        if inherited is not None and _shape_transform(inherited) is not None:
+        if inherited is None:
+            return None
+        if _shape_transform(inherited) is not None:
             return inherited
-        if inherited is not None:
-            placeholder = _placeholder_identity(inherited) or placeholder
+        placeholder = _placeholder_identity(inherited) or placeholder
     return None
 
 
@@ -1201,20 +1202,18 @@ def _related_package_part(
             "OOXML_REFERENCE_PACKAGE_VALIDATION_FAILED",
             "placeholder relationship metadata cannot be read",
         ) from error
-    relationship = next(
-        (
-            item
-            for item in root
-            if str(item.get("Type", "")).endswith(f"/{relationship_suffix}")
-            and item.get("TargetMode") != "External"
-        ),
-        None,
-    )
-    if relationship is None or not relationship.get("Target"):
+    relationships = [
+        item
+        for item in root
+        if str(item.get("Type", "")).endswith(f"/{relationship_suffix}")
+        and item.get("TargetMode") != "External"
+    ]
+    if len(relationships) != 1 or not relationships[0].get("Target"):
         raise PrivateGenerationRuntimeError(
             "OOXML_REFERENCE_PACKAGE_VALIDATION_FAILED",
             "placeholder relationship chain is incomplete",
         )
+    relationship = relationships[0]
     related_part = posixpath.normpath(
         posixpath.join(
             posixpath.dirname(current_part),
@@ -1312,22 +1311,20 @@ def _locked_relationship_snapshot(
                     "OOXML_REFERENCE_PACKAGE_VALIDATION_FAILED",
                     "locked relationship metadata cannot be read",
                 ) from error
-            relationship = next(
-                (
-                    item
-                    for item in root
-                    if str(item.get("Type", "")).endswith(
-                        f"/{relationship_suffix}"
-                    )
-                    and item.get("TargetMode") != "External"
-                ),
-                None,
-            )
-            if relationship is None or not relationship.get("Target"):
+            relationships = [
+                item
+                for item in root
+                if str(item.get("Type", "")).endswith(
+                    f"/{relationship_suffix}"
+                )
+                and item.get("TargetMode") != "External"
+            ]
+            if len(relationships) != 1 or not relationships[0].get("Target"):
                 raise PrivateGenerationRuntimeError(
                     "OOXML_REFERENCE_PACKAGE_VALIDATION_FAILED",
                     "locked relationship chain is incomplete",
                 )
+            relationship = relationships[0]
             current_part = posixpath.normpath(
                 posixpath.join(
                     posixpath.dirname(current_part),
