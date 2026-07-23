@@ -33,6 +33,7 @@ export class OrbitDiagnosticRecorder implements DiagnosticSink {
   private readonly monotonicNow: () => number;
   private readonly now: () => Date;
   private readonly writer: DiagnosticEventWriter;
+  private readonly textEncoder = new TextEncoder();
   private activeSession: DiagnosticSession | null = null;
   private recentEvents: OrbitDiagnosticEvent[] = [];
   private sequence = 0;
@@ -49,6 +50,10 @@ export class OrbitDiagnosticRecorder implements DiagnosticSink {
       options.monotonicNow ?? (() => globalThis.performance?.now() ?? Date.now());
     this.now = options.now ?? (() => new Date());
     this.writer = options.writer ?? noopWriter;
+    this.writer.subscribeWarnings?.((warning) => {
+      this.storageWarning = warning;
+      this.notify();
+    });
   }
 
   get mode(): DiagnosticMode {
@@ -73,6 +78,7 @@ export class OrbitDiagnosticRecorder implements DiagnosticSink {
       startedAt,
       endedAt: null,
       eventCount: 0,
+      estimatedBytes: 0,
       metadata: input.metadata ?? {}
     };
     this.activeSession = session;
@@ -154,6 +160,9 @@ export class OrbitDiagnosticRecorder implements DiagnosticSink {
       data: redactDiagnosticData(input.data ?? {}, session.mode)
     };
     session.eventCount = event.seq;
+    session.estimatedBytes += this.textEncoder.encode(
+      `${JSON.stringify(event)}\n`
+    ).byteLength;
     this.recentEvents.push(event);
     if (this.recentEvents.length > this.maxRecentEvents) {
       this.recentEvents.splice(

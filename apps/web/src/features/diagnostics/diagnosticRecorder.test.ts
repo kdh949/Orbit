@@ -49,6 +49,7 @@ describe("OrbitDiagnosticRecorder", () => {
     expect(writer.sessions[0]).toMatchObject({
       sessionId: "session_test",
       eventCount: 3,
+      estimatedBytes: expect.any(Number),
       endedAt: "2026-07-24T00:00:00.030Z"
     });
     expect(writer.flush).toHaveBeenCalledOnce();

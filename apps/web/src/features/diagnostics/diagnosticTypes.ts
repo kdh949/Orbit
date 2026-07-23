@@ -102,6 +102,7 @@ export type DiagnosticSession = {
   startedAt: string;
   endedAt: string | null;
   eventCount: number;
+  estimatedBytes: number;
   metadata: DiagnosticSessionMetadata;
 };
 
@@ -123,6 +124,7 @@ export type DiagnosticEventWriter = {
   finishSession: (session: DiagnosticSession) => void;
   flush: () => Promise<void>;
   startSession: (session: DiagnosticSession) => void;
+  subscribeWarnings?: (listener: (warning: string) => void) => () => void;
 };
 
 export type DiagnosticSink = {
