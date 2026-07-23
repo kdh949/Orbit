@@ -11,12 +11,17 @@
 - actual full-deck generation (8 slides): `passed`
 - generated package SHA-256: `096a6dfc2efc072ebf11d6788a2f2c3349d7812918b98825d24b5e16cadfb859`
 - generated full-deck OOXML ZIP/package validation: `passed` (warning 0)
-- Microsoft PowerPoint render/reopen: `not-run`
+- Microsoft PowerPoint render/reopen: `passed` (8 slides, PowerPoint 16.111)
+- PowerPoint render PDF SHA-256: `469d48784400d70e563ebf7de8bd6b80be9146409687dcf21e0e839ee2f41fc9`
 - generated full-deck LibreOffice render/reopen: `passed` (8 slides, LibreOffice 26.8.0.0)
 - generated render SHA-256: `ed61abfc169f7e79c44f8155b6b1b13e6fcfb18d21e246c9d7b3ee2020b7e79b`
 - generated montage SHA-256: `27f444a076ac429c7fdb60b318e68bb55ea94968ada27e19c926456fc4a7c045`
-- slot edit → sync/export/reopen: `not-run`
+- slot edit → sync/export/reopen: `passed` (warning 0, unsupported 0, text retained)
+- edited package SHA-256: `e264c8278c9b18d9f555d22a1d3048a55cce2724ffc8970fc190d26acb7317a4`
+- edited PowerPoint PDF SHA-256: `5335429a9f3ff449b7e801870368e98869f96e917e19a8ef200085d63d1147cb`
+- product materialization warning: `0`
 - fidelity artifact location: private QA artifact retained outside Git
 
-Blocker: production managed storage publication, actual PowerPoint render/reopen and this source의
-실제 slot edit → sync/export/reopen 검증이 남았다.
+Blocker: production managed storage, exact font checksum, full locked diff와 사람 calibration/UX
+승인이 남았다. 기존 drift fixture 대신 quality SHA-256과 일치한 deterministic reproduction을
+PowerPoint에서 검증했다.

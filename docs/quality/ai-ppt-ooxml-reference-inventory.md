@@ -31,9 +31,10 @@ nested OOXML preflight를 통과한 `.xlsx` 수다. `animations`는 slide의 `p:
 
 승인된 canonical manifest와 139개 preview의 checksum은 local QA private storage에서
 read-after-write로 검증됐다. 이 검증은 production managed storage를 대신하지 않는다.
-PowerPoint QA, embedded font resolve와 production private managed storage가 아직 검증되지
-않아 repository catalog의 7개 template은 모두 `disabled`다. 원본, font, render artifact와
-storage secret은 Git에 저장하지 않는다.
+Microsoft PowerPoint 16.111에서 7개 generated deck과 actual slot-edit/export deck의
+open/render/reopen은 별도로 검증했다. 그러나 embedded/exact font file checksum과 production
+private managed storage, full fidelity 사람 승인이 남아 repository catalog의 7개 template은
+모두 `disabled`다. 원본, font, render artifact와 storage secret은 Git에 저장하지 않는다.
 
 ## Security preflight
 

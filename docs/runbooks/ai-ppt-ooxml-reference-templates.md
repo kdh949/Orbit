@@ -35,6 +35,7 @@ template을 allowlist에 넣기 전에 다음 증거가 같은 exact version에 
 - full-deck package validation, PowerPoint와 LibreOffice 각각의 render/reopen
 - slot 편집 후 sync/export/reopen warning 0건
 - template별 fidelity report와 사람 검수 승인
+- private calibration artifact의 exact 7개 identity baseline, renderer/version, font checksum과 승인 threshold
 
 하나라도 없으면 catalog entry의 `enabled`를 유지하지 않고 allowlist에 추가하지 않는다.
 LibreOffice 결과는 Microsoft PowerPoint 승인을 대체하지 않는다.
@@ -115,9 +116,15 @@ rollback 뒤에도 이 경로를 smoke해 복구 가능성을 보존한다.
 
 ## 현재 승인 상태
 
-2026-07-22 기준 코드·fixture E2E와 actual-source 7개/139장 identity clone의 package
-validation 및 LibreOffice render/reopen은 통과했다. 그러나 private managed storage,
-승인 manifest/preview/license/font evidence, content-generated 7개 actual full-deck artifact와
-정식 Microsoft PowerPoint 사람 검수는 없다. 따라서 모든 catalog entry는 disabled이고
-제품 rollout은 승인 보류다. 상세 상태는
+2026-07-23 기준 source 사용 권리와 139장/253개 text-only slot annotation을 승인했고,
+local QA MinIO의 153개 private object checksum/ACL, actual-source identity clone 139장,
+content-generated 7개×8장 package/LibreOffice를 검증했다. Microsoft PowerPoint 16.111에서도
+7개 generated deck과 7개 actual slot edit/export deck을 각각 open, PDF render, close,
+reopen했고 repair/recovery 징후는 0건이었다. 이 증거는 LibreOffice 결과와 분리해 외부 QA
+artifact로 보관한다.
+
+그러나 local MinIO는 production private managed storage를 대체하지 않는다. 대상
+QA/운영 환경의 exact font file checksum, full locked diff/montage, 사람이 승인한 renderer별
+calibration threshold와 실제 flag-on vertical E2E가 남아 있다. 따라서 모든 repository
+catalog entry는 disabled이고 제품 rollout은 승인 보류다. 상세 상태는
 `docs/quality/ooxml-reference-template-reports/README.md`를 따른다.

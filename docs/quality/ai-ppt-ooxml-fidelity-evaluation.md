@@ -9,9 +9,16 @@ package warning 0, `python-pptx` reopen과 LibreOffice render checksum을 재현
 LibreOffice 56장 render를 통과했다. template별 checksum은
 `ooxml-reference-template-reports/`에 기록한다.
 
-Microsoft PowerPoint 결과, renderer가 실제 resolve한 font checksum과 renderer별 threshold
-근거는 아직 수집되지 않았다. 따라서 특정 SSIM 점수나 종합 점수를 승인 threshold로
-간주하지 않으며, Checkpoint B1/B2/C 및 제품 rollout을 통과로 표시하지 않는다.
+Microsoft PowerPoint 16.111에서 7개 generated 8장 deck과 7개 actual text-slot
+edit/export 결과를 각각 open, 8-page PDF render, close, reopen했고 repair/recovery 로그는
+0건이었다. LibreOffice 결과와 별도 artifact로 보관한다. 다만 renderer가 실제 resolve한
+전체 font checksum, source/generated locked overlay와 사람이 승인한 renderer별 threshold
+근거는 아직 완결되지 않았다. 따라서 특정 SSIM 점수나 종합 점수를 승인 threshold로
+간주하지 않으며 제품 rollout을 통과로 표시하지 않는다.
+
+실제 7개 package에서 발견된 DrawingML `a:rPr@spc`는 importer, shared rich-text schema,
+editor measure/render, sync와 export까지 보존하도록 구현했다. 같은 deterministic package의
+materialization warning은 7개 모두 0건으로 재검증했다.
 
 기존 `pptx_quality.py`의 일반 SSIM 기본값 `0.95`와 System Design Pack engineering score
 `85`는 이 모드의 승인 threshold가 아니다.
@@ -36,7 +43,7 @@ per-slide report는 최소한 다음을 기록한다.
 - `sourceSlideId`, mode, source/generated artifact checksum
 - intended slot mask checksum과 pixel count
 - whole-image SSIM과 locked-region SSIM
-- locked geometry/style/z-order drift count
+- locked geometry/style/z-order 및 layout/master/theme relationship drift count
 - package/relationship warning code
 
 whole-deck report는 slide 수, evaluated/missing count, minimum/average locked-region metric과
@@ -69,6 +76,10 @@ identity-control에서는 locked geometry exact match와 package warning 0건을
 
 PowerPoint와 LibreOffice 결과는 별도 renderer baseline으로 저장한다. LibreOffice 결과를
 PowerPoint QA로 대체하거나 두 renderer의 정상 차이를 하나의 threshold로 숨기지 않는다.
+
+runtime은 package의 explicit font family를 `fc-match`로 exact resolve하고 실제 font file
+checksum을 기록한다. 요청 family가 resolve된 family 집합에 없으면 substitution으로 보고
+render-validation을 fail-closed한다.
 
 artifact는 Git이 아닌 `/tmp` 또는 승인된 private QA storage에 다음 구조로 둔다.
 
@@ -104,16 +115,21 @@ threshold는 아래 7개 template/version의 no-op identity-control을 동일한
 report checksum, locked-region metric 분포와 structural gate 결과를 포함한다. 하나라도
 빠지면 threshold status는 `not-calibrated`, `applied=false`이고 전체 report는 `not-run`이다.
 
+활성 runtime은 private storage의 고정된 versioned calibration object를 시작 시 읽고 object
+metadata SHA-256과 strict schema를 검증한다. exact 7개 `templateId@1`, 하나의
+renderer/version, `geometryEdgeTolerancePx=0`, threshold와 승인 rationale가 없으면 runtime
+구성 자체가 실패한다. calibration locator는 report와 로그에 기록하지 않는다.
+
 7개 측정 후 calibration report는 renderer별 정상 변동, 선택한 tolerance, outlier와 그
 근거를 기록한다. 리뷰 없이 임의 숫자를 추가하거나 낮춰서 실패를 통과시키지 않는다.
 
 ## 승인 전 체크리스트
 
 - [x] 7개 identity-control package/LibreOffice baseline과 checksum이 재현됨
-- [ ] PowerPoint와 LibreOffice renderer별 결과가 분리됨
-- [x] known geometry/style/package drift fixture가 실패함
+- [x] PowerPoint와 LibreOffice renderer별 결과가 분리됨
+- [x] known geometry/style/relationship/package drift fixture가 실패함
 - [x] intended slot mask 밖 drift가 실패함
 - [ ] threshold와 tolerance 근거가 사람 검수됨
 
-PowerPoint와 threshold 항목이 남아 있으므로 전체 calibration은 `not-calibrated`,
-`applied=false`를 유지한다.
+exact font inventory, full locked diff artifact와 사람 threshold 승인이 남아 있으므로 전체
+calibration은 `not-calibrated`, `applied=false`를 유지한다.

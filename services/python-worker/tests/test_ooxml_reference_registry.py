@@ -336,7 +336,7 @@ def test_repository_catalog_is_strict_bounded_and_contains_no_private_locator() 
         and "SOURCE_SLIDE_ANNOTATION_MISSING" not in template.activation_blockers
         and "COVER_BODY_PREVIEW_BASELINE_MISSING"
         not in template.activation_blockers
-        and "POWERPOINT_QA_PENDING" in template.activation_blockers
+        and "POWERPOINT_QA_PENDING" not in template.activation_blockers
         and "FONT_AVAILABILITY_VALIDATION_PENDING" in template.activation_blockers
         and "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED"
         in template.activation_blockers
@@ -371,11 +371,14 @@ def test_repository_catalog_is_strict_bounded_and_contains_no_private_locator() 
         lambda value: value["templates"][0]["activationBlockers"].append(
             "SOURCE_AUTHORIZATION_PENDING"
         ),
+        lambda value: value["templates"][0]["activationBlockers"].append(
+            "POWERPOINT_QA_PENDING"
+        ),
         lambda value: value["templates"][0]["annotationReview"].update(
             {"slideCount": 1}
         ),
         lambda value: value["templates"][0]["activationBlockers"].remove(
-            "POWERPOINT_QA_PENDING"
+            "FONT_AVAILABILITY_VALIDATION_PENDING"
         ),
         lambda value: value["templates"][0]["preview"].update(
             {"coverPreviewSha256": None}
@@ -423,7 +426,7 @@ def test_ingestion_dry_run_reports_approved_inputs_without_enabling_catalog() ->
     assert report["privateManagedStorageConfigured"] is False
     assert "SOURCE_AUTHORIZATION_PENDING" not in report["blockerCodes"]
     assert "SOURCE_SLIDE_ANNOTATION_MISSING" not in report["blockerCodes"]
-    assert "POWERPOINT_QA_PENDING" in report["blockerCodes"]
+    assert "POWERPOINT_QA_PENDING" not in report["blockerCodes"]
     assert "FONT_AVAILABILITY_VALIDATION_PENDING" in report["blockerCodes"]
     assert all(
         template["status"] == "disabled" for template in report["templates"]

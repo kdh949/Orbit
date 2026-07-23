@@ -8,29 +8,33 @@ content-generated 8장 full-deck 7개는 package warning 0, `python-pptx` reopen
 LibreOffice PDF/PNG render를 통과했다. local QA private storage의 153개 current object도
 checksum과 private ACL을 검증했지만 production managed storage를 대신하지 않는다.
 
-| template                                          | version | slides | automated fixture | actual identity clone | actual full-deck | PowerPoint | rollout  |
-| ------------------------------------------------- | ------: | -----: | ----------------- | --------------------- | ---------------- | ---------- | -------- |
-| [`simple-light`](simple-light.md)                 |       1 |     26 | passed            | passed                | passed           | not-run    | disabled |
-| [`simple-dark`](simple-dark.md)                   |       1 |     26 | passed            | passed                | passed           | not-run    | disabled |
-| [`operating-review`](operating-review.md)         |       1 |     31 | passed            | passed                | passed           | not-run    | disabled |
-| [`business-review`](business-review.md)           |       1 |     14 | passed            | passed                | passed           | not-run    | disabled |
-| [`project-kickoff`](project-kickoff.md)           |       1 |     12 | passed            | passed                | passed           | not-run    | disabled |
-| [`team-alignment`](team-alignment.md)             |       1 |     24 | passed            | passed                | passed           | not-run    | disabled |
-| [`market-trends-report`](market-trends-report.md) |       1 |      6 | passed            | passed                | passed           | not-run    | disabled |
+| template                                          | version | slides | identity clone | actual full-deck | actual slot edit | PowerPoint | rollout  |
+| ------------------------------------------------- | ------: | -----: | -------------- | ---------------- | ---------------- | ---------- | -------- |
+| [`simple-light`](simple-light.md)                 |       1 |     26 | passed         | passed           | passed           | passed     | disabled |
+| [`simple-dark`](simple-dark.md)                   |       1 |     26 | passed         | passed           | passed           | passed     | disabled |
+| [`operating-review`](operating-review.md)         |       1 |     31 | passed         | passed           | passed           | passed     | disabled |
+| [`business-review`](business-review.md)           |       1 |     14 | passed         | passed           | passed           | passed     | disabled |
+| [`project-kickoff`](project-kickoff.md)           |       1 |     12 | passed         | passed           | passed           | passed     | disabled |
+| [`team-alignment`](team-alignment.md)             |       1 |     24 | passed         | passed           | passed           | passed     | disabled |
+| [`market-trends-report`](market-trends-report.md) |       1 |      6 | passed         | passed           | passed           | passed     | disabled |
 
 `actual full-deck`은 승인된 source와 manifest로 각 8장을 생성해 package, sequence,
-capacity, overflow/overlap/crop과 LibreOffice 렌더를 검증한 결과다. PowerPoint QA나 실제
-원본 slot edit 승인을 뜻하지 않으며 LibreOffice 결과로 PowerPoint 상태를 채우지 않는다.
+capacity, overflow/overlap/crop과 LibreOffice 렌더를 검증한 결과다. Microsoft PowerPoint
+16.111에서도 각 deck의 8장 open, PDF render, close, reopen을 별도로 통과했다.
+
+`actual slot edit`은 template별 승인 text slot 1개를 편집해 sync/export하고 Python importer,
+LibreOffice와 Microsoft PowerPoint에서 재개방한 결과다. 7개 모두 sync/OOXML package warning
+0, unsupported operation 0, 편집 문구 유지와 PowerPoint 8장 reopen을 확인했다. DrawingML
+letter spacing을 지원한 뒤 product materialization warning도 7개 모두 0건이다.
 
 `actual identity clone`은 exact source 전체 139장을 raw clone engine으로 다시 구성한
 결과다. 7개 모두 package warning 0, slide count 일치, `python-pptx` reopen과
 LibreOfficeDev 26.8.0.0.alpha0 PDF render를 통과했다. content plan/slot replacement를 거친
 product full-deck가 아니며 임시 artifact는 Git에 포함하지 않는다.
 
-PowerPoint 앱은 설치되어 있지만 현재 자동화 세션에서 PowerPoint가 직접 저장한 빈 PPTX도
-`open` 단계의 `-9074`로 실패했다. 따라서 7개 생성물의 PowerPoint render/reopen은
-`not-run`이고 Checkpoint C/D2도 승인하지 않는다. 승인 artifact는 Git에 커밋하지 않고
-private QA storage의
-`{templateId}/v{version}/...` 구조에 보관한다. report에는 artifact checksum과 renderer
-version만 기록하며 source path, raw XML/text, storage key, signed URL, font/image bytes를
-기록하지 않는다.
+PowerPoint 자동화는 input alias/output file spec을 application tell 밖에서 만들고 export
+완료를 기다리는 방식으로 실행했다. QA 구간의 repair/recovery/corrupt/font substitution 로그
+match는 0건이고 종료 후 열린 presentation도 0개다. 이 자동 검증은 full locked-region
+montage의 사람 승인, exact font checksum 또는 production managed storage를 대신하지 않는다.
+승인 artifact는 Git에 커밋하지 않고 private QA storage에 보관하며 report에는 checksum과
+renderer version만 기록한다.

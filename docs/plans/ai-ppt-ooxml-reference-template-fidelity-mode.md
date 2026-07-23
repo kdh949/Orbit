@@ -617,6 +617,11 @@ Checkpoint A의 정식 상태는 승인 보류다. repository catalog도 계속 
 - [ ] locked region geometry/style drift 0건
 - [ ] PowerPoint와 LibreOffice 재개방/render 성공
 
+2026-07-23 현재 actual-source 139장 clone의 package/LibreOffice와 generated 7개×8장의
+PowerPoint/LibreOffice reopen은 통과했다. 그러나 같은 identity-control clone의 PowerPoint
+render와 source/generated locked diff artifact 및 사람 검수가 한 묶음으로 완료되지 않아
+Checkpoint B1은 미통과다.
+
 #### Task 7: generated package를 Deck/TemplateBlueprint instance로 materialize
 
 **Description:** slot replacement 완료 package를 기존 OOXML importer로 변환하고 project baseline/current package, Deck, blueprint와 snapshot을 원자적으로 publication한다.
@@ -675,6 +680,11 @@ Checkpoint A의 정식 상태는 승인 보류다. repository catalog도 계속 
 - [ ] 최신 sync version 확인 후 `deck-export` 성공
 - [ ] slot locator와 decoration lock mapping이 재현되며 product rollout 전 Task 18의 API mutation gate가 필요한 범위를 report에 기록
 - [ ] spike report와 montage를 사람이 검수하고 7개 확장 여부를 승인
+
+2026-07-23 승인 text-only 범위에서는 7개 template별 실제 slot 1개를 편집해 sync/export,
+Python/LibreOffice/PowerPoint reopen을 수행했고 warning 0, unsupported 0과 편집 문구 유지를
+확인했다. source/generated/diff montage와 exact font 환경 및 사람 승인이 남아 Checkpoint B2는
+미통과다.
 
 ### Phase 2: content planning, structured slot과 7개 확장
 
@@ -817,6 +827,12 @@ Checkpoint A의 정식 상태는 승인 보류다. repository catalog도 계속 
 - [ ] text/image/table/chart supported fixture 통과
 - [ ] chart slot editor mutation의 targeted sync/reopen 통과
 - [ ] template별 source/generated/diff/montage/report 존재
+
+2026-07-23 7개 template의 deterministic 8장 package는 sequence, package,
+overflow/overlap/crop, LibreOffice 56장과 Microsoft PowerPoint 16.111 open/render/reopen을
+통과했다. 실제 7개 text-slot edit/export도 두 renderer에서 reopen했다. 다만 full locked
+source/generated/diff artifact, exact font checksum, private calibration threshold의 사람 승인과
+production managed storage가 없어 Checkpoint C는 미통과다.
 
 ### Phase 3: 별도 API/Job과 `/createdeck` 제품 연결
 
@@ -961,6 +977,10 @@ Checkpoint A의 정식 상태는 승인 보류다. repository catalog도 계속 
 - [ ] 선택한 exact template ID/version/checksum이 result snapshot과 일치한다.
 - [ ] 7개 중 한 template의 생성 preview와 editor transition이 E2E로 통과한다.
 
+content outline과 `slide-render` shard producer, bounded Python issue 전달은 실제 Worker 경로에
+연결했다. 현재 Playwright는 route-mocked UI 계약 증거이므로 actual API→queue→Python→atomic
+publication→editor transition을 증명하지 않아 Checkpoint D1은 미통과다.
+
 ### Phase 4: 제한 편집, sync/export와 rollout
 
 #### Task 18: slot-only editor policy를 Web과 API에서 강제
@@ -1054,6 +1074,11 @@ Checkpoint A의 정식 상태는 승인 보류다. repository catalog도 계속 
 - [ ] 기존 System Design Pack, PPTX import, OOXML sync/export regression 통과
 - [ ] flag off와 template allowlist rollback smoke 통과
 - [ ] 사람 검수: PowerPoint fidelity와 편집 제한 UX 승인
+
+실제 7개 text-slot edit→sync/export package는 PowerPoint 16.111과 LibreOffice reopen을
+통과했다. 그러나 production private managed storage, 승인 calibration/font artifact,
+real vertical E2E, full regression 재실행과 사람 fidelity/제한 편집 UX 승인이 남아
+Checkpoint D2는 미통과다.
 
 ## 9. 오류와 관찰 가능성
 

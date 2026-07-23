@@ -9,10 +9,12 @@ render artifact는 기록하지 않는다.
 
 이 승인은 source authorization과 text-only annotation 범위에 한정된다. 승인된 canonical
 manifest와 cover/body를 포함한 139개 preview checksum은 local QA private storage에서
-검증했지만 production managed storage를 대신하지 않는다. PowerPoint QA, embedded font
-resolve와 production publication은 아직 미검증이므로 repository의 7개 template은 모두
-`disabled`다. source/contract 자동 기준과 사람 승인은 충족했지만 §15의 production private
-managed storage가 없어 Checkpoint A도 정식 통과 처리하지 않는다.
+검증했지만 production managed storage를 대신하지 않는다. Microsoft PowerPoint 16.111의
+generated/slot-edit package open/render/reopen은 별도 통과했지만 embedded/exact font
+checksum과 production publication, full fidelity 사람 승인은 아직 미검증이므로
+repository의 7개 template은 모두 `disabled`다. source/contract 자동 기준과 사람 승인은
+충족했지만 §15의 production private managed storage가 없어 Checkpoint A도 정식 통과
+처리하지 않는다.
 
 원본 PPTX, 원문 XML, source filename/절대 경로, preview/render binary, font와 storage
 key는 Git·manifest·로그에 넣지 않는다. repository에는 승인 가능한 strict annotation과

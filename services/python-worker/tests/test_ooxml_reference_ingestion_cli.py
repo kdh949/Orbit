@@ -180,7 +180,6 @@ def _repository_catalog(tmp_path: Path, source: Path, manifest: object) -> Path:
                 },
                 "activationBlockers": [
                     "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED",
-                    "POWERPOINT_QA_PENDING",
                     "FONT_AVAILABILITY_VALIDATION_PENDING",
                 ],
             }

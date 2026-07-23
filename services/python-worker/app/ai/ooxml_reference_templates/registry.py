@@ -136,11 +136,12 @@ class RepositoryCatalogTemplate(_StrictCatalogModel):
 
         required_unverified_gates = {
             "PRIVATE_MANAGED_STORAGE_ADAPTER_UNCONFIGURED",
-            "POWERPOINT_QA_PENDING",
             "FONT_AVAILABILITY_VALIDATION_PENDING",
         }
         if not required_unverified_gates.issubset(blockers):
             raise ValueError("disabled catalog must retain every unverified gate")
+        if "POWERPOINT_QA_PENDING" in blockers:
+            raise ValueError("verified PowerPoint QA cannot retain pending blocker")
         return self
 
 
