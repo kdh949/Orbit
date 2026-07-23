@@ -1,4 +1,13 @@
-import type { Deck } from "@orbit/shared";
+import {
+  createMorphTransitionPlan,
+  interpolateMorphFrames,
+  type MorphTransitionPlan
+} from "@orbit/editor-core";
+import {
+  evaluateMorphTransitionSupport,
+  type Deck,
+  type Slide
+} from "@orbit/shared";
 import { useEffect, useRef, useState } from "react";
 import {
   getRenderableSlideElements,
@@ -13,6 +22,10 @@ import {
   ActivityAudienceRuntime,
   ActivityResultRuntime
 } from "../../activity-slides";
+import {
+  collectSlideAssetUrls,
+  getReadySlideImage
+} from "../../slides/rendering/slideImageCache";
 
 export type SlideshowRenderMode = "presenter" | "slide-window" | "single-screen";
 
@@ -122,8 +135,22 @@ function SlideshowRendererContent(props: {
     triggerAnimationIds
   });
   const frame = { settledElementStates, slide };
-  const crossFade = useDestinationCrossFade({ frame, reducedMotion });
+  const crossFade = useDestinationCrossFade({ deck, frame, reducedMotion });
   const opacities = getCrossFadeLayerOpacities(crossFade?.progress ?? 1);
+  const morphFrames =
+    crossFade?.kind === "morph"
+      ? interpolateMorphFrames(crossFade.plan, crossFade.progress)
+      : null;
+  const outgoingElementStates = crossFade
+    ? composeMorphGeometryStates(
+        crossFade.outgoing.settledElementStates,
+        morphFrames?.source
+      )
+    : {};
+  const incomingElementStates = composeMorphGeometryStates(
+    elementStates,
+    morphFrames?.destination
+  );
 
   return (
     <div
@@ -134,6 +161,7 @@ function SlideshowRendererContent(props: {
       data-slide-title={slide.title}
       data-step-index={stepIndex}
       data-transition-active={crossFade ? "true" : "false"}
+      data-transition-kind={crossFade?.kind ?? "none"}
       style={{
         height: deck.canvas.height * scale,
         overflow: "hidden",
@@ -150,7 +178,7 @@ function SlideshowRendererContent(props: {
         >
           <SlideFrame
             deck={deck}
-            elementStates={crossFade.outgoing.settledElementStates}
+            elementStates={outgoingElementStates}
             highlights={[]}
             scale={scale}
             slide={crossFade.outgoing.slide}
@@ -166,7 +194,7 @@ function SlideshowRendererContent(props: {
       >
         <SlideFrame
           deck={deck}
-          elementStates={elementStates}
+          elementStates={incomingElementStates}
           highlights={highlights}
           scale={scale}
           slide={slide}
@@ -181,29 +209,43 @@ type SlideshowCrossFadeFrame = {
   slide: Deck["slides"][number];
 };
 
-type SlideshowCrossFadeState = {
+type SlideshowCrossFadeStateBase = {
   destinationSlideId: string;
   outgoing: SlideshowCrossFadeFrame;
   progress: number;
 };
 
+type SlideshowCrossFadeState =
+  | (SlideshowCrossFadeStateBase & { kind: "fade" })
+  | (SlideshowCrossFadeStateBase & {
+      kind: "morph";
+      plan: MorphTransitionPlan;
+    });
+
 function useDestinationCrossFade(args: {
+  deck: Deck;
   frame: SlideshowCrossFadeFrame;
   reducedMotion: boolean;
-}) {
+}): SlideshowCrossFadeState | null {
   const previousFrameRef = useRef(args.frame);
   const frameRequestRef = useRef<number | null>(null);
+  const activeDestinationRef = useRef<string | null>(null);
   const [transition, setTransition] = useState<SlideshowCrossFadeState | null>(
     null
   );
   const previousFrame = previousFrameRef.current;
   const didChangeSlide =
     previousFrame.slide.slideId !== args.frame.slide.slideId;
-  const durationMs = getDestinationCrossFadeDurationMs({
-    hasPreviousSlide: true,
-    reducedMotion: args.reducedMotion,
-    slide: args.frame.slide
+  const transitionSpec = getDestinationTransitionSpec({
+    assetsReady:
+      areMorphSlideAssetsReady(args.deck, previousFrame.slide) &&
+      areMorphSlideAssetsReady(args.deck, args.frame.slide),
+    deck: args.deck,
+    destinationSlide: args.frame.slide,
+    outgoingSlide: previousFrame.slide,
+    reducedMotion: args.reducedMotion
   });
+  const durationMs = transitionSpec?.durationMs ?? 0;
 
   if (!didChangeSlide) {
     previousFrameRef.current = args.frame;
@@ -213,6 +255,7 @@ function useDestinationCrossFade(args: {
     const outgoing = previousFrameRef.current;
 
     if (outgoing.slide.slideId === args.frame.slide.slideId) {
+      activeDestinationRef.current = null;
       setTransition((current) =>
         current?.destinationSlideId === args.frame.slide.slideId
           ? null
@@ -223,20 +266,56 @@ function useDestinationCrossFade(args: {
 
     previousFrameRef.current = args.frame;
 
-    if (durationMs <= 0) {
+    if (
+      activeDestinationRef.current !== null &&
+      activeDestinationRef.current !== args.frame.slide.slideId
+    ) {
+      activeDestinationRef.current = null;
+      setTransition(null);
+      return;
+    }
+
+    const nextTransitionSpec = getDestinationTransitionSpec({
+      assetsReady:
+        areMorphSlideAssetsReady(args.deck, outgoing.slide) &&
+        areMorphSlideAssetsReady(args.deck, args.frame.slide),
+      deck: args.deck,
+      destinationSlide: args.frame.slide,
+      outgoingSlide: outgoing.slide,
+      reducedMotion: args.reducedMotion
+    });
+    if (!nextTransitionSpec) {
+      activeDestinationRef.current = null;
       setTransition(null);
       return;
     }
 
     const destinationSlideId = args.frame.slide.slideId;
     const startedAt = performance.now();
-    setTransition({ destinationSlideId, outgoing, progress: 0 });
+    activeDestinationRef.current = destinationSlideId;
+    setTransition(
+      nextTransitionSpec.kind === "morph"
+        ? {
+            destinationSlideId,
+            kind: "morph",
+            outgoing,
+            plan: nextTransitionSpec.plan,
+            progress: 0
+          }
+        : {
+            destinationSlideId,
+            kind: "fade",
+            outgoing,
+            progress: 0
+          }
+    );
 
     const tick = (now: number) => {
       const progress = Math.min(1, Math.max(0, (now - startedAt) / durationMs));
 
       if (progress >= 1) {
         frameRequestRef.current = null;
+        activeDestinationRef.current = null;
         setTransition((current) =>
           current?.destinationSlideId === destinationSlideId ? null : current
         );
@@ -259,7 +338,12 @@ function useDestinationCrossFade(args: {
         frameRequestRef.current = null;
       }
     };
-  }, [args.frame.slide.slideId, args.reducedMotion, durationMs]);
+  }, [
+    args.deck,
+    args.frame.slide.slideId,
+    args.reducedMotion,
+    durationMs
+  ]);
 
   if (
     transition?.destinationSlideId === args.frame.slide.slideId &&
@@ -268,13 +352,22 @@ function useDestinationCrossFade(args: {
     return transition;
   }
 
-  return didChangeSlide && durationMs > 0
-    ? {
-        destinationSlideId: args.frame.slide.slideId,
-        outgoing: previousFrame,
-        progress: 0
-      }
-    : null;
+  if (!didChangeSlide || !transitionSpec) return null;
+  if (transitionSpec.kind === "morph") {
+    return {
+      destinationSlideId: args.frame.slide.slideId,
+      kind: "morph",
+      outgoing: previousFrame,
+      plan: transitionSpec.plan,
+      progress: 0
+    };
+  }
+  return {
+    destinationSlideId: args.frame.slide.slideId,
+    kind: "fade",
+    outgoing: previousFrame,
+    progress: 0
+  };
 }
 
 export function getDestinationCrossFadeDurationMs(args: {
@@ -285,12 +378,63 @@ export function getDestinationCrossFadeDurationMs(args: {
   if (
     !args.hasPreviousSlide ||
     args.reducedMotion ||
-    args.slide.transition?.type !== "fade"
+    args.slide.transition === undefined
   ) {
     return 0;
   }
 
   return Math.max(0, args.slide.transition.durationMs);
+}
+
+type DestinationTransitionSpec =
+  | { durationMs: number; kind: "fade" }
+  | {
+      durationMs: number;
+      kind: "morph";
+      plan: MorphTransitionPlan;
+    };
+
+export function getDestinationTransitionSpec(args: {
+  assetsReady: boolean;
+  deck: Deck;
+  destinationSlide: Slide;
+  outgoingSlide: Slide;
+  reducedMotion: boolean;
+}): DestinationTransitionSpec | null {
+  const transition = args.destinationSlide.transition;
+  if (args.reducedMotion || !transition) return null;
+  const durationMs = Math.max(0, transition.durationMs);
+  if (durationMs === 0) return null;
+  if (transition.type === "fade") return { durationMs, kind: "fade" };
+
+  const orderedSlides = [...args.deck.slides].sort(
+    (left, right) => left.order - right.order
+  );
+  const destinationIndex = orderedSlides.findIndex(
+    (slide) => slide.slideId === args.destinationSlide.slideId
+  );
+  const previousSlide = orderedSlides[destinationIndex - 1];
+  const support = evaluateMorphTransitionSupport({
+    sourceType: args.deck.metadata.sourceType,
+    previousSlide,
+    destinationSlide: args.destinationSlide
+  });
+  if (
+    !support.supported ||
+    previousSlide?.slideId !== args.outgoingSlide.slideId ||
+    !args.assetsReady
+  ) {
+    return { durationMs, kind: "fade" };
+  }
+
+  return {
+    durationMs,
+    kind: "morph",
+    plan: createMorphTransitionPlan(
+      args.outgoingSlide,
+      args.destinationSlide
+    )
+  };
 }
 
 export function getCrossFadeLayerOpacities(progress: number) {
@@ -300,6 +444,33 @@ export function getCrossFadeLayerOpacities(progress: number) {
     incoming: normalizedProgress,
     outgoing: 1 - normalizedProgress
   };
+}
+
+export function composeMorphGeometryStates(
+  states: Record<string, ElementPresentationState>,
+  frames?: Record<
+    string,
+    Pick<
+      ElementPresentationState,
+      "x" | "y" | "width" | "height" | "rotation"
+    >
+  >
+): Record<string, ElementPresentationState> {
+  if (!frames) return states;
+  const composed = { ...states };
+  for (const [elementId, frame] of Object.entries(frames)) {
+    composed[elementId] = {
+      ...(states[elementId] ?? {}),
+      ...frame
+    };
+  }
+  return composed;
+}
+
+function areMorphSlideAssetsReady(deck: Deck, slide: Slide): boolean {
+  return collectSlideAssetUrls(deck, slide).every(
+    (src) => getReadySlideImage(deck.projectId, src) !== null
+  );
 }
 
 function createCrossFadeLayerStyle(opacity: number) {

@@ -7,8 +7,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { p0AnimationDeck } from "./__fixtures__/animationDeck";
 import {
+  composeMorphGeometryStates,
   getCrossFadeLayerOpacities,
   getDestinationCrossFadeDurationMs,
+  getDestinationTransitionSpec,
   SlideshowRenderer
 } from "./SlideshowRenderer";
 
@@ -190,6 +192,101 @@ describe("SlideshowRenderer", () => {
         slide: destinationSlide
       })
     ).toBe(0);
+  });
+
+  it("uses the destination morph duration", () => {
+    const destinationSlide = {
+      ...p0AnimationDeck.slides[1]!,
+      transition: {
+        type: "morph" as const,
+        durationMs: 1000,
+        mode: "object" as const
+      }
+    };
+
+    expect(
+      getDestinationCrossFadeDurationMs({
+        hasPreviousSlide: true,
+        reducedMotion: false,
+        slide: destinationSlide
+      })
+    ).toBe(1000);
+  });
+
+  it("creates a morph transition only for the immediate authored predecessor", () => {
+    const sourceSlide = p0AnimationDeck.slides[0]!;
+    const destinationSlide = {
+      ...p0AnimationDeck.slides[1]!,
+      transition: {
+        type: "morph" as const,
+        durationMs: 1000,
+        mode: "object" as const
+      },
+      elements: p0AnimationDeck.slides[1]!.elements.map((element, index) => ({
+        ...element,
+        morphKey: sourceSlide.elements[index]?.elementId
+      }))
+    };
+    const deck = {
+      ...p0AnimationDeck,
+      metadata: { ...p0AnimationDeck.metadata, sourceType: "manual" as const },
+      slides: [sourceSlide, destinationSlide]
+    };
+
+    expect(
+      getDestinationTransitionSpec({
+        assetsReady: true,
+        deck,
+        destinationSlide,
+        outgoingSlide: sourceSlide,
+        reducedMotion: false
+      })
+    ).toMatchObject({ kind: "morph", durationMs: 1000 });
+    expect(
+      getDestinationTransitionSpec({
+        assetsReady: false,
+        deck,
+        destinationSlide,
+        outgoingSlide: sourceSlide,
+        reducedMotion: false
+      })
+    ).toEqual({ kind: "fade", durationMs: 1000 });
+  });
+
+  it("composes morph geometry without overriding animation visibility", () => {
+    expect(
+      composeMorphGeometryStates(
+        {
+          el_target: {
+            opacity: 0.4,
+            scaleX: 0.5,
+            scaleY: 0.5,
+            visible: true
+          }
+        },
+        {
+          el_target: {
+            x: 10,
+            y: 20,
+            width: 300,
+            height: 200,
+            rotation: 15
+          }
+        }
+      )
+    ).toEqual({
+      el_target: {
+        opacity: 0.4,
+        scaleX: 0.5,
+        scaleY: 0.5,
+        visible: true,
+        x: 10,
+        y: 20,
+        width: 300,
+        height: 200,
+        rotation: 15
+      }
+    });
   });
 
   it("cross-fades outgoing and incoming layer opacity with bounded progress", () => {
