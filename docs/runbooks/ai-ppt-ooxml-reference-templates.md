@@ -139,3 +139,9 @@ catalog entry는 disabled이고 제품 rollout은 승인 보류다. 상세 상�
 resolved file SHA-256을 다시 생성하고 PowerPoint와 LibreOffice evidence를 별도로 재실행한다.
 현 fidelity manifest의 exact 38개와 substituted fallback 313개 checksum은 현재 renderer가 읽은
 파일 provenance이며 requested exact family 설치 완료를 뜻하지 않는다.
+
+2026-07-23 최종 회귀에서는 repository build 10/10, lint/test 17/17, Python pytest 1,034개,
+current-branch Python worker의 PostgreSQL PPTX round-trip 7개와 `/createdeck` Chrome Playwright
+2개를 통과했다. Playwright는 route-mocked product 계약이며 실제 API→queue→private
+publication vertical 증거가 아니다. running `orbit-*` Compose stack은 다른 worktree에서 시작된
+환경이므로 current-branch flag-on smoke로 재사용하지 않는다.

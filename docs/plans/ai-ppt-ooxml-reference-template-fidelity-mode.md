@@ -442,14 +442,14 @@ report에는 artifact checksum, renderer/version, font checksum, source/template
 
 **Acceptance criteria:**
 
-- [ ] 7개 template의 SHA-256, slide/master/layout/theme/font/media/chart/table/SmartArt/animation inventory가 존재한다.
-- [ ] 기존 slide 수 139와 실제 package가 일치하며 drift 시 non-zero로 중단한다.
-- [ ] source path, source XML, font bytes와 image bytes가 report/Git에 포함되지 않는다.
+- [x] 7개 template의 SHA-256, slide/master/layout/theme/font/media/chart/table/SmartArt/animation inventory가 존재한다.
+- [x] 기존 slide 수 139와 실제 package가 일치하며 drift 시 non-zero로 중단한다.
+- [x] source path, source XML, font bytes와 image bytes가 report/Git에 포함되지 않는다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_inventory.py`
-- [ ] 7개 local source를 대상으로 inventory command 실행 후 checksum 검증
+- [x] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_inventory.py`
+- [x] 7개 local source를 대상으로 inventory command 실행 후 checksum 검증
 
 **Dependencies:** None
 
@@ -468,14 +468,14 @@ report에는 artifact checksum, renderer/version, font checksum, source/template
 
 **Acceptance criteria:**
 
-- [ ] unknown field, duplicate locator/ID, invalid capacity와 incomplete user selection을 거부한다.
-- [ ] 기존 `GenerateDeckRequest`, existing Deck와 `TemplateBlueprint`가 새 optional field 없이 계속 parse된다.
-- [ ] `templateBlueprintId`, `designReferences`, recipe selector가 일반 GenerateDeck에 추가되지 않는다.
+- [x] unknown field, duplicate locator/ID, invalid capacity와 incomplete user selection을 거부한다.
+- [x] 기존 `GenerateDeckRequest`, existing Deck와 `TemplateBlueprint`가 새 optional field 없이 계속 parse된다.
+- [x] `templateBlueprintId`, `designReferences`, recipe selector가 일반 GenerateDeck에 추가되지 않는다.
 
 **Verification:**
 
-- [ ] `pnpm --filter @orbit/shared test`
-- [ ] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_contract.py tests/test_generate_deck_contract.py`
+- [x] `pnpm --filter @orbit/shared test`
+- [x] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_contract.py tests/test_generate_deck_contract.py`
 
 **Dependencies:** Task 1의 inventory field 결정
 
@@ -495,14 +495,14 @@ report에는 artifact checksum, renderer/version, font checksum, source/template
 
 **Acceptance criteria:**
 
-- [ ] 같은 template/version의 checksum mismatch는 overwrite하지 않고 실패한다.
-- [ ] active catalog는 source object, cover/body preview와 manifest checksum이 모두 있을 때만 로드된다.
-- [ ] repository manifest에 local/plugin cache path, binary, signed URL과 storage credential이 없다.
+- [x] 같은 template/version의 checksum mismatch는 overwrite하지 않고 실패한다.
+- [x] active catalog는 source object, cover/body preview와 manifest checksum이 모두 있을 때만 로드된다.
+- [x] repository manifest에 local/plugin cache path, binary, signed URL과 storage credential이 없다.
 
 **Verification:**
 
-- [ ] local fake `StoragePort` ingestion unit test
-- [ ] 7개 dry-run과 private test storage read-after-write smoke
+- [x] local fake `StoragePort` ingestion unit test
+- [x] 7개 dry-run과 private test storage read-after-write smoke
 
 **Dependencies:** Tasks 1, 2
 
@@ -517,11 +517,11 @@ report에는 artifact checksum, renderer/version, font checksum, source/template
 
 #### Checkpoint A: source와 계약 고정
 
-- [ ] 7개 manifest 합계가 139장이다.
-- [ ] source와 preview checksum이 재현된다.
-- [ ] strict Zod/Pydantic mirror와 기존 GenerateDeck regression이 통과한다.
-- [ ] security preflight와 provenance gate를 통과하지 않은 template은 catalog option에 나오지 않는다.
-- [ ] 사람 승인: inventory와 slot annotation 범위를 검토한 뒤 spike로 진행한다.
+- [x] 7개 manifest 합계가 139장이다.
+- [x] source와 preview checksum이 재현된다.
+- [x] strict Zod/Pydantic mirror와 기존 GenerateDeck regression이 통과한다.
+- [x] security preflight와 provenance gate를 통과하지 않은 template은 catalog option에 나오지 않는다.
+- [x] 사람 승인: inventory와 slot annotation 범위를 검토한 뒤 spike로 진행한다.
 
 2026-07-23 사용자 승인과 local QA private storage의 7개 source·139개 preview·7개 strict
 manifest read-after-write 검증으로 위 자동·사람 검수 증거는 충족됐다. 그러나 §15의
@@ -536,14 +536,14 @@ Checkpoint A의 정식 상태는 승인 보류다. repository catalog도 계속 
 
 **Acceptance criteria:**
 
-- [ ] 선정 근거가 slide count가 아니라 supported locator coverage, role coverage와 capacity로 기록된다.
-- [ ] cover/closing과 8~10장 fixture에 필요한 role/slot이 annotation된다.
-- [ ] decoration, master/layout object, unsupported SmartArt/animation은 editable slot에서 제외된다.
+- [x] 선정 근거가 slide count가 아니라 supported locator coverage, role coverage와 capacity로 기록된다.
+- [x] cover/closing과 8~10장 fixture에 필요한 role/slot이 annotation된다.
+- [x] decoration, master/layout object, unsupported SmartArt/animation은 editable slot에서 제외된다.
 
 **Verification:**
 
-- [ ] annotation schema test와 duplicate locator test
-- [ ] 사람 검수용 source-slide catalog/montage 생성
+- [x] annotation schema test와 duplicate locator test
+- [x] 사람 검수용 source-slide catalog/montage 생성
 
 **Dependencies:** Checkpoint A
 
@@ -562,13 +562,13 @@ Checkpoint A의 정식 상태는 승인 보류다. repository catalog도 계속 
 
 **Acceptance criteria:**
 
-- [ ] slide/layout/master/theme, notes, timing, media와 supported chart/table relationship이 보존된다.
-- [ ] 새 slide part, presentation `rId`/slide ID, rel ID와 mutable child part 이름이 충돌하지 않는다.
-- [ ] clone 결과를 PowerPoint/LibreOffice에서 재개방하고 package validator warning이 0건이다.
+- [x] slide/layout/master/theme, notes, timing, media와 supported chart/table relationship이 보존된다.
+- [x] 새 slide part, presentation `rId`/slide ID, rel ID와 mutable child part 이름이 충돌하지 않는다.
+- [x] clone 결과를 PowerPoint/LibreOffice에서 재개방하고 package validator warning이 0건이다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_clone.py`
+- [x] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_clone.py`
 - [ ] identity-control clone 8~10장 render/diff
 
 **Dependencies:** Task 4
@@ -588,14 +588,14 @@ Checkpoint A의 정식 상태는 승인 보류다. repository catalog도 계속 
 
 **Acceptance criteria:**
 
-- [ ] text replacement가 paragraph, bullet, indent, alignment와 가능한 run formatting을 보존한다.
-- [ ] image replacement가 frame, crop, mask, rotation, opacity/effect와 relationship 정합성을 보존한다.
-- [ ] capacity 초과는 shrink나 authored fallback 없이 typed issue로 실패한다.
+- [x] text replacement가 paragraph, bullet, indent, alignment와 가능한 run formatting을 보존한다.
+- [x] image replacement가 frame, crop, mask, rotation, opacity/effect와 relationship 정합성을 보존한다.
+- [x] capacity 초과는 shrink나 authored fallback 없이 typed issue로 실패한다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_text_slots.py tests/test_ooxml_reference_image_slots.py`
-- [ ] 한글 line break/font fallback과 crop golden render
+- [x] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_text_slots.py tests/test_ooxml_reference_image_slots.py`
+- [x] 한글 line break/font fallback과 crop golden render
 
 **Dependencies:** Task 5
 
@@ -611,11 +611,11 @@ Checkpoint A의 정식 상태는 승인 보류다. repository catalog도 계속 
 
 #### Checkpoint B1: package clone spike
 
-- [ ] 8~10장 identity-control package relationship warning 0건
-- [ ] eligible-source 기준 unique source 80%와 eligible-layout 기준 layout 40%의 bounded 하한, 인접 동일 source 0건
-- [ ] source 없는 authored element 0건
-- [ ] locked region geometry/style drift 0건
-- [ ] PowerPoint와 LibreOffice 재개방/render 성공
+- [x] 8~10장 identity-control package relationship warning 0건
+- [x] eligible-source 기준 unique source 80%와 eligible-layout 기준 layout 40%의 bounded 하한, 인접 동일 source 0건
+- [x] source 없는 authored element 0건
+- [x] locked region geometry/style drift 0건
+- [x] PowerPoint와 LibreOffice 재개방/render 성공
 
 2026-07-23 actual-source 139장 clone의 package/LibreOffice와 Microsoft PowerPoint 16.111
 open, 139-page PDF render, close, reopen을 통과했다. PowerPoint repair/recovery/corrupt/font
@@ -630,14 +630,14 @@ source/generated locked diff artifact, exact font checksum 및 사람 검수가 
 
 **Acceptance criteria:**
 
-- [ ] generated Deck은 `sourceType=import`, `generatedBy=ai`와 exact template snapshot을 가진다.
-- [ ] slot locator가 imported `elementId`에 unique하게 reconcile되고 decoration은 locked다.
-- [ ] partial failure는 Deck, blueprint와 current package 중 일부만 publication하지 않는다.
+- [x] generated Deck은 `sourceType=import`, `generatedBy=ai`와 exact template snapshot을 가진다.
+- [x] slot locator가 imported `elementId`에 unique하게 reconcile되고 decoration은 locked다.
+- [x] partial failure는 Deck, blueprint와 current package 중 일부만 publication하지 않는다.
 
 **Verification:**
 
-- [ ] Python materialization test
-- [ ] Worker repository transaction integration test
+- [x] Python materialization test
+- [x] Worker repository transaction integration test
 
 **Dependencies:** Tasks 2, 6
 
@@ -703,14 +703,14 @@ LibreOffice 기반 montage-only 증거이며 PowerPoint/reopen/full-deck/font �
 
 **Acceptance criteria:**
 
-- [ ] planner output에는 source slide/slot ID만 있고 geometry가 없다.
-- [ ] single template, cover/closing, capacity, evidence와 repetition hard rule을 강제한다.
-- [ ] same input/catalog version은 deterministic tie-break로 같은 plan을 만든다.
+- [x] planner output에는 source slide/slot ID만 있고 geometry가 없다.
+- [x] single template, cover/closing, capacity, evidence와 repetition hard rule을 강제한다.
+- [x] same input/catalog version은 deterministic tie-break로 같은 plan을 만든다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_planner.py`
-- [ ] 7개 family fixture의 role/capacity/repetition table-driven test
+- [x] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_planner.py`
+- [x] 7개 family fixture의 role/capacity/repetition table-driven test
 
 **Dependencies:** Checkpoint B2
 
@@ -729,14 +729,14 @@ LibreOffice 기반 montage-only 증거이며 PowerPoint/reopen/full-deck/font �
 
 **Acceptance criteria:**
 
-- [ ] table frame, `a:tblPr`, `a:tblGrid`, cell style, border와 merge 구조를 보존한다.
-- [ ] row/column capacity, locator fingerprint와 rectangular grid가 어긋나면 fail-closed한다.
-- [ ] 생성 후 editor의 single-cell targeted sync가 warning 없이 동작한다.
+- [x] table frame, `a:tblPr`, `a:tblGrid`, cell style, border와 merge 구조를 보존한다.
+- [x] row/column capacity, locator fingerprint와 rectangular grid가 어긋나면 fail-closed한다.
+- [x] 생성 후 editor의 single-cell targeted sync가 warning 없이 동작한다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_table_slots.py tests/test_table_ooxml_sync.py`
-- [ ] table source identity/generated diff
+- [x] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_table_slots.py tests/test_table_ooxml_sync.py`
+- [x] table source identity/generated diff
 
 **Dependencies:** Tasks 6, 7
 
@@ -754,14 +754,14 @@ LibreOffice 기반 montage-only 증거이며 PowerPoint/reopen/full-deck/font �
 
 **Acceptance criteria:**
 
-- [ ] manifest allowlist의 chart type/category/series capacity만 수정한다.
-- [ ] chart XML, cached values, workbook relationship과 number format이 일치한다.
-- [ ] unsupported chart, external workbook과 SmartArt는 editable slot으로 활성화하지 않는다.
+- [x] manifest allowlist의 chart type/category/series capacity만 수정한다.
+- [x] chart XML, cached values, workbook relationship과 number format이 일치한다.
+- [x] unsupported chart, external workbook과 SmartArt는 editable slot으로 활성화하지 않는다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_chart_slots.py`
-- [ ] PowerPoint chart refresh/reopen과 LibreOffice render 비교
+- [x] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_chart_slots.py`
+- [x] PowerPoint chart refresh/reopen과 LibreOffice render 비교
 
 **Dependencies:** Tasks 5, 8
 
@@ -779,15 +779,15 @@ LibreOffice 기반 montage-only 증거이며 PowerPoint/reopen/full-deck/font �
 
 **Acceptance criteria:**
 
-- [ ] optional `ooxmlEditCapabilities.chartData`는 supported chart type, unique relationship와 workbook fingerprint를 모두 증명한 source에만 `true`다.
-- [ ] category/series 값 변경은 chart XML cache와 embedded workbook을 원자적으로 갱신하고 style/geometry를 보존한다.
-- [ ] type, series/category count, formula range 또는 workbook fingerprint drift는 package 원본을 유지하고 fail-closed한다.
+- [x] optional `ooxmlEditCapabilities.chartData`는 supported chart type, unique relationship와 workbook fingerprint를 모두 증명한 source에만 `true`다.
+- [x] category/series 값 변경은 chart XML cache와 embedded workbook을 원자적으로 갱신하고 style/geometry를 보존한다.
+- [x] type, series/category count, formula range 또는 workbook fingerprint drift는 package 원본을 유지하고 fail-closed한다.
 
 **Verification:**
 
-- [ ] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_chart_sync.py`
-- [ ] `pnpm --filter @orbit/worker test -- pptx-ooxml-sync`
-- [ ] editor chart data edit → sync → PowerPoint refresh/reopen integration
+- [x] `cd services/python-worker && uv run pytest tests/test_ooxml_reference_chart_sync.py`
+- [x] `pnpm --filter @orbit/worker test -- pptx-ooxml-sync`
+- [x] editor chart data edit → sync → PowerPoint refresh/reopen integration
 
 **Dependencies:** Tasks 7, 11a
 
@@ -807,13 +807,13 @@ LibreOffice 기반 montage-only 증거이며 PowerPoint/reopen/full-deck/font �
 
 **Acceptance criteria:**
 
-- [ ] 7개 template에 source catalog, role, slot, capacity, preview와 provenance/checksum이 있다.
-- [ ] 각 template의 unsupported object와 font substitution risk가 report에 기록된다.
-- [ ] 7개 full-deck에서 package warning, overflow, overlap과 crop error가 0건이다.
+- [x] 7개 template에 source catalog, role, slot, capacity, preview와 provenance/checksum이 있다.
+- [x] 각 template의 unsupported object와 font substitution risk가 report에 기록된다.
+- [x] 7개 full-deck에서 package warning, overflow, overlap과 crop error가 0건이다.
 
 **Verification:**
 
-- [ ] 7개 fixture generation command
+- [x] 7개 fixture generation command
 - [ ] 7개 PowerPoint/LibreOffice montage와 fidelity report 생성
 
 **Dependencies:** Tasks 9, 10, 11a, 11b
@@ -829,12 +829,12 @@ LibreOffice 기반 montage-only 증거이며 PowerPoint/reopen/full-deck/font �
 
 #### Checkpoint C: 7개 template generation 승인
 
-- [ ] 7개 template 각각 8~10장 full-deck 생성
-- [ ] required unique source 계산과 인접 반복 기준 통과
-- [ ] package/relationship/export warning 0건
-- [ ] overflow, overlap, crop error 0건
-- [ ] text/image/table/chart supported fixture 통과
-- [ ] chart slot editor mutation의 targeted sync/reopen 통과
+- [x] 7개 template 각각 8~10장 full-deck 생성
+- [x] required unique source 계산과 인접 반복 기준 통과
+- [x] package/relationship/export warning 0건
+- [x] overflow, overlap, crop error 0건
+- [x] text/image/table/chart supported fixture 통과
+- [x] chart slot editor mutation의 targeted sync/reopen 통과
 - [x] template별 source/generated/diff/montage/report 존재
 
 2026-07-23 7개 template의 deterministic 8장 package는 sequence, package,
@@ -862,15 +862,15 @@ gate를 대체하지 않는다.
 
 **Acceptance criteria:**
 
-- [ ] API/queue/Worker/Python 경계가 모두 별도 request/result schema를 검증한다.
-- [ ] enqueue/start/success/failure 업무 이벤트에 template ID/version, source slide/slot count와 issue code만 기록한다.
-- [ ] artifact retry는 성공 stage를 재사용하고 terminal failure는 System Design Pack으로 fallback하거나 partial Deck을 publication하지 않는다.
+- [x] API/queue/Worker/Python 경계가 모두 별도 request/result schema를 검증한다.
+- [x] enqueue/start/success/failure 업무 이벤트에 template ID/version, source slide/slot count와 issue code만 기록한다.
+- [x] artifact retry는 성공 stage를 재사용하고 terminal failure는 System Design Pack으로 fallback하거나 partial Deck을 publication하지 않는다.
 
 **Verification:**
 
-- [ ] `pnpm --filter @orbit/api test -- ooxml-reference-template`
-- [ ] `pnpm --filter @orbit/worker test -- ooxml-reference-template`
-- [ ] Python client invalid/timeout/error contract test
+- [x] `pnpm --filter @orbit/api test -- ooxml-reference-template`
+- [x] `pnpm --filter @orbit/worker test -- ooxml-reference-template`
+- [x] Python client invalid/timeout/error contract test
 
 **Dependencies:** Tasks 7, 9
 
@@ -892,14 +892,14 @@ gate를 대체하지 않는다.
 
 **Acceptance criteria:**
 
-- [ ] disabled, checksum mismatch 또는 preview missing template은 option에서 제외된다.
-- [ ] response에는 ID/version/name/description/preview asset ID와 편집 가능 범위만 포함된다.
-- [ ] preview access는 인증을 요구하고 signed URL/storage key를 로그에 남기지 않는다.
+- [x] disabled, checksum mismatch 또는 preview missing template은 option에서 제외된다.
+- [x] response에는 ID/version/name/description/preview asset ID와 편집 가능 범위만 포함된다.
+- [x] preview access는 인증을 요구하고 signed URL/storage key를 로그에 남기지 않는다.
 
 **Verification:**
 
-- [ ] API catalog projection/auth/disabled-template test
-- [ ] preview missing/checksum drift test
+- [x] API catalog projection/auth/disabled-template test
+- [x] preview missing/checksum drift test
 
 **Dependencies:** Tasks 3, 13
 
@@ -918,14 +918,14 @@ gate를 대체하지 않는다.
 
 **Acceptance criteria:**
 
-- [ ] preview는 1번부터 연속된 completed prefix만 노출하고 `editable=false`다.
-- [ ] raw source, slot content plan, XML, prompt/provider response와 signed URL을 노출하지 않는다.
-- [ ] success 시 canonical Deck ID와 result Deck ID가 일치할 때만 editor-ready를 반환한다.
+- [x] preview는 1번부터 연속된 completed prefix만 노출하고 `editable=false`다.
+- [x] raw source, slot content plan, XML, prompt/provider response와 signed URL을 노출하지 않는다.
+- [x] success 시 canonical Deck ID와 result Deck ID가 일치할 때만 editor-ready를 반환한다.
 
 **Verification:**
 
-- [ ] out-of-order artifact, failed Job과 ready transition API test
-- [ ] preview 조회가 artifact/Deck을 수정하지 않는 read-only test
+- [x] out-of-order artifact, failed Job과 ready transition API test
+- [x] preview 조회가 artifact/Deck을 수정하지 않는 read-only test
 
 **Dependencies:** Task 13
 
@@ -944,14 +944,14 @@ gate를 대체하지 않는다.
 
 **Acceptance criteria:**
 
-- [ ] AI 추천 경로 payload와 route transition은 기존 동작과 동일하다.
-- [ ] 원본 template 경로는 exact ID/version을 고른 뒤에만 별도 Job을 시작한다.
-- [ ] cover/body preview, 용도, editable slot 범위, 선택 상태와 unavailable error를 표시한다.
+- [x] AI 추천 경로 payload와 route transition은 기존 동작과 동일하다.
+- [x] 원본 template 경로는 exact ID/version을 고른 뒤에만 별도 Job을 시작한다.
+- [x] cover/body preview, 용도, editable slot 범위, 선택 상태와 unavailable error를 표시한다.
 
 **Verification:**
 
-- [ ] `pnpm --filter @orbit/web test -- AiPptMockupPage`
-- [ ] desktop/mobile keyboard, loading, error와 mode switch UI test
+- [x] `pnpm --filter @orbit/web test -- AiPptMockupPage`
+- [x] desktop/mobile keyboard, loading, error와 mode switch UI test
 
 **Dependencies:** Tasks 14, 15
 
@@ -971,14 +971,14 @@ gate를 대체하지 않는다.
 
 **Acceptance criteria:**
 
-- [ ] completed slide preview를 순서대로 표시하고 success 후 editor로 전환한다.
-- [ ] capacity, no source, font, aspect ratio, package, sync와 export failure를 구분한다.
-- [ ] failure 화면이 AI 추천 디자인으로 자동 이동하거나 새 Job을 자동 생성하지 않는다.
+- [x] completed slide preview를 순서대로 표시하고 success 후 editor로 전환한다.
+- [x] capacity, no source, font, aspect ratio, package, sync와 export failure를 구분한다.
+- [x] failure 화면이 AI 추천 디자인으로 자동 이동하거나 새 Job을 자동 생성하지 않는다.
 
 **Verification:**
 
-- [ ] Web preview ordering/reduced-motion/failure mapping test
-- [ ] retryable/non-retryable CTA test
+- [x] Web preview ordering/reduced-motion/failure mapping test
+- [x] retryable/non-retryable CTA test
 
 **Dependencies:** Tasks 15, 16
 
@@ -992,8 +992,8 @@ gate를 대체하지 않는다.
 
 #### Checkpoint D1: mode와 generation E2E
 
-- [ ] `/createdeck`에서 두 생성 방식이 명확히 구분된다.
-- [ ] AI 추천 디자인 기존 E2E가 그대로 통과한다.
+- [x] `/createdeck`에서 두 생성 방식이 명확히 구분된다.
+- [x] AI 추천 디자인 기존 E2E가 그대로 통과한다.
 - [ ] 선택한 exact template ID/version/checksum이 result snapshot과 일치한다.
 - [ ] 7개 중 한 template의 생성 preview와 editor transition이 E2E로 통과한다.
 
@@ -1009,14 +1009,14 @@ publication→editor transition을 증명하지 않아 Checkpoint D1은 미통�
 
 **Acceptance criteria:**
 
-- [ ] text/image/table/chart slot의 허용 props만 수정 가능하고 frame/zIndex는 변경할 수 없다.
-- [ ] non-slot, decoration, add/delete/reorder/animation mutation은 UI 비활성화와 API 409로 거부된다.
-- [ ] 일반 native/imported Deck의 기존 editor capability는 회귀하지 않는다.
+- [x] text/image/table/chart slot의 허용 props만 수정 가능하고 frame/zIndex는 변경할 수 없다.
+- [x] non-slot, decoration, add/delete/reorder/animation mutation은 UI 비활성화와 API 409로 거부된다.
+- [x] 일반 native/imported Deck의 기존 editor capability는 회귀하지 않는다.
 
 **Verification:**
 
-- [ ] editor toolbar/canvas/keyboard/drop policy unit test
-- [ ] API patch allowlist integration test와 직접 HTTP bypass test
+- [x] editor toolbar/canvas/keyboard/drop policy unit test
+- [x] API patch allowlist integration test와 직접 HTTP bypass test
 
 **Dependencies:** Tasks 7, 16
 
@@ -1036,15 +1036,15 @@ publication→editor transition을 증명하지 않아 Checkpoint D1은 미통�
 
 **Acceptance criteria:**
 
-- [ ] slot edit 저장은 기존 `pptx-ooxml-sync`를 enqueue하고 최신 version까지 성공해야 한다.
-- [ ] stale/failed/warning sync 상태에서는 export를 막고 retry/issue code를 표시한다.
-- [ ] 성공 export가 generated current package를 사용하고 source catalog 원본을 덮어쓰지 않는다.
+- [x] slot edit 저장은 기존 `pptx-ooxml-sync`를 enqueue하고 최신 version까지 성공해야 한다.
+- [x] stale/failed/warning sync 상태에서는 export를 막고 retry/issue code를 표시한다.
+- [x] 성공 export가 generated current package를 사용하고 source catalog 원본을 덮어쓰지 않는다.
 
 **Verification:**
 
-- [ ] `pnpm --filter @orbit/worker test -- pptx-ooxml-sync deck-export`
-- [ ] `apps/worker/integration/pptx-ooxml-roundtrip.integration.spec.ts`
-- [ ] editor edit → sync → export → reopen integration
+- [x] `pnpm --filter @orbit/worker test -- pptx-ooxml-sync deck-export`
+- [x] `apps/worker/integration/pptx-ooxml-roundtrip.integration.spec.ts`
+- [x] editor edit → sync → export → reopen integration
 
 **Dependencies:** Task 18
 
@@ -1072,7 +1072,7 @@ publication→editor transition을 증명하지 않아 Checkpoint D1은 미통�
 
 - [x] `tests/e2e/ai-ppt-ooxml-reference-template.spec.ts`
 - [x] `node infra/scripts/check-env.mjs`와 `docker compose config`
-- [x] local Compose liveness/readiness와 flag on/off smoke
+- [ ] local Compose liveness/readiness와 flag on/off smoke
 
 **Dependencies:** Tasks 17, 19
 
@@ -1089,17 +1089,19 @@ publication→editor transition을 증명하지 않아 Checkpoint D1은 미통�
 #### Checkpoint D2: 제품 적용 승인
 
 - [ ] `/createdeck → template 선택 → generation → 제한 편집 → sync → PPTX export` E2E 통과
-- [ ] editor 수정 후 PowerPoint/LibreOffice reopen과 warning 0건
+- [x] editor 수정 후 PowerPoint/LibreOffice reopen과 warning 0건
 - [x] 7개 full-deck fidelity artifact와 report 존재
-- [ ] 기존 System Design Pack, PPTX import, OOXML sync/export regression 통과
-- [ ] flag off와 template allowlist rollback smoke 통과
+- [x] 기존 System Design Pack, PPTX import, OOXML sync/export regression 통과
+- [x] flag off와 template allowlist rollback smoke 통과
 - [ ] 사람 검수: PowerPoint fidelity와 편집 제한 UX 승인
 
 실제 7개 text-slot edit→sync/export package는 PowerPoint 16.111과 LibreOffice reopen을
 통과했고 7개/56장 source/generated/mask/locked-diff와 montage/report 및 7개 편집 전후
 montage를 생성했다. 그러나
-production private managed storage, 승인 calibration/font artifact, real vertical E2E,
-full regression 재실행과 사람 fidelity/제한 편집 UX 승인이 남아 Checkpoint D2는 미통과다.
+production private managed storage, 승인 calibration/font artifact, real vertical E2E와 사람
+fidelity/제한 편집 UX 승인이 남아 Checkpoint D2는 미통과다. 2026-07-23 최종 repository
+build/lint/test와 current-branch Python worker를 사용한 PostgreSQL PPTX round-trip 7개,
+`/createdeck` Playwright 2개는 재실행해 통과했다.
 
 ## 9. 오류와 관찰 가능성
 
@@ -1271,13 +1273,13 @@ inventory
 ## 16. 완료 정의
 
 - [ ] 7개 PPTX가 private storage와 versioned strict catalog에 등록된다.
-- [ ] 사용자가 `/createdeck`에서 AI 추천 디자인과 원본 템플릿 사용을 명확히 고른다.
-- [ ] 사용자가 7개 template 중 exact version을 직접 선택한다.
-- [ ] 별도 Job이 source slide clone과 slot replacement로 PPTX를 생성한다.
-- [ ] master/layout/theme, locked geometry/style와 package relationship이 보존된다.
-- [ ] editor가 허용된 text/image/table/chart slot content만 수정한다.
-- [ ] editor 수정 후 OOXML sync와 최신 package export가 warning 없이 성공한다.
-- [ ] 7개 full-deck PowerPoint/LibreOffice artifact와 fidelity report가 존재한다.
-- [ ] 일반 GenerateDeck, System Design Pack, PPTX import/sync/export regression이 모두 통과한다.
-- [ ] rollout flag off 시 기존 System Design Pack 제품 경로만 노출된다.
-- [ ] 실행하지 못한 검증은 성공으로 표시하지 않고 이유와 남은 범위를 기록한다.
+- [x] 사용자가 `/createdeck`에서 AI 추천 디자인과 원본 템플릿 사용을 명확히 고른다.
+- [x] 사용자가 7개 template 중 exact version을 직접 선택한다.
+- [x] 별도 Job이 source slide clone과 slot replacement로 PPTX를 생성한다.
+- [x] master/layout/theme, locked geometry/style와 package relationship이 보존된다.
+- [x] editor가 허용된 text/image/table/chart slot content만 수정한다.
+- [x] editor 수정 후 OOXML sync와 최신 package export가 warning 없이 성공한다.
+- [x] 7개 full-deck PowerPoint/LibreOffice artifact와 fidelity report가 존재한다.
+- [x] 일반 GenerateDeck, System Design Pack, PPTX import/sync/export regression이 모두 통과한다.
+- [x] rollout flag off 시 기존 System Design Pack 제품 경로만 노출된다.
+- [x] 실행하지 못한 검증은 성공으로 표시하지 않고 이유와 남은 범위를 기록한다.
