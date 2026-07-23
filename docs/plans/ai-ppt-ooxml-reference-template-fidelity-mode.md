@@ -1156,8 +1156,13 @@ publication→editor transition을 증명하지 않아 Checkpoint D1은 미통�
 allowlist를 off/on 모두 같은 값으로 받는 것을 확인했다. current branch image를 사용하는
 격리 Compose project의 flag-off 상태에서는 API/Python health, API PostgreSQL/Redis/MinIO
 readiness, `/createdeck` HTTP 200과 세 service의 `enabled=false`를 확인했다. flag-on은 구성
-전달만 검증했으며 승인 calibration object가 없어 실제 API→queue→publication vertical은
-실행하지 않았다.
+전달에 이어 기존 QA stack을 건드리지 않는 보조 포트에서 API readiness와
+`enabled=true`를 확인했다. Python runtime은 승인 calibration object 부재를
+`OOXML_REFERENCE_FIDELITY_CALIBRATION_UNAVAILABLE`로 감지해 startup fail-closed했고 인증
+catalog도 `503`으로 닫혔다. 보조 API 종료 후 원래 API readiness와 `enabled=false` 복귀를
+확인했다. 증거는
+`/private/tmp/orbit-ooxml-flag-on-fail-closed-smoke-20260723`에 있다. 성공 generation을
+실행하지 않았으므로 flag-on API→queue→publication vertical과 이 checklist는 미통과다.
 
 route interception과 synthetic checksum을 사용하지 않는 opt-in spec
 `tests/e2e/ai-ppt-ooxml-reference-template.real.spec.ts`도 추가했다. actual catalog와 exact

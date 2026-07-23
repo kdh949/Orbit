@@ -212,3 +212,10 @@ Playwright는 실제 API→queue→private publication vertical 증거가 아니
 `tests/e2e/ai-ppt-ooxml-reference-template.real.spec.ts`에 추가했지만 승인 calibration
 object가 없어 실주행하지 않았다. current branch image로 격리한 Compose flag-off stack의
 health/readiness와 `/createdeck` HTTP 200은 확인했지만 flag-on smoke로 승격하지 않는다.
+
+별도 flag-on fail-closed/rollback 증거는
+`/private/tmp/orbit-ooxml-flag-on-fail-closed-smoke-20260723`에 있다. 보조 API는
+readiness와 `enabled=true`를 반환했으나 보조 Python runtime은 calibration 부재를
+`OOXML_REFERENCE_FIDELITY_CALIBRATION_UNAVAILABLE`로 차단했고 catalog는 `503`을 반환했다.
+보조 프로세스 종료 후 원래 API readiness와 `enabled=false`를 다시 확인했다. 이 결과는
+안전한 차단과 rollback만 입증하며 flag-on 성공 generation으로 해석하지 않는다.
