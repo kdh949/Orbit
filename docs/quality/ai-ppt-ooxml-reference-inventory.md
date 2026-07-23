@@ -29,14 +29,19 @@ nested OOXML preflight를 통과한 `.xlsx` 수다. `animations`는 slide의 `p:
 253개도 승인했으며 template별 검토 checksum은
 `ooxml-reference-slot-annotation.md`와 repository catalog에 기록한다.
 
-승인된 canonical manifest와 139개 preview의 checksum은 local QA private storage에서
-read-after-write로 검증됐다. 이 검증은 production managed storage를 대신하지 않는다.
+승인된 source 7개와 preview 139개의 checksum은 local QA private storage에서
+146/146 read-after-write로 검증됐고 anonymous HTTP 접근은 `403`이었다. strict manifest는
+local QA bucket에 publication하지 않았으므로 이 검증은 manifest activation이나 production
+managed storage를 대신하지 않는다.
 승인 전 검수 snapshot은 `/private/tmp/orbit-ooxml-private-catalog-review-9e2wd3pb`에
-보존하고, 승인 후 상태 결정은
-`/private/tmp/orbit-ooxml-private-catalog-decision-3TH9mcuh/approval-decision.json`
-(`SHA-256 2aa4c0d02c181cf22a9e4d0e609c5845f80fdc673783f9cb736463fc4803d707`)에
-별도로 기록했다. local QA strict manifest 7개는 `active`/`approved`지만 production
-publication 증거가 아니므로 repository와 production rollout 상태는 계속 `disabled`다.
+보존하고, 현재 승인 후 상태 결정은
+`/private/tmp/orbit-ooxml-private-catalog-decision-disabled-20260723/approval-decision.json`
+(`SHA-256 e30b9f5bbe9046b00c5f535f1b8ec3bf8dd8c6d8b50c539359f81dc0fa2cc0ad`)에
+별도로 기록했다. 이 artifact는 strict manifest 7개를 active로 잘못 기록한 이전 결정을
+supersede한다. 승인 정보는 repository catalog의
+`provenance.authorizationStatus=approved`와 `annotationReview.status=approved`에 반영했지만
+strict catalog status는 7개 모두 `disabled`다. production publication 증거가 아니므로
+production rollout도 계속 `disabled`다.
 Microsoft PowerPoint 16.111에서 7개 generated deck과 actual slot-edit/export deck의
 open/render/reopen은 별도로 검증했다. 그러나 embedded/exact font file checksum과 production
 private managed storage, full fidelity 사람 승인이 남아 repository catalog의 7개 template은

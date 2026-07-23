@@ -523,10 +523,12 @@ report에는 artifact checksum, renderer/version, font checksum, source/template
 - [x] security preflight와 provenance gate를 통과하지 않은 template은 catalog option에 나오지 않는다.
 - [x] 사람 승인: inventory와 slot annotation 범위를 검토한 뒤 spike로 진행한다.
 
-2026-07-23 사용자 승인과 local QA private storage의 7개 source·139개 preview·7개 strict
-manifest read-after-write 검증으로 위 자동·사람 검수 증거는 충족됐다. 그러나 §15의
-production private managed storage가 준비되지 않았고 local MinIO는 이를 대체하지 않으므로
-Checkpoint A의 정식 상태는 승인 보류다. repository catalog도 계속 disabled다.
+2026-07-23 사용자 승인과 local QA private storage의 7개 source·139개 preview
+read-after-write 검증으로 inventory·annotation 검수 증거는 충족됐다. strict manifest는
+게시하지 않았고 repository catalog도 계속 disabled다. 현재 결정은
+`/private/tmp/orbit-ooxml-private-catalog-decision-disabled-20260723`에 기록했으며, strict
+manifest를 active로 잘못 기록한 이전 decision artifact를 supersede한다. §15의 production
+private managed storage도 준비되지 않았으므로 Checkpoint A의 정식 상태는 승인 보류다.
 
 ### Phase 1: 한 개 PPTX vertical spike
 
@@ -671,6 +673,13 @@ source/generated locked diff artifact, exact font checksum 및 사람 검수가 
 - [x] known drift fixture가 geometry/style/package failure를 재현한다.
 - [x] no-op identity fixture가 locked-region gate를 통과한다.
 
+2026-07-23 승인/disabled canonical manifest를 사용한 LibreOffice 26.8 identity candidate를
+`/private/tmp/orbit-ooxml-identity-calibration-candidate-20260723-b`에 생성했다. 7개/139장의
+locked-region SSIM은 모두 1.0이고 changed pixel, structural drift와 package warning은 0이며
+461개 checksum이 일치한다. exact 38/substituted 313으로 font gate가 남아 candidate는
+`runtimeEligible=false`, proposed threshold는 `null`이다. 따라서 측정 증거는 확보했지만
+threshold 선택 근거의 exact-font 재측정과 사람 승인이 없어 acceptance checkbox는 미완료다.
+
 **Dependencies:** Tasks 5, 6, 7
 
 **Files likely touched:**
@@ -700,6 +709,18 @@ LibreOffice 기반 montage-only 증거이며 PowerPoint/reopen/full-deck/font �
 
 첫 항목은 승인 범위의 actual text slot 7개는 충족했지만 actual image slot annotation이 승인되지
 않았으므로 완료로 표시하지 않는다. image replacement는 synthetic fixture 범위에서만 통과했다.
+
+같은 승인 범위를 253개 text slot 전수로 확장한 수정 전 matrix
+`/private/tmp/orbit-ooxml-actual-text-slot-matrix-20260723-ew36f6m1`에서는 generic sync가
+`bodyPr`에 overflow/wrap 기본값을 강제해 253/253 drift가 발생했다. reference 전용 sync가
+원본 `bodyPr`를 보존하도록 수정한 뒤
+`/private/tmp/orbit-ooxml-actual-text-slot-matrix-v2-20260723-60dgia3v`에서 253/253을 통과했다.
+sync/unsupported/package/reimport warning, target frame/style drift와 locked shape의
+geometry/style/relationship drift는 모두 0이다. 텍스트 길이 변경에 따른 run/paragraph
+hierarchy rewrite 119건은 `bodyPr`/`lstStyle` exact, 494개 output style subtree의 original
+template byte-equivalence, non-text/relationship semantics와 unclassified residual drift 0으로
+분류했다.
+이 기계 검증은 actual image slot annotation이나 PowerPoint/사람 검수를 대체하지 않는다.
 
 ### Phase 2: content planning, structured slot과 7개 확장
 
@@ -873,7 +894,7 @@ source `docProps/app.xml`의 선택되지 않은 slide title과 통계, core/cus
 생성본에 남는 결함은 clone 경계의 sanitizer와 회귀 테스트로 수정했다. 수정본 7개는 ZIP warning
 0, slide part 8개, `app.xml Slides=8`, stale/private metadata 0을 전수 확인했다. actual text slot
 편집→sync/export 수정본의 PowerPoint 16.111 render/reopen 증거는
-`/private/tmp/orbit-ooxml-powerpoint-slot-roundtrip-metadata-fixed-20260723-d`에 있으며 7개 모두
+`/private/tmp/orbit-ooxml-powerpoint-slot-roundtrip-bodypr-fixed-20260723-a`에 있으며 7개 모두
 편집값 유지와 8장 재열기를 통과했다. 이 결과도 font/사람 승인 gate를 승격하지 않는다.
 
 ### Phase 3: 별도 API/Job과 `/createdeck` 제품 연결
@@ -1096,6 +1117,18 @@ publication→editor transition을 증명하지 않아 Checkpoint D1은 미통�
 - [x] `node infra/scripts/check-env.mjs`와 `docker compose config`
 - [ ] local Compose liveness/readiness와 flag on/off smoke
 
+2026-07-23 Compose service별 계약 검증에서 `api`, `worker`, `python-worker`가 global flag와
+allowlist를 off/on 모두 같은 값으로 받는 것을 확인했다. current branch image를 사용하는
+격리 Compose project의 flag-off 상태에서는 API/Python health, API PostgreSQL/Redis/MinIO
+readiness, `/createdeck` HTTP 200과 세 service의 `enabled=false`를 확인했다. flag-on은 구성
+전달만 검증했으며 승인 calibration object가 없어 실제 API→queue→publication vertical은
+실행하지 않았다.
+
+route interception과 synthetic checksum을 사용하지 않는 opt-in spec
+`tests/e2e/ai-ppt-ooxml-reference-template.real.spec.ts`도 추가했다. actual catalog와 exact
+template snapshot, UI slot edit, sync freshness/warning 0, PPTX export/package를 검증하지만
+`OOXML_REFERENCE_REAL_E2E=1` runtime을 아직 실행하지 않았으므로 D2 E2E 통과 증거가 아니다.
+
 **Dependencies:** Tasks 17, 19
 
 **Files likely touched:**
@@ -1114,7 +1147,7 @@ publication→editor transition을 증명하지 않아 Checkpoint D1은 미통�
 - [x] editor 수정 후 PowerPoint/LibreOffice reopen과 warning 0건
 - [x] 7개 full-deck fidelity artifact와 report 존재
 - [x] 기존 System Design Pack, PPTX import, OOXML sync/export regression 통과
-- [x] flag off와 template allowlist rollback smoke 통과
+- [ ] flag off와 template allowlist rollback smoke 통과
 - [ ] 사람 검수: PowerPoint fidelity와 편집 제한 UX 승인
 
 실제 7개 text-slot edit→sync/export package는 PowerPoint 16.111과 LibreOffice reopen을

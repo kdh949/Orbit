@@ -117,7 +117,8 @@ rollback 뒤에도 이 경로를 smoke해 복구 가능성을 보존한다.
 ## 현재 승인 상태
 
 2026-07-23 기준 source 사용 권리와 139장/253개 text-only slot annotation을 승인했고,
-local QA MinIO의 153개 private object checksum/ACL, actual-source identity clone 139장,
+local QA MinIO의 source 7개와 preview 139개, 총 146개 private object checksum/ACL,
+anonymous HTTP `403`, actual-source identity clone 139장,
 content-generated 7개×8장 package/LibreOffice를 검증했다. Microsoft PowerPoint 16.111에서도
 7개 generated deck과 7개 actual slot edit/export deck을 각각 open, PDF render, close,
 reopen했고 repair/recovery 징후는 0건이었다. 이 증거는 LibreOffice 결과와 분리해 외부 QA
@@ -133,16 +134,17 @@ SHA-256은 `865ad3747a83939d99a5a516a79376352707349a5cb1a512de570c6d54490393`,
 `5474bdc87e48d3ff9a1a20d64338cdf747b8fb66fe0575016aad5a820e2996aa`다. generated package는
 source의 stale title/count, custom property와 thumbnail을 제거하고 `Slides=8`을 재계산했다.
 actual text-slot 편집→sync/export 수정본의 PowerPoint 증거는
-`/private/tmp/orbit-ooxml-powerpoint-slot-roundtrip-metadata-fixed-20260723-d`에 있으며 7개 모두
+`/private/tmp/orbit-ooxml-powerpoint-slot-roundtrip-bodypr-fixed-20260723-a`에 있으며 7개 모두
 편집값 렌더와 8장 재열기를 통과했다.
 
 승인 전 검수 snapshot은 `/private/tmp/orbit-ooxml-private-catalog-review-9e2wd3pb`에 그대로
 보존하고, 7개 source와 139장/253개 text-only annotation 승인 후 상태 결정은
-`/private/tmp/orbit-ooxml-private-catalog-decision-3TH9mcuh`에 별도 기록했다.
+`/private/tmp/orbit-ooxml-private-catalog-decision-disabled-20260723`에 별도 기록했다.
 `approval-decision.json` SHA-256은
-`2aa4c0d02c181cf22a9e4d0e609c5845f80fdc673783f9cb736463fc4803d707`이다. 이 결정은 local
-QA strict manifest의 `active`/`approved`를 기록하지만 repository/production activation을
-승인하지 않는다.
+`e30b9f5bbe9046b00c5f535f1b8ec3bf8dd8c6d8b50c539359f81dc0fa2cc0ad`이다. 이 결정은 strict
+manifest를 active로 잘못 기록한 이전 artifact를 supersede한다. 승인 provenance와 annotation
+review는 repository catalog에 반영했지만 strict manifest는 local QA bucket에 게시하지 않았고
+repository/production status는 7개 모두 `disabled`다.
 
 그러나 local MinIO는 production private managed storage를 대체하지 않는다. generated full-deck
 locked diff/montage와 edited-slot montage는 각각
@@ -161,8 +163,25 @@ resolved file SHA-256을 다시 생성하고 PowerPoint와 LibreOffice evidence�
 현 fidelity manifest의 exact 38개와 substituted fallback 313개 checksum은 현재 renderer가 읽은
 파일 provenance이며 requested exact family 설치 완료를 뜻하지 않는다.
 
-2026-07-23 최종 회귀에서는 repository build 10/10, lint/test 17/17, Python pytest 1,035개,
+승인/disabled canonical manifest 기반 LibreOffice 26.8 identity candidate는
+`/private/tmp/orbit-ooxml-identity-calibration-candidate-20260723-b`에 있다. 7개/139장의
+SSIM은 1.0, changed pixel과 structural/package drift는 0이고 461개 checksum이 일치한다.
+다만 exact 38/substituted 313이므로 `runtimeEligible=false`,
+`proposedLockedRegionSsimThreshold=null`이다. 이 candidate를 승인된 runtime
+`calibration.json`으로 이름 변경하거나 업로드하지 않는다.
+
+승인된 actual text-only slot 253개는
+`/private/tmp/orbit-ooxml-actual-text-slot-matrix-v2-20260723-60dgia3v`에서 전수 검증했다.
+sync/unsupported/package/reimport warning과 `bodyPr`/`lstStyle`, target frame/style, locked
+geometry/style/relationship drift는 모두 0이다. 119개 hierarchy rewrite도 original style
+template byte-equivalence와 non-text/relationship semantics drift 0으로 분류했다. 이 결과는
+actual image annotation과 사람 fidelity 승인을 대체하지 않는다.
+
+2026-07-23 최종 회귀에서는 repository build 10/10, lint/test 17/17, Python pytest
+1,038 passed/1 skipped,
 current-branch Python worker의 PostgreSQL PPTX round-trip 7개와 `/createdeck` Chrome Playwright
-2개를 통과했다. Playwright는 route-mocked product 계약이며 실제 API→queue→private
-publication vertical 증거가 아니다. running `orbit-*` Compose stack은 다른 worktree에서 시작된
-환경이므로 current-branch flag-on smoke로 재사용하지 않는다.
+2개를 통과했다. 같은 실행의 no-mock spec 1개는 opt-in gate로 skip됐다. route-mocked
+Playwright는 실제 API→queue→private publication vertical 증거가 아니다. 별도 opt-in spec은
+`tests/e2e/ai-ppt-ooxml-reference-template.real.spec.ts`에 추가했지만 승인 calibration
+object가 없어 실주행하지 않았다. current branch image로 격리한 Compose flag-off stack의
+health/readiness와 `/createdeck` HTTP 200은 확인했지만 flag-on smoke로 승격하지 않는다.

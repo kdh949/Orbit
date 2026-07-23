@@ -49,8 +49,8 @@ root relationship으로 core/extended part를 찾고 private property/thumbnail�
 `Slides`/`HiddenSlides`를 선택된 slide 기준으로 재계산한다. metadata-fixed 7개 package는
 `Slides=8`, stale/private metadata 0, package warning 0을 독립 전수 검산했다. actual text-slot
 편집본의 수정 후 PowerPoint evidence는
-`/private/tmp/orbit-ooxml-powerpoint-slot-roundtrip-metadata-fixed-20260723-d`이고 `summary.json`
-SHA-256은 `9205fcad788d7e043cd2d539f28b27b3cca4e706f0d244c4a44b417e727977b4`다.
+`/private/tmp/orbit-ooxml-powerpoint-slot-roundtrip-bodypr-fixed-20260723-a`이고 `summary.json`
+SHA-256은 `614fb1390c2297fd2021d660b4086ccec80df5b7bed8994f28167ef2c3053324`다.
 
 실제 7개 package에서 발견된 DrawingML `a:rPr@spc`는 importer, shared rich-text schema,
 editor measure/render, sync와 export까지 보존하도록 구현했다. 같은 deterministic package의
@@ -171,6 +171,23 @@ renderer/version, `geometryEdgeTolerancePx=0`, threshold와 승인 rationale가 
 7개 측정 후 calibration report는 renderer별 정상 변동, 선택한 tolerance, outlier와 그
 근거를 기록한다. 리뷰 없이 임의 숫자를 추가하거나 낮춰서 실패를 통과시키지 않는다.
 
+2026-07-23 LibreOffice 26.8.0.0 no-op identity candidate는
+`/private/tmp/orbit-ooxml-identity-calibration-candidate-20260723-b`에 생성했다. repository
+catalog가 참조하는 승인/disabled canonical manifest 7개와 source checksum을 사용해 139장을
+측정했고, source/identity-clone PNG는 모두 byte-identical, locked-region SSIM 최소/평균/최대
+`1.0`, changed pixel과 geometry/style/relationship drift 및 package warning은 모두 0이었다.
+`checksums.json`의 461개 entry는 실제 파일 집합과 일치하고 재계산 SHA-256도 461/461
+일치한다. candidate SHA-256은
+`1945a9cff42e8930711d615f42b0bbb32449b98476c5d1755c02daa22bba2925`,
+checksum manifest SHA-256은
+`43a9108f4fff71118da33a5d72c81780bb4aede8f3ef0b7bed5fccb0f07bcdf9`다.
+
+현재 font 결과는 exact 38, substituted 313, unavailable 0이므로 candidate는
+`status=pending-approval`, `applied=false`, `runtimeEligible=false`,
+`proposedLockedRegionSsimThreshold=null`이다. 이 값은 LibreOffice identity-control의
+측정 증거일 뿐이며 exact-font 재측정과 사람 threshold 승인이 끝날 때까지 runtime
+`calibration.json`으로 변환하거나 private storage에 publication하지 않는다.
+
 ## 승인 전 체크리스트
 
 - [x] 7개 identity-control package/LibreOffice baseline과 checksum이 재현됨
@@ -181,11 +198,18 @@ renderer/version, `geometryEdgeTolerancePx=0`, threshold와 승인 rationale가 
 - [x] 7개 generated full-deck의 56장 source/generated/mask/locked-diff와 montage가 생성됨
 - [x] PowerPoint 7개 generated full-deck의 56장 PNG/montage/report가 생성됨
 - [x] 7개 실제 text-slot 편집 전/후/mask/locked-overlay/montage가 생성됨
+- [x] 253개 실제 text-slot의 `bodyPr`/frame/style/locked structure matrix가 통과함
 - [ ] threshold와 tolerance 근거가 사람 검수됨
 
 편집 artifact는 `/private/tmp/orbit-ooxml-b2-slot-montage-7cg9oi8q`에 있으며 structural drift와
 package/import warning은 0이다. `operating-review` 42px와 `simple-light` 72px의 locked pixel은
 mask 경계 anti-alias 후보지만 사람이 승인하지 않았으므로 `LOCKED_PIXEL_DIFF_REVIEW_PENDING`이다.
+253-slot 구조 matrix는
+`/private/tmp/orbit-ooxml-actual-text-slot-matrix-v2-20260723-60dgia3v`에 있으며 `bodyPr`,
+`lstStyle`, target frame/style과 locked geometry/style/relationship drift가 모두 0이다.
+119개 hierarchy rewrite의 494개 output style subtree는 original style template과 byte-equivalent,
+non-text/relationship semantics와 unclassified residual drift는 0이다. 이는 실제 image slot 또는
+사람 visual approval을 대체하지 않는다.
 
 요청한 exact font 설치와 사람의 locked-diff/threshold 승인이 남아 있으므로 전체 calibration은
 `not-calibrated`, `applied=false`를 유지한다. artifact report의 `status=generated`는 파일 생성과
