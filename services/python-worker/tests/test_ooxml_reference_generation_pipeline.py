@@ -167,8 +167,13 @@ def test_all_stages_execute_real_clone_slot_fidelity_and_materialization_path(
 def test_same_inputs_produce_the_same_planning_and_package_checksums(
     tmp_path: Path,
 ) -> None:
-    first = _execute_through_package(_FakeRuntime(tmp_path / "first"))
-    second = _execute_through_package(_FakeRuntime(tmp_path / "second"))
+    source_bytes = _source_package(tmp_path / "source")
+    first = _execute_through_package(
+        _FakeRuntime(tmp_path / "first", source_bytes=source_bytes)
+    )
+    second = _execute_through_package(
+        _FakeRuntime(tmp_path / "second", source_bytes=source_bytes)
+    )
 
     assert first["content-planning"] == second["content-planning"]
     assert first["template-planning"] == second["template-planning"]
@@ -306,9 +311,9 @@ def _base_request() -> dict[str, object]:
 
 
 class _FakeRuntime:
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, *, source_bytes: bytes | None = None) -> None:
         root.mkdir(parents=True, exist_ok=True)
-        self.source_bytes = _source_package(root)
+        self.source_bytes = source_bytes or _source_package(root)
         self.source_sha256 = hashlib.sha256(self.source_bytes).hexdigest()
         self.source_size = len(self.source_bytes)
         self.manifest = _manifest(self.source_sha256)
@@ -563,6 +568,7 @@ class _FakeRuntime:
 
 
 def _source_package(root: Path) -> bytes:
+    root.mkdir(parents=True, exist_ok=True)
     presentation = Presentation()
     cover = presentation.slides.add_slide(presentation.slide_layouts[0])
     cover.shapes.title.text = "Source cover"
