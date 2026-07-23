@@ -2,6 +2,7 @@ import { realtimeTranscriptionClientSecretResponseSchema } from "@orbit/shared";
 import type { LiveSttAudioLevelEvent } from "../liveStt";
 import { calculatePcmAudioLevel } from "../liveSttAudioLevel";
 import {
+  emitLiveSttResultToSubscribers,
   LiveSttError,
   normalizeLiveSttBiasPhrases,
   type LiveSttBiasPhrase,
@@ -400,9 +401,7 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
   }
 
   private emitResult(result: LiveSttResult) {
-    for (const subscriber of this.resultSubscribers) {
-      subscriber(result);
-    }
+    emitLiveSttResultToSubscribers(this.engineId, this.resultSubscribers, result);
   }
 
   private emitError(error: LiveSttError) {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  emitLiveSttResultToSubscribers,
   LiveSttError,
   mapPartialTranscriptToLiveSttResult,
   normalizeLiveSttBiasPhrases
@@ -102,5 +103,36 @@ describe("liveSttPort", () => {
     expect(error.name).toBe("LiveSttError");
     expect(error.code).toBe("start_failed");
     expect(error.message).toBe("시작 실패");
+  });
+
+  it("한 result subscriber의 예외가 다음 subscriber 전달을 막지 않는다", () => {
+    const delivered: string[] = [];
+    const logs: string[] = [];
+    const result = {
+      text: "로그에 남으면 안 되는 transcript",
+      isFinal: true,
+      timestampMs: [0, 100] as [number, number]
+    };
+
+    emitLiveSttResultToSubscribers(
+      "web-speech",
+      [
+        () => {
+          throw new Error("consumer failed");
+        },
+        (nextResult) => delivered.push(nextResult.text)
+      ],
+      result,
+      (entry) => logs.push(entry)
+    );
+
+    expect(delivered).toEqual([result.text]);
+    expect(JSON.parse(logs[0]!)).toEqual({
+      event: "live_stt.subscriber_failed",
+      engineId: "web-speech",
+      subscriberIndex: 0,
+      errorName: "Error"
+    });
+    expect(logs[0]).not.toContain(result.text);
   });
 });

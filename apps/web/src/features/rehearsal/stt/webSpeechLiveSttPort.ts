@@ -9,6 +9,7 @@ import {
   type BrowserSpeechRecognitionGlobal
 } from "./browserSpeechRecognition";
 import {
+  emitLiveSttResultToSubscribers,
   LiveSttError,
   normalizeLiveSttBiasPhrases,
   type LiveSttAlternative,
@@ -361,9 +362,7 @@ export class WebSpeechLiveSttPort implements LiveSttPort {
   }
 
   private emitResult(result: LiveSttResult) {
-    for (const subscriber of this.resultSubscribers) {
-      subscriber(result);
-    }
+    emitLiveSttResultToSubscribers(this.engineId, this.resultSubscribers, result);
   }
 
   private emitError(error: LiveSttError) {

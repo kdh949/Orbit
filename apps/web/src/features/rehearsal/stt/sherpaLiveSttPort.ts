@@ -8,6 +8,7 @@ import {
 import type { LiveSttDebugPcmRecording } from "../liveSttPcmDebug";
 import { SherpaOnnxLiveSttAdapter } from "../sherpaOnnxLiveSttAdapter";
 import {
+  emitLiveSttResultToSubscribers,
   LiveSttError,
   mapPartialTranscriptToLiveSttResult,
   normalizeLiveSttBiasPhrases,
@@ -117,9 +118,7 @@ export class SherpaLiveSttPort implements LiveSttPort {
   }
 
   private emitResult(result: LiveSttResult) {
-    for (const subscriber of this.resultSubscribers) {
-      subscriber(result);
-    }
+    emitLiveSttResultToSubscribers(this.engineId, this.resultSubscribers, result);
   }
 
   private emitError(error: LiveSttError) {

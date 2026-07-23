@@ -91,6 +91,30 @@ export type LiveSttPort = {
   dispose: () => void | Promise<void>;
 };
 
+export function emitLiveSttResultToSubscribers(
+  engineId: LiveSttEngineId,
+  subscribers: Iterable<(result: LiveSttResult) => void>,
+  result: LiveSttResult,
+  logger: (entry: string) => void = (entry) => console.error(entry)
+) {
+  let subscriberIndex = 0;
+  for (const subscriber of subscribers) {
+    try {
+      subscriber(result);
+    } catch (cause) {
+      logger(
+        JSON.stringify({
+          event: "live_stt.subscriber_failed",
+          engineId,
+          subscriberIndex,
+          errorName: cause instanceof Error ? cause.name : "UnknownError"
+        })
+      );
+    }
+    subscriberIndex += 1;
+  }
+}
+
 export function mapPartialTranscriptToLiveSttResult(
   event: LiveSttPartialTranscriptEvent,
   elapsedMs: number

@@ -1,4 +1,5 @@
 import {
+  emitLiveSttResultToSubscribers,
   LiveSttError,
   normalizeLiveSttBiasPhrases,
   type LiveSttCapabilities,
@@ -136,9 +137,7 @@ export class MoonshineLiveSttPort implements LiveSttPort {
   }
 
   private emitResult(result: LiveSttResult) {
-    for (const subscriber of this.resultSubscribers) {
-      subscriber(result);
-    }
+    emitLiveSttResultToSubscribers(this.engineId, this.resultSubscribers, result);
   }
 
   private emitError(error: LiveSttError) {

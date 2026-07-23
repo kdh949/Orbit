@@ -194,17 +194,6 @@ export function useEditorSlideRehearsal(args: {
                 ? getHitSlideKeywordIds(activeSlide, transcript)
                 : []);
 
-            if (activeSlide) {
-              onSpeechResultRef.current?.({
-                finalTranscript,
-                hitKeywordIds,
-                interimTranscript,
-                result,
-                slide: activeSlide,
-                transcript
-              });
-            }
-
             setState((current) => ({
               ...current,
               finalTranscript,
@@ -212,6 +201,20 @@ export function useEditorSlideRehearsal(args: {
               interimTranscript,
               speechTrackerSnapshot
             }));
+
+            if (activeSlide) {
+              notifyEditorSlideRehearsalSpeechResult(
+                onSpeechResultRef.current,
+                {
+                  finalTranscript,
+                  hitKeywordIds,
+                  interimTranscript,
+                  result,
+                  slide: activeSlide,
+                  transcript
+                }
+              );
+            }
           }),
           port.onError((error) => {
             if (sessionRef.current !== sessionId) return;
@@ -426,6 +429,26 @@ export function getEditorLiveAudioLevelPercent(
 ) {
   if (!level) return 0;
   return Math.min(100, Math.max(0, ((level.rmsDb + 55) / 55) * 100));
+}
+
+export function notifyEditorSlideRehearsalSpeechResult(
+  callback: ((event: EditorSlideRehearsalSpeechResult) => void) | undefined,
+  event: EditorSlideRehearsalSpeechResult,
+  logger: (entry: string) => void = (entry) => console.error(entry)
+) {
+  if (!callback) return;
+
+  try {
+    callback(event);
+  } catch (cause) {
+    logger(
+      JSON.stringify({
+        event: "editor_slide_rehearsal.animation_consumer_failed",
+        slideId: event.slide.slideId,
+        errorName: cause instanceof Error ? cause.name : "UnknownError"
+      })
+    );
+  }
 }
 
 function appendTranscript(current: string, addition: string) {

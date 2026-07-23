@@ -5,7 +5,8 @@ import {
   buildEditorSlideRehearsalBiasPhrases,
   createEditorSlideRehearsalSpeechTracker,
   getEditorLiveAudioLevelPercent,
-  getHitSlideKeywordIds
+  getHitSlideKeywordIds,
+  notifyEditorSlideRehearsalSpeechResult
 } from "./useEditorSlideRehearsal";
 
 describe("useEditorSlideRehearsal utilities", () => {
@@ -86,5 +87,38 @@ describe("useEditorSlideRehearsal utilities", () => {
       committedSentenceIds: ["sentence_1"],
       currentSentenceId: "sentence_2"
     });
+  });
+
+  it("애니메이션 consumer 예외를 transcript 없이 격리한다", () => {
+    const slide = createDemoDeck().slides[0]!;
+    const logs: string[] = [];
+    const event = {
+      finalTranscript: "민감한 transcript",
+      hitKeywordIds: [],
+      interimTranscript: "",
+      result: {
+        text: "민감한 transcript",
+        isFinal: true,
+        timestampMs: [0, 100] as [number, number]
+      },
+      slide,
+      transcript: "민감한 transcript"
+    };
+
+    expect(() =>
+      notifyEditorSlideRehearsalSpeechResult(
+        () => {
+          throw new Error("animation failed");
+        },
+        event,
+        (entry) => logs.push(entry)
+      )
+    ).not.toThrow();
+    expect(JSON.parse(logs[0]!)).toMatchObject({
+      event: "editor_slide_rehearsal.animation_consumer_failed",
+      slideId: slide.slideId,
+      errorName: "Error"
+    });
+    expect(logs[0]).not.toContain(event.transcript);
   });
 });
