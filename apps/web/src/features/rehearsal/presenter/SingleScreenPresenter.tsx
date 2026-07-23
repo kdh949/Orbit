@@ -1,21 +1,29 @@
 import type { Deck } from "@orbit/shared";
 import { IconMaximize as Maximize2, IconX as X } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
+import type { DiagnosticSink } from "../../diagnostics/diagnosticTypes";
 import type { SlideRuntimeHighlight } from "../../slides/rendering";
 import { shouldAdvancePresentationFromClick } from "../../presenter-shell/presentationClickAdvance";
 import { SlideshowRenderer } from "./SlideshowRenderer";
+import type {
+  SlideshowTransitionAddress,
+  SlideshowTransitionTrace
+} from "./useSlideshowTransitions";
 
 export function SingleScreenPresenter(props: {
   deck: Deck;
+  diagnostics?: DiagnosticSink;
   highlights?: SlideRuntimeHighlight[];
   isFullscreen?: boolean;
   onExit: () => void;
   onNextStep?: () => void;
+  onTransitionSettled?: (address: SlideshowTransitionAddress) => void;
   slideElapsedLabel: string;
   slideId: string;
   slideTargetLabel: string;
   stepIndex: number;
   totalTimeLabel: string;
+  transitionTrace?: SlideshowTransitionTrace;
   triggerAnimationIds: string[];
 }) {
   const {
@@ -69,11 +77,14 @@ export function SingleScreenPresenter(props: {
       >
         <SlideshowRenderer
           deck={deck}
+          diagnostics={props.diagnostics}
           highlights={highlights}
+          onTransitionSettled={props.onTransitionSettled}
           renderMode="single-screen"
           scale={getSingleScreenScale(deck)}
           slideId={slideId}
           stepIndex={stepIndex}
+          transitionTrace={props.transitionTrace}
           triggerAnimationIds={triggerAnimationIds}
         />
       </div>

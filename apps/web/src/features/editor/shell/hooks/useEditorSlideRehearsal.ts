@@ -1,6 +1,10 @@
 import type { Slide } from "@orbit/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import {
+  hashDiagnosticIdentifier,
+  useDiagnostics
+} from "../../../diagnostics/DiagnosticProvider";
 import type { LiveSttAudioLevelEvent } from "../../../rehearsal/liveStt";
 import {
   createSpeechTracker,
@@ -77,6 +81,11 @@ export function useEditorSlideRehearsal(args: {
   onSpeechResult?: (event: EditorSlideRehearsalSpeechResult) => void;
   projectId: string;
 }) {
+  const {
+    diagnostics,
+    stop: stopDiagnostics,
+    updateSessionMetadata
+  } = useDiagnostics();
   const [state, setState] = useState<EditorSlideRehearsalState>(initialState);
   const portRef = useRef<LiveSttPort | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -155,8 +164,13 @@ export function useEditorSlideRehearsal(args: {
 
         const runtimeConfig = await fetchLiveSttRuntimeConfig();
         if (sessionRef.current !== sessionId) return;
+        updateSessionMetadata({
+          projectIdHash: hashDiagnosticIdentifier(args.projectId),
+          sttEngine: runtimeConfig.liveSttEngine
+        });
 
         const port = createLiveSttPort(runtimeConfig.liveSttEngine, {
+          diagnostics,
           projectId: args.projectId,
           onAudioLevel: (level) => {
             if (sessionRef.current !== sessionId) return;
@@ -215,7 +229,7 @@ export function useEditorSlideRehearsal(args: {
                 }
               );
             }
-          }),
+          }, { subscriberId: "editor-partial-rehearsal" }),
           port.onError((error) => {
             if (sessionRef.current !== sessionId) return;
             sessionRef.current += 1;
@@ -252,7 +266,7 @@ export function useEditorSlideRehearsal(args: {
         }));
       }
     },
-    [args.projectId, releaseResources]
+    [args.projectId, diagnostics, releaseResources, updateSessionMetadata]
   );
 
   const enter = useCallback(
@@ -287,7 +301,8 @@ export function useEditorSlideRehearsal(args: {
       interimTranscript: "",
       status: current.activeSlideId ? "stopped" : "idle"
     }));
-  }, [releaseResources]);
+    await stopDiagnostics("editor-partial-rehearsal-ended");
+  }, [releaseResources, stopDiagnostics]);
 
   const exit = useCallback(async () => {
     sessionRef.current += 1;
@@ -296,7 +311,8 @@ export function useEditorSlideRehearsal(args: {
     speechTrackerRef.current = null;
     committedTranscriptRef.current = "";
     setState(initialState);
-  }, [releaseResources]);
+    await stopDiagnostics("editor-partial-rehearsal-exit");
+  }, [releaseResources, stopDiagnostics]);
 
   const moveToNextSentence = useCallback(() => {
     const speechTracker = speechTrackerRef.current;

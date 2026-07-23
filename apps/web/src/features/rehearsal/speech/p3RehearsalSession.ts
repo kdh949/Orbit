@@ -170,7 +170,9 @@ export function createP3RehearsalSession(
 
   function subscribeToPort() {
     cleanupSubscriptions?.();
-    const unsubscribeResult = input.port.onResult(acceptResult);
+    const unsubscribeResult = input.port.onResult(acceptResult, {
+      subscriberId: "p3-rehearsal-session"
+    });
     const unsubscribeError = input.port.onError((error) => {
       transitionCapability({
         capability: "stt",

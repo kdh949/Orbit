@@ -9,6 +9,11 @@ import {
   validateSlideAnimations
 } from "../../../../../../packages/editor-core/src/index";
 import { demoIds, slideQuestionGuideTextHashInput, type Slide } from "@orbit/shared";
+import { useDiagnostics } from "../../diagnostics/DiagnosticProvider";
+import {
+  emitKeywordOccurrenceEvaluations,
+  emitSpeechAnimationRuntimeDecisions
+} from "../../diagnostics/presentationInstrumentation";
 import { getRenderableSlideElements } from "../canvas/EditorCanvas";
 import { getImageCropActionState } from "../canvas/image/imageCropSession";
 import {
@@ -203,12 +208,15 @@ import {
   type SpeechAnimationRuntimeUpdate
 } from "../../rehearsal/playback/speechAnimationRuntime";
 import { SlideshowRenderer } from "../../rehearsal/presenter/SlideshowRenderer";
-import type { SlideshowTransitionAddress } from "../../rehearsal/presenter/useSlideshowTransitions";
+import type {
+  SlideshowTransitionAddress,
+  SlideshowTransitionTrace
+} from "../../rehearsal/presenter/useSlideshowTransitions";
 import {
   createSlideshowAnimationPlan,
   type SlideshowAnimationPlan
 } from "../../rehearsal/presenter/slideshowStepModel";
-import { matchKeywordOccurrenceTriggers } from "../../rehearsal/speech/keywordOccurrenceRuntime";
+import { evaluateKeywordOccurrenceTriggers } from "../../rehearsal/speech/keywordOccurrenceRuntime";
 import { useAutoSlideQuestionGuides } from "../practice/useAutoSlideQuestionGuides";
 import { useShapeMenuPlacement } from "./hooks/useShapeMenuPlacement";
 import { createSelectionNudgePatch } from "./utils/selectionNudge";
@@ -285,6 +293,7 @@ function navigateToHome() {
 
 export function EditorShell(props: { projectId?: string }) {
   const projectId = props.projectId ?? demoIds.projectId;
+  const { diagnostics, updateSessionMetadata } = useDiagnostics();
   const projectAccessMembership = useProjectAccessMembership();
   const canMutateDeck = canMutateProjectDeck(projectAccessMembership);
   const [currentSlideId, setCurrentSlideId] = useState<string | null>(null);
@@ -632,6 +641,32 @@ export function EditorShell(props: { projectId?: string }) {
     deck.slides.find(
       (slide) => slide.slideId === slideRehearsalState.activeSlideId
     ) ?? currentSlide;
+  useEffect(() => {
+    updateSessionMetadata({ deckRevision: String(deck.version) });
+  }, [deck.version, updateSessionMetadata]);
+
+  useEffect(() => {
+    if (!isSlideRehearsalActive || !rehearsalSlide) {
+      return;
+    }
+    diagnostics.emit({
+      stage: "session",
+      name: "session.slide_snapshot",
+      outcome: "accepted",
+      trace: { slideId: rehearsalSlide.slideId },
+      data: {
+        actionCount: rehearsalSlide.actions.length,
+        animationCount: rehearsalSlide.animations.length,
+        keywords: rehearsalSlide.keywords.map((keyword) => ({
+          keywordId: keyword.keywordId,
+          text: keyword.text,
+          synonyms: keyword.synonyms,
+          abbreviations: keyword.abbreviations
+        })),
+        speakerNotes: rehearsalSlide.speakerNotes
+      }
+    });
+  }, [diagnostics, isSlideRehearsalActive, rehearsalSlide]);
   const slideRehearsalTriggerAnimationIds = useMemo(
     () =>
       rehearsalSlide ? getTriggerAnimationIdsForSlide(rehearsalSlide) : [],
@@ -648,6 +683,8 @@ export function EditorShell(props: { projectId?: string }) {
     [rehearsalSlide, slideRehearsalTriggerAnimationIds]
   );
   const [slideRehearsalStepIndex, setSlideRehearsalStepIndex] = useState(0);
+  const [slideRehearsalTransitionTrace, setSlideRehearsalTransitionTrace] =
+    useState<SlideshowTransitionTrace>();
   const slideRehearsalStepIndexRef = useRef(0);
   const slideRehearsalPlaybackStateRef = useRef(createSlidePlaybackState());
   const slideRehearsalPendingOccurrenceIdsRef = useRef<string[]>([]);
@@ -655,10 +692,37 @@ export function EditorShell(props: { projectId?: string }) {
   const slideRehearsalSpeechSequenceRef = useRef(0);
   const slideRehearsalAnimationRuntimeRef =
     useRef<SpeechAnimationRuntimeState | null>(null);
+  const slideRehearsalPendingReactTransitionRef = useRef<{
+    stateTransitionId: string;
+    stepIndex: number;
+    triggerTraceId?: string;
+  } | null>(null);
+  const slideRehearsalReactTransitionSequenceRef = useRef(0);
   const slideRehearsalPreviousTranscriptRef = useRef("");
   const slideRehearsalDetectedKeywordIdsRef = useRef<string[]>([]);
   const [slideRehearsalTerminalActionMessage, setSlideRehearsalTerminalActionMessage] =
     useState<string | null>(null);
+
+  useEffect(() => {
+    const pending = slideRehearsalPendingReactTransitionRef.current;
+    if (!pending || pending.stepIndex !== slideRehearsalStepIndex || !rehearsalSlide) {
+      return;
+    }
+    diagnostics.emit({
+      stage: "react",
+      name: "react.presenter_step.committed",
+      outcome: "committed",
+      trace: {
+        slideId: rehearsalSlide.slideId,
+        stateTransitionId: pending.stateTransitionId,
+        ...(pending.triggerTraceId
+          ? { triggerTraceId: pending.triggerTraceId }
+          : {})
+      },
+      data: { stepIndex: slideRehearsalStepIndex }
+    });
+    slideRehearsalPendingReactTransitionRef.current = null;
+  }, [diagnostics, rehearsalSlide, slideRehearsalStepIndex]);
 
   const resetSlideRehearsalAnimationPlayback = useCallback(() => {
     slideRehearsalStepIndexRef.current = 0;
@@ -671,6 +735,8 @@ export function EditorShell(props: { projectId?: string }) {
       : null;
     slideRehearsalPreviousTranscriptRef.current = "";
     slideRehearsalDetectedKeywordIdsRef.current = [];
+    slideRehearsalPendingReactTransitionRef.current = null;
+    setSlideRehearsalTransitionTrace(undefined);
     setSlideRehearsalTerminalActionMessage(null);
     setSlideRehearsalStepIndex(0);
   }, [rehearsalSlide?.slideId]);
@@ -693,6 +759,55 @@ export function EditorShell(props: { projectId?: string }) {
     update: SpeechAnimationRuntimeUpdate,
     animationPlan: SlideshowAnimationPlan
   ) {
+    const slideId =
+      slideRehearsalAnimationRuntimeRef.current?.slideId ??
+      rehearsalSlide?.slideId;
+    if (slideId) {
+      emitSpeechAnimationRuntimeDecisions({
+        decisions: update.decisions,
+        diagnostics,
+        slideId
+      });
+    }
+    const triggerTraceId = update.decisions
+      .flatMap((decision) =>
+        decision.triggerTraceId ? [decision.triggerTraceId] : []
+      )
+      .at(-1);
+    if (
+      slideId &&
+      !update.shouldAdvanceSlide &&
+      update.state.presenterStepIndex !==
+        slideRehearsalStepIndexRef.current
+    ) {
+      slideRehearsalReactTransitionSequenceRef.current += 1;
+      const stateTransitionId = `${
+        triggerTraceId ?? diagnostics.sessionId ?? "editor-partial"
+      }:state:${slideRehearsalReactTransitionSequenceRef.current}`;
+      slideRehearsalPendingReactTransitionRef.current = {
+        stateTransitionId,
+        stepIndex: update.state.presenterStepIndex,
+        ...(triggerTraceId ? { triggerTraceId } : {})
+      };
+      setSlideRehearsalTransitionTrace({
+        stateTransitionId,
+        ...(triggerTraceId ? { triggerTraceId } : {})
+      });
+      diagnostics.emit({
+        stage: "react",
+        name: "react.presenter_step.requested",
+        outcome: "received",
+        trace: {
+          slideId,
+          stateTransitionId,
+          ...(triggerTraceId ? { triggerTraceId } : {})
+        },
+        data: {
+          fromStepIndex: slideRehearsalStepIndexRef.current,
+          toStepIndex: update.state.presenterStepIndex
+        }
+      });
+    }
     slideRehearsalAnimationRuntimeRef.current = update.state;
     slideRehearsalPendingOccurrenceIdsRef.current =
       update.pendingOccurrenceIds;
@@ -747,7 +862,7 @@ export function EditorShell(props: { projectId?: string }) {
       slide: eventSlide,
       triggerAnimationIds: getTriggerAnimationIdsForSlide(eventSlide)
     });
-    const occurrenceMatches = matchKeywordOccurrenceTriggers({
+    const occurrenceEvaluation = evaluateKeywordOccurrenceTriggers({
       slide: eventSlide,
       targetOccurrenceIds: getKeywordOccurrenceTriggerIdsForSlide(eventSlide),
       previousTranscript: slideRehearsalPreviousTranscriptRef.current,
@@ -756,6 +871,13 @@ export function EditorShell(props: { projectId?: string }) {
       confidence: event.result.confidence ?? null,
       confirmedOccurrenceIds: slideRehearsalConfirmedOccurrenceIdsRef.current
     });
+    emitKeywordOccurrenceEvaluations({
+      diagnostics,
+      evaluations: occurrenceEvaluation.evaluations,
+      slideId: eventSlide.slideId,
+      trace: event.result.diagnosticTrace
+    });
+    const occurrenceMatches = occurrenceEvaluation.matches;
     slideRehearsalPreviousTranscriptRef.current = event.transcript;
 
     const previousKeywordIds = new Set(
@@ -780,6 +902,7 @@ export function EditorShell(props: { projectId?: string }) {
               presenterStepIndex: slideRehearsalStepIndexRef.current,
               slideId: eventSlide.slideId
             }),
+      triggerTraceId: event.result.diagnosticTrace?.triggerTraceId,
       triggers: [
         ...occurrenceMatches.map((occurrenceMatch) => ({
           kind: "keyword-occurrence" as const,
@@ -815,8 +938,15 @@ export function EditorShell(props: { projectId?: string }) {
       slideAnimationPlan: slideRehearsalAnimationPlan,
       state: slideRehearsalAnimationRuntimeRef.current
     });
+    setSlideRehearsalTransitionTrace(undefined);
     if (update.state !== slideRehearsalAnimationRuntimeRef.current) {
       applySlideRehearsalRuntimeUpdate(update, slideRehearsalAnimationPlan);
+    } else {
+      emitSpeechAnimationRuntimeDecisions({
+        decisions: update.decisions,
+        diagnostics,
+        slideId: rehearsalSlide.slideId
+      });
     }
   }
   const slidePracticeSession = useSlidePracticeSession({
@@ -2599,10 +2729,12 @@ export function EditorShell(props: { projectId?: string }) {
               isSlideRehearsalActive && rehearsalSlide ? (
                 <SlideshowRenderer
                   deck={deck}
+                  diagnostics={diagnostics}
                   onTransitionSettled={handleSlideRehearsalTransitionSettled}
                   scale={stageScale}
                   slideId={rehearsalSlide.slideId}
                   stepIndex={slideRehearsalStepIndex}
+                  transitionTrace={slideRehearsalTransitionTrace}
                   triggerAnimationIds={slideRehearsalTriggerAnimationIds}
                 />
               ) : undefined

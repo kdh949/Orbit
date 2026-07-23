@@ -65,6 +65,18 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  hashDiagnosticIdentifier,
+  useDiagnostics,
+} from "../diagnostics/DiagnosticProvider";
+import {
+  emitKeywordOccurrenceEvaluations,
+  emitSpeechAnimationRuntimeDecisions,
+} from "../diagnostics/presentationInstrumentation";
+import type {
+  DiagnosticSink,
+  DiagnosticTrace,
+} from "../diagnostics/diagnosticTypes";
 import { JobProgressDisplay } from "./JobProgressDisplay";
 import { RehearsalReportDocument } from "./RehearsalReportDocument";
 import { RehearsalRunNav } from "./RehearsalRunNav";
@@ -140,6 +152,7 @@ import {
   type LiveSttResult,
 } from "./stt/liveSttPort";
 import { createLiveSttPort } from "./stt/liveSttEngineRegistry";
+import { DiagnosticLiveSttPort } from "./stt/diagnosticLiveSttPort";
 import { fetchLiveSttRuntimeConfig } from "./stt/liveSttRuntimeConfig";
 import { normalizeLiveTranscriptText } from "./stt/liveTranscriptText";
 import { SherpaLiveSttPort } from "./stt/sherpaLiveSttPort";
@@ -161,7 +174,10 @@ import {
   AnimationFlowNavigator,
   type AnimationFlowNavigation,
 } from "./presenter/AnimationFlowNavigator";
-import type { SlideshowTransitionAddress } from "./presenter/useSlideshowTransitions";
+import type {
+  SlideshowTransitionAddress,
+  SlideshowTransitionTrace,
+} from "./presenter/useSlideshowTransitions";
 import {
   DisplayControls,
   type RequestDisplayScreensResult,
@@ -287,7 +303,7 @@ import {
 } from "./speech/pauseDetector";
 import { defaultSpeechTrackingConfig } from "./speech/speechTrackingConfig";
 import {
-  matchKeywordOccurrenceTriggers,
+  evaluateKeywordOccurrenceTriggers,
   type KeywordOccurrenceRuntimeMatch,
 } from "./speech/keywordOccurrenceRuntime";
 import {
@@ -1908,6 +1924,7 @@ function createDefaultLiveSttPort(
     onDebugPcmAvailable?: (recording: LiveSttDebugPcmRecording) => void;
     getDecodingMethod?: () => LiveSttDecodingMethod | null;
     projectId?: string;
+    diagnostics?: DiagnosticSink;
   } = {},
 ) {
   const {
@@ -1917,6 +1934,7 @@ function createDefaultLiveSttPort(
     onDebugPcmAvailable,
     getDecodingMethod,
     projectId,
+    diagnostics,
   } = options;
   const sherpaOptions = {
     onAudioLevel,
@@ -1926,21 +1944,28 @@ function createDefaultLiveSttPort(
   const shouldUseSherpaCompatibility = !engineId || engineId === "sherpa";
 
   if (shouldUseSherpaCompatibility && legacyAdapter) {
-    return new SherpaLiveSttPort({ ...sherpaOptions, adapter: legacyAdapter });
+    const port = new SherpaLiveSttPort({
+      ...sherpaOptions,
+      adapter: legacyAdapter,
+    });
+    return diagnostics ? new DiagnosticLiveSttPort(port, diagnostics) : port;
   }
 
   if (shouldUseSherpaCompatibility) {
     const windowAdapter = window.__orbitCreateLiveSttAdapter?.();
     if (windowAdapter) {
-      return new SherpaLiveSttPort({
+      const port = new SherpaLiveSttPort({
         ...sherpaOptions,
         adapter: windowAdapter,
       });
+      return diagnostics ? new DiagnosticLiveSttPort(port, diagnostics) : port;
     }
-    return new SherpaLiveSttPort(sherpaOptions);
+    const port = new SherpaLiveSttPort(sherpaOptions);
+    return diagnostics ? new DiagnosticLiveSttPort(port, diagnostics) : port;
   }
 
   return createLiveSttPort(engineId, {
+    diagnostics,
     onAudioLevel,
     projectId,
   });
@@ -1974,6 +1999,13 @@ export function RehearsalWorkspace(props: {
   const [presenterStepIndex, setPresenterStepIndex] = useState(
     props.presenterInitialStepIndex ?? 0,
   );
+  const {
+    diagnostics,
+    stop: stopDiagnostics,
+    updateSessionMetadata,
+  } = useDiagnostics();
+  const [transitionTrace, setTransitionTrace] =
+    useState<SlideshowTransitionTrace>();
   const [phase, setPhase] = useState<RehearsalPhase>(
     props.initialDeck ? "idle" : "loading",
   );
@@ -2083,7 +2115,7 @@ export function RehearsalWorkspace(props: {
   >(undefined);
   const streamRef = useRef<MediaStream | null>(null);
   const liveDemoStreamRef = useRef<MediaStream | null>(null);
-  const liveSttPortRef = useRef<LiveSttPort | null>(props.liveSttPort ?? null);
+  const liveSttPortRef = useRef<LiveSttPort | null>(null);
   const liveSttSubscriptionCleanupRef = useRef<(() => void) | null>(null);
   const liveSttRetryCoordinatorRef = useRef(
     createInitialLiveSttRetryCoordinator(),
@@ -2145,6 +2177,13 @@ export function RehearsalWorkspace(props: {
   const speechAnimationSequenceRef = useRef(0);
   const speechAnimationRuntimeRef =
     useRef<SpeechAnimationRuntimeState | null>(null);
+  const pendingReactTransitionRef = useRef<{
+    slideId: string;
+    stateTransitionId: string;
+    stepIndex: number;
+    triggerTraceId?: string;
+  } | null>(null);
+  const reactTransitionSequenceRef = useRef(0);
   const pendingFlowRestoreRef = useRef<{
     slideId: string;
     stepIndex: number;
@@ -2281,6 +2320,16 @@ export function RehearsalWorkspace(props: {
   useEffect(() => {
     deckRef.current = deck;
   }, [deck]);
+
+  useEffect(() => {
+    if (!deck) {
+      return;
+    }
+    updateSessionMetadata({
+      deckRevision: String(deck.version),
+      projectIdHash: hashDiagnosticIdentifier(deck.projectId),
+    });
+  }, [deck, updateSessionMetadata]);
 
   useEffect(() => {
     const projectId = deck?.projectId ?? props.projectId ?? demoIds.projectId;
@@ -2531,6 +2580,53 @@ export function RehearsalWorkspace(props: {
   ]);
 
   const currentSlide = deck?.slides[currentSlideIndex] ?? null;
+  useEffect(() => {
+    if (!currentSlide) {
+      return;
+    }
+    diagnostics.emit({
+      stage: "session",
+      name: "session.slide_snapshot",
+      outcome: "accepted",
+      trace: { slideId: currentSlide.slideId },
+      data: {
+        actionCount: currentSlide.actions.length,
+        animationCount: currentSlide.animations.length,
+        keywords: currentSlide.keywords.map((keyword) => ({
+          keywordId: keyword.keywordId,
+          text: keyword.text,
+          synonyms: keyword.synonyms,
+          abbreviations: keyword.abbreviations,
+        })),
+        speakerNotes: currentSlide.speakerNotes,
+      },
+    });
+  }, [currentSlide, diagnostics]);
+
+  useEffect(() => {
+    const pending = pendingReactTransitionRef.current;
+    if (
+      !pending ||
+      pending.slideId !== currentSlide?.slideId ||
+      pending.stepIndex !== presenterStepIndex
+    ) {
+      return;
+    }
+    diagnostics.emit({
+      stage: "react",
+      name: "react.presenter_step.committed",
+      outcome: "committed",
+      trace: {
+        slideId: pending.slideId,
+        stateTransitionId: pending.stateTransitionId,
+        ...(pending.triggerTraceId
+          ? { triggerTraceId: pending.triggerTraceId }
+          : {}),
+      },
+      data: { stepIndex: presenterStepIndex },
+    });
+    pendingReactTransitionRef.current = null;
+  }, [currentSlide?.slideId, diagnostics, presenterStepIndex]);
 
   useEffect(() => {
     const projectId = deck?.projectId;
@@ -3129,7 +3225,12 @@ export function RehearsalWorkspace(props: {
     }
   }
 
-  function stopLiveDemo(options: { showCompletionModal?: boolean } = {}) {
+  function stopLiveDemo(
+    options: {
+      endDiagnostics?: boolean;
+      showCompletionModal?: boolean;
+    } = {},
+  ) {
     const wasLiveDemoActive = isLiveDemoActive || isLiveSttActive;
     setRehearsalRuntimeStatus("stopping");
     cleanupLiveSttSubscriptions();
@@ -3166,11 +3267,15 @@ export function RehearsalWorkspace(props: {
     if (options.showCompletionModal && wasLiveDemoActive) {
       setIsLiveStopModalOpen(true);
     }
+    if (options.endDiagnostics) {
+      void stopDiagnostics("rehearsal-ended");
+    }
   }
 
   function stopRecording() {
     if (phase !== "recording") return;
 
+    void stopDiagnostics("rehearsal-ended");
     captureSlideTranscriptSnapshot("rehearsal-end");
     liveSttRetryCoordinatorRef.current.cancel();
     setRehearsalRuntimeStatus("stopping");
@@ -3432,8 +3537,11 @@ export function RehearsalWorkspace(props: {
 
   function getOrCreateLiveSttPort(engineId: LiveSttEngineId) {
     if (props.liveSttPort) {
-      liveSttPortRef.current = props.liveSttPort;
-      return props.liveSttPort;
+      liveSttPortRef.current ??= new DiagnosticLiveSttPort(
+        props.liveSttPort,
+        diagnostics,
+      );
+      return liveSttPortRef.current;
     }
 
     const cachedPort = liveSttPortRef.current;
@@ -3449,6 +3557,7 @@ export function RehearsalWorkspace(props: {
 
     cachedPort?.dispose();
     const port = createDefaultLiveSttPort({
+      diagnostics,
       engineId,
       legacyAdapter: props.liveSttAdapter,
       onAudioLevel: setLiveAudioLevel,
@@ -3462,12 +3571,16 @@ export function RehearsalWorkspace(props: {
 
   async function resolveEffectiveLiveSttEngine(): Promise<LiveSttEngineId> {
     if (props.liveSttPort) {
+      updateSessionMetadata({ sttEngine: props.liveSttPort.engineId });
       return props.liveSttPort.engineId;
     }
 
     try {
-      return (await fetchLiveSttRuntimeConfig()).liveSttEngine;
+      const engineId = (await fetchLiveSttRuntimeConfig()).liveSttEngine;
+      updateSessionMetadata({ sttEngine: engineId });
+      return engineId;
     } catch {
+      updateSessionMetadata({ sttEngine: presenterSettings.sttEngine });
       return presenterSettings.sttEngine;
     }
   }
@@ -3627,7 +3740,9 @@ export function RehearsalWorkspace(props: {
     pendingP3SlideIndexRef.current = null;
     cleanupLiveSttSubscriptions();
 
-    const unsubscribeResult = port.onResult(handleLiveSttResult);
+    const unsubscribeResult = port.onResult(handleLiveSttResult, {
+      subscriberId: "rehearsal-live-pipeline",
+    });
     const unsubscribeError = port.onError(handleLiveSttError);
     liveSttSubscriptionCleanupRef.current = () => {
       unsubscribeResult();
@@ -3952,10 +4067,13 @@ export function RehearsalWorkspace(props: {
       transcript: result.text,
       isFinal: result.isFinal,
       confidence: result.confidence ?? null,
-    });
+    }, result.diagnosticTrace);
   }
 
-  function handleLivePartialTranscript(event: LiveSttPartialTranscriptEvent) {
+  function handleLivePartialTranscript(
+    event: LiveSttPartialTranscriptEvent,
+    diagnosticTrace?: DiagnosticTrace,
+  ) {
     if (rehearsalRuntimeStatusRef.current === "paused") {
       return;
     }
@@ -4011,7 +4129,7 @@ export function RehearsalWorkspace(props: {
       liveKeywordOccurrenceStateRef.current,
       slide.slideId,
     );
-    const occurrenceMatches = matchKeywordOccurrenceTriggers({
+    const occurrenceEvaluation = evaluateKeywordOccurrenceTriggers({
       slide,
       targetOccurrenceIds,
       previousTranscript: previousMatchingTranscript,
@@ -4020,6 +4138,13 @@ export function RehearsalWorkspace(props: {
       confidence: event.confidence,
       confirmedOccurrenceIds: occurrenceState.confirmedOccurrenceIds,
     });
+    emitKeywordOccurrenceEvaluations({
+      diagnostics,
+      evaluations: occurrenceEvaluation.evaluations,
+      slideId: slide.slideId,
+      trace: diagnosticTrace,
+    });
+    const occurrenceMatches = occurrenceEvaluation.matches;
 
     const previousDetectedIds = new Set(
       liveKeywordStateRef.current?.slideId === slide.slideId
@@ -4063,6 +4188,7 @@ export function RehearsalWorkspace(props: {
               presenterStepIndex: presenterStepIndexRef.current,
               slideId: slide.slideId,
             }),
+      triggerTraceId: diagnosticTrace?.triggerTraceId,
       triggers: [
         ...occurrenceMatches.map((match) => ({
           kind: "keyword-occurrence" as const,
@@ -4115,6 +4241,49 @@ export function RehearsalWorkspace(props: {
     runtimeUpdate: SpeechAnimationRuntimeUpdate,
     slideCount: number,
   ) {
+    emitSpeechAnimationRuntimeDecisions({
+      decisions: runtimeUpdate.decisions,
+      diagnostics,
+      slideId: slide.slideId,
+    });
+    const triggerTraceId = runtimeUpdate.decisions
+      .flatMap((decision) =>
+        decision.triggerTraceId ? [decision.triggerTraceId] : [],
+      )
+      .at(-1);
+    if (
+      !runtimeUpdate.shouldAdvanceSlide &&
+      runtimeUpdate.state.presenterStepIndex !== presenterStepIndexRef.current
+    ) {
+      reactTransitionSequenceRef.current += 1;
+      const stateTransitionId = `${
+        triggerTraceId ?? diagnostics.sessionId ?? "rehearsal"
+      }:state:${reactTransitionSequenceRef.current}`;
+      pendingReactTransitionRef.current = {
+        slideId: slide.slideId,
+        stateTransitionId,
+        stepIndex: runtimeUpdate.state.presenterStepIndex,
+        ...(triggerTraceId ? { triggerTraceId } : {}),
+      };
+      setTransitionTrace({
+        stateTransitionId,
+        ...(triggerTraceId ? { triggerTraceId } : {}),
+      });
+      diagnostics.emit({
+        stage: "react",
+        name: "react.presenter_step.requested",
+        outcome: "received",
+        trace: {
+          slideId: slide.slideId,
+          stateTransitionId,
+          ...(triggerTraceId ? { triggerTraceId } : {}),
+        },
+        data: {
+          fromStepIndex: presenterStepIndexRef.current,
+          toStepIndex: runtimeUpdate.state.presenterStepIndex,
+        },
+      });
+    }
     speechAnimationRuntimeRef.current = runtimeUpdate.state;
     pendingKeywordOccurrenceIdsRef.current = {
       occurrenceIds: runtimeUpdate.pendingOccurrenceIds,
@@ -4504,12 +4673,19 @@ export function RehearsalWorkspace(props: {
       slideAnimationPlan: slideshowAnimationPlan,
       state: speechAnimationRuntimeRef.current,
     });
+    setTransitionTrace(undefined);
     if (update.state !== speechAnimationRuntimeRef.current) {
       applySpeechAnimationRuntimeUpdate(
         currentSlide,
         update,
         deck.slides.length,
       );
+    } else {
+      emitSpeechAnimationRuntimeDecisions({
+        decisions: update.decisions,
+        diagnostics,
+        slideId: currentSlide.slideId,
+      });
     }
   };
   const finishRehearsal = () => {
@@ -4531,17 +4707,23 @@ export function RehearsalWorkspace(props: {
     }
 
     if (isLiveDemoActive || isLiveSttActive) {
-      stopLiveDemo({ showCompletionModal: true });
+      stopLiveDemo({
+        endDiagnostics: true,
+        showCompletionModal: true,
+      });
       return;
     }
 
     if (isTimerRunning) {
       setIsTimerRunning(false);
       setHasLocalCompletion(true);
+      void stopDiagnostics("rehearsal-ended");
       return;
     }
 
-    navigateToPath(getRehearsalFinishPath(projectId, run));
+    void stopDiagnostics("rehearsal-ended").finally(() => {
+      navigateToPath(getRehearsalFinishPath(projectId, run));
+    });
   };
   const finishCompletedRehearsal = () => {
     const projectId = deck?.projectId ?? props.projectId ?? demoIds.projectId;
@@ -5144,13 +5326,16 @@ export function RehearsalWorkspace(props: {
     return (
       <SingleScreenPresenter
         deck={deck}
+        diagnostics={diagnostics}
         onExit={() => setIsSingleScreenOpen(false)}
         onNextStep={handleNextPresenterStep}
+        onTransitionSettled={handleRehearsalTransitionSettled}
         slideElapsedLabel={formatClock(slideElapsedSeconds)}
         slideId={currentSlide.slideId}
         slideTargetLabel={formatClock(currentSlideTargetSeconds)}
         stepIndex={presenterStepIndex}
         totalTimeLabel={formatClock(displayedTimeSeconds)}
+        transitionTrace={transitionTrace}
         triggerAnimationIds={triggerAnimationIds}
       />
     );
@@ -5163,6 +5348,7 @@ export function RehearsalWorkspace(props: {
         comparisonModel={comparisonModel}
         createLiveSttPort={(engineId) =>
           createDefaultLiveSttPort({
+            diagnostics,
             engineId,
             legacyAdapter: props.liveSttAdapter,
             projectId: deck.projectId,
@@ -5410,10 +5596,12 @@ export function RehearsalWorkspace(props: {
             deck && currentSlide && presenterScale !== null ? (
               <SlideshowRenderer
                 deck={deck}
+                diagnostics={diagnostics}
                 onTransitionSettled={handleRehearsalTransitionSettled}
                 scale={presenterScale}
                 slideId={currentSlide.slideId}
                 stepIndex={presenterStepIndex}
+                transitionTrace={transitionTrace}
                 triggerAnimationIds={triggerAnimationIds}
               />
             ) : null
@@ -5572,7 +5760,12 @@ export function RehearsalWorkspace(props: {
                     <button
                       className="secondary-action"
                       type="button"
-                    onClick={() => stopLiveDemo({ showCompletionModal: true })}
+                    onClick={() =>
+                      stopLiveDemo({
+                        endDiagnostics: true,
+                        showCompletionModal: true,
+                      })
+                    }
                       disabled={!canStopLiveDemo}
                     >
                       <Square size={18} />
@@ -5959,7 +6152,7 @@ function RehearsalPreflightScreen(props: {
         if (matched.size > 0) {
           finish("passed");
         }
-      });
+      }, { subscriberId: "rehearsal-preflight" });
       const unsubscribeError = port.onError((error) => {
         finish("error", error.message || "음성 인식 체크를 완료하지 못했습니다.");
       });
