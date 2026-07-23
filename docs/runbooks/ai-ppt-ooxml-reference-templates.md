@@ -128,3 +128,7 @@ QA/운영 환경의 exact font file checksum, full locked diff/montage, 사람�
 calibration threshold와 실제 flag-on vertical E2E가 남아 있다. 따라서 모든 repository
 catalog entry는 disabled이고 제품 rollout은 승인 보류다. 상세 상태는
 `docs/quality/ooxml-reference-template-reports/README.md`를 따른다.
+
+현재 QA fontconfig에서 exact resolve되지 않은 unique 50개 package family는
+`/private/tmp/orbit-ooxml-font-gap-20260723-a.json`에 기록했다. 설치 후에는 모든 family의
+resolved file SHA-256을 다시 생성하고 PowerPoint와 LibreOffice evidence를 별도로 재실행한다.

@@ -36,6 +36,12 @@ open/render/reopen은 별도로 검증했다. 그러나 embedded/exact font file
 private managed storage, full fidelity 사람 승인이 남아 repository catalog의 7개 template은
 모두 `disabled`다. 원본, font, render artifact와 storage secret은 Git에 저장하지 않는다.
 
+현재 LibreOffice/fontconfig QA runtime에서 package의 모든 explicit `typeface`를 exact family로
+대조하면 unique 50개 family가 미설치 또는 exact alias 불일치다. 목록은
+`/private/tmp/orbit-ooxml-font-gap-20260723-a.json`에 보관한다. PowerPoint 자동화 로그의 font
+substitution match 0건은 실제 resolved font file checksum 증거가 아니므로 이 blocker를
+해제하지 않는다.
+
 ## Security preflight
 
 7개 source는 모두 다음 fail-closed 검사에 통과했다.

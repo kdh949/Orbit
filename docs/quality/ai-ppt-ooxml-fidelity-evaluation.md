@@ -92,6 +92,11 @@ runtime은 package의 explicit font family를 `fc-match`로 exact resolve하고 
 checksum을 기록한다. 요청 family가 resolve된 family 집합에 없으면 substitution으로 보고
 render-validation을 fail-closed한다.
 
+2026-07-23 현재 QA fontconfig 비교에서는 unique 50개 explicit family가 exact resolve되지
+않았다. `/private/tmp/orbit-ooxml-font-gap-20260723-a.json`의 family를 설치하거나 exact alias와
+file checksum을 제공해야 한다. PowerPoint의 resolved font evidence는 이 결과와 별도로
+수집한다.
+
 artifact는 Git이 아닌 `/tmp` 또는 승인된 private QA storage에 다음 구조로 둔다.
 
 ```text
