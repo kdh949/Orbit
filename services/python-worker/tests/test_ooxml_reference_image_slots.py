@@ -52,6 +52,53 @@ def _image_fixture(tmp_path: Path) -> tuple[bytes, str, str]:
     return cloned.package_bytes, str(picture.shape_id), relationship_id
 
 
+def _shared_image_fixture(tmp_path: Path) -> tuple[bytes, str, str]:
+    image_path = tmp_path / "shared-original.png"
+    image_path.write_bytes(_png((400, 300), (30, 90, 150, 180)))
+    presentation = Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+    picture = slide.shapes.add_picture(
+        str(image_path), Inches(1), Inches(1), Inches(4), Inches(3)
+    )
+    slide.shapes.add_picture(
+        str(image_path), Inches(6), Inches(1), Inches(4), Inches(3)
+    )
+    relationship_id = picture._pic.blipFill.blip.rEmbed
+    output = BytesIO()
+    presentation.save(output)
+    enriched = _add_mask_opacity_and_effect(output.getvalue(), str(picture.shape_id))
+    cloned = clone_source_slides(
+        enriched, source_slide_parts=["ppt/slides/slide1.xml"]
+    )
+    return cloned.package_bytes, str(picture.shape_id), relationship_id
+
+
+def _cross_slide_shared_image_fixture(tmp_path: Path) -> tuple[bytes, str, str]:
+    image_path = tmp_path / "cross-slide-original.png"
+    image_path.write_bytes(_png((400, 300), (30, 90, 150, 180)))
+    presentation = Presentation()
+    first_slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+    picture = first_slide.shapes.add_picture(
+        str(image_path), Inches(2), Inches(1), Inches(6), Inches(4)
+    )
+    second_slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+    second_slide.shapes.add_picture(
+        str(image_path), Inches(2), Inches(1), Inches(6), Inches(4)
+    )
+    relationship_id = picture._pic.blipFill.blip.rEmbed
+    output = BytesIO()
+    presentation.save(output)
+    enriched = _add_mask_opacity_and_effect(output.getvalue(), str(picture.shape_id))
+    cloned = clone_source_slides(
+        enriched,
+        source_slide_parts=[
+            "ppt/slides/slide1.xml",
+            "ppt/slides/slide2.xml",
+        ],
+    )
+    return cloned.package_bytes, str(picture.shape_id), relationship_id
+
+
 def _add_mask_opacity_and_effect(package_bytes: bytes, shape_id: str) -> bytes:
     with zipfile.ZipFile(BytesIO(package_bytes), "r") as package:
         entries = {item.filename: package.read(item.filename) for item in package.infolist()}
@@ -131,10 +178,39 @@ def _picture_state(package_bytes: bytes, shape_id: str, relationship_id: str) ->
         }
 
 
+def _image_target_usage_count(package_bytes: bytes, relationship_id: str) -> tuple[int, int]:
+    with zipfile.ZipFile(BytesIO(package_bytes), "r") as package:
+        slide = ET.fromstring(package.read("ppt/slides/slide1.xml"))
+        relationships = ET.fromstring(package.read("ppt/slides/_rels/slide1.xml.rels"))
+        relation = next(
+            item
+            for item in relationships.findall(f"{{{PKG_REL_NS}}}Relationship")
+            if item.get("Id") == relationship_id
+        )
+        target = relation.get("Target")
+        target_name = Path(target).name
+        relationship_count = 0
+        for name in package.namelist():
+            if not name.endswith(".rels"):
+                continue
+            root = ET.fromstring(package.read(name))
+            relationship_count += sum(
+                item.get("Type", "").endswith("/image")
+                and Path(item.get("Target", "")).name == target_name
+                for item in root.findall(f"{{{PKG_REL_NS}}}Relationship")
+            )
+        embed_count = sum(
+            blip.get(f"{{{REL_NS}}}embed") == relationship_id
+            for blip in slide.findall(f".//{{{DML_NS}}}blip")
+        )
+        return relationship_count, embed_count
+
+
 def test_image_replacement_preserves_frame_crop_mask_rotation_opacity_and_effect(
     tmp_path: Path,
 ) -> None:
     source, shape_id, relationship_id = _image_fixture(tmp_path)
+    assert _image_target_usage_count(source, relationship_id) == (1, 1)
     before = _picture_state(source, shape_id, relationship_id)
     replacement = _png((800, 600), (180, 40, 80, 160))
 
@@ -153,6 +229,47 @@ def test_image_replacement_preserves_frame_crop_mask_rotation_opacity_and_effect
     assert after["media"] == replacement
     assert result.warning_codes == []
     assert validate_cloned_package(result.package_bytes) == []
+
+
+def test_image_replacement_rejects_shared_media_target_without_package_mutation(
+    tmp_path: Path,
+) -> None:
+    source, shape_id, relationship_id = _shared_image_fixture(tmp_path)
+    relationship_count, embed_count = _image_target_usage_count(
+        source, relationship_id
+    )
+    assert (relationship_count, embed_count) == (1, 2)
+
+    with pytest.raises(SlotCapacityError) as caught:
+        replace_image_slot(
+            source,
+            slot=_slot(shape_id, relationship_id),
+            image_bytes=_png((800, 600), (180, 40, 80, 160)),
+            mime_type="image/png",
+        )
+
+    assert caught.value.code == "OOXML_REFERENCE_IMAGE_MEDIA_SHARED"
+    assert caught.value.retryable is False
+    assert caught.value.package_bytes == source
+    assert caught.value.authored_fallback_created is False
+
+
+def test_image_replacement_rejects_media_target_reused_by_another_slide(
+    tmp_path: Path,
+) -> None:
+    source, shape_id, relationship_id = _cross_slide_shared_image_fixture(tmp_path)
+    assert _image_target_usage_count(source, relationship_id) == (2, 1)
+
+    with pytest.raises(SlotCapacityError) as caught:
+        replace_image_slot(
+            source,
+            slot=_slot(shape_id, relationship_id),
+            image_bytes=_png((800, 600), (180, 40, 80, 160)),
+            mime_type="image/png",
+        )
+
+    assert caught.value.code == "OOXML_REFERENCE_IMAGE_MEDIA_SHARED"
+    assert caught.value.package_bytes == source
 
 
 def test_image_aspect_ratio_capacity_fails_without_package_mutation(tmp_path: Path) -> None:

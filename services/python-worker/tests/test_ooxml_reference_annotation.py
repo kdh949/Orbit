@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import json
+import subprocess
+import sys
 import zipfile
 from pathlib import Path
+from xml.etree import ElementTree as ET
 
 import pytest
 from PIL import Image
@@ -13,6 +17,7 @@ from pptx.util import Inches
 
 from app.ai.ooxml_reference_templates.annotation import (
     AnnotationValidationError,
+    build_image_slot_candidate_report,
     build_spike_candidate,
     build_source_slide_catalog,
     locked_inventory_sha256,
@@ -27,6 +32,7 @@ from app.ai.ooxml_reference_templates.inventory import (
 
 
 SHA256 = "a" * 64
+PML_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
 ROLES = [
     "cover",
     "agenda",
@@ -161,6 +167,115 @@ def _manifest(path: Path, template_id: str, slide_count: int, annotated: int) ->
     }
 
 
+def _image_annotation_fixture(
+    tmp_path: Path, *, shared: bool
+) -> tuple[Path, dict]:
+    path, _ = _fixture_pptx(tmp_path, "image-annotation.pptx", 10)
+    image_path = tmp_path / "annotation-image.png"
+    Image.new("RGBA", (400, 300), (30, 90, 150, 180)).save(image_path)
+    presentation = Presentation(path)
+    slide = presentation.slides[0]
+    picture = slide.shapes.add_picture(
+        str(image_path), Inches(1), Inches(4), Inches(3), Inches(2.25)
+    )
+    if shared:
+        slide.shapes.add_picture(
+            str(image_path), Inches(5), Inches(4), Inches(3), Inches(2.25)
+        )
+    shape_id = str(picture.shape_id)
+    relationship_id = picture._pic.blipFill.blip.rEmbed
+    presentation.save(path)
+
+    value = _manifest(path, "image-annotation", 10, annotated=10)
+    source_slide = value["sourceSlides"][0]
+    source_slide["slots"].append(
+        {
+            "slotId": "image-annotation-v1-slide-01-image",
+            "semanticRole": "image",
+            "contentType": "image",
+            "required": True,
+            "locator": {
+                "slidePart": source_slide["sourceSlidePart"],
+                "shapeId": shape_id,
+                "placeholderType": None,
+                "relationshipId": relationship_id,
+            },
+            "capacity": {
+                "minAspectRatio": 1.2,
+                "maxAspectRatio": 1.5,
+                "cropPolicy": "preserve-frame",
+                "alphaRequired": True,
+                "maskRequired": False,
+            },
+            "mutationPolicy": ["image-source"],
+            "replacementPolicy": {"overflow": "fail"},
+        }
+    )
+    source_slide["capacity"]["imageSlotCount"] = 1
+    source_slide["lockedInventorySha256"] = locked_inventory_sha256(
+        path,
+        source_slide["sourceSlidePart"],
+        (slot["locator"]["shapeId"] for slot in source_slide["slots"]),
+        (slot["locator"]["relationshipId"] for slot in source_slide["slots"]),
+    )
+    return path, value
+
+
+def _picture_candidate_fixture(
+    tmp_path: Path,
+    *,
+    shared: bool = False,
+    placeholder: bool = True,
+    animated: bool = False,
+    replacement_description: str | None = None,
+    replacement_name: bool = False,
+) -> tuple[Path, dict]:
+    path, _ = _fixture_pptx(tmp_path, "candidate-source.pptx", 10)
+    image_path = tmp_path / "candidate-image.png"
+    Image.new("RGBA", (400, 300), (30, 90, 150, 180)).save(image_path)
+    presentation = Presentation(path)
+    slide = presentation.slides[0]
+    picture = slide.shapes.add_picture(
+        str(image_path), Inches(1), Inches(4), Inches(3), Inches(2.25)
+    )
+    if shared:
+        slide.shapes.add_picture(
+            str(image_path), Inches(5), Inches(4), Inches(3), Inches(2.25)
+        )
+    shape_id = str(picture.shape_id)
+    presentation.save(path)
+
+    with zipfile.ZipFile(path, "r") as package:
+        entries = {
+            item.filename: package.read(item.filename) for item in package.infolist()
+        }
+    root = ET.fromstring(entries["ppt/slides/slide1.xml"])
+    source_picture = next(
+        item
+        for item in root.findall(f".//{{{PML_NS}}}pic")
+        if item.find(f".//{{{PML_NS}}}cNvPr").get("id") == shape_id
+    )
+    if placeholder:
+        non_visual = source_picture.find(
+            f"{{{PML_NS}}}nvPicPr/{{{PML_NS}}}nvPr"
+        )
+        ET.SubElement(non_visual, f"{{{PML_NS}}}ph", {"type": "pic"})
+    c_nv_pr = source_picture.find(f".//{{{PML_NS}}}cNvPr")
+    if replacement_description is not None:
+        c_nv_pr.set("descr", replacement_description)
+    if replacement_name:
+        c_nv_pr.set("name", "Replace with image.")
+    if animated:
+        timing = ET.SubElement(root, f"{{{PML_NS}}}timing")
+        ET.SubElement(timing, f"{{{PML_NS}}}spTgt", {"spid": shape_id})
+    entries["ppt/slides/slide1.xml"] = ET.tostring(root, xml_declaration=True)
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as package:
+        for filename, content in entries.items():
+            package.writestr(filename, content)
+
+    return path, _manifest(path, "candidate-report", 10, annotated=10)
+
+
 def _mark_smartart_and_animation(path: Path, animation_shape_id: str) -> None:
     with zipfile.ZipFile(path, "r") as package:
         entries = {item.filename: package.read(item.filename) for item in package.infolist()}
@@ -256,6 +371,188 @@ def test_annotation_rejects_locator_not_present_in_source_ooxml(tmp_path: Path) 
 
     with pytest.raises(AnnotationValidationError, match="unsupported_locator"):
         validate_source_slide_annotations(path, value)
+
+
+def test_annotation_accepts_package_wide_unique_image_media_target(
+    tmp_path: Path,
+) -> None:
+    path, value = _image_annotation_fixture(tmp_path, shared=False)
+
+    manifest = validate_source_slide_annotations(path, value)
+
+    image_slots = [
+        slot
+        for slot in manifest.source_slides[0].slots
+        if slot.content_type == "image"
+    ]
+    assert len(image_slots) == 1
+
+
+def test_annotation_rejects_shared_image_media_target(tmp_path: Path) -> None:
+    path, value = _image_annotation_fixture(tmp_path, shared=True)
+
+    with pytest.raises(
+        AnnotationValidationError, match="shared_image_media_target"
+    ):
+        validate_source_slide_annotations(path, value)
+
+
+def test_image_slot_candidate_report_uses_conservative_replacement_intent(
+    tmp_path: Path,
+) -> None:
+    path, value = _picture_candidate_fixture(tmp_path)
+    manifest = validate_source_slide_annotations(path, value)
+
+    report = build_image_slot_candidate_report(path, manifest)
+
+    assert report["summary"] == {
+        "directPictureCount": 1,
+        "eligibleCandidateCount": 1,
+        "highConfidenceCandidateCount": 1,
+        "excludedPictureCount": 0,
+        "exclusionReasonCounts": {},
+    }
+    candidate = report["candidates"][0]
+    assert candidate["replacementIntent"] == {
+        "sourceType": "placeholder",
+        "usage": "media-slot",
+        "replaceMode": "replace",
+        "confidence": 0.95,
+        "evidence": "direct-picture-placeholder",
+    }
+    assert candidate["highConfidence"] is True
+    assert candidate["mediaTargetRelationshipCount"] == 1
+    assert candidate["slideEmbedCount"] == 1
+    serialized = json.dumps(report)
+    assert str(path) not in serialized
+    assert "Fixture 1" not in serialized
+    assert "ppt/media/" not in serialized
+    assert "<p:pic" not in serialized
+
+
+def test_image_slot_candidate_report_records_shared_target_exclusion(
+    tmp_path: Path,
+) -> None:
+    path, value = _picture_candidate_fixture(tmp_path, shared=True)
+    manifest = validate_source_slide_annotations(path, value)
+
+    report = build_image_slot_candidate_report(path, manifest)
+
+    assert report["summary"]["directPictureCount"] == 2
+    assert report["summary"]["eligibleCandidateCount"] == 0
+    assert report["summary"]["exclusionReasonCounts"] == {
+        "shared_media_target": 2
+    }
+    assert all(
+        exclusion["mediaTargetRelationshipCount"] == 1
+        and exclusion["slideEmbedCount"] == 2
+        and exclusion["exclusionReasons"] == ["shared_media_target"]
+        and exclusion["highConfidence"] is False
+        for exclusion in report["exclusions"]
+    )
+
+
+def test_image_slot_candidate_report_does_not_infer_high_confidence_without_placeholder(
+    tmp_path: Path,
+) -> None:
+    path, value = _picture_candidate_fixture(
+        tmp_path,
+        placeholder=False,
+        replacement_name=True,
+    )
+    manifest = validate_source_slide_annotations(path, value)
+
+    report = build_image_slot_candidate_report(path, manifest)
+
+    assert report["summary"]["eligibleCandidateCount"] == 1
+    assert report["summary"]["highConfidenceCandidateCount"] == 0
+    candidate = report["candidates"][0]
+    assert candidate["highConfidence"] is False
+    assert candidate["replacementIntent"] == {
+        "sourceType": "slide",
+        "usage": "media-slot",
+        "replaceMode": "preserve",
+        "confidence": 0.55,
+        "evidence": "no-explicit-source-replacement-intent",
+    }
+
+
+def test_image_slot_candidate_report_accepts_exact_normalized_authored_description_without_leaking_it(
+    tmp_path: Path,
+) -> None:
+    path, value = _picture_candidate_fixture(
+        tmp_path,
+        placeholder=False,
+        replacement_description="  Replace   with image. \n",
+    )
+    manifest = validate_source_slide_annotations(path, value)
+
+    report = build_image_slot_candidate_report(path, manifest)
+
+    assert report["summary"]["highConfidenceCandidateCount"] == 1
+    candidate = report["candidates"][0]
+    assert candidate["highConfidence"] is True
+    assert candidate["replacementIntent"] == {
+        "sourceType": "slide",
+        "usage": "media-slot",
+        "replaceMode": "replace",
+        "confidence": 0.95,
+        "evidence": "source-authored-image-replacement-description",
+    }
+    serialized = json.dumps(report)
+    assert "Replace with image." not in serialized
+    assert "Replace   with image." not in serialized
+    assert "description" not in candidate["replacementIntent"]
+
+
+def test_image_slot_candidate_report_excludes_animated_picture(
+    tmp_path: Path,
+) -> None:
+    path, value = _picture_candidate_fixture(tmp_path, animated=True)
+    manifest = validate_source_slide_annotations(path, value)
+
+    report = build_image_slot_candidate_report(path, manifest)
+
+    assert report["summary"]["eligibleCandidateCount"] == 0
+    assert report["summary"]["exclusionReasonCounts"] == {"animated_picture": 1}
+    assert report["exclusions"][0]["highConfidence"] is False
+
+
+def test_annotation_cli_writes_read_only_image_slot_candidate_report(
+    tmp_path: Path,
+) -> None:
+    path, value = _picture_candidate_fixture(tmp_path)
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(value), encoding="utf-8")
+    output_path = tmp_path / "candidate-report.json"
+    script = (
+        Path(__file__).parents[1]
+        / "scripts"
+        / "annotate_ooxml_reference_template.py"
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--source",
+            str(path),
+            "--manifest",
+            str(manifest_path),
+            "--image-slot-candidate-output",
+            str(output_path),
+            "--target-slide-count",
+            "99",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    report = json.loads(output_path.read_text(encoding="utf-8"))
+    assert report["summary"]["highConfidenceCandidateCount"] == 1
+    assert value == json.loads(manifest_path.read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize(

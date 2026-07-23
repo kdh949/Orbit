@@ -10,6 +10,7 @@ from xml.etree import ElementTree as ET
 from PIL import Image
 
 from app.ai.ooxml_reference_templates.capacity import SlotCapacityError
+from app.ai.ooxml_reference_templates.media_targets import inspect_image_media_usage
 from app.ai.ooxml_reference_templates.models import OoxmlImageTemplateSlot
 
 
@@ -60,6 +61,13 @@ def replace_image_slot(
 
     entries, infos = _read_package(package_bytes)
     slide_part = slot.locator.slide_part
+    relationship_id = slot.locator.relationship_id
+    if relationship_id is None:
+        raise SlotCapacityError(
+            "OOXML_REFERENCE_IMAGE_LOCATOR_INVALID",
+            "image relationship locator is missing",
+            package_bytes=package_bytes,
+        )
     rels_part = _rels_part(slide_part)
     try:
         slide = ET.fromstring(entries[slide_part])
@@ -74,7 +82,7 @@ def replace_image_slot(
     blip = picture.find(f".//{{{DRAWING_NS}}}blip")
     if blip is None or blip.attrib.get(
         f"{{{OFFICE_RELATIONSHIPS_NS}}}embed"
-    ) != slot.locator.relationship_id:
+    ) != relationship_id:
         raise SlotCapacityError(
             "OOXML_REFERENCE_IMAGE_LOCATOR_INVALID",
             "picture relationship locator drifted",
@@ -85,7 +93,7 @@ def replace_image_slot(
         for relationship in relationships.findall(
             f"{{{PACKAGE_RELATIONSHIPS_NS}}}Relationship"
         )
-        if relationship.attrib.get("Id") == slot.locator.relationship_id
+        if relationship.attrib.get("Id") == relationship_id
         and relationship.attrib.get("Type", "").endswith("/image")
         and relationship.attrib.get("TargetMode") != "External"
     ]
@@ -104,6 +112,25 @@ def replace_image_slot(
                 package_bytes=package_bytes,
             )
     media_part = _resolve_target(slide_part, matches[0].attrib["Target"])
+    try:
+        usage = inspect_image_media_usage(
+            entries,
+            slide_part=slide_part,
+            relationship_id=relationship_id,
+            media_part=media_part,
+        )
+    except (KeyError, ET.ParseError) as error:
+        raise SlotCapacityError(
+            "OOXML_REFERENCE_IMAGE_LOCATOR_INVALID",
+            "image media usage cannot be inspected",
+            package_bytes=package_bytes,
+        ) from error
+    if not usage.is_exclusive:
+        raise SlotCapacityError(
+            "OOXML_REFERENCE_IMAGE_MEDIA_SHARED",
+            "annotated image media target is shared by another package consumer",
+            package_bytes=package_bytes,
+        )
     expected_suffix = ".png" if mime_type == "image/png" else ".jpeg"
     if PurePosixPath(media_part).suffix.casefold() not in {
         expected_suffix,

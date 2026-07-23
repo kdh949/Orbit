@@ -18,6 +18,7 @@ from app.ai.ooxml_reference_templates.inventory import (
     ReferenceSource,
     inspect_reference_package,
 )
+from app.ai.ooxml_reference_templates.media_targets import inspect_image_media_usage
 from app.ai.ooxml_reference_templates.models import (
     OoxmlReferenceTemplateManifest,
     OoxmlSourceSlide,
@@ -52,6 +53,9 @@ _SLOT_FIELDS = {
 }
 _SUPPORTED_CONTENT_TYPES = {"text", "image", "table", "chart"}
 _ROLE_COUNT = 14
+_MAX_IMAGE_SLOT_CANDIDATE_RECORDS = 1_000
+_MAX_IMAGE_SLOT_LOCATOR_LENGTH = 160
+_IMAGE_REPLACEMENT_DESCRIPTION_ALLOWLIST = {"Replace with image."}
 
 
 class AnnotationValidationError(ValueError):
@@ -125,6 +129,211 @@ def locked_inventory_sha256(
         raise AnnotationValidationError(
             "malformed_source_package", "locked inventory cannot be calculated"
         ) from error
+
+
+def build_image_slot_candidate_report(
+    source_path: Path,
+    manifest: OoxmlReferenceTemplateManifest,
+) -> dict[str, Any]:
+    try:
+        with zipfile.ZipFile(source_path, "r") as package:
+            package_names = set(package.namelist())
+            relationship_entries = {
+                name: package.read(name)
+                for name in package_names
+                if name.endswith(".rels")
+            }
+            candidates: list[dict[str, Any]] = []
+            exclusions: list[dict[str, Any]] = []
+            exclusion_counts: dict[str, int] = {}
+            direct_picture_count = 0
+
+            for slide in sorted(
+                manifest.source_slides, key=lambda item: item.source_order
+            ):
+                relationships = _relationship_records_for_part(
+                    package, slide.source_slide_part
+                )
+                _, animated_shape_ids, root = _slide_objects(
+                    package, slide.source_slide_part
+                )
+                shape_tree = root.find(f".//{{{PRESENTATION_NS}}}spTree")
+                if shape_tree is None:
+                    continue
+                entries = {
+                    **relationship_entries,
+                    slide.source_slide_part: package.read(slide.source_slide_part),
+                }
+                for picture in (
+                    child
+                    for child in list(shape_tree)
+                    if child.tag == f"{{{PRESENTATION_NS}}}pic"
+                ):
+                    direct_picture_count += 1
+                    if direct_picture_count > _MAX_IMAGE_SLOT_CANDIDATE_RECORDS:
+                        raise AnnotationValidationError(
+                            "image_candidate_limit_exceeded",
+                            "direct picture count exceeds the bounded report limit",
+                        )
+                    record, reasons = _image_candidate_record(
+                        picture=picture,
+                        slide=slide,
+                        relationships=relationships,
+                        package_names=package_names,
+                        entries=entries,
+                        animated_shape_ids=animated_shape_ids,
+                    )
+                    if reasons:
+                        record["exclusionReasons"] = reasons
+                        exclusions.append(record)
+                        for reason in reasons:
+                            exclusion_counts[reason] = (
+                                exclusion_counts.get(reason, 0) + 1
+                            )
+                    else:
+                        candidates.append(record)
+    except AnnotationValidationError:
+        raise
+    except (OSError, KeyError, zipfile.BadZipFile, ET.ParseError) as error:
+        raise AnnotationValidationError(
+            "malformed_source_package",
+            "image-slot candidates cannot be inspected",
+        ) from error
+
+    return {
+        "schemaVersion": 1,
+        "templateId": manifest.template_id,
+        "manifestVersion": manifest.version,
+        "sourceSha256": manifest.source_sha256,
+        "slideCount": manifest.slide_count,
+        "limits": {"maxDirectPictures": _MAX_IMAGE_SLOT_CANDIDATE_RECORDS},
+        "summary": {
+            "directPictureCount": direct_picture_count,
+            "eligibleCandidateCount": len(candidates),
+            "highConfidenceCandidateCount": sum(
+                bool(candidate["highConfidence"]) for candidate in candidates
+            ),
+            "excludedPictureCount": len(exclusions),
+            "exclusionReasonCounts": dict(sorted(exclusion_counts.items())),
+        },
+        "candidates": candidates,
+        "exclusions": exclusions,
+    }
+
+
+def _image_candidate_record(
+    *,
+    picture: ET.Element[str],
+    slide: OoxmlSourceSlide,
+    relationships: list[dict[str, str]],
+    package_names: set[str],
+    entries: Mapping[str, bytes],
+    animated_shape_ids: set[str],
+) -> tuple[dict[str, Any], list[str]]:
+    c_nv_pr = picture.find(f".//{{{PRESENTATION_NS}}}cNvPr")
+    shape_id = c_nv_pr.attrib.get("id", "") if c_nv_pr is not None else ""
+    blip = picture.find(f".//{{{DRAWING_NS}}}blip")
+    relationship_id = (
+        blip.attrib.get(f"{{{REL_NS}}}embed", "") if blip is not None else ""
+    )
+    matching_relationships = [
+        relationship
+        for relationship in relationships
+        if relationship["id"] == relationship_id
+    ]
+    reasons: list[str] = []
+    relationship_count: int | None = None
+    embed_count: int | None = None
+
+    if not shape_id:
+        reasons.append("missing_shape_id")
+    elif len(shape_id) > _MAX_IMAGE_SLOT_LOCATOR_LENGTH:
+        reasons.append("unbounded_shape_id")
+    if not relationship_id:
+        reasons.append("missing_image_relationship")
+    elif len(relationship_id) > _MAX_IMAGE_SLOT_LOCATOR_LENGTH:
+        reasons.append("unbounded_relationship_id")
+    elif len(matching_relationships) != 1:
+        reasons.append("ambiguous_image_relationship")
+    else:
+        relationship = matching_relationships[0]
+        if relationship["targetMode"] == "External":
+            reasons.append("external_image_relationship")
+        elif not relationship["type"].endswith("/image"):
+            reasons.append("non_image_relationship")
+        else:
+            media_part = relationship["targetPart"]
+            if media_part not in package_names:
+                reasons.append("missing_media_part")
+            usage = inspect_image_media_usage(
+                entries,
+                slide_part=slide.source_slide_part,
+                relationship_id=relationship_id,
+                media_part=media_part,
+            )
+            relationship_count = usage.relationship_count
+            embed_count = usage.embed_count
+            if not usage.is_exclusive:
+                reasons.append("shared_media_target")
+    if shape_id in animated_shape_ids:
+        reasons.append("animated_picture")
+
+    placeholder = picture.find(f".//{{{PRESENTATION_NS}}}ph") is not None
+    authored_replacement_description = (
+        c_nv_pr is not None
+        and _normalize_replacement_description(c_nv_pr.attrib.get("descr", ""))
+        in _IMAGE_REPLACEMENT_DESCRIPTION_ALLOWLIST
+    )
+    explicit_replacement_intent = placeholder or authored_replacement_description
+    if placeholder:
+        replacement_intent = {
+            "sourceType": "placeholder",
+            "usage": "media-slot",
+            "replaceMode": "replace",
+            "confidence": 0.95,
+            "evidence": "direct-picture-placeholder",
+        }
+    elif authored_replacement_description:
+        replacement_intent = {
+            "sourceType": "slide",
+            "usage": "media-slot",
+            "replaceMode": "replace",
+            "confidence": 0.95,
+            "evidence": "source-authored-image-replacement-description",
+        }
+    else:
+        replacement_intent = {
+            "sourceType": "slide",
+            "usage": "media-slot",
+            "replaceMode": "preserve",
+            "confidence": 0.55,
+            "evidence": "no-explicit-source-replacement-intent",
+        }
+    record: dict[str, Any] = {
+        "sourceSlideId": slide.source_slide_id,
+        "sourceOrder": slide.source_order,
+        "shapeId": (
+            shape_id
+            if len(shape_id) <= _MAX_IMAGE_SLOT_LOCATOR_LENGTH
+            else None
+        ),
+        "relationshipId": (
+            relationship_id
+            if 0 < len(relationship_id) <= _MAX_IMAGE_SLOT_LOCATOR_LENGTH
+            else None
+        ),
+        "replacementIntent": replacement_intent,
+        "highConfidence": not reasons and explicit_replacement_intent,
+    }
+    if relationship_count is not None:
+        record["mediaTargetRelationshipCount"] = relationship_count
+    if embed_count is not None:
+        record["slideEmbedCount"] = embed_count
+    return record, sorted(set(reasons))
+
+
+def _normalize_replacement_description(value: str) -> str:
+    return " ".join(value.split())
 
 
 def _locked_inventory_sha256_package(
@@ -401,6 +610,7 @@ def _validate_slide(
         )
 
     shapes, animated_shape_ids, _ = _slide_objects(package, slide.source_slide_part)
+    package_entries: dict[str, bytes] | None = None
     counts = {"text": 0, "image": 0, "table": 0, "chart": 0}
     for slot in slide.slots:
         shape = shapes.get(slot.locator.shape_id)
@@ -430,6 +640,33 @@ def _validate_slide(
             raise AnnotationValidationError(
                 "unsupported_locator", "slot relationship does not exist"
             )
+        if slot.content_type == "image":
+            if relationship_id is None:
+                raise AnnotationValidationError(
+                    "unsupported_locator", "image slot relationship is required"
+                )
+            relationship = relationships[relationship_id]
+            if not relationship["type"].endswith("/image"):
+                raise AnnotationValidationError(
+                    "unsupported_locator", "image slot relationship is not an image"
+                )
+            if package_entries is None:
+                package_entries = {
+                    name: package.read(name)
+                    for name in package.namelist()
+                    if name.endswith(".rels") or name == slide.source_slide_part
+                }
+            usage = inspect_image_media_usage(
+                package_entries,
+                slide_part=slide.source_slide_part,
+                relationship_id=relationship_id,
+                media_part=relationship["targetPart"],
+            )
+            if not usage.is_exclusive:
+                raise AnnotationValidationError(
+                    "shared_image_media_target",
+                    "image slot media target is shared by another package consumer",
+                )
         counts[slot.content_type] += 1
 
     declared = slide.capacity
@@ -558,6 +795,34 @@ def _relationships_for_part(
             ),
         }
     return relationships
+
+
+def _relationship_records_for_part(
+    package: zipfile.ZipFile, part: str
+) -> list[dict[str, str]]:
+    part_path = PurePosixPath(part)
+    rels_part = str(part_path.parent / "_rels" / f"{part_path.name}.rels")
+    root = ET.fromstring(package.read(rels_part))
+    records: list[dict[str, str]] = []
+    for relationship in root.findall(
+        f"{{{PACKAGE_RELATIONSHIPS_NS}}}Relationship"
+    ):
+        target = relationship.attrib.get("Target", "")
+        records.append(
+            {
+                "id": relationship.attrib.get("Id", ""),
+                "type": relationship.attrib.get("Type", ""),
+                "targetMode": relationship.attrib.get("TargetMode", "Internal"),
+                "targetPart": (
+                    target.lstrip("/")
+                    if target.startswith("/")
+                    else posixpath.normpath(
+                        posixpath.join(str(part_path.parent), target)
+                    )
+                ),
+            }
+        )
+    return records
 
 
 def _related_part(
