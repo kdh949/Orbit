@@ -1845,6 +1845,10 @@ def apply_sync_operation(
             source_key,
             warnings,
             element_id,
+            preserve_text_body_properties=isinstance(
+                template_blueprint.get("referenceTemplateSnapshot"),
+                dict,
+            ),
         )
         if not shape_changed:
             return "PROPS_UPDATE_FAILED"
@@ -3048,6 +3052,8 @@ def update_shape_props(
     source_key: tuple[str, str],
     warnings: list[str],
     element_id: str,
+    *,
+    preserve_text_body_properties: bool = False,
 ) -> bool:
     changed = False
     if source.get("elementType") == "rect":
@@ -3063,7 +3069,13 @@ def update_shape_props(
         updated_sources[source_key] = dict(source)
         return True
     if source.get("elementType") == "text":
-        return sync_text_shape(shape, props, source, scale)
+        return sync_text_shape(
+            shape,
+            props,
+            source,
+            scale,
+            preserve_body_properties=preserve_text_body_properties,
+        )
     if "src" in props:
         if source.get("fallbackReason"):
             warnings.append(f"OOXML fallback source preserved for {element_id}.")
@@ -3328,6 +3340,8 @@ def sync_text_shape(
     props: dict[str, Any],
     source: dict[str, Any],
     scale: PackageFrameScale,
+    *,
+    preserve_body_properties: bool = False,
 ) -> bool:
     if set(props) == {"text"} and str(props.get("text", "")) == text_body_value(shape):
         return True
@@ -3341,7 +3355,12 @@ def sync_text_shape(
         text_body_value(shape),
         "\n".join(str(paragraph.get("text", "")) for paragraph in paragraphs),
     )
-    apply_text_body_properties(body, props, scale)
+    apply_text_body_properties(
+        body,
+        props,
+        scale,
+        apply_import_defaults=not preserve_body_properties,
+    )
     authored = source.get("ooxmlOrigin") == "authored"
     if text_structure_matches(body, paragraphs):
         patch_matching_text_structure(body, paragraphs, props, scale, authored)
@@ -3466,14 +3485,17 @@ def apply_text_body_properties(
     body: ET.Element[Any],
     props: dict[str, Any],
     scale: PackageFrameScale,
+    *,
+    apply_import_defaults: bool = True,
 ) -> None:
     body_pr = first_local_child(body, "bodyPr")
     if body_pr is None:
         body_pr = ET.Element(f"{{{DML_NS}}}bodyPr")
         body.insert(0, body_pr)
-    body_pr.set("horzOverflow", "clip")
-    body_pr.set("vertOverflow", "clip")
-    body_pr.set("wrap", "square")
+    if apply_import_defaults:
+        body_pr.set("horzOverflow", "clip")
+        body_pr.set("vertOverflow", "clip")
+        body_pr.set("wrap", "square")
     if "verticalAlign" in props:
         body_pr.set(
             "anchor",

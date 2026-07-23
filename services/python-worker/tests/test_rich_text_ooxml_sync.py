@@ -71,6 +71,49 @@ def test_equal_plain_text_projection_preserves_full_mixed_run_bytes(
     assert current_package_bytes(result.assets) == original_package
 
 
+def test_reference_text_only_sync_preserves_exact_body_properties(
+    tmp_path: Path,
+) -> None:
+    pptx_path = rich_text_source_pptx(tmp_path)
+    set_text_body_properties(pptx_path, "Simple source", {"anchor": "t"})
+    original_package = pptx_path.read_bytes()
+    generated = generate_pptx_ooxml(pptx_path, "file_reference", render=False)
+    text = text_element(generated, "Simple source")
+    source = source_for_text(generated, "Simple source")
+    original_body_pr = text_body_properties_xml(
+        original_package,
+        source["shapeId"],
+    )
+    generated.template_blueprint["referenceTemplateSnapshot"] = {
+        "catalogTemplateId": "reference-fixture",
+        "catalogTemplateVersion": 1,
+    }
+
+    result = sync_pptx_ooxml(
+        pptx_path,
+        template_blueprint=generated.template_blueprint,
+        operations=[
+            {
+                "type": "update_element_props",
+                "slideId": template_slide_id(generated),
+                "elementId": text["elementId"],
+                "props": {"text": "Edited source"},
+            }
+        ],
+        deck_canvas=generated.canvas,
+        synced_deck_version=2,
+        render=False,
+    )
+
+    assert result.unsupported_operations == []
+    package = current_package_bytes(result.assets)
+    assert text_body_properties_xml(package, source["shapeId"]) == original_body_pr
+    assert "".join(
+        node.text or ""
+        for node in shape_element(package, source["shapeId"]).iter(f"{{{DML_NS}}}t")
+    ) == "Edited source"
+
+
 def test_equal_text_with_style_preserves_mixed_run_structure(
     tmp_path: Path,
 ) -> None:
@@ -748,6 +791,38 @@ def add_run_property_extensions(
     pptx_path.write_bytes(output.getvalue())
 
 
+def set_text_body_properties(
+    pptx_path: Path,
+    text: str,
+    attributes: dict[str, str],
+) -> None:
+    output = BytesIO()
+    with ZipFile(pptx_path, "r") as source, ZipFile(output, "w") as target:
+        root = ET.fromstring(source.read("ppt/slides/slide1.xml"))
+        shape = next(
+            candidate
+            for candidate in root.iter(f"{{{PML_NS}}}sp")
+            if "".join(
+                node.text or ""
+                for node in candidate.iter(f"{{{DML_NS}}}t")
+            )
+            == text
+        )
+        body_pr = shape.find(f"{{{PML_NS}}}txBody/{{{DML_NS}}}bodyPr")
+        assert body_pr is not None
+        body_pr.attrib.clear()
+        body_pr.attrib.update(attributes)
+        slide_xml = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+        for info in source.infolist():
+            target.writestr(
+                info,
+                slide_xml
+                if info.filename == "ppt/slides/slide1.xml"
+                else source.read(info.filename),
+            )
+    pptx_path.write_bytes(output.getvalue())
+
+
 def split_linked_run_relationships(pptx_path: Path) -> None:
     output = BytesIO()
     with ZipFile(pptx_path, "r") as source, ZipFile(output, "w") as target:
@@ -881,6 +956,14 @@ def shape_element(package: bytes, shape_id: str) -> ET.Element:
     with ZipFile(BytesIO(package), "r") as archive:
         root = ET.fromstring(archive.read("ppt/slides/slide1.xml"))
     return shape_by_id(root, shape_id)
+
+
+def text_body_properties_xml(package: bytes, shape_id: str) -> bytes:
+    body_pr = shape_element(package, shape_id).find(
+        f"{{{PML_NS}}}txBody/{{{DML_NS}}}bodyPr"
+    )
+    assert body_pr is not None
+    return ET.tostring(body_pr, encoding="utf-8")
 
 
 def run_property_element(package: bytes, shape_id: str, run_index: int) -> ET.Element:
