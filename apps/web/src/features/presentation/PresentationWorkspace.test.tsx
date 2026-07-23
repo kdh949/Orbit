@@ -100,6 +100,9 @@ describe("PresentationWorkspace", () => {
     expect(source).toContain("previousTranscript: transcriptSpan.previousTranscript");
     expect(source).toContain("latestTranscriptSequence");
     expect(source).toContain("processedSpeechResultSequenceRef");
+    expect(source).toContain("enqueueSpeechAnimationTriggers");
+    expect(source).toContain("settleSpeechAnimationTransition");
+    expect(source).toContain("onTransitionSettled");
   });
 
   it("renders the auto-start presenter controls for an Activity slide", () => {

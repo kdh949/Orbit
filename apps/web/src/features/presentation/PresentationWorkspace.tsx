@@ -50,12 +50,18 @@ import { usePresenterKeyboard } from "../rehearsal/presenter/usePresenterKeyboar
 import {
   getTriggerAnimationIdsForSlide,
   getKeywordOccurrenceTriggerIdsForSlide,
-  restoreSlidePlaybackAtStep,
-  resolveManualAnimationPlaybackUpdate,
-  resolveQueuedKeywordOccurrencePlayback,
-  resolveKeywordTriggeredActions,
   resolveTriggeredActionPlaybackUpdate,
 } from "../rehearsal/playback/triggeredActionPlayback";
+import {
+  advanceSpeechAnimationManually,
+  createSpeechAnimationRuntimeState,
+  enqueueSpeechAnimationTriggers,
+  restoreSpeechAnimationRuntimeAtStep,
+  settleSpeechAnimationTransition,
+  type SpeechAnimationRuntimeState,
+  type SpeechAnimationRuntimeUpdate,
+} from "../rehearsal/playback/speechAnimationRuntime";
+import type { SlideshowTransitionAddress } from "../rehearsal/presenter/useSlideshowTransitions";
 import type { AnimationFlowNavigation } from "../rehearsal/presenter/AnimationFlowNavigator";
 import { AutoAdvanceStatus } from "../rehearsal/advance/AutoAdvanceStatus";
 import {
@@ -167,6 +173,9 @@ export function PresentationWorkspace(props: {
     stepIndex: number;
   } | null>(null);
   const processedSpeechResultSequenceRef = useRef(0);
+  const speechAnimationSequenceRef = useRef(0);
+  const speechAnimationRuntimeRef =
+    useRef<SpeechAnimationRuntimeState | null>(null);
   const advanceControllerStateRef = useRef<AdvanceControllerState>(
     createInitialAdvanceControllerState(),
   );
@@ -537,27 +546,56 @@ export function PresentationWorkspace(props: {
     [goNext],
   );
 
+  const applySpeechAnimationRuntimeUpdate = useCallback(
+    (slide: Slide, runtimeUpdate: SpeechAnimationRuntimeUpdate) => {
+      speechAnimationRuntimeRef.current = runtimeUpdate.state;
+      applyPlaybackUpdate({
+        consumedOccurrenceIds: runtimeUpdate.consumedOccurrenceIds,
+        slide,
+        update: {
+          playbackState: runtimeUpdate.state.playbackState,
+          presenterStepIndex: runtimeUpdate.state.presenterStepIndex,
+          shouldAdvanceSlide: runtimeUpdate.shouldAdvanceSlide,
+        },
+      });
+      pendingKeywordOccurrenceIdsRef.current = {
+        occurrenceIds: runtimeUpdate.pendingOccurrenceIds,
+        slideId: slide.slideId,
+      };
+      setPendingKeywordOccurrenceIds(runtimeUpdate.pendingOccurrenceIds);
+    },
+    [applyPlaybackUpdate],
+  );
+
   const handleNextPresenterStep = useCallback(() => {
     if (!currentSlide || !slideshowAnimationPlan) {
       return;
     }
 
-    const update = resolveManualAnimationPlaybackUpdate({
-      playbackState: playbackStateRef.current,
-      presenterStepIndex,
+    const runtimeState =
+      speechAnimationRuntimeRef.current?.slideId === currentSlide.slideId
+        ? speechAnimationRuntimeRef.current
+        : createSpeechAnimationRuntimeState({
+            playbackState: playbackStateRef.current,
+            presenterStepIndex,
+            slideId: currentSlide.slideId,
+          });
+    const update = advanceSpeechAnimationManually({
       slide: currentSlide,
       slideAnimationPlan: slideshowAnimationPlan,
+      state: runtimeState,
     });
-    applyPlaybackUpdate({
-      consumedOccurrenceIds: update.consumedOccurrenceIds,
-      slide: currentSlide,
-      update,
-    });
-  }, [applyPlaybackUpdate, currentSlide, presenterStepIndex, slideshowAnimationPlan]);
+    applySpeechAnimationRuntimeUpdate(currentSlide, update);
+  }, [
+    applySpeechAnimationRuntimeUpdate,
+    currentSlide,
+    presenterStepIndex,
+    slideshowAnimationPlan,
+  ]);
 
   const restorePresentationPlaybackAtStep = useCallback(
     (slide: Slide, stepIndex: number) => {
-      const restored = restoreSlidePlaybackAtStep({
+      const restoredRuntime = restoreSpeechAnimationRuntimeAtStep({
         slide,
         slideAnimationPlan: createSlideshowAnimationPlan({
           slide,
@@ -565,10 +603,11 @@ export function PresentationWorkspace(props: {
         }),
         stepIndex,
       });
+      speechAnimationRuntimeRef.current = restoredRuntime;
       previousHitKeywordIdsRef.current = new Set();
-      playbackStateRef.current = restored.playbackState;
+      playbackStateRef.current = restoredRuntime.playbackState;
       keywordOccurrenceStateRef.current = {
-        confirmedOccurrenceIds: restored.consumedOccurrenceIds,
+        confirmedOccurrenceIds: restoredRuntime.confirmedOccurrenceIds,
         slideId: slide.slideId,
       };
       pendingKeywordOccurrenceIdsRef.current = {
@@ -581,12 +620,9 @@ export function PresentationWorkspace(props: {
       const nextAdvanceState = resetAdvanceControllerForSlide(slide.slideId);
       advanceControllerStateRef.current = nextAdvanceState;
       setAdvanceControllerState(nextAdvanceState);
-      setPresenterStepIndex(restored.presenterStepIndex);
-      if (speech.state.status === "listening") {
-        speech.enterSlide(slide);
-      }
+      setPresenterStepIndex(restoredRuntime.presenterStepIndex);
     },
-    [speech.enterSlide, speech.state.status],
+    [],
   );
 
   const handleAnimationFlowNavigation = useCallback(
@@ -637,14 +673,28 @@ export function PresentationWorkspace(props: {
       return;
     }
     previousHitKeywordIdsRef.current = new Set();
+    const restoredRuntime =
+      currentSlide && slideshowAnimationPlan
+        ? restoreSpeechAnimationRuntimeAtStep({
+            slide: currentSlide,
+            slideAnimationPlan: slideshowAnimationPlan,
+            stepIndex: presenterStepIndex,
+          })
+        : null;
     keywordOccurrenceStateRef.current = currentSlide
-      ? { slideId: currentSlide.slideId, confirmedOccurrenceIds: [] }
+      ? {
+          slideId: currentSlide.slideId,
+          confirmedOccurrenceIds:
+            restoredRuntime?.confirmedOccurrenceIds ?? [],
+        }
       : null;
     pendingKeywordOccurrenceIdsRef.current = currentSlide
       ? { occurrenceIds: [], slideId: currentSlide.slideId }
       : null;
     setPendingKeywordOccurrenceIds([]);
-    playbackStateRef.current = createSlidePlaybackState();
+    playbackStateRef.current =
+      restoredRuntime?.playbackState ?? createSlidePlaybackState();
+    speechAnimationRuntimeRef.current = restoredRuntime;
     finalSentenceCommittedAtMsRef.current = null;
     finalSentenceSpokenAtMsRef.current = null;
     const nextAdvanceState = currentSlide
@@ -655,7 +705,7 @@ export function PresentationWorkspace(props: {
     if (currentSlide && speech.state.status === "listening") {
       speech.enterSlide(currentSlide);
     }
-  }, [currentSlide, restorePresentationPlaybackAtStep, speech.enterSlide, speech.state.status]);
+  }, [currentSlide?.slideId]);
 
   useEffect(() => {
     if (runtimePhase !== "active" || speech.state.status !== "listening") {
@@ -786,29 +836,28 @@ export function PresentationWorkspace(props: {
       return;
     }
 
-    const queued = resolveQueuedKeywordOccurrencePlayback({
-      matchedOccurrenceIds: matches.map((match) => match.occurrenceId),
-      pendingOccurrenceIds,
-      playbackState: playbackStateRef.current,
-      presenterStepIndex,
+    speechAnimationSequenceRef.current += 1;
+    const queued = enqueueSpeechAnimationTriggers({
+      sequence: speechAnimationSequenceRef.current,
       slide: currentSlide,
       slideAnimationPlan: slideshowAnimationPlan,
+      state:
+        speechAnimationRuntimeRef.current?.slideId === currentSlide.slideId
+          ? speechAnimationRuntimeRef.current
+          : createSpeechAnimationRuntimeState({
+              playbackState: playbackStateRef.current,
+              presenterStepIndex,
+              slideId: currentSlide.slideId,
+            }),
+      triggers: matches.map((match) => ({
+        kind: "keyword-occurrence" as const,
+        keywordId: match.keywordId,
+        occurrenceId: match.occurrenceId,
+      })),
     });
-    pendingKeywordOccurrenceIdsRef.current = {
-      occurrenceIds: queued.pendingOccurrenceIds,
-      slideId: currentSlide.slideId,
-    };
-    setPendingKeywordOccurrenceIds(queued.pendingOccurrenceIds);
-    if (!queued.update) {
-      return;
-    }
-    applyPlaybackUpdate({
-      consumedOccurrenceIds: queued.consumedOccurrenceIds,
-      slide: currentSlide,
-      update: queued.update,
-    });
+    applySpeechAnimationRuntimeUpdate(currentSlide, queued);
   }, [
-    applyPlaybackUpdate,
+    applySpeechAnimationRuntimeUpdate,
     currentSlide,
     presenterStepIndex,
     runtimePhase,
@@ -830,31 +879,62 @@ export function PresentationWorkspace(props: {
     );
     previousHitKeywordIdsRef.current = nextHitIds;
 
-    for (const keywordId of newlyHitIds) {
-      const actions = resolveKeywordTriggeredActions(currentSlide, keywordId);
-      if (actions.length === 0) {
-        continue;
-      }
-      const update = resolveTriggeredActionPlaybackUpdate({
-        actions,
-        playbackState: playbackStateRef.current,
-        presenterStepIndex,
-        slide: currentSlide,
-        slideAnimationPlan: slideshowAnimationPlan,
-      });
-      applyPlaybackUpdate({ slide: currentSlide, update });
-      if (update.shouldAdvanceSlide) {
-        return;
-      }
+    if (newlyHitIds.length === 0) {
+      return;
     }
+    speechAnimationSequenceRef.current += 1;
+    const update = enqueueSpeechAnimationTriggers({
+      sequence: speechAnimationSequenceRef.current,
+      slide: currentSlide,
+      slideAnimationPlan: slideshowAnimationPlan,
+      state:
+        speechAnimationRuntimeRef.current?.slideId === currentSlide.slideId
+          ? speechAnimationRuntimeRef.current
+          : createSpeechAnimationRuntimeState({
+              playbackState: playbackStateRef.current,
+              presenterStepIndex,
+              slideId: currentSlide.slideId,
+            }),
+      triggers: newlyHitIds.map((keywordId) => ({
+        kind: "keyword" as const,
+        keywordId,
+      })),
+    });
+    applySpeechAnimationRuntimeUpdate(currentSlide, update);
   }, [
-    applyPlaybackUpdate,
+    applySpeechAnimationRuntimeUpdate,
     currentSlide,
     panelSnapshot.hitKeywordIds,
     presenterStepIndex,
     runtimePhase,
     slideshowAnimationPlan,
   ]);
+
+  const handlePresentationTransitionSettled = useCallback(
+    (address: SlideshowTransitionAddress) => {
+      if (
+        !currentSlide ||
+        !slideshowAnimationPlan ||
+        speechAnimationRuntimeRef.current?.slideId !== currentSlide.slideId
+      ) {
+        return;
+      }
+      const update = settleSpeechAnimationTransition({
+        address,
+        slide: currentSlide,
+        slideAnimationPlan: slideshowAnimationPlan,
+        state: speechAnimationRuntimeRef.current,
+      });
+      if (update.state !== speechAnimationRuntimeRef.current) {
+        applySpeechAnimationRuntimeUpdate(currentSlide, update);
+      }
+    },
+    [
+      applySpeechAnimationRuntimeUpdate,
+      currentSlide,
+      slideshowAnimationPlan,
+    ],
+  );
 
   useEffect(() => {
     if (!shouldWarnBeforePresentationUnload(runtimePhase)) {
@@ -1279,6 +1359,7 @@ export function PresentationWorkspace(props: {
         onElapsedInputFocus={() => setEditingTimeField("elapsed")}
         onExit={requestPresentationExit}
         onNext={handleNextPresenterStep}
+        onTransitionSettled={handlePresentationTransitionSettled}
         onAnimationFlowNavigate={handleAnimationFlowNavigation}
         onPrevious={goPrevious}
         onPrimaryAction={handleTimePrimaryAction}

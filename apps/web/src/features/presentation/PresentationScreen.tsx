@@ -11,6 +11,7 @@ import {
   type AnimationFlowNavigation,
 } from "../rehearsal/presenter/AnimationFlowNavigator";
 import { SlideshowRenderer } from "../rehearsal/presenter/SlideshowRenderer";
+import type { SlideshowTransitionAddress } from "../rehearsal/presenter/useSlideshowTransitions";
 import type { SpeechTrackerSnapshot } from "../rehearsal/speech/speechTrackingEvents";
 import {
   PresenterStageSection,
@@ -48,6 +49,7 @@ export function PresentationScreen(props: {
   onPrimaryAction: () => void;
   onReset: () => void;
   onTimeModeChange: (value: PresenterTimeMode) => void;
+  onTransitionSettled?: (address: SlideshowTransitionAddress) => void;
   panelSnapshot: SpeechTrackerSnapshot;
   pendingKeywordOccurrenceIds?: readonly string[];
   presentationSession?: {
@@ -148,6 +150,7 @@ export function PresentationScreen(props: {
             props.deck && props.currentSlide ? (
               <SlideshowRenderer
                 deck={props.deck}
+                onTransitionSettled={props.onTransitionSettled}
                 scale={props.presenterScale}
                 slideId={props.currentSlide.slideId}
                 stepIndex={props.presenterStepIndex}
