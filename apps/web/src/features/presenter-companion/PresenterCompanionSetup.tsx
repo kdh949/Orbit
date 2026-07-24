@@ -32,6 +32,7 @@ export function PresenterCompanionSetup(props: {
   projectId: string;
   sessionId: string;
   sessionPurpose: PresentationSessionPurpose;
+  onClose?: () => void;
   statusController?: PresenterCompanionStatusController;
   title?: string;
   variant?: PresenterCompanionSetupVariant;
@@ -149,6 +150,16 @@ export function PresenterCompanionSetup(props: {
           </strong>
           <span>{getPurposeLabel(props.sessionPurpose)}</span>
         </div>
+        {variant === "popover" && props.onClose ? (
+          <button
+            aria-label="iPad 연결 창 닫기"
+            className="presenter-companion-close"
+            onClick={props.onClose}
+            type="button"
+          >
+            <IconX aria-hidden="true" size={20} />
+          </button>
+        ) : null}
       </div>
 
       {variant === "preflight" ? (
