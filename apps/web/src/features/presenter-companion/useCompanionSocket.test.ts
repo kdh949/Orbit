@@ -6,9 +6,36 @@ import {
   consumeCompanionPrompterState,
   createCompanionAnnotationCommand,
   createCompanionNavigationCommand,
+  companionRecoveryMaxDelayMs,
   markCompanionNavigationDelayed,
+  nextCompanionRecoveryDelayMs,
   type CompanionOutputCursor,
 } from "./useCompanionSocket";
+
+describe("nextCompanionRecoveryDelayMs", () => {
+  it("backs off exponentially up to the cap", () => {
+    expect([1, 2, 3, 4, 5, 6].map(nextCompanionRecoveryDelayMs)).toEqual([
+      3_000,
+      6_000,
+      12_000,
+      24_000,
+      companionRecoveryMaxDelayMs,
+      companionRecoveryMaxDelayMs,
+    ]);
+  });
+
+  it("never returns a delay below the first attempt", () => {
+    expect(nextCompanionRecoveryDelayMs(0)).toBe(3_000);
+    expect(nextCompanionRecoveryDelayMs(-4)).toBe(3_000);
+    expect(nextCompanionRecoveryDelayMs(Number.NaN)).toBe(3_000);
+  });
+
+  it("stays finite for very large attempt counts", () => {
+    expect(nextCompanionRecoveryDelayMs(5_000)).toBe(
+      companionRecoveryMaxDelayMs,
+    );
+  });
+});
 
 describe("consumeCompanionOutputState", () => {
   it("ignores duplicate and lower output revisions", () => {

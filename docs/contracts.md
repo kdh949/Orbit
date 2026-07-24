@@ -2248,8 +2248,9 @@ historical `type` 값:
 
 ### AI Deck 시연 캐시
 
-- 공개 `GenerateDeckRequest`, 응답, Job type/status에는 시연 전용 필드를 추가하지 않는다. 내부 설정 `DEMO_AI_DECK_CACHE_ENABLED`, `DEMO_AI_DECK_SOURCE_PROJECT_ID`, `DEMO_AI_DECK_TRIGGER_TOPIC`을 사용하고 기존 `ai-deck-generation` queued Job을 만든다.
-- cache hit은 기능 활성화, production이 아닌 allowlisted `APP_ENV`, `DEMO_USER_ID` 요청자, 공백 정규화 후 정확히 일치하는 topic, 읽기 가능한 source project, `deckSchema`를 통과한 source Deck을 모두 요구한다. source가 없거나 유효하지 않으면 `DEMO_DECK_CACHE_UNAVAILABLE`로 실패하고 일반 AI 생성으로 fallback하지 않는다.
+- 공개 `GenerateDeckRequest`, 응답, Job type/status에는 시연 전용 필드를 추가하지 않는다. 내부 설정 `DEMO_AI_DECK_CACHE_ENABLED`, `DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION`, `DEMO_AI_DECK_SOURCE_PROJECT_ID`, `DEMO_AI_DECK_TRIGGER_TOPIC`을 사용하고 기존 `ai-deck-generation` queued Job을 만든다.
+- production은 기본 거부한다. `APP_ENV=production`에서 cache를 켜려면 `DEMO_AI_DECK_CACHE_ENABLED=true`, `DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION=true`, `DEMO_FIXTURE_ENV_ALLOWLIST`의 exact `production` 항목을 모두 요구한다. production 승인 flag는 환경별 기본값을 `false`로 유지하고, source Deck과 시연 사용자 검증이 끝난 운영 환경에서만 별도 변경한다.
+- cache hit은 기능 활성화, allowlisted `APP_ENV`, `DEMO_USER_ID` 요청자, 공백 정규화 후 정확히 일치하는 topic, 읽기 가능한 source project, `deckSchema`를 통과한 source Deck을 모두 요구한다. source가 없거나 유효하지 않으면 `DEMO_DECK_CACHE_UNAVAILABLE`로 실패하고 일반 AI 생성으로 fallback하지 않는다.
 - hit Job은 Worker에 enqueue하지 않는다. Style 확정 transaction에서 source Deck을 다시 읽고 검증한 다음 target `projectId`, `deckId=deck_${jobId}`, `version=1`만 바꾸어 upsert한다. slide ID, elements, notes, design, animations와 asset URL은 보존하고 selection payload, 유효한 generation result, Job `succeeded/progress=100/error=null`을 같은 transaction에서 저장한다.
 - cache 사용 로그 `ai_ppt.demo_cache.used`에는 `jobId`, target/source project ID, `deckId`, slide count만 남긴다. prompt, notes, transcript, asset 내용과 secret은 기록하지 않는다.
 
