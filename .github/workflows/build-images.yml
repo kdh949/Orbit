@@ -208,8 +208,12 @@ jobs:
           source="ghcr.io/na-man-mu-303-team2/orbit-${{ matrix.service }}:${{ github.sha }}"
           repository="orbit/${{ matrix.service }}"
           target="${ECR_REGISTRY}/${repository}:${{ github.sha }}"
-          docker buildx imagetools create -t "$target" "$source"
-          digest="$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="${{ github.sha }}" --query 'imageDetails[0].imageDigest' --output text)"
+          digest="$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="${{ github.sha }}" --query 'imageDetails[0].imageDigest' --output text 2>/dev/null || true)"
+          if [ -z "$digest" ] || [ "$digest" = "None" ]; then
+            docker buildx imagetools create -t "$target" "$source"
+            digest="$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="${{ github.sha }}" --query 'imageDetails[0].imageDigest' --output text)"
+          fi
+          test -n "$digest"
           test "$digest" != "None"
           printf '%s\n' "${ECR_REGISTRY}/${repository}@${digest}" > image-digest.txt
       - uses: actions/upload-artifact@v4

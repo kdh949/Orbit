@@ -86,7 +86,7 @@ export function TargetDurationDialog(props: {
 
   return (
     <OrbitDialog
-      className="target-duration-dialog"
+      className="target-duration-dialog redesign-dark"
       description="전체 발표 시간을 정하고 슬라이드별 시간과 제목을 함께 조정합니다."
       footer={
         <>

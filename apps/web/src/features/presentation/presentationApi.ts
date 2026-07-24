@@ -32,6 +32,7 @@ export type PresentationRuntimeIdentity = {
 };
 
 export type PresenterCompanionSessionIdentity = {
+  audienceAccessEnabled: boolean;
   audienceUrl: string | null;
   deckId: string;
   deckVersion: number;
@@ -103,6 +104,7 @@ export async function ensurePresenterCompanionSession(input: {
     },
   );
   return {
+    audienceAccessEnabled: session.audienceAccessEnabled,
     audienceUrl,
     deckId: session.deckId,
     deckVersion: session.deckVersion,

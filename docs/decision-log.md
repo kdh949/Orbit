@@ -881,3 +881,28 @@
 - Rationale: 기존 stateful resource의 stack 소유권과 direct-EC2 rollback을 유지하면서도 ECS candidate의 DB, legacy target, service discovery, runtime capability를 배포 전에 결정적으로 검증할 수 있다. origin verification header와 CloudFront prefix-list 제한은 그대로 유지한다.
 - Affected files: `infra/scripts/assert-cfn-change-set-safe.mjs`, 관련 test/workflow, `infra/aws/ecs-compute-single-az.yaml`, `infra/aws/main-production-bootstrap.yaml`, `docs/runbooks/ecs-single-az-cutover.md`, `docs/decision-log.md`.
 - Follow-up review notes: 실제 Change Set에서 두 ingress rule이 add-only인지, CloudFront distribution `Modify`가 `Replacement: False`인지, ALB access log의 host가 origin domain인지, ECS runtime config의 두 flag가 `true`인지, Service Connect endpoint가 `python-worker:8000`으로 해석되는지 확인한다.
+
+## ORBIT CloudFormation execution role boundary
+
+- Context: ECS 전환용 Plan/Apply workflow가 서로 다른 GitHub OIDC role을 사용하지만 `create-change-set`에 CloudFormation service role을 지정하지 않았다. 이 상태에서는 CloudFormation이 호출자의 임시 자격 증명을 사용하므로 Apply role이 ECS, EC2, ElastiCache, IAM 등 실제 리소스 생성 권한까지 직접 가져야 한다.
+- Options considered:
+  - Apply OIDC role에 모든 리소스 provisioning 권한을 직접 부여한다.
+  - Plan/Apply role을 하나로 합치고 `AdministratorAccess`를 부여한다.
+  - GitHub OIDC 역할은 Change Set 제어와 특정 역할에 대한 `iam:PassRole`만 담당하고, 실제 provisioning은 별도 CloudFormation execution role로 분리한다.
+- Final decision: repository variable `AWS_CLOUDFORMATION_EXECUTION_ROLE_ARN`을 필수 계약으로 추가하고 Plan workflow의 `create-change-set --role-arn`으로 고정한다. `DescribeChangeSet` 응답에는 execution role ARN이 없으므로 artifact parser에서 존재하지 않는 값을 검사하지 않는다. 대신 Plan role의 `iam:PassRole`을 execution role ARN 하나와 `iam:PassedToService=cloudformation.amazonaws.com`으로 제한하고, Apply role에는 Change Set 생성 권한과 `iam:PassRole`을 부여하지 않는다. `AWS_INFRA_PLAN_ROLE_ARN`, `AWS_INFRA_APPLY_ROLE_ARN`, `AWS_ECR_PUBLISH_ROLE_ARN`은 repository variable로 관리하되 역할은 서로 재사용하지 않는다. Pull request 정적 검증 job에는 OIDC token 권한을 주지 않고, Plan job은 `refs/heads/main` dispatch로 분리한다. Plan role trust는 `aud=sts.amazonaws.com`과 exact main-ref subject만 허용한다. Apply job은 `production` environment 승인을 유지하고 Apply role trust는 해당 environment의 OIDC subject만 허용한다. Apply의 Change Set ARN과 region은 job environment로 전달하고 형식을 검증한 뒤 shell에서만 참조한다.
+- Rationale: GitHub workflow 자격 증명이 직접 가질 수 있는 blast radius를 줄이고, Apply workflow가 임의의 service role을 새로 연결할 권한을 갖지 못하게 한다. production 승인자는 성공한 Plan workflow가 만든 Change Set ARN과 artifact를 함께 검토한다. CloudFormation service role은 stack에 연결된 이후 해당 stack의 후속 작업에도 사용되므로, 실행 역할 자체도 템플릿에 필요한 최소권한과 별도 변경 검토를 유지한다.
+- Affected files: `.github/workflows/aws-infrastructure-plan.yml`, `.github/workflows/aws-infrastructure-apply.yml`, `infra/scripts/assert-cfn-change-set-safe.mjs`, 관련 테스트, `docs/runbooks/ecs-single-az-cutover.md`, `docs/decision-log.md`.
+- Follow-up review notes: AWS에서 역할 네 개의 trust/permissions를 각각 검토하고 GitHub 변수를 등록한 뒤에만 실제 Change Set을 생성한다. 특히 Plan trust의 wildcard subject 부재와 main-ref exact match를 확인한다. `production` required reviewer를 지정하고 self-review 방지 정책을 확인한다. 기존 stack에 이미 service role이 연결되어 있다면 역할을 바꾸기 전 권한과 rollback 영향을 별도 검토한다.
+
+## ORBIT release rerun, ECS proxy/health, and presentation preflight boundaries
+
+- Context: `develop`에서 `main`으로 승격하는 ECS 전환 PR 리뷰에서 immutable ECR tag 재게시, CloudFront·ALB 뒤의 client IP 해석, ECS API 직접 health path, 기존 audience session을 재사용한 presentation preflight 취소가 각각 release 복구와 실제 canary 동작을 막을 수 있음이 확인됐다.
+- Options considered:
+  - 같은 SHA의 ECR tag를 항상 다시 게시하고 workflow rerun 실패를 운영자가 수동 복구한다.
+  - ECS API가 proxy header를 신뢰하지 않거나 모든 proxy를 포괄하는 큰 hop 수를 사용한다.
+  - preflight 종료 시 session 종류와 관계없이 항상 presentation session을 닫는다.
+  - immutable tag가 있으면 digest를 재사용하고, 배포 topology와 직접 endpoint 및 session access 상태를 명시적으로 구분한다.
+- Final decision: ECR publish는 SHA tag의 기존 digest를 먼저 조회하고 없을 때만 manifest를 복사한다. ECS API는 CloudFront와 ALB 두 hop만 신뢰하도록 `API_TRUST_PROXY_HOPS=2`를 사용하고, ECS target/container health는 Nest의 `/health`를 직접 호출한다. Nginx-backed legacy target은 `/api/health`를 유지한다. presentation preflight가 companion-only session을 준비한 경우에만 취소 시 닫고, `audienceAccessEnabled=true`인 재사용 session은 기존 audience URL과 activity access를 보존한다.
+- Rationale: 동일 release commit의 workflow 재실행 가능성을 유지하고, viewer IP 기반 rate limit이 proxy 주소로 합쳐지는 문제와 ECS task의 영구 unhealthy 상태를 방지한다. 발표를 시작하지 않은 사용자의 preflight 취소가 이미 공유된 audience session을 종료하지 않게 한다.
+- Affected files: `.github/workflows/build-images.yml`, `.github/workflows/aws-infrastructure-plan.yml`, `infra/aws/ecs-compute-single-az.yaml`, `infra/scripts/assert-cfn-change-set-safe.test.mjs`, `apps/web/src/features/presentation/*`, `docs/conventions/environment.md`, `docs/runbooks/ecs-single-az-cutover.md`, `docs/decision-log.md`.
+- Follow-up review notes: main SHA workflow를 재실행해 기존 digest artifact가 다시 생성되는지, candidate CloudFront 경로에서 서로 다른 viewer IP가 rate-limit key로 분리되는지, ECS target과 container가 `/health`로 healthy가 되는지, audience URL을 활성화한 뒤 presentation preflight 취소가 session을 ended로 바꾸지 않는지 확인한다.
