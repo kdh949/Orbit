@@ -148,7 +148,7 @@ describe("SlideshowRenderer", () => {
       <SlideshowRenderer
         activityElementRuntime={{
           audienceUrl: "https://orbit.example/audience/session_live",
-          displayPasscode: "4821"
+          passcodeState: { status: "private", displayPasscode: "4821" }
         }}
         deck={deck}
         slideId={activitySlide.slideId}
@@ -157,6 +157,44 @@ describe("SlideshowRenderer", () => {
     );
 
     expect(html).toContain("4821");
+    expect(html).not.toContain("••••");
+  });
+
+  it.each([
+    [
+      { status: "public" as const },
+      "비밀번호 없이 바로 참여",
+    ],
+    [
+      { status: "not-prepared" as const },
+      "발표 시작 후 표시",
+    ],
+    [
+      { status: "legacy-unavailable" as const },
+      "입장 코드를 다시 설정해 주세요",
+    ],
+  ])("renders the %s passcode runtime state", (passcodeState, expectedText) => {
+    const baseDeck = createDemoDeck();
+    const activitySlide = createActivitySlide(baseDeck, "poll", {
+      preset: "spotlight",
+    });
+    const deck = {
+      ...baseDeck,
+      slides: [...baseDeck.slides, activitySlide],
+    };
+    const html = renderToStaticMarkup(
+      <SlideshowRenderer
+        activityElementRuntime={{
+          audienceUrl: null,
+          passcodeState,
+        }}
+        deck={deck}
+        slideId={activitySlide.slideId}
+        stepIndex={0}
+      />,
+    );
+
+    expect(html).toContain(expectedText);
     expect(html).not.toContain("••••");
   });
 

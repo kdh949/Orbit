@@ -11,6 +11,7 @@ import {
   type AnimationFlowNavigation,
 } from "../rehearsal/presenter/AnimationFlowNavigator";
 import { SlideshowRenderer } from "../rehearsal/presenter/SlideshowRenderer";
+import type { ActivityPasscodeRuntimeState } from "../activity-slides/rendering/ActivityElementRuntimeContext";
 import type { SpeechTrackerSnapshot } from "../rehearsal/speech/speechTrackingEvents";
 import {
   PresenterStageSection,
@@ -52,7 +53,7 @@ export function PresentationScreen(props: {
   panelSnapshot: SpeechTrackerSnapshot;
   presentationSession?: {
     audienceUrl: string | null;
-    displayPasscode: string | null;
+    passcodeState: ActivityPasscodeRuntimeState;
     sessionId: string;
   };
   presenterScale: number;
@@ -138,8 +139,9 @@ export function PresentationScreen(props: {
               <SlideshowRenderer
                 activityElementRuntime={{
                   audienceUrl: props.presentationSession?.audienceUrl ?? null,
-                  displayPasscode:
-                    props.presentationSession?.displayPasscode ?? null,
+                  passcodeState:
+                    props.presentationSession?.passcodeState ??
+                    { status: "not-prepared" },
                 }}
                 deck={props.deck}
                 playInitialEntryAnimations={false}
@@ -160,8 +162,9 @@ export function PresentationScreen(props: {
               <SlideshowRenderer
                 activityElementRuntime={{
                   audienceUrl: props.presentationSession?.audienceUrl ?? null,
-                  displayPasscode:
-                    props.presentationSession?.displayPasscode ?? null,
+                  passcodeState:
+                    props.presentationSession?.passcodeState ??
+                    { status: "not-prepared" },
                 }}
                 deck={props.deck}
                 scale={props.presenterScale}

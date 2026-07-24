@@ -1814,14 +1814,10 @@ export function PresentationWorkspace(props: {
         }}
         panelSnapshot={panelSnapshot}
         presentationSession={
-          runtimeRef.current ??
-          (presenterSession
-            ? {
-                audienceUrl: presenterSession.audienceUrl,
-                displayPasscode: null,
-                sessionId: presenterSession.sessionId,
-              }
-            : undefined)
+          createPresentationScreenSession(
+            runtimeRef.current,
+            presenterSession,
+          )
         }
         presenterScale={presenterScale}
         presenterStageRef={presenterStageRef}
@@ -1898,6 +1894,34 @@ const presentationAutoAdvancePolicy = Object.freeze({
   live: true,
   rehearsal: false,
 });
+
+function createPresentationScreenSession(
+  runtime: PresentationRuntimeIdentity | null,
+  presenterSession: PresenterCompanionSessionIdentity | null,
+) {
+  if (runtime) {
+    return {
+      audienceUrl: runtime.audienceUrl,
+      passcodeState:
+        runtime.accessMode === "public"
+          ? ({ status: "public" } as const)
+          : runtime.displayPasscode
+            ? ({
+                status: "private",
+                displayPasscode: runtime.displayPasscode,
+              } as const)
+            : ({ status: "legacy-unavailable" } as const),
+      sessionId: runtime.sessionId,
+    };
+  }
+  return presenterSession
+    ? {
+        audienceUrl: presenterSession.audienceUrl,
+        passcodeState: { status: "not-prepared" } as const,
+        sessionId: presenterSession.sessionId,
+      }
+    : undefined;
+}
 
 function navigateToProject(projectId?: string) {
   if (!projectId || typeof window === "undefined") {

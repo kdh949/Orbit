@@ -20,7 +20,7 @@ describe("editable activity QR element runtime", () => {
   it("keeps an injected live runtime authoritative", () => {
     const runtime: ActivityElementRuntime = {
       audienceUrl: "https://orbit.example/audience/session_live",
-      displayPasscode: "4821"
+      passcodeState: { status: "private", displayPasscode: "4821" }
     };
 
     expect(

@@ -10,7 +10,10 @@ import {
 import type { ComponentType } from "react";
 
 import { getKonvaFontStyle } from "../../editor/canvas/text/textLayout";
-import { useActivityElementRuntime } from "./ActivityElementRuntimeContext";
+import {
+  type ActivityPasscodeRuntimeState,
+  useActivityElementRuntime,
+} from "./ActivityElementRuntimeContext";
 
 type KonvaComponent = ComponentType<any>;
 const Group = KonvaGroup as unknown as KonvaComponent;
@@ -27,6 +30,10 @@ export function PresentationPasscodeElementContent(props: {
   const labelHeight = props.elementProps.label
     ? Math.min(52, props.frame.height * 0.3)
     : 0;
+  const passcodeContent = resolvePasscodeContent(
+    runtime?.passcodeState,
+    props.elementProps,
+  );
 
   return (
     <Group listening={false}>
@@ -56,18 +63,44 @@ export function PresentationPasscodeElementContent(props: {
         align={codeStyle.align ?? "center"}
         fill={codeStyle.color ?? "#171917"}
         fontFamily={codeStyle.fontFamily}
-        fontSize={codeStyle.fontSize ?? 64}
+        fontSize={
+          passcodeContent.isPasscode
+            ? (codeStyle.fontSize ?? 64)
+            : Math.min(codeStyle.fontSize ?? 32, 32)
+        }
         fontStyle={getKonvaFontStyle(codeStyle.fontWeight ?? "bold")}
         height={Math.max(1, props.frame.height - labelHeight)}
-        letterSpacing={codeStyle.letterSpacing ?? 12}
+        letterSpacing={
+          passcodeContent.isPasscode
+            ? (codeStyle.letterSpacing ?? 12)
+            : 0
+        }
         padding={8}
-        text={runtime?.displayPasscode ?? "••••"}
+        text={passcodeContent.text}
         verticalAlign={codeStyle.verticalAlign ?? "middle"}
         width={props.frame.width}
         y={labelHeight}
       />
     </Group>
   );
+}
+
+function resolvePasscodeContent(
+  state: ActivityPasscodeRuntimeState | undefined,
+  elementProps: PresentationPasscodeElementProps,
+) {
+  switch (state?.status) {
+    case "private":
+      return { isPasscode: true, text: state.displayPasscode };
+    case "public":
+      return { isPasscode: false, text: elementProps.publicAccessText };
+    case "not-prepared":
+      return { isPasscode: false, text: elementProps.unavailableText };
+    case "legacy-unavailable":
+      return { isPasscode: false, text: elementProps.legacyUnavailableText };
+    default:
+      return { isPasscode: true, text: "••••" };
+  }
 }
 
 function solidPaint(paint: DeckElementPaint) {
