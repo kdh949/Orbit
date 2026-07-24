@@ -22,7 +22,7 @@ export function ActivityQrInsertDialog(props: {
 
   return (
     <OrbitDialog
-      className="activity-qr-insert-dialog"
+      className="activity-qr-insert-dialog redesign-dark"
       description="삽입할 참여 장표를 고르면 현재 장표에 연결된 QR이 표시됩니다."
       footer={(
         <OrbitButton onClick={props.onClose} variant="secondary">닫기</OrbitButton>
