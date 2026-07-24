@@ -30,6 +30,8 @@ type EditorSlideRehearsalSummaryProps = {
 export function EditorSlideRehearsalBottomPanel(
   props: EditorSlideRehearsalSummaryProps & {
     animationDebug?: {
+      actionDispatchable?: boolean;
+      actionEvidenceKind?: "final" | "pending" | "stable-prefix";
       approvalOccurrenceId: string | null;
       blocker: string | null;
       confidence: number | null;
@@ -217,7 +219,12 @@ export function EditorSlideRehearsalBottomPanel(
       {props.animationDebug ? (
         <details className="editor-slide-rehearsal-animation-debug" open>
           <summary>애니메이션 트리거 디버그</summary>
-          <p>새 전사 구간: {props.animationDebug.newSegment || "-"}</p>
+          <p>실행용 전사 구간: {props.animationDebug.newSegment || "-"}</p>
+          <p>
+            실행 증거: {props.animationDebug.actionDispatchable
+              ? props.animationDebug.actionEvidenceKind
+              : "안정화 대기"}
+          </p>
           <p>
             현재 step occurrence: {props.animationDebug.expectedOccurrenceIds.join(", ") || "-"}
           </p>

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { matchKeywordOccurrenceTriggers } from "./keywordOccurrenceRuntime";
+import {
+  estimateScriptProgressOffset,
+  matchKeywordOccurrenceTriggers
+} from "./keywordOccurrenceRuntime";
 
 describe("matchKeywordOccurrenceTriggers", () => {
   const slide = {
@@ -9,6 +12,7 @@ describe("matchKeywordOccurrenceTriggers", () => {
       "오늘은 AI 덱 생성 파이프라인을 소개합니다. 중간에도 AI를 언급합니다. 마지막에 AI를 말하면 이미지가 나타납니다.",
     keywords: [
       {
+        alignmentScore: 1,
         keywordId: "kw_ai",
         text: "AI",
         synonyms: [],
@@ -79,6 +83,7 @@ describe("matchKeywordOccurrenceTriggers", () => {
 
     expect(matches).toEqual([
       {
+        alignmentScore: 0.83,
         keywordId: "kw_ai",
         occurrenceId: "kwo_slide_1_kw_ai_47_49",
         text: "AI",
@@ -100,6 +105,7 @@ describe("matchKeywordOccurrenceTriggers", () => {
 
     expect(matches).toEqual([
       {
+        alignmentScore: 0.56,
         keywordId: "kw_ai",
         occurrenceId: "kwo_slide_1_kw_ai_4_6",
         text: "AI",
@@ -199,6 +205,15 @@ describe("matchKeywordOccurrenceTriggers", () => {
     });
 
     expect(matches).toEqual([]);
+  });
+
+  it("does not reuse one repeated word as the prefix of every later sentence", () => {
+    expect(
+      estimateScriptProgressOffset(
+        "activity starts. activity continues.",
+        "activity"
+      )
+    ).toBe(9);
   });
 
 });

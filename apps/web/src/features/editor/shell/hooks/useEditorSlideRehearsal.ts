@@ -24,6 +24,12 @@ import {
   createTranscriptRevisionState,
   type TranscriptRevisionState
 } from "../../../rehearsal/speech/transcriptRevisionState";
+import {
+  applyTranscriptEvidence,
+  createTranscriptEvidenceState,
+  type TranscriptEvidenceKind,
+  type TranscriptEvidenceState
+} from "../../../rehearsal/speech/transcriptEvidenceState";
 
 export type EditorSlideRehearsalStatus =
   | "idle"
@@ -46,13 +52,19 @@ export type EditorSlideRehearsalState = {
 };
 
 export type EditorSlideRehearsalSpeechResult = {
+  actionEvidenceKind: TranscriptEvidenceKind;
+  actionNewSegment: string;
+  actionPreviousTranscript: string;
+  actionTranscript: string;
   finalTranscript: string;
   hitKeywordIds: string[];
   interimTranscript: string;
+  isActionDispatchable: boolean;
   result: LiveSttResult;
   slide: Slide;
   transcript: string;
   newSegment: string;
+  previousTranscript: string;
 };
 
 export type EditorSlideRehearsalStartOptions = {
@@ -92,6 +104,9 @@ export function useEditorSlideRehearsal(args: {
   const committedTranscriptRef = useRef("");
   const transcriptRevisionRef = useRef<TranscriptRevisionState>(
     createTranscriptRevisionState()
+  );
+  const transcriptEvidenceRef = useRef<TranscriptEvidenceState>(
+    createTranscriptEvidenceState()
   );
   const activeSlideRef = useRef<Slide | null>(null);
   const onSpeechResultRef = useRef(args.onSpeechResult);
@@ -136,6 +151,7 @@ export function useEditorSlideRehearsal(args: {
       speechTrackerRef.current = createEditorSlideRehearsalSpeechTracker(slide);
       committedTranscriptRef.current = "";
       transcriptRevisionRef.current = createTranscriptRevisionState();
+      transcriptEvidenceRef.current = createTranscriptEvidenceState();
       setState({
         ...initialState,
         activeSlideId: slide.slideId,
@@ -187,6 +203,11 @@ export function useEditorSlideRehearsal(args: {
             );
             if (transcriptRevision.isStale) return;
             transcriptRevisionRef.current = transcriptRevision.state;
+            const transcriptEvidence = applyTranscriptEvidence(
+              transcriptEvidenceRef.current,
+              result
+            );
+            transcriptEvidenceRef.current = transcriptEvidence.state;
 
             if (result.isFinal) {
               committedTranscriptRef.current = appendTranscript(
@@ -209,13 +230,19 @@ export function useEditorSlideRehearsal(args: {
 
             if (activeSlide) {
               onSpeechResultRef.current?.({
+                actionEvidenceKind: transcriptEvidence.kind,
+                actionNewSegment: transcriptEvidence.newSegment,
+                actionPreviousTranscript: transcriptEvidence.previousTranscript,
+                actionTranscript: transcriptEvidence.currentTranscript,
                 finalTranscript,
                 hitKeywordIds,
                 interimTranscript,
+                isActionDispatchable: transcriptEvidence.isDispatchable,
                 result,
                 slide: activeSlide,
                 transcript,
-                newSegment: transcriptRevision.newSegment
+                newSegment: transcriptRevision.newSegment,
+                previousTranscript: transcriptRevision.previousTranscript
               });
             }
 
@@ -274,6 +301,7 @@ export function useEditorSlideRehearsal(args: {
       speechTrackerRef.current = createEditorSlideRehearsalSpeechTracker(slide);
       committedTranscriptRef.current = "";
       transcriptRevisionRef.current = createTranscriptRevisionState();
+      transcriptEvidenceRef.current = createTranscriptEvidenceState();
       setState({
         ...initialState,
         activeSlideId: slide.slideId,
@@ -308,6 +336,7 @@ export function useEditorSlideRehearsal(args: {
     speechTrackerRef.current = null;
     committedTranscriptRef.current = "";
     transcriptRevisionRef.current = createTranscriptRevisionState();
+    transcriptEvidenceRef.current = createTranscriptEvidenceState();
     setState(initialState);
   }, [releaseResources]);
 

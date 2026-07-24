@@ -15,6 +15,12 @@ import {
   createTranscriptRevisionState,
   type TranscriptRevisionState,
 } from "../rehearsal/speech/transcriptRevisionState";
+import {
+  applyTranscriptEvidence,
+  createTranscriptEvidenceState,
+  type TranscriptEvidenceKind,
+  type TranscriptEvidenceState,
+} from "../rehearsal/speech/transcriptEvidenceState";
 
 type PresentationSpeechState = {
   error: string | null;
@@ -28,7 +34,13 @@ type PresentationSpeechState = {
 };
 
 export type PresentationSpeechTranscriptEvent = {
+  actionEvidenceKind: TranscriptEvidenceKind;
+  actionNewSegment: string;
+  actionPreviousTranscript: string;
+  actionTranscript: string;
+  isActionDispatchable: boolean;
   newSegment: string;
+  previousTranscript: string;
   result: LiveSttResult;
   slide: Slide;
   transcript: string;
@@ -63,8 +75,15 @@ export function usePresentationSpeech(
   const latestSlideTranscriptAfterRef = useRef("");
   const latestSlideTranscriptSegmentRef = useRef("");
   const latestSlideTranscriptSequenceRef = useRef(0);
+  const latestActionTranscriptBeforeRef = useRef("");
+  const latestActionTranscriptAfterRef = useRef("");
+  const latestActionTranscriptSegmentRef = useRef("");
+  const latestActionTranscriptDispatchableRef = useRef(false);
   const slideTranscriptRevisionRef = useRef<TranscriptRevisionState>(
     createTranscriptRevisionState(),
+  );
+  const slideTranscriptEvidenceRef = useRef<TranscriptEvidenceState>(
+    createTranscriptEvidenceState(),
   );
   const unsubscribersRef = useRef<Array<() => void>>([]);
   const onSlideTranscriptEventRef = useRef(onSlideTranscriptEvent);
@@ -78,7 +97,12 @@ export function usePresentationSpeech(
     latestSlideTranscriptAfterRef.current = "";
     latestSlideTranscriptSegmentRef.current = "";
     latestSlideTranscriptSequenceRef.current = 0;
+    latestActionTranscriptBeforeRef.current = "";
+    latestActionTranscriptAfterRef.current = "";
+    latestActionTranscriptSegmentRef.current = "";
+    latestActionTranscriptDispatchableRef.current = false;
     slideTranscriptRevisionRef.current = createTranscriptRevisionState();
+    slideTranscriptEvidenceRef.current = createTranscriptEvidenceState();
     trackerRef.current = createSpeechTracker({
       keywords: slide.keywords,
       slideId: slide.slideId,
@@ -136,6 +160,16 @@ export function usePresentationSpeech(
           );
           if (transcriptRevision.isStale) return;
           slideTranscriptRevisionRef.current = transcriptRevision.state;
+          const transcriptEvidence = applyTranscriptEvidence(
+            slideTranscriptEvidenceRef.current,
+            result,
+          );
+          slideTranscriptEvidenceRef.current = transcriptEvidence.state;
+          latestActionTranscriptBeforeRef.current = transcriptEvidence.previousTranscript;
+          latestActionTranscriptAfterRef.current = transcriptEvidence.currentTranscript;
+          latestActionTranscriptSegmentRef.current = transcriptEvidence.newSegment;
+          latestActionTranscriptDispatchableRef.current =
+            transcriptEvidence.isDispatchable;
           latestSlideTranscriptBeforeRef.current = transcriptRevision.previousTranscript;
           latestSlideTranscriptAfterRef.current = transcriptRevision.currentTranscript;
           latestSlideTranscriptSegmentRef.current = transcriptRevision.newSegment;
@@ -143,7 +177,13 @@ export function usePresentationSpeech(
           const activeSlide = slideRef.current;
           if (activeSlide) {
             onSlideTranscriptEventRef.current?.({
+              actionEvidenceKind: transcriptEvidence.kind,
+              actionNewSegment: transcriptEvidence.newSegment,
+              actionPreviousTranscript: transcriptEvidence.previousTranscript,
+              actionTranscript: transcriptEvidence.currentTranscript,
+              isActionDispatchable: transcriptEvidence.isDispatchable,
               newSegment: transcriptRevision.newSegment,
+              previousTranscript: transcriptRevision.previousTranscript,
               result,
               slide: activeSlide,
               transcript: transcriptRevision.currentTranscript,
@@ -283,6 +323,10 @@ export function usePresentationSpeech(
       transcript: latestSlideTranscriptAfterRef.current,
     }),
     getSlideTranscriptEvent: () => ({
+      actionNewSegment: latestActionTranscriptSegmentRef.current,
+      actionPreviousTranscript: latestActionTranscriptBeforeRef.current,
+      actionTranscript: latestActionTranscriptAfterRef.current,
+      isActionDispatchable: latestActionTranscriptDispatchableRef.current,
       newSegment: latestSlideTranscriptSegmentRef.current,
       previousTranscript: latestSlideTranscriptBeforeRef.current,
       sequence: latestSlideTranscriptSequenceRef.current,

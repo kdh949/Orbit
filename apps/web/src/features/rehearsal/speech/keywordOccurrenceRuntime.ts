@@ -7,6 +7,7 @@ import {
 } from "./phraseExtractor";
 
 export type KeywordOccurrenceRuntimeMatch = {
+  alignmentScore: number;
   matchedScriptOffset: number;
   keywordId: string;
   occurrenceId: string;
@@ -72,6 +73,7 @@ export function matchKeywordOccurrenceTriggers(options: {
     slide: options.slide,
     spanEnd,
     spanStart,
+    targetOccurrenceIds,
     window
   });
 
@@ -96,6 +98,11 @@ export function matchKeywordOccurrenceTriggers(options: {
 
     return [
       {
+        alignmentScore: calculateAlignmentScore({
+          occurrence,
+          spanEnd,
+          spanStart
+        }),
         keywordId: occurrence.keywordId,
         occurrenceId: occurrence.occurrenceId,
         text: occurrence.text,
@@ -114,6 +121,7 @@ function getMatchedOccurrenceIdsForTranscriptSpan(options: {
   slide: Pick<Slide, "keywords">;
   spanEnd: number;
   spanStart: number;
+  targetOccurrenceIds: ReadonlySet<string>;
   window: KeywordOccurrenceRuntimeWindow;
 }) {
   const occurrenceIds = new Set<string>();
@@ -126,7 +134,10 @@ function getMatchedOccurrenceIdsForTranscriptSpan(options: {
 
     const candidates = options.occurrences.filter(
       (occurrence) => {
-        if (occurrence.keywordId !== keyword.keywordId) {
+        if (
+          occurrence.keywordId !== keyword.keywordId ||
+          !options.targetOccurrenceIds.has(occurrence.occurrenceId)
+        ) {
           return false;
         }
 
@@ -154,8 +165,7 @@ function getMatchedOccurrenceIdsForTranscriptSpan(options: {
     const orderedCandidates = options.hasProgressSpan
       ? candidates.sort(
           (left, right) =>
-            Math.abs(left.start - options.spanStart) -
-            Math.abs(right.start - options.spanStart)
+            left.start - right.start || left.end - right.end
         )
       : candidates;
 
@@ -169,6 +179,16 @@ function getMatchedOccurrenceIdsForTranscriptSpan(options: {
   }
 
   return occurrenceIds;
+}
+
+function calculateAlignmentScore(options: {
+  occurrence: { start: number };
+  spanEnd: number;
+  spanStart: number;
+}) {
+  const spanLength = Math.max(options.spanEnd - options.spanStart, 1);
+  const distance = Math.max(options.occurrence.start - options.spanStart, 0);
+  return Number(Math.max(0, 1 - distance / spanLength).toFixed(2));
 }
 
 function countKeywordHitsByKeyword(
@@ -225,46 +245,57 @@ export function estimateScriptProgressOffset(
     return 0;
   }
 
-  let cursor = 0;
+  let scriptCursor = 0;
+  let transcriptCursor = 0;
   let currentCharOffset = 0;
 
   for (const sentence of splitSpeakerNotesIntoSentences(speakerNotes)) {
-    const start = speakerNotes.indexOf(sentence, cursor);
+    const start = speakerNotes.indexOf(sentence, scriptCursor);
     if (start === -1) {
       continue;
     }
 
     const end = start + sentence.length;
-    const matchedEnd = findMatchedSentencePrefixEnd({
+    const match = findMatchedSentencePrefix({
       normalizedTranscript,
       sentence,
-      sentenceStart: start
+      sentenceStart: start,
+      transcriptStart: transcriptCursor
     });
 
-    if (matchedEnd > currentCharOffset) {
-      currentCharOffset = matchedEnd;
+    if (match) {
+      currentCharOffset = Math.max(currentCharOffset, match.scriptEnd);
+      transcriptCursor = match.transcriptEnd;
     }
 
-    cursor = end;
+    scriptCursor = end;
   }
 
   return currentCharOffset;
 }
 
-function findMatchedSentencePrefixEnd(options: {
+function findMatchedSentencePrefix(options: {
   normalizedTranscript: string;
   sentence: string;
   sentenceStart: number;
-}): number {
+  transcriptStart: number;
+}): { scriptEnd: number; transcriptEnd: number } | null {
   for (let end = options.sentence.length; end > 0; end -= 1) {
     const normalizedPrefix = normalizeSpeechText(options.sentence.slice(0, end));
-    if (
-      normalizedPrefix.length >= 2 &&
-      options.normalizedTranscript.includes(normalizedPrefix)
-    ) {
-      return options.sentenceStart + end;
+    if (normalizedPrefix.length < 2) {
+      continue;
+    }
+    const transcriptIndex = options.normalizedTranscript.indexOf(
+      normalizedPrefix,
+      options.transcriptStart
+    );
+    if (transcriptIndex !== -1) {
+      return {
+        scriptEnd: options.sentenceStart + end,
+        transcriptEnd: transcriptIndex + normalizedPrefix.length
+      };
     }
   }
 
-  return 0;
+  return null;
 }

@@ -72,10 +72,7 @@ import {
   type AdvanceControllerState,
 } from "../rehearsal/advance/advanceController";
 import { createDefaultPhraseExtractor } from "../rehearsal/speech/phraseExtractor";
-import {
-  getExpectedKeywordOccurrenceStep,
-  matchExpectedKeywordOccurrenceStep,
-} from "../rehearsal/speech/keywordOccurrenceStepResolver";
+import { getExpectedKeywordOccurrenceStep } from "../rehearsal/speech/keywordOccurrenceStepResolver";
 import { dispatchKeywordOccurrencePlayback } from "../rehearsal/speech/keywordOccurrencePlaybackDispatcher";
 import type { SpeechTrackerSnapshot } from "../rehearsal/speech/speechTrackingEvents";
 import {
@@ -354,12 +351,22 @@ export function PresentationWorkspace(props: {
           slideAnimationPlan: slideshowAnimationPlan,
         })
       : null;
-    const resolution = matchExpectedKeywordOccurrenceStep({
+    const debugDispatch = dispatchKeywordOccurrencePlayback({
+      allowAutomaticPlayback: transcriptEvent.isActionDispatchable,
       confidence,
       consumedOccurrenceIds: confirmedOccurrenceIds,
-      expectedStep,
-      newSegment: transcriptEvent.newSegment,
+      latestTranscript: transcriptEvent.actionNewSegment,
+      newSegment: transcriptEvent.actionNewSegment,
+      pendingOccurrenceIds: [],
+      playbackState: playbackStateRef.current,
+      previousTranscript: transcriptEvent.actionPreviousTranscript,
+      presenterStepIndex,
       slide: currentSlide,
+      slideAnimationPlan: slideshowAnimationPlan ?? createSlideshowAnimationPlan({
+        slide: currentSlide,
+        triggerAnimationIds: getTriggerAnimationIdsForSlide(currentSlide),
+      }),
+      transcript: transcriptEvent.actionTranscript,
     });
     const occurrenceActions = currentSlide.actions.flatMap((action) => {
       if (action.trigger.kind !== "keyword-occurrence") {
@@ -387,16 +394,18 @@ export function PresentationWorkspace(props: {
       currentStepIndex: presenterStepIndex,
       expectedOccurrenceIds: expectedStep?.occurrenceIds ?? [],
       latestTranscript: speech.state.latestTranscript,
-      matches: resolution.matches,
+      matches: debugDispatch.matches,
       approvalOccurrenceId:
-        resolution.blocker === "confidence-low" && resolution.candidates.length === 1
-          ? resolution.candidates[0]?.occurrenceId ?? null
+        debugDispatch.resolution.blocker === "confidence-low" && debugDispatch.resolution.candidates.length === 1
+          ? debugDispatch.resolution.candidates[0]?.occurrenceId ?? null
           : null,
       animationExecutionHistory,
-      newSegment: transcriptEvent.newSegment,
+      actionDispatchable: transcriptEvent.isActionDispatchable,
+      newSegment: transcriptEvent.actionNewSegment,
       occurrenceActions,
+      positionedMatches: debugDispatch.positionedMatches,
       playedAnimationIds: playbackStateRef.current.playedAnimationIds,
-      resolutionBlocker: resolution.blocker,
+      resolutionBlocker: debugDispatch.resolution.blocker,
       speechStatus: speech.state.status,
       transcript: transcriptEvent.transcript,
     };
@@ -633,14 +642,18 @@ export function PresentationWorkspace(props: {
         ? pendingKeywordOccurrenceIdsRef.current.occurrenceIds
         : [];
     const dispatched = dispatchKeywordOccurrencePlayback({
+      allowAutomaticPlayback: event.isActionDispatchable,
       confidence: event.result.confidence ?? null,
       consumedOccurrenceIds: occurrenceState.confirmedOccurrenceIds,
-      newSegment: event.newSegment,
+      latestTranscript: event.actionNewSegment,
+      newSegment: event.actionNewSegment,
       pendingOccurrenceIds,
       playbackState: playbackStateRef.current,
+      previousTranscript: event.actionPreviousTranscript,
       presenterStepIndex: presenterStepIndexRef.current,
       slide,
       slideAnimationPlan,
+      transcript: event.actionTranscript,
     });
     pendingKeywordOccurrenceIdsRef.current = {
       occurrenceIds: dispatched.queuedPlayback.pendingOccurrenceIds,
@@ -650,7 +663,7 @@ export function PresentationWorkspace(props: {
     if (dispatched.queuedPlayback.update) {
       applyPlaybackUpdate({
         consumedOccurrenceIds: dispatched.queuedPlayback.consumedOccurrenceIds,
-        newSegment: event.newSegment,
+        newSegment: event.actionNewSegment,
         slide,
         source: "speech",
         update: dispatched.queuedPlayback.update,
@@ -1530,6 +1543,7 @@ function createEmptySpeechTrackerSnapshot(options: {
 function PresentationAnimationTriggerDebug(props: {
   data: {
     animationExecutionHistory: PresentationAnimationExecutionHistoryEntry[];
+    actionDispatchable: boolean;
     confidence: number | null;
     approvalOccurrenceId: string | null;
     confirmedOccurrenceIds: string[];
@@ -1541,6 +1555,11 @@ function PresentationAnimationTriggerDebug(props: {
     newSegment: string;
     occurrenceActions: Array<{ animationId: string; occurrenceId: string }>;
     playedAnimationIds: string[];
+    positionedMatches: Array<{
+      currentCharOffset: number;
+      occurrenceId: string;
+      matchedScriptOffset: number;
+    }>;
     resolutionBlocker: string | null;
     speechStatus: string;
     transcript: string;
@@ -1573,12 +1592,27 @@ function PresentationAnimationTriggerDebug(props: {
           <dd>{data.confidence?.toFixed(2) ?? "브라우저 미제공"}</dd>
         </div>
         <div>
-          <dt>새 전사 구간</dt>
+          <dt>실행용 전사 구간</dt>
           <dd>{data.newSegment || "-"}</dd>
+        </div>
+        <div>
+          <dt>실행 증거</dt>
+          <dd>{data.actionDispatchable ? "확정" : "안정화 대기"}</dd>
         </div>
         <div>
           <dt>현재 step occurrence</dt>
           <dd>{formatDebugValues(data.expectedOccurrenceIds)}</dd>
+        </div>
+        <div>
+          <dt>위치 정렬 occurrence</dt>
+          <dd>
+            {formatDebugValues(
+              data.positionedMatches.map(
+                (match) =>
+                  `${match.occurrenceId} (${match.matchedScriptOffset}→${match.currentCharOffset})`,
+              ),
+            )}
+          </dd>
         </div>
         <div>
           <dt>매칭 occurrence</dt>

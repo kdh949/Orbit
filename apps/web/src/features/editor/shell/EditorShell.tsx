@@ -651,6 +651,8 @@ export function EditorShell(props: { projectId?: string }) {
     useState<string | null>(null);
   const [slideRehearsalAnimationDebug, setSlideRehearsalAnimationDebug] =
     useState<{
+      actionDispatchable: boolean;
+      actionEvidenceKind: "final" | "pending" | "stable-prefix";
       approvalOccurrenceId: string | null;
       blocker: string | null;
       confidence: number | null;
@@ -740,20 +742,26 @@ export function EditorShell(props: { projectId?: string }) {
       triggerAnimationIds: getTriggerAnimationIdsForSlide(eventSlide)
     });
     const dispatchedOccurrencePlayback = dispatchKeywordOccurrencePlayback({
+      allowAutomaticPlayback: event.isActionDispatchable,
       confidence: event.result.confidence ?? null,
       consumedOccurrenceIds: slideRehearsalConfirmedOccurrenceIdsRef.current,
-      newSegment: event.newSegment,
+      latestTranscript: event.actionNewSegment,
+      newSegment: event.actionNewSegment,
       pendingOccurrenceIds: slideRehearsalPendingOccurrenceIdsRef.current,
       playbackState: slideRehearsalPlaybackStateRef.current,
+      previousTranscript: event.actionPreviousTranscript,
       presenterStepIndex: slideRehearsalStepIndexRef.current,
       slide: eventSlide,
-      slideAnimationPlan: eventSlideAnimationPlan
+      slideAnimationPlan: eventSlideAnimationPlan,
+      transcript: event.actionTranscript
     });
     const occurrenceMatches = dispatchedOccurrencePlayback.matches;
     const queuedOccurrencePlayback = dispatchedOccurrencePlayback.queuedPlayback;
     slideRehearsalPendingOccurrenceIdsRef.current =
       queuedOccurrencePlayback.pendingOccurrenceIds;
     setSlideRehearsalAnimationDebug({
+      actionDispatchable: event.isActionDispatchable,
+      actionEvidenceKind: event.actionEvidenceKind,
       approvalOccurrenceId:
         dispatchedOccurrencePlayback.resolution.blocker === "confidence-low" &&
         dispatchedOccurrencePlayback.resolution.candidates.length === 1
@@ -769,7 +777,7 @@ export function EditorShell(props: { projectId?: string }) {
       matchedOccurrenceIds: occurrenceMatches.map(
         (occurrenceMatch) => occurrenceMatch.occurrenceId
       ),
-      newSegment: event.newSegment,
+      newSegment: event.actionNewSegment,
       pendingOccurrenceIds: queuedOccurrencePlayback.pendingOccurrenceIds
     });
     consumeSlideRehearsalOccurrences(

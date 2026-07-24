@@ -20,6 +20,7 @@ export type ExpectedKeywordOccurrenceResolution = {
     | "already-consumed"
     | "ambiguous"
     | "confidence-low"
+    | "evidence-pending"
     | "no-current-keyword-step"
     | "no-keyword-hit"
     | null;
@@ -70,6 +71,7 @@ export function getExpectedKeywordOccurrenceStep(args: {
 }
 
 export function matchExpectedKeywordOccurrenceStep(args: {
+  allowedOccurrenceIds?: readonly string[];
   confidence?: number | null;
   consumedOccurrenceIds: readonly string[];
   expectedStep: ExpectedKeywordOccurrenceStep | null;
@@ -97,6 +99,7 @@ export function matchExpectedKeywordOccurrenceStep(args: {
     };
   }
   const distinctMatches = findExpectedStepTermHits({
+    allowedOccurrenceIds: args.allowedOccurrenceIds,
     expectedStep: args.expectedStep,
     segment: normalizeSpeechText(args.newSegment),
     slide: args.slide,
@@ -135,6 +138,7 @@ export function matchExpectedKeywordOccurrenceStep(args: {
 }
 
 export function findFutureKeywordOccurrenceMatches(args: {
+  allowedOccurrenceIds?: readonly string[];
   confidence?: number | null;
   consumedOccurrenceIds: readonly string[];
   newSegment: string;
@@ -151,6 +155,7 @@ export function findFutureKeywordOccurrenceMatches(args: {
     slideAnimationPlan: args.slideAnimationPlan
   });
   const currentHits = findExpectedStepTermHits({
+    allowedOccurrenceIds: args.allowedOccurrenceIds,
     expectedStep: currentStep,
     segment,
     slide: args.slide,
@@ -185,6 +190,7 @@ export function findFutureKeywordOccurrenceMatches(args: {
       continue;
     }
     const hits = findExpectedStepTermHits({
+      allowedOccurrenceIds: args.allowedOccurrenceIds,
       expectedStep,
       segment,
       slide: args.slide,
@@ -203,17 +209,23 @@ export function findFutureKeywordOccurrenceMatches(args: {
 }
 
 function findExpectedStepTermHits(args: {
+  allowedOccurrenceIds?: readonly string[];
   expectedStep: ExpectedKeywordOccurrenceStep | null;
   segment: string;
   slide: Slide;
   startAt: number;
 }): KeywordOccurrenceTermHit[] {
   if (!args.expectedStep || !args.segment) return [];
+  const allowedOccurrenceIds = args.allowedOccurrenceIds
+    ? new Set(args.allowedOccurrenceIds)
+    : null;
   const hits = args.slide.actions.flatMap((action) => {
     const trigger = action.trigger;
     if (
       trigger.kind !== "keyword-occurrence" ||
-      !args.expectedStep?.occurrenceIds.includes(trigger.occurrenceId)
+      !args.expectedStep?.occurrenceIds.includes(trigger.occurrenceId) ||
+      (allowedOccurrenceIds !== null &&
+        !allowedOccurrenceIds.has(trigger.occurrenceId))
     ) {
       return [];
     }

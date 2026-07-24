@@ -288,6 +288,11 @@ import {
   type TranscriptRevisionState,
 } from "./speech/transcriptRevisionState";
 import {
+  applyTranscriptEvidence,
+  createTranscriptEvidenceState,
+  type TranscriptEvidenceState,
+} from "./speech/transcriptEvidenceState";
+import {
   PresenterStageSection,
   PresenterTimerCard,
   PresenterTopbar,
@@ -397,6 +402,8 @@ export type OccurrenceTriggerProgress = {
 };
 
 type AnimationTriggerDebugSnapshot = {
+  actionEvidenceKind: "final" | "pending" | "stable-prefix";
+  actionDispatchable: boolean;
   approvalOccurrenceId: string | null;
   blocker: string | null;
   confidence: number | null;
@@ -2138,6 +2145,9 @@ export function RehearsalWorkspace(props: {
   );
   const liveOccurrenceTranscriptRevisionRef = useRef<TranscriptRevisionState>(
     createTranscriptRevisionState(),
+  );
+  const liveOccurrenceTranscriptEvidenceRef = useRef<TranscriptEvidenceState>(
+    createTranscriptEvidenceState(),
   );
   const slideTranscriptSnapshotsRef = useRef<SlideTranscriptSnapshot[]>([]);
   const slideTranscriptVisitVersionsRef = useRef(new Map<string, number>());
@@ -4032,19 +4042,28 @@ export function RehearsalWorkspace(props: {
     );
     if (transcriptRevision.isStale) return;
     liveOccurrenceTranscriptRevisionRef.current = transcriptRevision.state;
+    const transcriptEvidence = applyTranscriptEvidence(
+      liveOccurrenceTranscriptEvidenceRef.current,
+      sttResult ?? { isFinal: event.isFinal, text: event.transcript },
+    );
+    liveOccurrenceTranscriptEvidenceRef.current = transcriptEvidence.state;
     const pendingOccurrenceIds =
       pendingKeywordOccurrenceIdsRef.current?.slideId === slide.slideId
         ? pendingKeywordOccurrenceIdsRef.current.occurrenceIds
         : [];
     const dispatchedOccurrencePlayback = dispatchKeywordOccurrencePlayback({
+      allowAutomaticPlayback: transcriptEvidence.isDispatchable,
       confidence: event.confidence,
       consumedOccurrenceIds: occurrenceState.confirmedOccurrenceIds,
-      newSegment: transcriptRevision.newSegment,
+      latestTranscript: transcriptEvidence.newSegment,
+      newSegment: transcriptEvidence.newSegment,
       pendingOccurrenceIds,
       playbackState: slidePlaybackStateRef.current,
+      previousTranscript: transcriptEvidence.previousTranscript,
       presenterStepIndex: presenterStepIndexRef.current,
       slide,
       slideAnimationPlan,
+      transcript: transcriptEvidence.currentTranscript,
     });
     const occurrenceMatches = dispatchedOccurrencePlayback.matches;
 
@@ -4064,6 +4083,8 @@ export function RehearsalWorkspace(props: {
     };
     setPendingKeywordOccurrenceIds(queuedOccurrencePlayback.pendingOccurrenceIds);
     setLiveAnimationTriggerDebug({
+      actionEvidenceKind: transcriptEvidence.kind,
+      actionDispatchable: transcriptEvidence.isDispatchable,
       approvalOccurrenceId:
         dispatchedOccurrencePlayback.resolution.blocker === "confidence-low" &&
         dispatchedOccurrencePlayback.resolution.candidates.length === 1
@@ -4078,7 +4099,7 @@ export function RehearsalWorkspace(props: {
       expectedOccurrenceIds: dispatchedOccurrencePlayback.expectedStepOccurrenceIds,
       isFinal: event.isFinal,
       matchedOccurrenceIds: occurrenceMatches.map((match) => match.occurrenceId),
-      newSegment: transcriptRevision.newSegment,
+      newSegment: transcriptEvidence.newSegment,
       pendingOccurrenceIds: queuedOccurrencePlayback.pendingOccurrenceIds,
       resultRevision: sttResult?.resultRevision,
       utteranceId: sttResult?.utteranceId,
@@ -4207,6 +4228,7 @@ export function RehearsalWorkspace(props: {
 
     liveTranscriptBufferRef.current = nextBuffer;
     liveOccurrenceTranscriptRevisionRef.current = createTranscriptRevisionState();
+    liveOccurrenceTranscriptEvidenceRef.current = createTranscriptEvidenceState();
     liveKeywordStateRef.current = nextKeywordState;
     liveKeywordOccurrenceStateRef.current = slide
       ? createLiveKeywordOccurrenceState(slide.slideId)
@@ -5708,7 +5730,12 @@ export function RehearsalWorkspace(props: {
                     <details className="rehearsal-animation-trigger-debug" open>
                       <summary>애니메이션 트리거 디버그</summary>
                       <p>
-                        새 전사 구간: {liveAnimationTriggerDebug.newSegment || "-"}
+                        실행용 전사 구간: {liveAnimationTriggerDebug.newSegment || "-"}
+                      </p>
+                      <p>
+                        실행 증거: {liveAnimationTriggerDebug.actionDispatchable
+                          ? liveAnimationTriggerDebug.actionEvidenceKind
+                          : "안정화 대기"}
                       </p>
                       <p>
                         현재 step occurrence: {liveAnimationTriggerDebug.expectedOccurrenceIds.join(", ") || "-"}
