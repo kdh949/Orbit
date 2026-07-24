@@ -110,13 +110,10 @@ export function DeckVersionHistoryPage(props: { projectId: string }) {
 
       <section className="deck-history-heading">
         <div>
-          <p className="redesign-eyebrow">Version history</p>
           <h1>이전 작업을 확인하고 안전하게 복원하세요.</h1>
           <p>자동 저장과 주요 변경 시점의 덱 버전을 비교합니다.</p>
         </div>
-        <OrbitStatus tone={restoredVersion ? "success" : "neutral"}>
-          {restoredVersion ? `버전 ${restoredVersion} 복원됨` : `현재 버전 ${currentDeck?.version ?? "-"}`}
-        </OrbitStatus>
+        {restoredVersion ? <OrbitStatus tone="success">버전 {restoredVersion} 복원됨</OrbitStatus> : null}
       </section>
 
       {error ? <p className="deck-history-error" role="alert">{error}</p> : null}
