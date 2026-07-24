@@ -2,6 +2,7 @@ import {
   companionDeckSnapshotSchema,
   type CompanionDeckSnapshot,
 } from "@orbit/shared";
+import { createActivitySlide, createDemoDeck } from "@orbit/editor-core";
 import type { ReactNode } from "react";
 import { forwardRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -85,6 +86,60 @@ const safeDeck = companionDeckSnapshotSchema.parse({
 });
 
 describe("materializeCompanionDeck", () => {
+  it("keeps editable Activity appearance through materialization and rendering", () => {
+    const source = createDemoDeck();
+    const activitySlide = createActivitySlide(source, "poll", {
+      preset: "spotlight",
+    });
+    const snapshot = companionDeckSnapshotSchema.parse({
+      deckId: source.deckId,
+      projectId: source.projectId,
+      version: source.version,
+      canvas: source.canvas,
+      theme: source.theme,
+      slides: [
+        {
+          slideId: activitySlide.slideId,
+          kind: "activity",
+          order: 1,
+          style: activitySlide.style,
+          elements: activitySlide.elements,
+          animations: [],
+          triggerAnimationIds: [],
+          activity: activitySlide.activity,
+          activityAppearance: activitySlide.activityAppearance,
+        },
+      ],
+    });
+    const materialized = materializeCompanionDeck(snapshot);
+    const html = renderToStaticMarkup(
+      <CompanionAudienceRenderer
+        deck={snapshot}
+        output={{
+          sessionId: "session_1",
+          authorityEpochId: "epoch_1",
+          outputRevision: 1,
+          surfaceRevision: 0,
+          surfaceId: "surface_1",
+          outputMode: "slide",
+          slideId: activitySlide.slideId,
+          slideIndex: 0,
+          animationStep: 0,
+          canGoPrevious: false,
+          canGoNext: false,
+        }}
+      />,
+    );
+
+    expect(materialized.slides[0]).toMatchObject({
+      kind: "activity",
+      activityAppearance: { mode: "editable" },
+    });
+    expect(html).toContain("slideshow-renderer--slide-window");
+    expect(html).toContain("/activity-presets/spotlight-background.png");
+    expect(html).not.toContain("청중 참여 장표");
+  });
+
   it("restores safe rendering defaults without presenter-only content", () => {
     const deck = materializeCompanionDeck(safeDeck);
 

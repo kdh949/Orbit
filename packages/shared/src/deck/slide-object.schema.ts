@@ -15,11 +15,13 @@ export const deckElementTypeSchema = z.enum([
   "ring",
   "image",
   "activity-qr",
+  "activity-copy",
+  "presentation-passcode",
   "svg",
   "group",
   "customShape",
   "chart",
-  "table"
+  "table",
 ]);
 
 export const deckElementRoleSchema = z.enum([
@@ -33,7 +35,7 @@ export const deckElementRoleSchema = z.enum([
   "chart",
   "table",
   "highlight",
-  "footer"
+  "footer",
 ]);
 
 export const deckElementCoordinateLimit = 1_000_000;
@@ -49,13 +51,13 @@ export const ooxmlOriginSchema = z.enum(["imported", "authored"]);
 export const ooxmlRichTextEditCapabilitySchema = z.enum([
   "none",
   "style-only",
-  "full"
+  "full",
 ]);
 
 export const ooxmlCropEditCapabilitySchema = z.enum([
   "none",
   "picture",
-  "picture-fill"
+  "picture-fill",
 ]);
 
 export const ooxmlElementEditCapabilitiesSchema = z.object({
@@ -64,7 +66,7 @@ export const ooxmlElementEditCapabilitiesSchema = z.object({
   tableCellText: z.boolean(),
   frame: z.boolean().optional(),
   delete: z.boolean().optional(),
-  imageSource: z.boolean().optional()
+  imageSource: z.boolean().optional(),
 });
 
 export const deckElementBaseSchema = z.object({
@@ -80,33 +82,33 @@ export const deckElementBaseSchema = z.object({
   opacity: z.number().finite().min(0).max(1).default(1),
   zIndex: z.number().int().nonnegative().default(0),
   locked: z.boolean().default(false),
-  visible: z.boolean().default(true)
+  visible: z.boolean().default(true),
 });
 
 export const deckElementGradientStopSchema = z.object({
   offset: z.number().finite().min(0).max(1),
   color: themeColorSchema,
-  opacity: z.number().finite().min(0).max(1).default(1)
+  opacity: z.number().finite().min(0).max(1).default(1),
 });
 
 export const deckElementLinearGradientPaintSchema = z.object({
   type: z.literal("linear-gradient"),
   angle: z.number().finite().default(0),
-  stops: z.array(deckElementGradientStopSchema).min(2)
+  stops: z.array(deckElementGradientStopSchema).min(2),
 });
 
 export const deckElementPatternPaintSchema = z.object({
   type: z.literal("pattern"),
   preset: z.string().min(1).default("pct20"),
   foreground: themeColorSchema,
-  background: themeColorSchema.default("#FFFFFF")
+  background: themeColorSchema.default("#FFFFFF"),
 });
 
 export const deckElementPaintSchema = z.union([
   themeColorSchema,
   z.literal("transparent"),
   deckElementLinearGradientPaintSchema,
-  deckElementPatternPaintSchema
+  deckElementPatternPaintSchema,
 ]);
 
 export const deckElementShadowSchema = z.object({
@@ -114,7 +116,7 @@ export const deckElementShadowSchema = z.object({
   blur: z.number().finite().nonnegative().default(0),
   offsetX: z.number().finite().default(0),
   offsetY: z.number().finite().default(0),
-  opacity: z.number().finite().min(0).max(1).default(0.25)
+  opacity: z.number().finite().min(0).max(1).default(0.25),
 });
 
 export const shapeElementPropsSchema = z
@@ -127,23 +129,18 @@ export const shapeElementPropsSchema = z
     dash: z.array(z.number().finite().positive()).optional(),
     lineCap: z.enum(["butt", "round", "square"]).optional(),
     lineJoin: z.enum(["miter", "round", "bevel"]).optional(),
-    shadow: deckElementShadowSchema.optional()
+    shadow: deckElementShadowSchema.optional(),
   })
   .default({});
 
-export const textAlignSchema = z.enum([
-  "left",
-  "center",
-  "right",
-  "justify"
-]);
+export const textAlignSchema = z.enum(["left", "center", "right", "justify"]);
 
 export const textVerticalAlignSchema = z.enum(["top", "middle", "bottom"]);
 export const textWritingModeSchema = z.enum(["horizontal", "vertical-270"]);
 
 export const textFontWeightSchema = z.union([
   z.enum(["normal", "medium", "semibold", "bold"]),
-  z.number().int().min(100).max(900)
+  z.number().int().min(100).max(900),
 ]);
 
 export const textElementRunSchema = z.object({
@@ -155,13 +152,13 @@ export const textElementRunSchema = z.object({
   italic: z.boolean().optional(),
   underline: z.boolean().optional(),
   color: themeColorSchema.optional(),
-  baseline: z.enum(["normal", "superscript", "subscript"]).default("normal")
+  baseline: z.enum(["normal", "superscript", "subscript"]).default("normal"),
 });
 
 export const textElementBulletSchema = z.object({
   enabled: z.boolean().default(false),
   character: z.string().min(1).default("\u2022"),
-  indent: z.number().finite().nonnegative().default(0)
+  indent: z.number().finite().nonnegative().default(0),
 });
 
 export const textElementParagraphSchema = z.object({
@@ -179,14 +176,14 @@ export const textElementParagraphSchema = z.object({
   spaceBefore: z.number().finite().nonnegative().default(0),
   spaceAfter: z.number().finite().nonnegative().default(0),
   indent: z.number().finite().default(0),
-  bullet: textElementBulletSchema.optional()
+  bullet: textElementBulletSchema.optional(),
 });
 
 export const textElementBodyInsetSchema = z.object({
   left: z.number().finite().nonnegative().default(0),
   right: z.number().finite().nonnegative().default(0),
   top: z.number().finite().nonnegative().default(0),
-  bottom: z.number().finite().nonnegative().default(0)
+  bottom: z.number().finite().nonnegative().default(0),
 });
 
 export const textElementPropsSchema = z
@@ -209,7 +206,7 @@ export const textElementPropsSchema = z
     fontScale: z.number().finite().positive().max(1).optional(),
     lineSpaceReduction: z.number().finite().min(0).max(1).optional(),
     lineHeight: z.number().finite().positive().default(1.2),
-    bullet: textElementBulletSchema.optional()
+    bullet: textElementBulletSchema.optional(),
   })
   .superRefine((props, ctx) => {
     if (
@@ -218,8 +215,7 @@ export const textElementPropsSchema = z
     ) {
       ctx.addIssue({
         code: "custom",
-        message:
-          "fontScale and lineSpaceReduction require autoFit=shrink-text"
+        message: "fontScale and lineSpaceReduction require autoFit=shrink-text",
       });
     }
   })
@@ -232,19 +228,19 @@ export const imageCropSchema = z
     left: z.number().finite().min(0).max(1).default(0),
     top: z.number().finite().min(0).max(1).default(0),
     right: z.number().finite().min(0).max(1).default(0),
-    bottom: z.number().finite().min(0).max(1).default(0)
+    bottom: z.number().finite().min(0).max(1).default(0),
   })
   .superRefine((crop, ctx) => {
     if (crop.left + crop.right >= 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "image crop left and right must leave visible width"
+        message: "image crop left and right must leave visible width",
       });
     }
     if (crop.top + crop.bottom >= 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "image crop top and bottom must leave visible height"
+        message: "image crop top and bottom must leave visible height",
       });
     }
   });
@@ -255,7 +251,7 @@ export const imageElementPropsSchema = z.object({
   fit: imageFitSchema.default("contain"),
   focusX: z.number().finite().min(0).max(1).default(0.5),
   focusY: z.number().finite().min(0).max(1).default(0.5),
-  crop: imageCropSchema.optional()
+  crop: imageCropSchema.optional(),
 });
 
 /**
@@ -264,14 +260,60 @@ export const imageElementPropsSchema = z.object({
  * persisted in Deck JSON because both are scoped to a presentation session.
  */
 export const activityQrElementPropsSchema = z.object({
-  activityId: z.string().trim().min(1)
+  activityId: z.string().trim().min(1),
+});
+
+export const activityCopyFieldSchema = z.enum(["title", "description"]);
+export const activityBoundTextStyleSchema = z
+  .object({
+    fontFamily: z.string().min(1).optional(),
+    fontSize: z.number().finite().positive().optional(),
+    fontWeight: textFontWeightSchema.optional(),
+    letterSpacing: z.number().finite().optional(),
+    italic: z.boolean().optional(),
+    underline: z.boolean().optional(),
+    color: themeColorSchema.optional(),
+    align: textAlignSchema.optional(),
+    verticalAlign: textVerticalAlignSchema.optional(),
+    autoFit: z.enum(["none", "shrink-text", "resize-shape"]).optional(),
+    lineHeight: z.number().finite().positive().optional()
+  })
+  .default({});
+
+export const activityCopyElementPropsSchema = z.object({
+  activityId: z.string().trim().min(1),
+  field: activityCopyFieldSchema,
+  fallbackText: z.string().default(""),
+  textStyle: activityBoundTextStyleSchema,
+});
+
+export const presentationPasscodeElementPropsSchema = z.object({
+  label: z.string().default("입장 코드"),
+  unavailableText: z.string().default("발표 시작 후 표시"),
+  publicAccessText: z.string().default("비밀번호 없이 바로 참여"),
+  legacyUnavailableText: z.string().default("입장 코드를 다시 설정해 주세요"),
+  labelTextStyle: activityBoundTextStyleSchema.default({
+    fontSize: 22,
+    fontWeight: "medium",
+  }),
+  codeTextStyle: activityBoundTextStyleSchema.default({
+    fontSize: 64,
+    fontWeight: "bold",
+    letterSpacing: 12,
+    align: "center",
+    verticalAlign: "middle",
+  }),
+  fill: deckElementPaintSchema.default("transparent"),
+  stroke: deckElementPaintSchema.default("transparent"),
+  strokeWidth: z.number().finite().nonnegative().default(0),
+  borderRadius: z.number().finite().nonnegative().default(0),
 });
 
 export const svgElementPropsSchema = imageElementPropsSchema;
 
 export const groupElementPropsSchema = z
   .object({
-    childElementIds: z.array(deckElementIdSchema).default([])
+    childElementIds: z.array(deckElementIdSchema).default([]),
   })
   .default({});
 
@@ -287,7 +329,7 @@ export const tableCellPropsSchema = z.object({
   borderColor: themeColorSchema.default("#CBD5E1"),
   borderWidth: z.number().finite().nonnegative().default(1),
   colSpan: z.number().int().positive().default(1),
-  rowSpan: z.number().int().positive().default(1)
+  rowSpan: z.number().int().positive().default(1),
 });
 
 export const tableElementPropsSchema = z
@@ -296,7 +338,7 @@ export const tableElementPropsSchema = z
     columnWidths: z.array(z.number().finite().positive()).optional(),
     rowHeights: z.array(z.number().finite().positive()).optional(),
     borderColor: themeColorSchema.default("#CBD5E1"),
-    borderWidth: z.number().finite().nonnegative().default(1)
+    borderWidth: z.number().finite().nonnegative().default(1),
   })
   .default({});
 
@@ -309,7 +351,7 @@ export const customShapeNodeSchema = z.object({
   inY: z.number().finite().optional(),
   outX: z.number().finite().optional(),
   outY: z.number().finite().optional(),
-  mode: customShapeNodeModeSchema.default("corner")
+  mode: customShapeNodeModeSchema.default("corner"),
 });
 
 export const customShapeElementPropsSchema = z.object({
@@ -324,7 +366,7 @@ export const customShapeElementPropsSchema = z.object({
   lineJoin: z.enum(["miter", "round", "bevel"]).optional(),
   shadow: deckElementShadowSchema.optional(),
   closed: z.boolean().default(true),
-  nodes: z.array(customShapeNodeSchema).default([])
+  nodes: z.array(customShapeNodeSchema).default([]),
 });
 
 type ShapeElementType =
@@ -337,16 +379,16 @@ type ShapeElementType =
   | "ring";
 
 const createShapeElementSchema = <TElementType extends ShapeElementType>(
-  type: TElementType
+  type: TElementType,
 ) =>
   deckElementBaseSchema.extend({
     type: z.literal(type),
-    props: shapeElementPropsSchema
+    props: shapeElementPropsSchema,
   });
 
 export const textElementSchema = deckElementBaseSchema.extend({
   type: z.literal("text"),
-  props: textElementPropsSchema
+  props: textElementPropsSchema,
 });
 
 export const rectElementSchema = createShapeElementSchema("rect");
@@ -359,37 +401,47 @@ export const ringElementSchema = createShapeElementSchema("ring");
 
 export const imageElementSchema = deckElementBaseSchema.extend({
   type: z.literal("image"),
-  props: imageElementPropsSchema
+  props: imageElementPropsSchema,
 });
 
 export const activityQrElementSchema = deckElementBaseSchema.extend({
   type: z.literal("activity-qr"),
-  props: activityQrElementPropsSchema
+  props: activityQrElementPropsSchema,
+});
+
+export const activityCopyElementSchema = deckElementBaseSchema.extend({
+  type: z.literal("activity-copy"),
+  props: activityCopyElementPropsSchema,
+});
+
+export const presentationPasscodeElementSchema = deckElementBaseSchema.extend({
+  type: z.literal("presentation-passcode"),
+  props: presentationPasscodeElementPropsSchema,
 });
 
 export const svgElementSchema = deckElementBaseSchema.extend({
   type: z.literal("svg"),
-  props: svgElementPropsSchema
+  props: svgElementPropsSchema,
 });
 
 export const groupElementSchema = deckElementBaseSchema.extend({
   type: z.literal("group"),
-  props: groupElementPropsSchema
+  props: groupElementPropsSchema,
 });
 
 export const customShapeElementSchema = deckElementBaseSchema.extend({
   type: z.literal("customShape"),
-  props: customShapeElementPropsSchema
+  props: customShapeElementPropsSchema,
 });
 
 export const chartElementSchema = deckElementBaseSchema.extend({
   type: z.literal("chart"),
-  props: chartSchema
+  props: chartSchema,
 });
 
 export const tableElementSchema = deckElementBaseSchema.extend({
   type: z.literal("table"),
-  props: tableElementPropsSchema
+  props: tableElementPropsSchema,
 });
 
 export const deckElementSchema = z.discriminatedUnion("type", [
@@ -403,11 +455,13 @@ export const deckElementSchema = z.discriminatedUnion("type", [
   ringElementSchema,
   imageElementSchema,
   activityQrElementSchema,
+  activityCopyElementSchema,
+  presentationPasscodeElementSchema,
   svgElementSchema,
   groupElementSchema,
   customShapeElementSchema,
   chartElementSchema,
-  tableElementSchema
+  tableElementSchema,
 ]);
 
 export type DeckElementType = z.infer<typeof deckElementTypeSchema>;
@@ -430,7 +484,16 @@ export type TextFontWeight = z.infer<typeof textFontWeightSchema>;
 export type TextElementProps = z.infer<typeof textElementPropsSchema>;
 export type ImageFit = z.infer<typeof imageFitSchema>;
 export type ImageElementProps = z.infer<typeof imageElementPropsSchema>;
-export type ActivityQrElementProps = z.infer<typeof activityQrElementPropsSchema>;
+export type ActivityQrElementProps = z.infer<
+  typeof activityQrElementPropsSchema
+>;
+export type ActivityCopyField = z.infer<typeof activityCopyFieldSchema>;
+export type ActivityCopyElementProps = z.infer<
+  typeof activityCopyElementPropsSchema
+>;
+export type PresentationPasscodeElementProps = z.infer<
+  typeof presentationPasscodeElementPropsSchema
+>;
 export type SvgElementProps = z.infer<typeof svgElementPropsSchema>;
 export type GroupElementProps = z.infer<typeof groupElementPropsSchema>;
 export type TableCellProps = z.infer<typeof tableCellPropsSchema>;

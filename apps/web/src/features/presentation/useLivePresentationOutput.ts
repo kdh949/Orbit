@@ -22,6 +22,7 @@ import { usePresentationChannelPublisher } from "../rehearsal/presenter/usePrese
 import { usePresenterCompanionAuthority } from "../presenter-companion/usePresenterCompanionAuthority";
 import { usePresenterCompanionWebRtc } from "../presenter-companion/usePresenterCompanionWebRtc";
 import type { CompanionPrompterProjection } from "../presenter-companion/companionPrompterProjection";
+import type { ActivityElementRuntime } from "../activity-slides/rendering/ActivityElementRuntimeContext";
 
 export type LivePresentationDisplayRole =
   | "presenter"
@@ -29,6 +30,7 @@ export type LivePresentationDisplayRole =
   | "slide-surface";
 
 export function useLivePresentationOutput(input: {
+  activityElementRuntime?: ActivityElementRuntime | null;
   audienceWindowConnected: boolean;
   canGoNext?: boolean;
   canGoPrevious?: boolean;
@@ -68,6 +70,7 @@ export function useLivePresentationOutput(input: {
     [],
   );
   const localChannel = usePresentationChannelPublisher({
+    activityElementRuntime: input.activityElementRuntime,
     deck: input.deck,
     enabled: input.enabled ?? true,
     getAnnotationSnapshot: () => annotationSnapshotRef.current,

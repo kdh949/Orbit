@@ -17,6 +17,20 @@ API, worker, web, Python worker는 시작 시 환경변수를 검증한다.
 필수 값이 없거나 빈 문자열이면 startup이 실패해야 하며 오류 메시지에는 누락된 env key가 포함되어야 한다.
 `APP_ENV=staging` 또는 `APP_ENV=production`에서는 localhost, 로컬 DB/Redis, 로컬 secret placeholder를 그대로 사용하지 않는다.
 
+발표 입장 코드를 발표자 화면에 다시 표시하기 위한 암호화 키는 아래 계약을 따른다.
+
+```txt
+PRESENTATION_PASSCODE_ENCRYPTION_KEY=<32-byte key encoded as base64>
+PRESENTATION_PASSCODE_ENCRYPTION_KEY_VERSION=1
+PRESENTATION_PASSCODE_ENCRYPTION_PREVIOUS_KEY=
+PRESENTATION_PASSCODE_ENCRYPTION_PREVIOUS_KEY_VERSION=
+```
+
+현재 키는 정확히 32 byte를 base64로 인코딩해야 한다. 회전할 때는 새 key/version을
+현재 값으로 올리고, 기존 key/version을 `PREVIOUS` 쌍으로 유지한다. 이전 값 두 개는
+항상 함께 설정하거나 함께 비워야 하며 현재 버전과 같을 수 없다. 원문 입장 코드는
+저장하지 않고 session ID를 AAD로 사용하는 AES-256-GCM ciphertext만 저장한다.
+
 모든 PR과 `develop` push에서는 `Environment Contract CI`가 세 환경 예시 파일의 key 집합, 필수 key, 중복 선언, 선언 형식, 허용되지 않은 빈 값을 검사한다. 선택 기능 또는 secret store에서 주입하는 값처럼 비어 있을 수 있는 key는 `infra/scripts/check-env.mjs`의 환경별 allowlist에 명시한다. 실제 개인 서버 값은 PR CI에 노출하지 않고, 배포 직전에 Doppler 환경에서 `infra/scripts/check-personal-staging-env.sh`로 존재 여부만 확인한다. Doppler `orbit / stg` 변경은 GitHub workflow dispatch를 통해 개인 서버의 앱 컨테이너에 자동 재적용하며, 필수값 누락·공백 또는 Compose 검증 실패 시 실행 중인 컨테이너를 교체하지 않는다.
 
 개인 서버의 key source와 전달 방식은 `infra/env/personal-staging-env-policy.json`에 명시한다. `repo-default`는 저장소에 커밋할 수 있는 일반 설정, `doppler-optional`은 운영자 override, `doppler-required`는 환경별 값 또는 secret이다. `delivery=compose`인 key는 `docker-compose.yml` 또는 `docker-compose.staging.yml`에 명시적으로 전달되어야 하고, `delivery=code-default`는 개인 서버에서 runtime 기본값을 사용한다. PR CI는 예시 파일의 모든 key가 정책에 정확히 한 번 분류됐는지와 Compose 전달 선언이 정책과 일치하는지 함께 검사한다.
@@ -27,7 +41,7 @@ API, worker, web, Python worker는 시작 시 환경변수를 검증한다.
 
 `API_JSON_BODY_LIMIT_BYTES`는 API의 JSON request body 최대 크기다. 기본값은 `5000000`이며, full deck 저장(`PUT /api/v1/projects/:projectId/deck`)처럼 checkpoint용 Deck JSON을 보내는 경로가 Express 기본값 100KB에 걸리지 않도록 명시한다.
 
-`API_TRUST_PROXY_HOPS`는 API 앞에서 신뢰할 reverse proxy hop 수다. 직접 접속하는 local/test는 `0`, ALB 또는 단일 Nginx 뒤의 staging/production은 `1`을 사용한다. 실제 proxy 수보다 크게 설정하면 외부 `X-Forwarded-For`를 신뢰하게 되므로 배포 topology와 정확히 맞춰야 한다.
+`API_TRUST_PROXY_HOPS`는 API 앞에서 신뢰할 reverse proxy hop 수다. 직접 접속하는 local/test는 `0`, ALB 또는 단일 Nginx 뒤의 staging/production은 `1`, CloudFront와 ALB를 순서대로 거치는 ECS API는 `2`를 사용한다. 실제 proxy 수보다 크게 설정하면 외부 `X-Forwarded-For`를 신뢰하게 되므로 배포 topology와 정확히 맞춰야 한다.
 
 `IPAD_PRESENTER_COMPANION_ENABLED=true | false`는 발표자 iPad companion의
 pairing API와 Web 진입점을 함께 제어한다. 기본값은 `true`다. `false`이면

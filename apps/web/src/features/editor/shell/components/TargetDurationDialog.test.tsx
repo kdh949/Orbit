@@ -19,6 +19,7 @@ describe("TargetDurationDialog", () => {
     );
 
     expect(html).toContain("발표 시간 배분");
+    expect(html).toContain("target-duration-dialog redesign-dark");
     expect(html).toContain("전체 발표 시간");
     expect(html).toContain('aria-label="1번 슬라이드 제목"');
     expect(html).toContain("균등 배분");

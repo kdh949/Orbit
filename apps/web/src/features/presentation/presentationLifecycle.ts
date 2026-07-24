@@ -9,3 +9,9 @@ export type PresentationRuntimePhase =
 export function shouldWarnBeforePresentationUnload(phase: PresentationRuntimePhase) {
   return phase === "active" || phase === "finishing";
 }
+
+export function shouldClosePresenterSessionOnPreflightExit(
+  audienceAccessEnabled: boolean | null,
+) {
+  return audienceAccessEnabled === false;
+}

@@ -18,7 +18,9 @@ import { activityApi } from "../activity-slides/api/activityApi";
 import { normalizePresentationRecordingFile } from "./presentationRecording";
 
 export type PresentationRuntimeIdentity = {
+  accessMode: "passcode" | "public";
   audienceUrl: string | null;
+  displayPasscode: string | null;
   recordingMode: PresentationRecordingMode;
   runId: string;
   sessionId: string;
@@ -32,6 +34,7 @@ export type PresentationRuntimeIdentity = {
 };
 
 export type PresenterCompanionSessionIdentity = {
+  audienceAccessEnabled: boolean;
   audienceUrl: string | null;
   deckId: string;
   deckVersion: number;
@@ -103,6 +106,7 @@ export async function ensurePresenterCompanionSession(input: {
     },
   );
   return {
+    audienceAccessEnabled: session.audienceAccessEnabled,
     audienceUrl,
     deckId: session.deckId,
     deckVersion: session.deckVersion,
@@ -128,8 +132,18 @@ export async function startPresentationRuntime(input: {
     },
   );
   const { run } = createPresentationRunResponseSchema.parse(response);
+  const [current, presenterAccess] = await Promise.all([
+    activityApi.getCurrentSession(input.projectId, input.session.deckId),
+    activityApi.getPresenterAccess(input.projectId, input.session.sessionId),
+  ]);
+  const audienceUrl =
+    current.session?.sessionId === input.session.sessionId
+      ? current.audienceUrl
+      : input.session.audienceUrl;
   return {
-    audienceUrl: input.session.audienceUrl,
+    accessMode: presenterAccess.accessMode,
+    audienceUrl,
+    displayPasscode: presenterAccess.displayPasscode,
     recordingMode: run.recordingMode,
     runId: run.runId,
     sessionId: input.session.sessionId,

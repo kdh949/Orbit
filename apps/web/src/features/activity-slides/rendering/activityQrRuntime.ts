@@ -14,6 +14,7 @@ type RuntimeEntry = {
 };
 
 const refreshIntervalMs = 10_000;
+const notPreparedRetryMs = 1_000;
 const entries = new Map<string, RuntimeEntry>();
 
 export function subscribeActivityQrRuntime(
@@ -30,16 +31,12 @@ export function subscribeActivityQrRuntime(
       entry.state = { status: "loading", audienceUrl: null };
     }
     void refreshActivityQrRuntime(input, entry);
-    entry.timerId = window.setInterval(
-      () => void refreshActivityQrRuntime(input, entry),
-      refreshIntervalMs
-    );
   }
 
   return () => {
     entry.listeners.delete(listener);
     if (entry.listeners.size === 0 && entry.timerId !== null) {
-      window.clearInterval(entry.timerId);
+      window.clearTimeout(entry.timerId);
       entry.timerId = null;
     }
   };
@@ -82,7 +79,25 @@ async function refreshActivityQrRuntime(
     setRuntimeState(entry, { status: "unavailable", audienceUrl: null });
   } finally {
     entry.refreshInFlight = false;
+    scheduleNextRefresh(input, entry);
   }
+}
+
+function scheduleNextRefresh(
+  input: ActivityQrRuntimeInput,
+  entry: RuntimeEntry
+) {
+  if (typeof window === "undefined" || entry.listeners.size === 0) return;
+
+  if (entry.timerId !== null) {
+    window.clearTimeout(entry.timerId);
+  }
+  entry.timerId = window.setTimeout(() => {
+    entry.timerId = null;
+    void refreshActivityQrRuntime(input, entry);
+  }, entry.state.status === "not-prepared"
+    ? notPreparedRetryMs
+    : refreshIntervalMs);
 }
 
 /** Read-only runtime lookup used by all editor and presentation renderers. */

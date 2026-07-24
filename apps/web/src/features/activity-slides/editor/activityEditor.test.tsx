@@ -2,6 +2,8 @@ import { createActivityResultsSlide, createActivitySlide, createDemoDeck } from 
 import { deckSchema } from "@orbit/shared";
 import type { ActivitySessionResultItem } from "@orbit/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import { forwardRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -13,6 +15,7 @@ import {
   removeQuestionOption
 } from "./ActivitySlideInspector";
 import { ActivityEditorOperationsPanel } from "./ActivityEditorOperationsPanel";
+import { ActivityDesignPicker } from "./ActivityDesignPicker";
 import { ActivitySlidePreview } from "./ActivitySlidePreview";
 import { ActivitySpecialSlideThumbnail } from "./ActivitySpecialSlideThumbnail";
 import { startSequentialPolling } from "../model/sequentialPolling";
@@ -22,8 +25,68 @@ import {
   findActivityResultSource
 } from "./ActivityResultSlideInspector";
 
+vi.mock("react-konva", () => {
+  type MockKonvaProps = {
+    children?: ReactNode;
+    text?: string;
+    [key: string]: any;
+  };
+  const Container = forwardRef<HTMLDivElement, MockKonvaProps>(
+    ({ children, ...props }, ref) => (
+      <div
+        data-testid={
+          typeof props["data-testid"] === "string"
+            ? props["data-testid"]
+            : undefined
+        }
+        ref={ref}
+      >
+        {children}
+      </div>
+    )
+  );
+
+  return {
+    Arrow: Container,
+    Circle: Container,
+    Group: Container,
+    Image: Container,
+    Layer: Container,
+    Line: Container,
+    Rect: Container,
+    RegularPolygon: Container,
+    Shape: Container,
+    Stage: Container,
+    Star: Container,
+    Text: ({ text }: MockKonvaProps) => <span>{text}</span>
+  };
+});
+
 describe("activity slide editor", () => {
   const slide = createActivitySlide(createDemoDeck(), "satisfaction");
+
+  it("shows every editable design preset and runtime element palette", () => {
+    const editableSlide = createActivitySlide(createDemoDeck(), "poll", {
+      preset: "spotlight"
+    });
+    const html = renderToStaticMarkup(
+      <ActivityDesignPicker slide={editableSlide} />
+    );
+
+    for (const label of [
+      "Spotlight",
+      "Split",
+      "Editorial",
+      "Essentials",
+      "Blank",
+      "질문 제목",
+      "질문 설명",
+      "QR",
+      "입장 코드"
+    ]) {
+      expect(html).toContain(label);
+    }
+  });
 
   it("renders role-specific previews from the same activity definition", () => {
     const audience = renderToStaticMarkup(<ActivitySlidePreview role="audience" slide={slide} />);
@@ -72,6 +135,23 @@ describe("activity slide editor", () => {
     expect(activityHtml).toContain(slide.activity.title);
     expect(resultHtml).toContain('data-testid="activity-results-slide-thumbnail"');
     expect(resultHtml).toContain(`${slide.activity.title} 결과`);
+  });
+
+  it("renders editable activity thumbnails from the concrete canvas", () => {
+    const baseDeck = createDemoDeck();
+    const editableSlide = createActivitySlide(baseDeck, "poll", {
+      preset: "split"
+    });
+    const deck = deckSchema.parse({
+      ...baseDeck,
+      slides: [...baseDeck.slides, editableSlide]
+    });
+    const html = renderToStaticMarkup(
+      <ActivitySpecialSlideThumbnail deck={deck} slide={editableSlide} />
+    );
+
+    expect(html).toContain("편집 디자인 미리보기");
+    expect(html).toContain("activity-special-thumbnail--editable");
   });
 
   it("renders editor status, public state, direct link, and QR controls", () => {
@@ -279,6 +359,7 @@ describe("activity slide editor", () => {
     const templateSlide = createActivitySlide(createDemoDeck(), template);
     const html = renderToStaticMarkup(<ActivitySlideInspector onChange={vi.fn()} slide={templateSlide} />);
     expect(html).toContain(templateSlide.activity.title);
+    expect(html).toContain('placeholder="예: 발표 전에 궁금한 점을 알려주세요" rows="2"');
   });
 
   it("shows that pre-question edits are reflected on the slide canvas", () => {

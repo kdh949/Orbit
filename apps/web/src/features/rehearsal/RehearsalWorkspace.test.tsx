@@ -106,6 +106,9 @@ const livePresentationOutputSourcePath = fileURLToPath(
 const rehearsalWorkspaceCssPath = fileURLToPath(
   new URL("./rehearsal-workspace-orbit.css", import.meta.url),
 );
+const globalStylesPath = fileURLToPath(
+  new URL("../../styles.css", import.meta.url),
+);
 const editorTopbarSourcePath = fileURLToPath(
   new URL("../editor/shell/components/EditorTopbar.tsx", import.meta.url),
 );
@@ -879,14 +882,74 @@ describe("RehearsalWorkspace", () => {
     expect(keyboardBody).toContain("!isRehearsalCompletionVisible");
   });
 
-  it("returns to the rehearsal preflight instead of forcing microphone recording", () => {
+  it("uses the neutral scrim behind report generation progress", () => {
+    const css = fs.readFileSync(globalStylesPath, "utf8");
+
+    expect(css).toMatch(
+      /\.rehearsal-completion-modal-backdrop \{[^}]*background: var\(--redesign-color-scrim\);/s,
+    );
+  });
+
+  it("restarts a completed rehearsal from the beginning without showing preflight", () => {
     const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
     const start = source.indexOf("const handleCompletionPracticeAgain =");
     const end = source.indexOf("const handleCompletionPrimaryAction =", start);
     const practiceAgainBody = source.slice(start, end);
 
     expect(practiceAgainBody).toContain("returnToPreflight()");
-    expect(practiceAgainBody).not.toContain("startRecording()");
+    expect(practiceAgainBody).toContain("resetRehearsalAttemptToBeginning()");
+    expect(practiceAgainBody).toContain("startPracticeWithoutVoice()");
+    expect(practiceAgainBody).toContain(
+      "void startRecording({ allowDuringReport: true })",
+    );
+    expect(practiceAgainBody).toContain(
+      'shouldAutoStartRef.current = "starting"',
+    );
+    expect(practiceAgainBody).toContain("shouldAutoStartRef.current = null");
+
+    const resetStart = source.indexOf(
+      "const resetRehearsalAttemptToBeginning =",
+    );
+    const resetEnd = source.indexOf(
+      "const publishSlideWindowSnapshot =",
+      resetStart,
+    );
+    const resetBody = source.slice(resetStart, resetEnd);
+
+    expect(resetBody).toContain("resetSlideDisplayToBeginning()");
+    expect(resetBody).toContain("resetLiveSessionTranscript()");
+    expect(resetBody).toContain("resetLivePlaybackForSlide(firstSlide)");
+    expect(resetBody).toContain("resetSlideTranscriptSnapshots(deck, 0)");
+  });
+
+  it("ignores a previous report completion after a new rehearsal starts", () => {
+    const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
+    const startRecordingStart = source.indexOf(
+      "async function startRecording(",
+    );
+    const startRecordingEnd = source.indexOf(
+      "useEffect(() => {",
+      startRecordingStart,
+    );
+    const startRecordingBody = source.slice(
+      startRecordingStart,
+      startRecordingEnd,
+    );
+    const submitStart = source.indexOf("async function submitRecording(");
+    const submitEnd = source.indexOf(
+      "async function prepareEvaluationSnapshot(",
+      submitStart,
+    );
+    const submitBody = source.slice(submitStart, submitEnd);
+
+    expect(startRecordingBody).toContain(
+      "!options.allowDuringReport && !canRecord",
+    );
+    expect(startRecordingBody).toContain(
+      "recordingSubmissionVersionRef.current += 1",
+    );
+    expect(submitBody).toContain("const isCurrentSubmission =");
+    expect(submitBody).toContain("if (!isCurrentSubmission())");
   });
 
   it("keeps the presence avatar as the socket status dialog trigger", () => {

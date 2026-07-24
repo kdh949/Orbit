@@ -1,5 +1,6 @@
 import {
   createDemoDeck,
+  createApplyActivityDesignPresetPatch,
   createDuplicateSlidePatch,
   createUpdateActivityDefinitionPatch,
   createUpdateActivityResultDefinitionPatch,
@@ -30,7 +31,11 @@ import type {
 import { useProjectShareAccess } from "./hooks/useProjectShareAccess";
 import { useEditorShellUiStore } from "./editorShellUiStore";
 import { beginHorizontalPaneResize } from "./utils/beginHorizontalPaneResize";
-import { canEditSlideCanvas } from "./utils/slideEditingPolicy";
+import {
+  canEditSlideCanvas,
+  canInsertCustomShape,
+  canInsertDataElements
+} from "./utils/slideEditingPolicy";
 import {
   getAnimationMutationDisabledReason,
   getTransitionMutationDisabledReason
@@ -1001,6 +1006,8 @@ export function EditorShell(props: { projectId?: string }) {
   const handleAddActivityResultsSlide =
     editorCanvasActions.addActivityResultsSlide;
   const handleAddActivityQrElement = editorCanvasActions.addActivityQrElement;
+  const handleAddActivityRuntimeElement =
+    editorCanvasActions.addActivityRuntimeElement;
   const handleAddTextElement = editorCanvasActions.addTextElement;
   const handleCanvasBackgroundSelectionClear = editorCanvasActions.clearCanvasSelection;
   const handleCommitCustomShapeGeometry = editorCanvasActions.commitCustomShapeGeometry;
@@ -2220,6 +2227,7 @@ export function EditorShell(props: { projectId?: string }) {
         <section className="stage-pane">
           {!isSlideRehearsalActive ? (
             <EditorToolbar
+              canInsertDataElements={canInsertDataElements(currentSlide)}
               canZoomIn={stageScale < maximumManualEditorZoom}
               canZoomOut={stageScale > minimumManualEditorZoom}
               canMutate={canMutateDeck}
@@ -2566,6 +2574,20 @@ export function EditorShell(props: { projectId?: string }) {
             currentSlide?.kind === "activity" ? (
               <ActivitySlideInspector
                 deckId={deck.deckId}
+                onAddRuntimeElement={(kind) => {
+                  handleAddActivityRuntimeElement(kind);
+                }}
+                onApplyDesignPreset={(presetId) => {
+                  commitPatch((currentDeck) =>
+                    createApplyActivityDesignPresetPatch(
+                      currentDeck,
+                      currentSlide.slideId,
+                      presetId
+                    )
+                  );
+                  setSelectedElementIds([]);
+                  setEditingElementId(null);
+                }}
                 onOpenAudienceLink={() => setIsAudienceLinkModalOpen(true)}
                 projectId={deck.projectId}
                 slide={currentSlide}
@@ -2684,6 +2706,7 @@ export function EditorShell(props: { projectId?: string }) {
         />
       ) : null}
       <EditorContextMenus
+        canInsertCustomShape={canInsertCustomShape(currentSlide)}
         chartMenuPosition={chartMenuPosition}
         elementContextMenu={elementContextMenu}
         isChartMenuOpen={isChartMenuOpen}

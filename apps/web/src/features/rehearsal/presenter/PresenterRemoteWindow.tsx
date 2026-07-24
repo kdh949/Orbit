@@ -478,19 +478,17 @@ export function PresenterRemoteWindow(props: {
             <RehearsalPanelTopGrid
               hitKeywordIds={hitKeywordIds}
               keywords={panelKeywords}
-              liveSlot={
-                slide?.kind === "activity" ? (
-                  <ActivityPresenterPanel
-                    deckId={deck.deckId}
-                    deckVersion={deck.version}
-                    projectId={deck.projectId}
-                    slide={slide}
-                  />
-                ) : undefined
-              }
               provisionalMissingKeywordIds={new Set()}
             />
           </section>
+          {slide?.kind === "activity" ? (
+            <ActivityPresenterPanel
+              deckId={deck.deckId}
+              deckVersion={deck.version}
+              projectId={deck.projectId}
+              slide={slide}
+            />
+          ) : null}
         </aside>
       </section>
       {state.speech && shouldShowSemanticDebugPanel ? (

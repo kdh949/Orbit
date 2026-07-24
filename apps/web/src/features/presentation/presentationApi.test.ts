@@ -60,6 +60,7 @@ describe("presentationApi", () => {
         sessionPurpose: "presentation",
       }),
     ).resolves.toEqual({
+      audienceAccessEnabled: false,
       audienceUrl: null,
       deckId: "deck_1",
       deckVersion: 4,
@@ -77,6 +78,18 @@ describe("presentationApi", () => {
   });
 
   it("starts one isolated presentation run with the preflight session deck version", async () => {
+    const getCurrentSession = vi
+      .spyOn(activityApi, "getCurrentSession")
+      .mockResolvedValue({
+        audienceUrl: null,
+        session: {
+          ...presentationSession(),
+          audienceAccessEnabled: false,
+        },
+      });
+    const getPresenterAccess = vi
+      .spyOn(activityApi, "getPresenterAccess")
+      .mockResolvedValue({ accessMode: "public", displayPasscode: null });
     const fetchMock = vi
       .fn()
       .mockResolvedValue(
@@ -89,6 +102,7 @@ describe("presentationApi", () => {
         projectId: "project_1",
         recordingMode: "microphone",
         session: {
+          audienceAccessEnabled: false,
           audienceUrl: null,
           deckId: "deck_1",
           deckVersion: 4,
@@ -97,13 +111,20 @@ describe("presentationApi", () => {
         },
       }),
     ).resolves.toEqual({
+      accessMode: "public",
       audienceUrl: null,
+      displayPasscode: null,
       recordingMode: "microphone",
       runId: "presentation_run_1",
       sessionId: "session_live",
       status: "created",
     });
 
+    expect(getCurrentSession).toHaveBeenCalledWith("project_1", "deck_1");
+    expect(getPresenterAccess).toHaveBeenCalledWith(
+      "project_1",
+      "session_live",
+    );
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
       "/api/v1/projects/project_1/presentation-sessions/session_live/runs",
@@ -113,6 +134,47 @@ describe("presentationApi", () => {
       recordingMode: "microphone",
     });
     expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain("rehearsal");
+  });
+
+  it("refreshes enabled audience access and presenter-only passcode when the run starts", async () => {
+    const passcodeSession = {
+      ...presentationSession(),
+      accessMode: "passcode" as const,
+    };
+    vi.spyOn(activityApi, "getCurrentSession").mockResolvedValue({
+      audienceUrl: "/audience/session_live",
+      session: passcodeSession,
+    });
+    vi.spyOn(activityApi, "getPresenterAccess").mockResolvedValue({
+      accessMode: "passcode",
+      displayPasscode: "4821",
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({ run: presentationRun("created", "none") }),
+      ),
+    );
+
+    await expect(
+      startPresentationRuntime({
+        projectId: "project_1",
+        recordingMode: "none",
+        session: {
+          audienceAccessEnabled: false,
+          audienceUrl: null,
+          deckId: "deck_1",
+          deckVersion: 4,
+          sessionId: "session_live",
+          sessionPurpose: "presentation",
+        },
+      }),
+    ).resolves.toMatchObject({
+      accessMode: "passcode",
+      audienceUrl: "/audience/session_live",
+      displayPasscode: "4821",
+      sessionId: "session_live",
+    });
   });
 
   it("closes the persisted session independently from a presentation run", async () => {

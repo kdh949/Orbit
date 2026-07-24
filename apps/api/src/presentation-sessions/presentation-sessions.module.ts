@@ -22,6 +22,7 @@ import {
   PresentationRunsService,
 } from "./presentation-runs.service";
 import { PresentationCompanionSpikeGateway } from "./presentation-companion-spike.gateway";
+import { PresentationPasscodeCipher } from "./presentation-passcode-cipher";
 import { PresentationCompanionProjectionService } from "./presentation-companion-projection.service";
 import { PresentationCompanionActivityService } from "./presentation-companion-activity.service";
 import { PresentationCompanionService } from "./presentation-companion.service";
@@ -60,6 +61,10 @@ import {
     AudienceRateLimitService,
     PresentationSessionRepository,
     PresentationSessionsService,
+    {
+      provide: PresentationPasscodeCipher,
+      useFactory: () => PresentationPasscodeCipher.fromEnvironment()
+    },
     PresentationRunsService,
     PresentationCompanionSpikeGateway,
     PresentationCompanionProjectionService,

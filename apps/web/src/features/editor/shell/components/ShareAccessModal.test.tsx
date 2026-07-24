@@ -8,6 +8,7 @@ describe("ShareAccessModal", () => {
   it("renders supported member management without link sharing", () => {
     const html = renderToStaticMarkup(<ShareAccessModal {...baseProps} />);
     expect(html).toContain('role="dialog"');
+    expect(html).toContain("orbit-share-dialog redesign-dark");
     expect(html).toContain("함께 작업 중 0");
     expect(html).toContain("승인 요청 0");
     expect(html).toContain("사용자 초대");

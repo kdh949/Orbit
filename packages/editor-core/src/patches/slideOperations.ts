@@ -7,7 +7,16 @@ import type {
   SlideTransition,
 } from "@orbit/shared";
 
-type LocalIdPrefix = "slide_" | "el_" | "anim_" | "kw_" | "act_" | "scue_";
+type LocalIdPrefix =
+  | "slide_"
+  | "el_"
+  | "anim_"
+  | "kw_"
+  | "act_"
+  | "scue_"
+  | "activity_"
+  | "question_"
+  | "option_";
 
 type LocalIdAllocator = (prefix: LocalIdPrefix) => string;
 
@@ -155,6 +164,10 @@ function duplicateSlideWithReferences(
     "scue_",
     allocateId,
   );
+  const activity =
+    source.kind === "activity"
+      ? duplicateActivityDefinition(source.activity, allocateId)
+      : undefined;
   const keywordsWithNewIds = source.keywords.map((keyword) => ({
     ...keyword,
     keywordId: requireRemappedId(keywordIds, keyword.keywordId, "keyword"),
@@ -176,6 +189,22 @@ function duplicateSlideWithReferences(
       ...element,
       elementId: requireRemappedId(elementIds, element.elementId, "element"),
     };
+
+    if (
+      source.kind === "activity" &&
+      activity &&
+      (nextElement.type === "activity-qr" ||
+        nextElement.type === "activity-copy") &&
+      nextElement.props.activityId === source.activity.activityId
+    ) {
+      return {
+        ...nextElement,
+        props: {
+          ...nextElement.props,
+          activityId: activity.activityId,
+        },
+      };
+    }
 
     if (nextElement.type !== "group") {
       return nextElement;
@@ -296,6 +325,7 @@ function duplicateSlideWithReferences(
     order: temporaryOrder,
     title: `${title} 복사본`,
     thumbnailUrl: "",
+    ...(activity ? { activity } : {}),
     elements,
     animations,
     keywords,
@@ -303,6 +333,28 @@ function duplicateSlideWithReferences(
     semanticCues,
     aiNotes,
   });
+}
+
+function duplicateActivityDefinition(
+  source: Extract<Slide, { kind: "activity" }>["activity"],
+  allocateId: LocalIdAllocator,
+) {
+  return {
+    ...source,
+    activityId: allocateId("activity_"),
+    questions: source.questions.map((question) => ({
+      ...question,
+      questionId: allocateId("question_"),
+      ...("options" in question
+        ? {
+            options: question.options.map((option) => ({
+              ...option,
+              optionId: allocateId("option_"),
+            })),
+          }
+        : {}),
+    })),
+  };
 }
 
 function createKeywordOccurrenceMap(
@@ -409,6 +461,29 @@ function createLocalIdAllocator(deck: Deck): LocalIdAllocator {
         slide.semanticCues.map((cue) => cue.cueId),
       ),
     ),
+    "activity_": new Set(
+      deck.slides.flatMap((slide) =>
+        slide.kind === "activity" ? [slide.activity.activityId] : [],
+      ),
+    ),
+    "question_": new Set(
+      deck.slides.flatMap((slide) =>
+        slide.kind === "activity"
+          ? slide.activity.questions.map((question) => question.questionId)
+          : [],
+      ),
+    ),
+    "option_": new Set(
+      deck.slides.flatMap((slide) =>
+        slide.kind === "activity"
+          ? slide.activity.questions.flatMap((question) =>
+              "options" in question
+                ? question.options.map((option) => option.optionId)
+                : [],
+            )
+          : [],
+      ),
+    ),
   };
   const nextIndexes: Record<LocalIdPrefix, number> = {
     "slide_": 1,
@@ -417,6 +492,9 @@ function createLocalIdAllocator(deck: Deck): LocalIdAllocator {
     "kw_": 1,
     "act_": 1,
     "scue_": 1,
+    "activity_": 1,
+    "question_": 1,
+    "option_": 1,
   };
 
   return (prefix) => {

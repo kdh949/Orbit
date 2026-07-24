@@ -32,6 +32,7 @@ import { usePresentationSpeech } from "./usePresentationSpeech";
 import { getPresentationHighlightedKeywordOccurrences } from "./presentationKeywordOccurrences";
 import { getPresentationFailureCopy } from "./presentationFailureCopy";
 import {
+  shouldClosePresenterSessionOnPreflightExit,
   shouldWarnBeforePresentationUnload,
   type PresentationRuntimePhase,
 } from "./presentationLifecycle";
@@ -1087,7 +1088,13 @@ export function PresentationWorkspace(props: {
   }
 
   async function leavePresentation() {
-    await closePresentationSession().catch(() => undefined);
+    if (
+      shouldClosePresenterSessionOnPreflightExit(
+        presenterSessionRef.current?.audienceAccessEnabled ?? null,
+      )
+    ) {
+      await closePresentationSession().catch(() => undefined);
+    }
     navigateToProject(deck?.projectId ?? props.projectId);
   }
 
@@ -1397,7 +1404,25 @@ export function PresentationWorkspace(props: {
   }
 
   const displayManager = useMemo(() => createDisplayManager(), []);
+  const presentationScreenSession = useMemo(
+    () =>
+      createPresentationScreenSession(
+        runtimeRef.current,
+        presenterSession,
+      ),
+    [presenterSession, runtimePhase],
+  );
+  const activityElementRuntime = useMemo(
+    () => ({
+      audienceUrl: presentationScreenSession?.audienceUrl ?? null,
+      passcodeState:
+        presentationScreenSession?.passcodeState ??
+        ({ status: "not-prepared" } as const),
+    }),
+    [presentationScreenSession],
+  );
   const livePresentationOutput = useLivePresentationOutput({
+    activityElementRuntime,
     audienceWindowConnected: Boolean(
       slideWindowRef.current && !slideWindowRef.current.closed,
     ),
@@ -1444,12 +1469,19 @@ export function PresentationWorkspace(props: {
     () =>
       deck && presentationOutputState
         ? {
+            activityElementRuntime,
             deck: createSlideWindowDeckSnapshot(deck),
             state: createAudiencePresenterState(presentationOutputState),
             triggerAnimationIds,
           }
         : null,
-    [deck, presentationOutputState, triggerAnimationIds],
+    [
+      activityElementRuntime.audienceUrl,
+      activityElementRuntime.passcodeState,
+      deck,
+      presentationOutputState,
+      triggerAnimationIds,
+    ],
   );
 
   const resetSlideDisplayToBeginning = () => {
@@ -1852,7 +1884,9 @@ export function PresentationWorkspace(props: {
           });
         }}
         panelSnapshot={panelSnapshot}
-        presentationSession={presenterSessionRef.current ?? undefined}
+        presentationSession={
+          presentationScreenSession
+        }
         presenterScale={presenterScale}
         presenterStageRef={presenterStageRef}
         presenterStepIndex={presenterStepIndex}
@@ -1928,6 +1962,34 @@ const presentationAutoAdvancePolicy = Object.freeze({
   live: true,
   rehearsal: false,
 });
+
+function createPresentationScreenSession(
+  runtime: PresentationRuntimeIdentity | null,
+  presenterSession: PresenterCompanionSessionIdentity | null,
+) {
+  if (runtime) {
+    return {
+      audienceUrl: runtime.audienceUrl,
+      passcodeState:
+        runtime.accessMode === "public"
+          ? ({ status: "public" } as const)
+          : runtime.displayPasscode
+            ? ({
+                status: "private",
+                displayPasscode: runtime.displayPasscode,
+              } as const)
+            : ({ status: "legacy-unavailable" } as const),
+      sessionId: runtime.sessionId,
+    };
+  }
+  return presenterSession
+    ? {
+        audienceUrl: presenterSession.audienceUrl,
+        passcodeState: { status: "not-prepared" } as const,
+        sessionId: presenterSession.sessionId,
+      }
+    : undefined;
+}
 
 function navigateToProject(projectId?: string) {
   if (!projectId || typeof window === "undefined") {

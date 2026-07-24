@@ -36,6 +36,118 @@ final result: passed
 
 ---
 
+# 편집 가능한 참여 장표 디자인 QA (2026-07-24)
+
+## 범위
+
+- 대상: 실시간 투표 참여 장표
+- 브라우저: Chrome
+- 편집기 뷰포트: 1440 × 900
+- 비교 캔버스: 편집기 안의 842 × 474 슬라이드 영역을 같은 16:9 비율로 정규화
+- QA 프로젝트: `project_c72aed75-d58e-4527-b2ed-2627a7d7a2e7`
+
+## 레퍼런스 비교
+
+각 비교 이미지의 왼쪽은 Product Design으로 만든 레퍼런스, 오른쪽은 실제 편집기 캔버스다.
+
+| 프리셋 | 비교 결과 | 증거 |
+| --- | --- | --- |
+| Spotlight | 질문 중심 계층, QR/입장 코드 병렬 구성, 밝은 배경과 형광 강조선이 의도대로 유지됨 | [compare-spotlight.png](docs/product/qa/activity-slide-design/compare-spotlight.png) |
+| Split | 밝은 질문 영역과 어두운 참여 영역의 1:1 분할, QR/입장 코드 수직 배치가 의도대로 유지됨 | [compare-split.png](docs/product/qa/activity-slide-design/compare-split.png) |
+| Editorial | 좌측 제목, 우측 참여 카드, 하단 형광 안내 밴드의 행사형 구성이 의도대로 유지됨 | [compare-editorial.png](docs/product/qa/activity-slide-design/compare-editorial.png) |
+
+레퍼런스의 고정 문구는 실제 활동의 제목과 설명을 표시하는 런타임 슬롯으로 치환했다. 편집기에서는 QR과 입장 코드가 안전한 플레이스홀더로 보이고, 발표 화면에서만 실제 값이 주입된다.
+
+## 상호작용 검증
+
+- 시스템 레이어인 기본 참여 장표에서 Spotlight를 적용하면 일반 캔버스 편집 모드로 전환된다.
+- 이미 디자인된 장표에서 다른 프리셋을 선택하면 `현재 디자인을 교체할까요?` 확인창이 표시된다.
+- Spotlight, Split, Editorial, Essentials, Blank가 모두 선택 가능하다.
+- Editable 모드에서 텍스트, 도형, 아이콘, 이미지, QR을 사용할 수 있고 차트는 비활성화된다.
+- QR 슬롯을 드래그해 이동하고 실행 취소로 원래 위치를 복원했다.
+- Blank를 적용하면 완전한 빈 캔버스에서 시작할 수 있다.
+- Blank에 QR과 입장 코드를 연속 추가해 서로 겹치지 않는 기본 위치에 배치되는 것을 확인했다.
+- 발표 세션을 비밀번호 방식으로 생성한 뒤 발표 화면에서 실제 QR과 입장 코드가 Editorial 슬롯에 주입되는 것을 확인했다.
+- 편집기 운영 패널에서 기존 `모든 응답 보기` 결과 화면 링크가 유지되는 것을 확인했다.
+- 편집기와 발표 화면의 Chrome 콘솔 오류는 각각 0건이었다.
+
+## 발견 사항과 수정
+
+### P2 — Blank 런타임 슬롯 초기 위치 겹침
+
+초기 구현에서는 Blank에 QR과 입장 코드를 연속 추가하면 두 요소의 기본 위치가 겹쳐 QR이 가려졌다.
+
+- 수정: 런타임 팔레트에서 추가하는 QR은 좌측 하단, 입장 코드는 우측 하단에 배치하도록 캔버스 비율 기반 기본 프레임을 분리했다.
+- 회귀 테스트: 두 프레임이 겹치지 않고 캔버스 안에 들어오는지 검증한다.
+- 수정 커밋: `e7562713 fix: 빈 참여 장표 요소 겹침 방지`
+- 수정 전: [blank-with-runtime-slots.jpg](docs/product/qa/activity-slide-design/blank-with-runtime-slots.jpg)
+- 수정 후: [blank-with-runtime-slots-fixed.jpg](docs/product/qa/activity-slide-design/blank-with-runtime-slots-fixed.jpg)
+
+P0 또는 P1 시각 문제는 발견되지 않았다.
+
+## 발표 런타임 증거
+
+- 실제 청중 URL로 만든 QR과 발표자 전용 입장 코드가 플레이스홀더를 대체한다.
+- 응답 집계 패널은 별도 결과 흐름을 그대로 사용한다.
+- Chrome에서 런타임 주입을 확인했으며 입장 코드 값은 QA 산출물에 기록하지 않았다.
+
+## 자동 검증
+
+- Web: 299 test files, 1,867 tests passed
+- Web TypeScript lint/typecheck passed
+- 전체 구현 검증에서 `pnpm build`, `pnpm lint`, `pnpm test`, `node infra/scripts/check-env.mjs`, `docker compose config --quiet` passed
+
+final result: passed
+
+---
+
+# 버전 기록 현재 상태 표시 design QA (2026-07-24)
+
+- Source visual truth: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-audit\01-duplicate-current-version.png`
+- Implementation screenshot: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-design-qa\implementation-final-v2.png`
+- Focused comparison: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-design-qa\focused-list-final-v4.png`
+- Viewport: source와 implementation 모두 1477 × 874 CSS px, 동일 픽셀 크기로 별도 density 정규화 없음
+- State: 버전 5 기록이 두 개 존재하고 `버전 5 · 이전 버전 복원` 항목을 선택한 상태
+
+## Full-view comparison evidence
+
+- 기존 페이지 구조, 목록 폭, 미리보기, 선택 강조, 상태 색상은 유지했다.
+- 현재 상태는 최신 동일 버전 기록 하나만 대표하며 다른 기록은 삭제하지 않는다.
+
+## Focused region comparison evidence
+
+- 수정 전 두 개였던 `현재 버전` 배지가 수정 후 하나의 `현재 상태` 배지로 정리됐다.
+- 같은 버전의 과거 기록은 실제 사유에 따라 `복원 지점`, `자동 저장`, `편집 저장`으로 구분된다.
+- 현재 항목을 선택하면 우측 복원 동작이 `현재 상태`로 비활성화된다.
+
+## Required fidelity surfaces
+
+- Fonts and typography: 기존 Pretendard 계층, 크기, 굵기, 줄바꿈을 유지했다.
+- Spacing and layout rhythm: 목록 행 높이, 배지 padding, 정렬, radius를 변경하지 않았다.
+- Colors and visual tokens: 기존 primary, warning, neutral 상태 토큰만 사용했다.
+- Image quality and asset fidelity: 미리보기와 기존 Tabler 아이콘을 그대로 유지했으며 새 자산은 없다.
+- Copy and content: `현재 버전`을 `현재 상태`로 명확히 하고 저장 사유 배지를 실제 기록 유형과 일치시켰다.
+
+## Comparison history
+
+1. P1 — 동일한 버전 번호의 두 기록이 모두 `현재 버전`으로 표시됐다.
+2. Fix — 정렬된 기록에서 현재 버전을 대표하는 최신 snapshot ID 하나만 선택하도록 변경했다.
+3. P2 — 중복 표시 제거 후 `편집 내용 저장` 기록이 `자동 저장` 배지로 노출됐다.
+4. Fix — snapshot reason별 상태 문구를 추가해 `편집 저장`, `전체 교체`, `자동 저장`, `복원 지점`을 구분했다.
+5. Post-fix — focused comparison에서 현재 상태 배지 한 개와 각 과거 기록의 올바른 상태 문구를 확인했다.
+
+## Validation
+
+- 현재 항목 선택과 비활성 복원 동작 확인
+- 390px viewport에서 document 가로 overflow 없음
+- 브라우저 console error 없음
+- `DeckVersionHistoryPage.test.ts`: 3 tests passed
+- Web typecheck와 `git diff --check` 통과
+
+final result: passed
+
+---
+
 # iPad Presenter Companion 운영 UI design QA (2026-07-24)
 
 - Source visual truth: `prototypes/ipad-presenter-companion/reference/combined-target-v2.png` (시각 참조 전용, 운영 코드에서 import하지 않음).
@@ -894,5 +1006,77 @@ final result: passed
 - `pnpm --filter @orbit/shared build`가 통과했다.
 - `pnpm --filter @orbit/web build`가 기존 chunk-size 경고만 남기고 통과했다.
 - Chrome 확장 캡처는 CDP 5초 제한으로 실패해 마지막 인증 캡처와 이후 실제 DOM 실측을 함께 판정 근거로 사용했다.
+
+final result: passed
+
+---
+
+# 편집 가능한 참여 장표 레퍼런스 3종 design QA (2026-07-24)
+
+- Source visual truth:
+  - `docs/product/references/activity-slide-templates/spotlight-reference.png`
+  - `docs/product/references/activity-slide-templates/split-reference.png`
+  - `docs/product/references/activity-slide-templates/editorial-reference.png`
+- Chrome implementation captures:
+  - `docs/product/qa/activity-slide-design/spotlight-reference-v2-chrome.png`
+  - `docs/product/qa/activity-slide-design/split-reference-v2-chrome.png`
+  - `docs/product/qa/activity-slide-design/editorial-reference-v2-chrome.png`
+- Combined comparison:
+  - `docs/product/qa/activity-slide-design/spotlight-comparison-v2.png`
+  - `docs/product/qa/activity-slide-design/split-comparison-v2.png`
+  - `docs/product/qa/activity-slide-design/editorial-comparison-v2.png`
+- Verification route: `http://localhost:5173/project/project_c72aed75-d58e-4527-b2ed-2627a7d7a2e7`
+- Slide viewport: 1267×713 editor canvas, wide-16-9 Deck.
+
+## Image and asset checks
+
+1. 세 레퍼런스를 built-in ImageGen image edit mode에 각각 직접 입력해 text, number, QR, logo, icon, card를 제거한 배경 plate를 만들었다.
+2. 결과 PNG는 모두 1672×941 opaque raster이며 글자 조각, QR pattern, 잘린 card, 임의 logo가 남지 않은 것을 원본 해상도로 확인했다.
+3. ORBIT logo는 `apps/web/src/assets/orbit-logo.png`의 바이트를 그대로 public runtime asset으로 복제했다.
+4. footer message와 clock은 `@tabler/icons@3.44.0`의 공식 outline SVG를 그대로 사용했다. 256×256 opaque PNG preview에서 선 잘림과 색 번짐이 없음을 확인했다.
+5. 실제 QR bitmap과 입장 코드 숫자는 background와 Deck JSON에 포함하지 않고 각각 `activity-qr`, `presentation-passcode` runtime slot으로 유지한다.
+
+## Comparison history
+
+1. Spotlight는 source와 implementation을 한 이미지에서 비교해 centered heading, 참여 수단 2열, divider, passcode pill, footer logo의 중심축과 간격을 맞췄다.
+2. Split은 좌우 경계, 좌하단 orbit glow, dark participant surface를 source와 같은 비율로 유지했다. 단일행 title input에서 수동 줄바꿈이 제거되는 P1을 발견해 2행 textarea로 교체하고 재캡처했다.
+3. Editorial은 top-right halo, QR/passcode card, bottom lime band, two-part footer의 구조와 상대적 크기를 맞췄다.
+4. QR은 보안과 런타임 계약 때문에 source QR을 복제하지 않았다. Chrome editor 캡처는 안전한 placeholder를 표시하며 실제 발표 session에서는 runtime QR로 교체된다.
+5. 최종 비교에서 P0/P1/P2의 layout overflow, clipping, low contrast, raster text, generated logo 문제는 남지 않았다.
+
+## Verification
+
+- `pnpm --filter @orbit/editor-core test -- src/patches/activitySlideOperations.test.ts` passed: 19 files, 163 tests.
+- `pnpm --filter @orbit/editor-core typecheck` passed.
+- `pnpm --filter @orbit/web test -- src/features/activity-slides/editor/activityEditor.test.tsx` passed: 299 files, 1867 tests.
+- `pnpm --filter @orbit/web typecheck` passed.
+- Docker Web production build passed with the existing chunk-size warning only.
+- Chrome에서 Spotlight, Split, Editorial 프리셋 교체, title/description 편집, canvas rendering을 확인했다.
+
+final result: passed
+
+---
+
+# 버전 기록 중복 복원 지점 QA (2026-07-24)
+
+- Source visual truth: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-duplicate-restore-audit\01-repeated-restore-points.png`
+- Implementation screenshot: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-duplicate-restore-audit\05-deduplicated-final.png`
+- Full-view comparison: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-duplicate-restore-audit\04-before-after-comparison.png`
+- Route: `http://localhost:5173/project/project_a0facb38-58a5-4994-9748-5b02718029e3/history`
+- Viewport and pixels: source/implementation 모두 `1477 × 874`, CSS viewport `1477 × 874`, density `1`; 추가 정규화 없음.
+- State: 같은 프로젝트의 버전 기록 목록. 선택 항목은 서로 다르지만 검증 대상인 목록의 중복 복원 지점과 기록 수는 동일한 데이터셋에서 비교함.
+
+## Findings
+
+- 수정 전에는 같은 덱 상태의 `snapshot-restore` 항목이 반복 노출되어 저장 기록이 12건으로 보였다.
+- 수정 후에는 동일한 덱 상태의 복원 지점이 최신 한 건으로 축약되어 9건으로 보이며, 서로 다른 버전 4·5·6 복원 지점은 유지된다.
+- 폰트/타이포그래피, 간격/레이아웃, 색상 토큰, 슬라이드 이미지 품질, 문구에는 변경이나 회귀가 없다.
+- 목록 행과 배지의 크기가 비교 화면에서 충분히 식별되므로 별도의 focused-region 비교는 필요하지 않았다.
+
+## Comparison history
+
+- P1: 동일 상태 복원 지점이 반복 누적되어 의미 있는 이력 탐색을 방해함.
+- Fix: API가 동일한 덱 상태의 복원 백업을 재사용하고, 기존 중복은 목록 응답에서 최신 한 건만 남기도록 처리함.
+- Post-fix evidence: 저장 기록이 12건에서 9건으로 정리되었고 서로 다른 복원 상태는 보존됨.
 
 final result: passed
