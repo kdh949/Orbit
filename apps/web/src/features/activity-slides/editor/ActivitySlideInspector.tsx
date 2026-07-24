@@ -100,9 +100,10 @@ export function ActivitySlideInspector(props: {
             <span>청중이 장표를 열었을 때 맨 위에 보여지는 문구입니다.</span>
           </div>
           <OrbitField id="activity-slide-title" label="슬라이드 제목">
-            <OrbitInput
+            <OrbitTextarea
               maxLength={120}
               placeholder="예: 발표 전에 궁금한 점을 알려주세요"
+              rows={2}
               value={activity.title}
               onChange={(event) => updateActivity({ title: event.currentTarget.value })}
             />

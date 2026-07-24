@@ -359,6 +359,7 @@ describe("activity slide editor", () => {
     const templateSlide = createActivitySlide(createDemoDeck(), template);
     const html = renderToStaticMarkup(<ActivitySlideInspector onChange={vi.fn()} slide={templateSlide} />);
     expect(html).toContain(templateSlide.activity.title);
+    expect(html).toContain('placeholder="예: 발표 전에 궁금한 점을 알려주세요" rows="2"');
   });
 
   it("shows that pre-question edits are reflected on the slide canvas", () => {
