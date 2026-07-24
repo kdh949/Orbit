@@ -36,6 +36,53 @@ final result: passed
 
 ---
 
+# 버전 기록 현재 상태 표시 design QA (2026-07-24)
+
+- Source visual truth: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-audit\01-duplicate-current-version.png`
+- Implementation screenshot: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-design-qa\implementation-final-v2.png`
+- Focused comparison: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-design-qa\focused-list-final-v4.png`
+- Viewport: source와 implementation 모두 1477 × 874 CSS px, 동일 픽셀 크기로 별도 density 정규화 없음
+- State: 버전 5 기록이 두 개 존재하고 `버전 5 · 이전 버전 복원` 항목을 선택한 상태
+
+## Full-view comparison evidence
+
+- 기존 페이지 구조, 목록 폭, 미리보기, 선택 강조, 상태 색상은 유지했다.
+- 현재 상태는 최신 동일 버전 기록 하나만 대표하며 다른 기록은 삭제하지 않는다.
+
+## Focused region comparison evidence
+
+- 수정 전 두 개였던 `현재 버전` 배지가 수정 후 하나의 `현재 상태` 배지로 정리됐다.
+- 같은 버전의 과거 기록은 실제 사유에 따라 `복원 지점`, `자동 저장`, `편집 저장`으로 구분된다.
+- 현재 항목을 선택하면 우측 복원 동작이 `현재 상태`로 비활성화된다.
+
+## Required fidelity surfaces
+
+- Fonts and typography: 기존 Pretendard 계층, 크기, 굵기, 줄바꿈을 유지했다.
+- Spacing and layout rhythm: 목록 행 높이, 배지 padding, 정렬, radius를 변경하지 않았다.
+- Colors and visual tokens: 기존 primary, warning, neutral 상태 토큰만 사용했다.
+- Image quality and asset fidelity: 미리보기와 기존 Tabler 아이콘을 그대로 유지했으며 새 자산은 없다.
+- Copy and content: `현재 버전`을 `현재 상태`로 명확히 하고 저장 사유 배지를 실제 기록 유형과 일치시켰다.
+
+## Comparison history
+
+1. P1 — 동일한 버전 번호의 두 기록이 모두 `현재 버전`으로 표시됐다.
+2. Fix — 정렬된 기록에서 현재 버전을 대표하는 최신 snapshot ID 하나만 선택하도록 변경했다.
+3. P2 — 중복 표시 제거 후 `편집 내용 저장` 기록이 `자동 저장` 배지로 노출됐다.
+4. Fix — snapshot reason별 상태 문구를 추가해 `편집 저장`, `전체 교체`, `자동 저장`, `복원 지점`을 구분했다.
+5. Post-fix — focused comparison에서 현재 상태 배지 한 개와 각 과거 기록의 올바른 상태 문구를 확인했다.
+
+## Validation
+
+- 현재 항목 선택과 비활성 복원 동작 확인
+- 390px viewport에서 document 가로 overflow 없음
+- 브라우저 console error 없음
+- `DeckVersionHistoryPage.test.ts`: 3 tests passed
+- Web typecheck와 `git diff --check` 통과
+
+final result: passed
+
+---
+
 # iPad Presenter Companion 운영 UI design QA (2026-07-24)
 
 - Source visual truth: `prototypes/ipad-presenter-companion/reference/combined-target-v2.png` (시각 참조 전용, 운영 코드에서 import하지 않음).

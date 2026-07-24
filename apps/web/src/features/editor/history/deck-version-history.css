@@ -36,7 +36,7 @@
 .deck-history-version-card dt { font-size: var(--redesign-type-label-sm-size); font-weight: 750; }
 .deck-history-version-card dd { font-size: var(--redesign-type-body-sm-size); margin: var(--redesign-space-1) 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .deck-history-preview > footer { align-items: flex-start; color: var(--redesign-color-on-surface-variant); display: flex; font-size: var(--redesign-type-body-sm-size); gap: var(--redesign-space-2); line-height: 1.5; margin-top: var(--redesign-space-4); }
-.deck-history-restore-dialog { max-width: 520px; }
+.deck-history-restore-dialog { max-width: 640px; }
 .deck-history-restore-dialog .redesign-dialog-header { border-bottom: 0; padding-bottom: var(--redesign-space-3); }
 .deck-history-restore-dialog .redesign-dialog-body { padding-top: var(--redesign-space-2); }
 .deck-history-restore-content { display: grid; gap: var(--redesign-space-3); }
