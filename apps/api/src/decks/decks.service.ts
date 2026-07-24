@@ -1105,10 +1105,11 @@ export class DecksService {
       `,
       [projectId],
     );
+    const snapshots = deduplicateRestoreSnapshotRows(rows);
 
     return listDeckSnapshotsResponseSchema.parse({
       projectId,
-      snapshots: rows.map(parseSnapshotRow),
+      snapshots: snapshots.map(parseSnapshotRow),
     });
   }
 
@@ -1216,12 +1217,16 @@ export class DecksService {
           currentDeck.deckId,
           currentDeck,
         );
-        await this.createSnapshot(
-          manager,
-          currentDeck,
-          "snapshot-restore",
-          updatedAt,
-        );
+        const existingRestoreSnapshot =
+          await this.findEquivalentRestoreSnapshot(manager, currentDeck);
+        if (!existingRestoreSnapshot) {
+          await this.createSnapshot(
+            manager,
+            currentDeck,
+            "snapshot-restore",
+            updatedAt,
+          );
+        }
       }
 
       if (currentDeck && templateBlueprint) {
@@ -1523,6 +1528,31 @@ export class DecksService {
     );
 
     return parseSnapshotRow(rows[0]);
+  }
+
+  private async findEquivalentRestoreSnapshot(
+    executor: QueryExecutor,
+    deck: Deck,
+  ): Promise<DeckSnapshotRow | undefined> {
+    const rows = await executor.query<DeckSnapshotRow[]>(
+      `
+        SELECT snapshot_id, project_id, deck_id, deck_json, version, reason, created_at
+        FROM deck_snapshots
+        WHERE project_id = $1
+          AND deck_id = $2
+          AND version = $3
+          AND reason = $4
+        ORDER BY created_at DESC, snapshot_id DESC
+      `,
+      [deck.projectId, deck.deckId, deck.version, "snapshot-restore"],
+    );
+
+    return rows.find((row) =>
+      isDeepStrictEqual(
+        removeLegacyAiGeneratedTitleAnimations(parseDeckJson(row.deck_json)),
+        deck,
+      ),
+    );
   }
 
   private async deletePatchRowsAfterVersion(
@@ -2317,6 +2347,28 @@ function normalizeLegacyKeywordTermKey(value: string): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function deduplicateRestoreSnapshotRows(
+  rows: DeckSnapshotRow[],
+): DeckSnapshotRow[] {
+  const restoreStates: Array<{ deckId: string; deck: Deck }> = [];
+
+  return rows.filter((row) => {
+    if (row.reason !== "snapshot-restore") return true;
+
+    const deck = removeLegacyAiGeneratedTitleAnimations(
+      parseDeckJson(row.deck_json),
+    );
+    const isDuplicate = restoreStates.some(
+      (state) =>
+        state.deckId === row.deck_id && isDeepStrictEqual(state.deck, deck),
+    );
+    if (isDuplicate) return false;
+
+    restoreStates.push({ deckId: row.deck_id, deck });
+    return true;
+  });
 }
 
 function parseSnapshotRow(row: DeckSnapshotRow): DeckSnapshot {
