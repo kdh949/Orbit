@@ -905,3 +905,49 @@ final result: passed
 - Chrome 확장 캡처는 CDP 5초 제한으로 실패해 마지막 인증 캡처와 이후 실제 DOM 실측을 함께 판정 근거로 사용했다.
 
 final result: passed
+
+---
+
+# 편집 가능한 참여 장표 레퍼런스 3종 design QA (2026-07-24)
+
+- Source visual truth:
+  - `docs/product/references/activity-slide-templates/spotlight-reference.png`
+  - `docs/product/references/activity-slide-templates/split-reference.png`
+  - `docs/product/references/activity-slide-templates/editorial-reference.png`
+- Chrome implementation captures:
+  - `docs/product/qa/activity-slide-design/spotlight-reference-v2-chrome.png`
+  - `docs/product/qa/activity-slide-design/split-reference-v2-chrome.png`
+  - `docs/product/qa/activity-slide-design/editorial-reference-v2-chrome.png`
+- Combined comparison:
+  - `docs/product/qa/activity-slide-design/spotlight-comparison-v2.png`
+  - `docs/product/qa/activity-slide-design/split-comparison-v2.png`
+  - `docs/product/qa/activity-slide-design/editorial-comparison-v2.png`
+- Verification route: `http://localhost:5173/project/project_c72aed75-d58e-4527-b2ed-2627a7d7a2e7`
+- Slide viewport: 1267×713 editor canvas, wide-16-9 Deck.
+
+## Image and asset checks
+
+1. 세 레퍼런스를 built-in ImageGen image edit mode에 각각 직접 입력해 text, number, QR, logo, icon, card를 제거한 배경 plate를 만들었다.
+2. 결과 PNG는 모두 1672×941 opaque raster이며 글자 조각, QR pattern, 잘린 card, 임의 logo가 남지 않은 것을 원본 해상도로 확인했다.
+3. ORBIT logo는 `apps/web/src/assets/orbit-logo.png`의 바이트를 그대로 public runtime asset으로 복제했다.
+4. footer message와 clock은 `@tabler/icons@3.44.0`의 공식 outline SVG를 그대로 사용했다. 256×256 opaque PNG preview에서 선 잘림과 색 번짐이 없음을 확인했다.
+5. 실제 QR bitmap과 입장 코드 숫자는 background와 Deck JSON에 포함하지 않고 각각 `activity-qr`, `presentation-passcode` runtime slot으로 유지한다.
+
+## Comparison history
+
+1. Spotlight는 source와 implementation을 한 이미지에서 비교해 centered heading, 참여 수단 2열, divider, passcode pill, footer logo의 중심축과 간격을 맞췄다.
+2. Split은 좌우 경계, 좌하단 orbit glow, dark participant surface를 source와 같은 비율로 유지했다. 단일행 title input에서 수동 줄바꿈이 제거되는 P1을 발견해 2행 textarea로 교체하고 재캡처했다.
+3. Editorial은 top-right halo, QR/passcode card, bottom lime band, two-part footer의 구조와 상대적 크기를 맞췄다.
+4. QR은 보안과 런타임 계약 때문에 source QR을 복제하지 않았다. Chrome editor 캡처는 안전한 placeholder를 표시하며 실제 발표 session에서는 runtime QR로 교체된다.
+5. 최종 비교에서 P0/P1/P2의 layout overflow, clipping, low contrast, raster text, generated logo 문제는 남지 않았다.
+
+## Verification
+
+- `pnpm --filter @orbit/editor-core test -- src/patches/activitySlideOperations.test.ts` passed: 19 files, 163 tests.
+- `pnpm --filter @orbit/editor-core typecheck` passed.
+- `pnpm --filter @orbit/web test -- src/features/activity-slides/editor/activityEditor.test.tsx` passed: 299 files, 1867 tests.
+- `pnpm --filter @orbit/web typecheck` passed.
+- Docker Web production build passed with the existing chunk-size warning only.
+- Chrome에서 Spotlight, Split, Editorial 프리셋 교체, title/description 편집, canvas rendering을 확인했다.
+
+final result: passed
