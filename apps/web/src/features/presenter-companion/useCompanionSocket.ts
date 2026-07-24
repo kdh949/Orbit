@@ -58,6 +58,18 @@ export type CompanionConnectionStatus =
   | "revoked"
   | "failed";
 
+export const companionRecoveryBaseDelayMs = 3_000;
+export const companionRecoveryMaxDelayMs = 30_000;
+
+export function nextCompanionRecoveryDelayMs(attempt: number): number {
+  const safeAttempt =
+    Number.isSafeInteger(attempt) && attempt > 0 ? attempt : 1;
+  return Math.min(
+    companionRecoveryBaseDelayMs * 2 ** Math.min(safeAttempt - 1, 10),
+    companionRecoveryMaxDelayMs,
+  );
+}
+
 export type CompanionOutputCursor = {
   output: PresentationCompanionOutputState | null;
   snapshotPending: boolean;
@@ -152,6 +164,8 @@ export function useCompanionSocket(
   const signalListenersRef = useRef(
     new Set<(signal: PresentationCompanionSignal) => void>(),
   );
+  const resyncRef = useRef<(() => void) | null>(null);
+  const recoveryAttemptRef = useRef(0);
 
   useEffect(() => {
     const socket = createSocket();
@@ -497,13 +511,7 @@ export function useCompanionSocket(
     socket.on("presentation:error", handleError);
     if (socket.connected) join();
 
-    const recover = (event: Event) => {
-      if (
-        document.visibilityState !== "visible" &&
-        event.type === "visibilitychange"
-      ) {
-        return;
-      }
+    const resync = () => {
       queue.pause();
       setAnnotationRecovering(true);
       if (!socket.connected) {
@@ -517,6 +525,16 @@ export function useCompanionSocket(
       } else if (current) {
         requestSnapshot(current);
       }
+    };
+    resyncRef.current = resync;
+    const recover = (event: Event) => {
+      if (
+        document.visibilityState !== "visible" &&
+        event.type === "visibilitychange"
+      ) {
+        return;
+      }
+      resync();
     };
     window.addEventListener("online", recover);
     window.addEventListener("pageshow", recover);
@@ -577,12 +595,32 @@ export function useCompanionSocket(
       if (socketRef.current === socket) socketRef.current = null;
       pairingGenerationRef.current = null;
       prompterRef.current = null;
+      if (resyncRef.current === resync) resyncRef.current = null;
       if (navigationTimeoutRef.current !== null) {
         window.clearTimeout(navigationTimeoutRef.current);
         navigationTimeoutRef.current = null;
       }
     };
   }, [createSocket, sessionId]);
+
+  // A companion that joins while the presenter holds no authority receives
+  // nothing to recover from, so re-join on a backoff until the presenter
+  // republishes its output.
+  useEffect(() => {
+    if (!annotationRecovering) {
+      recoveryAttemptRef.current = 0;
+      return;
+    }
+    if (status !== "connected") return;
+    const attempt = recoveryAttemptRef.current + 1;
+    const timeoutId = window.setTimeout(() => {
+      recoveryAttemptRef.current = attempt;
+      resyncRef.current?.();
+    }, nextCompanionRecoveryDelayMs(attempt));
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [annotationRecovering, status]);
 
   const sendAnnotationCommand = (
     input: CompanionAnnotationCommandInput,

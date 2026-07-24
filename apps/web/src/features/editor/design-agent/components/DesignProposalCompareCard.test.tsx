@@ -1,4 +1,6 @@
 import { createDemoDeck } from "@orbit/editor-core";
+import fs from "node:fs";
+import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { DesignProposalCompareCard } from "./DesignProposalCompareCard";
@@ -10,6 +12,20 @@ vi.mock("../../../slides/rendering", () => ({
 }));
 
 describe("DesignProposalCompareCard", () => {
+  it("stacks the compact comparison inside a narrow assistant panel", () => {
+    const css = fs.readFileSync(
+      path.join(process.cwd(), "src/features/editor/design-agent/design-assistant.css"),
+      "utf8",
+    );
+
+    expect(css).toMatch(
+      /\.design-proposal-compare-card\s*\{[^}]*container-type:\s*inline-size;/s,
+    );
+    expect(css).toMatch(
+      /@container \(max-width: 320px\)\s*\{[\s\S]*?\.design-proposal-inline-comparison\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);/,
+    );
+  });
+
   it("renders explicit Before and After labels from separate deck snapshots", () => {
     const beforeDeck = createDemoDeck();
     const afterDeck = { ...beforeDeck, version: beforeDeck.version + 1 };

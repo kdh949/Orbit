@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import type { PresenterSlideshowState } from "../rehearsal/presenter/presenterStateStore";
 import {
+  createCompanionOutputState,
   createPresenterNavigationAcknowledgement,
   createPresenterAuthorityLeaseController,
   createCompanionShareSurfaceId,
@@ -8,6 +10,62 @@ import {
   isCompanionAnnotationSurfaceActive,
   resolveCompanionSurface,
 } from "./usePresenterCompanionAuthority";
+
+describe("createCompanionOutputState", () => {
+  const build = (
+    state: PresenterSlideshowState,
+    shareEpochId: string | null,
+  ) =>
+    createCompanionOutputState({
+      authorityEpochId: "epoch_1",
+      canGoNext: true,
+      canGoPrevious: false,
+      getSurfaceRevision: () => 4,
+      outputRevision: 7,
+      sessionId: "session_1",
+      shareEpochId,
+      state,
+    });
+  const slideshowState = (
+    audienceOutputMode: PresenterSlideshowState["audienceOutputMode"],
+  ): PresenterSlideshowState => ({
+    audienceOutputMode,
+    highlights: [],
+    slideId: "slide_1",
+    slideIndex: 0,
+    stepIndex: 0,
+  });
+
+  it("publishes a screen share with its epoch", () => {
+    expect(build(slideshowState("screen-share"), "share_1")).toMatchObject({
+      outputMode: "screen-share",
+      shareEpochId: "share_1",
+      surfaceId: createCompanionShareSurfaceId("share_1"),
+      surfaceRevision: 4,
+    });
+  });
+
+  it("falls back to the slide surface when the share epoch is missing", () => {
+    expect(build(slideshowState("screen-share"), null)).toMatchObject({
+      outputMode: "slide",
+      surfaceId: createCompanionSurfaceId("slide_1"),
+      surfaceRevision: 4,
+    });
+  });
+
+  it("keeps black output free of a drawable surface", () => {
+    const output = build(slideshowState("black"), null);
+
+    expect(output).toMatchObject({ outputMode: "black" });
+    expect(output).not.toHaveProperty("surfaceId");
+  });
+
+  it("returns null instead of throwing on an unpublishable state", () => {
+    expect(
+      build({ ...slideshowState("slide"), slideIndex: -1 }, null),
+    ).toBeNull();
+  });
+});
 
 describe("createCompanionSurfaceId", () => {
   it("creates a stable bounded opaque surface id", () => {

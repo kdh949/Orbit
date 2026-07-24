@@ -114,36 +114,23 @@ export function usePresenterCompanionAuthority(input: {
     ) {
       return;
     }
-    const surface = resolveCompanionSurface(
-      state,
-      shareEpochIdRef.current,
-    );
-    const output = presentationCompanionOutputStateSchema.parse({
-      sessionId,
+    const output = createCompanionOutputState({
       authorityEpochId: authorityEpochIdRef.current,
-      outputRevision: Math.max(0, outputRevisionRef.current),
-      outputMode: state.audienceOutputMode,
-      slideId: state.slideId,
-      slideIndex: state.slideIndex,
-      animationStep: state.stepIndex,
+      canGoNext: navigationAvailabilityRef.current.canGoNext,
       canGoPrevious:
         navigationAvailabilityRef.current.canGoPrevious,
-      canGoNext: navigationAvailabilityRef.current.canGoNext,
-      ...(surface
-        ? {
-            surfaceRevision:
-              annotationAuthorityRef.current?.getSnapshot(
-                surface.surfaceId,
-              ).surfaceRevision ?? 0,
-            surfaceId: surface.surfaceId,
-            ...(surface.shareEpochId
-              ? { shareEpochId: surface.shareEpochId }
-              : {}),
-          }
-        : {}),
+      getSurfaceRevision: (surfaceId) =>
+        annotationAuthorityRef.current?.getSnapshot(surfaceId)
+          .surfaceRevision ?? 0,
+      outputRevision: outputRevisionRef.current,
+      sessionId,
+      shareEpochId: shareEpochIdRef.current,
+      state,
     });
+    if (!output) return;
     latestOutputRef.current = output;
-    currentSurfaceIdRef.current = surface?.surfaceId ?? null;
+    currentSurfaceIdRef.current =
+      output.outputMode === "black" ? null : output.surfaceId;
     socket.emit("presentation:companion:output-state", output);
   }, [input.sessionId]);
 
@@ -585,6 +572,64 @@ export function usePresenterCompanionAuthority(input: {
     status,
     subscribeSignal,
   };
+}
+
+/**
+ * Builds the output state a companion can consume, or null when the payload
+ * cannot be represented.
+ *
+ * A screen share loses its epoch while the audience surface moves between
+ * windows, and the schema requires a surface for every screen-share payload.
+ * Falling back to the current slide keeps the companion drawable instead of
+ * leaving it stuck waiting for an output that never arrives.
+ */
+export function createCompanionOutputState(input: {
+  authorityEpochId: string;
+  canGoNext: boolean;
+  canGoPrevious: boolean;
+  getSurfaceRevision: (surfaceId: string) => number;
+  outputRevision: number;
+  sessionId: string;
+  shareEpochId: string | null | undefined;
+  state: PresenterSlideshowState;
+}): PresentationCompanionOutputState | null {
+  const surface = resolveCompanionSurface(
+    input.state,
+    input.shareEpochId,
+  );
+  const degradedToSlide =
+    input.state.audienceOutputMode === "screen-share" && !surface;
+  const resolvedSurface: {
+    shareEpochId?: string;
+    surfaceId: string;
+  } | null = degradedToSlide
+    ? { surfaceId: createCompanionSurfaceId(input.state.slideId) }
+    : surface;
+  const parsed = presentationCompanionOutputStateSchema.safeParse({
+    sessionId: input.sessionId,
+    authorityEpochId: input.authorityEpochId,
+    outputRevision: Math.max(0, input.outputRevision),
+    outputMode: degradedToSlide
+      ? "slide"
+      : input.state.audienceOutputMode,
+    slideId: input.state.slideId,
+    slideIndex: input.state.slideIndex,
+    animationStep: input.state.stepIndex,
+    canGoPrevious: input.canGoPrevious,
+    canGoNext: input.canGoNext,
+    ...(resolvedSurface
+      ? {
+          surfaceRevision: input.getSurfaceRevision(
+            resolvedSurface.surfaceId,
+          ),
+          surfaceId: resolvedSurface.surfaceId,
+          ...(resolvedSurface.shareEpochId
+            ? { shareEpochId: resolvedSurface.shareEpochId }
+            : {}),
+        }
+      : {}),
+  });
+  return parsed.success ? parsed.data : null;
 }
 
 export function createPresenterNavigationAcknowledgement(input: {

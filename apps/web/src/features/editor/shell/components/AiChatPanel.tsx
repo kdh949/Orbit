@@ -10,6 +10,7 @@ import type {
 } from "@orbit/shared";
 import { IconArrowUp as ArrowUp, IconPhoto as Photo } from "@tabler/icons-react";
 import {
+  useEffect,
   useRef,
   useState,
   type ChangeEvent,
@@ -123,6 +124,7 @@ export function AiChatPanel(props: AiChatPanelProps) {
   const [quickActionError, setQuickActionError] = useState<string | null>(null);
   const [mode, setMode] = useState<"design" | "image">("design");
   const referenceImageInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingPreviewRef = useRef<HTMLDivElement | null>(null);
   const maxReferenceImages = 3;
   const selectedImagePreview = getSelectedImagePreview(
     props.projectId,
@@ -473,105 +475,113 @@ export function AiChatPanel(props: AiChatPanelProps) {
     pendingPreview,
   );
 
+  useEffect(() => {
+    pendingPreviewRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+  }, [pendingPreview?.proposal.proposalId]);
+
   return (
     <section
       className="ai-chat-panel"
       aria-label="AI 채팅"
       data-proposal-state={effectiveProposalLifecycle}
     >
-      {!designEditingEnabled && props.currentSlide ? (
-        <p className="ai-chat-editing-locked" role="status">
-          특수 장표는 AI 디자인 대신 장표 설정에서 관리합니다.
-        </p>
-      ) : null}
-      {designEditingEnabled && props.currentSlide ? (
-        <DesignAssistantHome
-          disabled={isSending || isUploadingReferenceImage}
-          errorMessage={quickActionError ?? undefined}
-          isGenerating={mode === "design" && isSending}
-          onAction={(action) => void handleQuickAction(action)}
-          onRetry={failedDesignRequest
-            ? () => void handleDesignRetry()
-            : undefined}
-        />
-      ) : null}
-      {pendingPreview ? (
-        <DesignProposalCompareCard
-          afterDeck={pendingPreview.candidateDeck}
-          beforeDeck={pendingPreview.baseDeck}
-          lifecycle={effectiveProposalLifecycle}
-          slideId={pendingPreview.proposal.slideId}
-          summary={pendingPreview.proposal.summary ?? pendingPreview.proposal.title}
-          warnings={pendingPreview.proposal.warnings}
-          onApply={() => void handleApplyPreview()}
-          onClose={() => {
-            setPendingPreview(null);
-            setIsPreviewOpen(false);
-            setProposalLifecycle("idle");
-          }}
-          onPreview={() => setIsPreviewOpen(true)}
-        />
-      ) : null}
-      {effectiveProposalLifecycle === "applied" ? (
-        <p className="design-proposal-applied-message" role="status">
-          디자인 제안을 적용했습니다. 실행 취소 한 번으로 전체 변경을 되돌릴 수 있습니다.
-        </p>
-      ) : null}
-      <div className="ai-chat-history" aria-live="polite">
-        {props.chatState.messages.map((message) => (
-          <div className={`ai-chat-message ${message.role}`} key={message.id}>
-            <span className="ai-chat-avatar" aria-hidden="true">
-              {message.role === "assistant" ? "AI" : "Y"}
-            </span>
-            <div className="ai-chat-message-stack">
-              {message.role === "user" ? (
-                <div className="ai-chat-message-meta" aria-hidden="true">
-                  <strong>You</strong>
-                  <span>now</span>
-                </div>
-              ) : null}
-              <p className={message.tone === "error" ? "error" : undefined}>
-                {message.content}
-              </p>
-            </div>
-            {message.imagePreview ? (
-              <div className="ai-generated-image-card">
-                <img
-                  alt={message.imagePreview.result.prompt}
-                  src={message.imagePreview.result.url}
-                />
-                <p>{message.imagePreview.result.prompt}</p>
-                <div className="ai-generated-image-actions">
-                  <button
-                    type="button"
-                    disabled={!props.deck.slides.some(
-                      (slide) => slide.slideId === message.imagePreview?.slideId
-                    )}
-                    onClick={() => insertGeneratedImage(message)}
-                  >
-                    슬라이드에 추가
-                  </button>
-                  <button type="button" onClick={() => dismissGeneratedImage(message.id)}>
-                    닫기
-                  </button>
-                </div>
-                {!props.deck.slides.some(
-                  (slide) => slide.slideId === message.imagePreview?.slideId
-                ) ? (
-                  <span role="alert">대상 슬라이드가 삭제되어 추가할 수 없습니다.</span>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        ))}
-        {isSending ? (
-          <div className="ai-chat-message assistant">
-            <span className="ai-chat-avatar" aria-hidden="true">AI</span>
-            <div className="ai-chat-message-stack">
-              <p>{mode === "image" ? "이미지를 생성하고 있습니다..." : "디자인을 검토하고 있습니다..."}</p>
-            </div>
+      <div className="ai-chat-scroll-content">
+        {!designEditingEnabled && props.currentSlide ? (
+          <p className="ai-chat-editing-locked" role="status">
+            특수 장표는 AI 디자인 대신 장표 설정에서 관리합니다.
+          </p>
+        ) : null}
+        {designEditingEnabled && props.currentSlide ? (
+          <DesignAssistantHome
+            disabled={isSending || isUploadingReferenceImage}
+            errorMessage={quickActionError ?? undefined}
+            isGenerating={mode === "design" && isSending}
+            onAction={(action) => void handleQuickAction(action)}
+            onRetry={failedDesignRequest
+              ? () => void handleDesignRetry()
+              : undefined}
+          />
+        ) : null}
+        {pendingPreview ? (
+          <div ref={pendingPreviewRef}>
+            <DesignProposalCompareCard
+              afterDeck={pendingPreview.candidateDeck}
+              beforeDeck={pendingPreview.baseDeck}
+              lifecycle={effectiveProposalLifecycle}
+              slideId={pendingPreview.proposal.slideId}
+              summary={pendingPreview.proposal.summary ?? pendingPreview.proposal.title}
+              warnings={pendingPreview.proposal.warnings}
+              onApply={() => void handleApplyPreview()}
+              onClose={() => {
+                setPendingPreview(null);
+                setIsPreviewOpen(false);
+                setProposalLifecycle("idle");
+              }}
+              onPreview={() => setIsPreviewOpen(true)}
+            />
           </div>
         ) : null}
+        {effectiveProposalLifecycle === "applied" ? (
+          <p className="design-proposal-applied-message" role="status">
+            디자인 제안을 적용했습니다. 실행 취소 한 번으로 전체 변경을 되돌릴 수 있습니다.
+          </p>
+        ) : null}
+        <div className="ai-chat-history" aria-live="polite">
+          {props.chatState.messages.map((message) => (
+            <div className={`ai-chat-message ${message.role}`} key={message.id}>
+              <span className="ai-chat-avatar" aria-hidden="true">
+                {message.role === "assistant" ? "AI" : "Y"}
+              </span>
+              <div className="ai-chat-message-stack">
+                {message.role === "user" ? (
+                  <div className="ai-chat-message-meta" aria-hidden="true">
+                    <strong>You</strong>
+                    <span>now</span>
+                  </div>
+                ) : null}
+                <p className={message.tone === "error" ? "error" : undefined}>
+                  {message.content}
+                </p>
+              </div>
+              {message.imagePreview ? (
+                <div className="ai-generated-image-card">
+                  <img
+                    alt={message.imagePreview.result.prompt}
+                    src={message.imagePreview.result.url}
+                  />
+                  <p>{message.imagePreview.result.prompt}</p>
+                  <div className="ai-generated-image-actions">
+                    <button
+                      type="button"
+                      disabled={!props.deck.slides.some(
+                        (slide) => slide.slideId === message.imagePreview?.slideId
+                      )}
+                      onClick={() => insertGeneratedImage(message)}
+                    >
+                      슬라이드에 추가
+                    </button>
+                    <button type="button" onClick={() => dismissGeneratedImage(message.id)}>
+                      닫기
+                    </button>
+                  </div>
+                  {!props.deck.slides.some(
+                    (slide) => slide.slideId === message.imagePreview?.slideId
+                  ) ? (
+                    <span role="alert">대상 슬라이드가 삭제되어 추가할 수 없습니다.</span>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ))}
+          {isSending ? (
+            <div className="ai-chat-message assistant">
+              <span className="ai-chat-avatar" aria-hidden="true">AI</span>
+              <div className="ai-chat-message-stack">
+                <p>{mode === "image" ? "이미지를 생성하고 있습니다..." : "디자인을 검토하고 있습니다..."}</p>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {mode === "design" && designEditingEnabled && props.currentSlide && isFirstSlide ? (
