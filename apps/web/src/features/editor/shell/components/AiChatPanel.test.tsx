@@ -47,6 +47,7 @@ describe("AiChatPanel", () => {
     expect(html).toContain('placeholder="바꾸고 싶은 디자인을 말씀해 주세요"');
     expect(html).toContain('aria-label="메시지 보내기"');
     expect(html).toContain('aria-label="AI 작업 모드"');
+    expect(html).toContain('class="ai-chat-scroll-content"');
     expect(html).toContain("슬라이드 다시 디자인");
     expect(html).toContain("레이아웃 정리");
     expect(html).toContain("핵심 메시지 강조");
@@ -110,6 +111,9 @@ describe("AiChatPanel", () => {
     );
     expect(css).toMatch(
       /\.editor-ai-assistant-panel\s*\.ai-chat-message\.user\s*\.ai-chat-message-stack\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*78%;/s
+    );
+    expect(css).toMatch(
+      /\.editor-ai-assistant-panel\s*\.ai-chat-scroll-content\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s
     );
   });
 
