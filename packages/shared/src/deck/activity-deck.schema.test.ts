@@ -147,6 +147,59 @@ describe("Activity slide Deck contract", () => {
     expect(result.success).toBe(true);
   });
 
+  it("rejects data and custom-shape elements on editable Activity slides", () => {
+    for (const element of [
+      {
+        elementId: "el_chart",
+        type: "chart",
+        x: 100,
+        y: 100,
+        width: 800,
+        height: 500,
+        props: {
+          type: "bar",
+          data: [],
+        },
+      },
+      {
+        elementId: "el_table",
+        type: "table",
+        x: 100,
+        y: 100,
+        width: 800,
+        height: 500,
+        props: {},
+      },
+      {
+        elementId: "el_custom_shape",
+        type: "customShape",
+        x: 100,
+        y: 100,
+        width: 800,
+        height: 500,
+        props: {
+          pathData: "M 0 0 L 100 0 L 100 100 Z",
+          viewBoxWidth: 100,
+          viewBoxHeight: 100,
+        },
+      },
+    ]) {
+      const result = deckSchema.safeParse(
+        deckWith([
+          {
+            ...slideBase("slide_1", 1),
+            kind: "activity",
+            activity: activityDefinition(),
+            activityAppearance: { mode: "editable" },
+            elements: [element],
+          },
+        ]),
+      );
+
+      expect(result.success).toBe(false);
+    }
+  });
+
   it("rejects duplicate Activity IDs", () => {
     const result = deckSchema.safeParse(
       deckWith([
@@ -384,5 +437,36 @@ describe("Activity slide Deck contract", () => {
         ]
       }).success
     ).toBe(true);
+  });
+
+  it("rejects unsupported elements in an Activity design replacement", () => {
+    expect(
+      deckPatchSchema.safeParse({
+        deckId: "deck_activity_1",
+        baseVersion: 1,
+        operations: [
+          {
+            type: "replace_activity_design",
+            slideId: "slide_1",
+            activityAppearance: { mode: "editable" },
+            style: {},
+            elements: [
+              {
+                elementId: "el_chart",
+                type: "chart",
+                x: 100,
+                y: 100,
+                width: 800,
+                height: 500,
+                props: {
+                  type: "bar",
+                  data: [],
+                },
+              },
+            ],
+          },
+        ],
+      }).success,
+    ).toBe(false);
   });
 });

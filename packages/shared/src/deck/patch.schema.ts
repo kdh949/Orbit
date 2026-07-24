@@ -14,6 +14,7 @@ import {
 import {
   deckThumbnailSourceSchema,
   activityAppearanceSchema,
+  activityEditableElementSchema,
   slideBackgroundImageFitSchema,
   slideKeywordsSchema,
   slideLayoutSchema,
@@ -312,7 +313,7 @@ export const replaceActivityDesignOperationSchema = z
     slideId: deckSlideIdSchema,
     activityAppearance: activityAppearanceSchema,
     style: slideStyleSchema,
-    elements: z.array(deckElementSchema)
+    elements: z.array(activityEditableElementSchema)
   })
   .strict();
 

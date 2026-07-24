@@ -358,6 +358,28 @@ export const activityAppearanceSchema = z.object({
   mode: z.enum(["system", "editable"]).default("system"),
 });
 
+const activityEditableElementTypes = new Set([
+  "text",
+  "rect",
+  "ellipse",
+  "line",
+  "arrow",
+  "polygon",
+  "star",
+  "ring",
+  "image",
+  "svg",
+  "group",
+  "activity-qr",
+  "activity-copy",
+  "presentation-passcode",
+]);
+
+export const activityEditableElementSchema = deckElementSchema.refine(
+  (element) => activityEditableElementTypes.has(element.type),
+  { message: "element type is not supported on an editable Activity slide" },
+);
+
 export const activitySlideSchema = slideBaseSchema
   .extend({
     kind: z.literal("activity"),
@@ -474,6 +496,23 @@ export const slideSchema: z.ZodType<Slide, z.ZodTypeDef, unknown> = z
     return input;
   }, normalizedSlideSchema)
   .superRefine((slide, ctx) => {
+    if (
+      slide.kind === "activity" &&
+      slide.activityAppearance.mode === "editable"
+    ) {
+      slide.elements.forEach((element, index) => {
+        if (activityEditableElementTypes.has(element.type)) {
+          return;
+        }
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["elements", index, "type"],
+          message:
+            "element type is not supported on an editable Activity slide",
+        });
+      });
+    }
+
     const actionIds = new Set<string>();
     const elementIds = new Set(
       slide.elements.map((element) => element.elementId),
