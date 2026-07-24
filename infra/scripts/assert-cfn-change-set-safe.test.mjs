@@ -185,3 +185,19 @@ test("release workflows preserve immutable images and ECS runtime health", () =>
   assert.match(apiTask, /http:\/\/localhost:3000\/health/);
   assert.doesNotMatch(apiTask, /http:\/\/localhost:3000\/api\/health/);
 });
+
+test("bootstrap requires the ALB origin domain and verification secret together", () => {
+  const bootstrapTemplate = readFileSync(
+    "infra/aws/main-production-bootstrap.yaml",
+    "utf8",
+  );
+  const rules = sectionBetween(bootstrapTemplate, "Rules:", "Conditions:");
+
+  assert.match(rules, /ApplicationOriginParametersArePaired:/);
+  assert.match(rules, /Ref: ApplicationOriginDomainName/);
+  assert.match(rules, /Ref: ApplicationOriginVerificationSecretArn/);
+  assert.match(
+    rules,
+    /ApplicationOriginDomainName and ApplicationOriginVerificationSecretArn must be set together/,
+  );
+});

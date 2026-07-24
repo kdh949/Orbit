@@ -906,3 +906,15 @@
 - Rationale: 동일 release commit의 workflow 재실행 가능성을 유지하고, viewer IP 기반 rate limit이 proxy 주소로 합쳐지는 문제와 ECS task의 영구 unhealthy 상태를 방지한다. 발표를 시작하지 않은 사용자의 preflight 취소가 이미 공유된 audience session을 종료하지 않게 한다.
 - Affected files: `.github/workflows/build-images.yml`, `.github/workflows/aws-infrastructure-plan.yml`, `infra/aws/ecs-compute-single-az.yaml`, `infra/scripts/assert-cfn-change-set-safe.test.mjs`, `apps/web/src/features/presentation/*`, `docs/conventions/environment.md`, `docs/runbooks/ecs-single-az-cutover.md`, `docs/decision-log.md`.
 - Follow-up review notes: main SHA workflow를 재실행해 기존 digest artifact가 다시 생성되는지, candidate CloudFront 경로에서 서로 다른 viewer IP가 rate-limit key로 분리되는지, ECS target과 container가 `/health`로 healthy가 되는지, audience URL을 활성화한 뒤 presentation preflight 취소가 session을 ended로 바꾸지 않는지 확인한다.
+
+## ORBIT private-audio transition reads and verified ALB origin pairing
+
+- Context: private-audio bucket 활성화 전에 assets bucket에 저장된 `raw/`·`evidence/` key는 활성화 후 prefix 기반 routing만 사용하면 private bucket으로 잘못 조회되어 404가 된다. 또한 bootstrap stack에서 `ApplicationOriginDomainName`만 설정하면 CloudFront가 ALB로 전환되지만 verification header가 없어 ALB 기본 403 action에 도달한다.
+- Options considered:
+  - 기존 prefixed object를 cutover 전에 일괄 migration하고 migration 완료를 배포 전제 조건으로 둔다.
+  - asset row에 bucket identity를 추가하는 공통 계약·DB migration을 수행한다.
+  - private bucket miss 시 assets bucket으로 fallback하고, CloudFormation parameter rule로 origin domain과 verification secret을 함께 요구한다.
+- Final decision: `raw/`·`evidence/` read, signed URL, cleanup, HEAD는 private bucket이 활성화되면 그 bucket을 먼저 HEAD하고, object가 없을 때 assets bucket으로 fallback한다. 신규 private-audio write는 계속 private bucket으로만 보낸다. bootstrap template은 `ApplicationOriginDomainName`과 `ApplicationOriginVerificationSecretArn`이 둘 다 비어 있거나 둘 다 설정된 경우만 허용한다.
+- Rationale: 기존 DB/storage 계약을 바꾸지 않고 전환 기간에 생성된 audio와 evidence의 가용성을 보존하며, 잘못된 CloudFront origin parameter 조합이 Change Set 단계에서 실패하도록 한다.
+- Affected files: `packages/storage/src/index.ts`, `packages/storage/src/index.spec.ts`, `infra/aws/main-production-bootstrap.yaml`, `infra/scripts/assert-cfn-change-set-safe.test.mjs`, `docs/conventions/environment.md`, `docs/runbooks/ecs-single-az-cutover.md`, `docs/decision-log.md`.
+- Follow-up review notes: candidate에서 private bucket에 존재하는 신규 key와 assets bucket에만 존재하는 전환 전 prefixed key를 각각 read/download/delete하고, bootstrap Change Set이 origin parameter 한쪽만 지정한 경우 실패하며 두 값을 함께 지정한 경우 생성되는지 확인한다.

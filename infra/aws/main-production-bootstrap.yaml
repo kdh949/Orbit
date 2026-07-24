@@ -75,7 +75,20 @@ Parameters:
     Type: String
     Default: ""
     NoEcho: true
-    Description: Optional Secrets Manager ARN with JSON key value for the ALB origin verification header.
+    Description: Secrets Manager ARN with JSON key value for the ALB origin verification header. Set together with ApplicationOriginDomainName.
+
+Rules:
+  ApplicationOriginParametersArePaired:
+    Assertions:
+      - Assert:
+          Fn::Equals:
+            - Fn::Equals:
+                - Ref: ApplicationOriginDomainName
+                - ""
+            - Fn::Equals:
+                - Ref: ApplicationOriginVerificationSecretArn
+                - ""
+        AssertDescription: ApplicationOriginDomainName and ApplicationOriginVerificationSecretArn must be set together.
 
 Conditions:
   ShouldCreateGitHubOidcProvider: !Equals [!Ref CreateGitHubOidcProvider, "true"]

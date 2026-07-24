@@ -7,6 +7,10 @@ describe("ORBIT-93 S3-compatible storage presign", () => {
     const assets = storagePortMock();
     const privateAudio = storagePortMock();
     const storage = new PurposeRoutedStorage(assets, privateAudio);
+    vi.mocked(privateAudio.headObject).mockResolvedValue({
+      contentLength: 1,
+      contentType: "audio/wav",
+    });
 
     await storage.createUploadUrl({
       key: "raw/rehearsals/2026-07-24/project-a/run-a/audio.webm",
@@ -28,6 +32,35 @@ describe("ORBIT-93 S3-compatible storage presign", () => {
       "rehearsals/2026-07-23/project-a/run-a/audio.webm",
       undefined,
     );
+  });
+
+  it("falls back to assets for private-prefix objects written before bucket activation", async () => {
+    const assets = storagePortMock();
+    const privateAudio = storagePortMock();
+    const storage = new PurposeRoutedStorage(assets, privateAudio);
+    const rawKey = "raw/rehearsals/2026-07-24/project-a/run-a/audio.webm";
+    const evidenceKey =
+      "evidence/rehearsals/2026-07-24/project-a/run-a/clip.wav";
+    vi.mocked(privateAudio.headObject).mockResolvedValue(null);
+    vi.mocked(assets.headObject).mockResolvedValue({
+      contentLength: 1,
+      contentType: "audio/webm",
+    });
+
+    await storage.getObject(rawKey);
+    await storage.getObjectStream(evidenceKey);
+    await storage.getSignedReadUrl(rawKey, 300);
+    await storage.removeObject(evidenceKey);
+    await expect(storage.headObject(rawKey)).resolves.toEqual({
+      contentLength: 1,
+      contentType: "audio/webm",
+    });
+
+    expect(assets.getObject).toHaveBeenCalledWith(rawKey);
+    expect(assets.getObjectStream).toHaveBeenCalledWith(evidenceKey);
+    expect(assets.getSignedReadUrl).toHaveBeenCalledWith(rawKey, 300);
+    expect(assets.removeObject).toHaveBeenCalledWith(evidenceKey);
+    expect(assets.headObject).toHaveBeenCalledWith(rawKey);
   });
 
   it("creates a browser-facing MinIO PUT URL without contacting the bucket", async () => {

@@ -296,23 +296,30 @@ export class PurposeRoutedStorage implements StoragePort {
   }
 
   async getObject(key: string): Promise<StorageReadResult> {
-    return this.storageForKey(key).getObject(key);
+    return (await this.storageForReadKey(key)).getObject(key);
   }
 
   async getObjectStream(key: string): Promise<StorageStreamReadResult> {
-    return this.storageForKey(key).getObjectStream(key);
+    return (await this.storageForReadKey(key)).getObjectStream(key);
   }
 
   async getSignedReadUrl(key: string, expiresInSeconds?: number): Promise<string> {
-    return this.storageForKey(key).getSignedReadUrl(key, expiresInSeconds);
+    return (await this.storageForReadKey(key)).getSignedReadUrl(
+      key,
+      expiresInSeconds,
+    );
   }
 
   async removeObject(key: string): Promise<void> {
-    return this.storageForKey(key).removeObject(key);
+    return (await this.storageForReadKey(key)).removeObject(key);
   }
 
   async headObject(key: string): Promise<StorageHeadResult | null> {
-    return this.storageForKey(key).headObject(key);
+    const privateAudio = this.privateAudioStorageForKey(key);
+    if (!privateAudio) {
+      return this.assets.headObject(key);
+    }
+    return (await privateAudio.headObject(key)) ?? this.assets.headObject(key);
   }
 
   private storageForPurpose(purpose: FilePurpose | undefined) {
@@ -321,10 +328,18 @@ export class PurposeRoutedStorage implements StoragePort {
       : this.assets;
   }
 
-  private storageForKey(key: string) {
+  private privateAudioStorageForKey(key: string) {
     return privateAudioStoragePrefixes.some((prefix) => key.startsWith(prefix)) &&
       this.privateAudio
       ? this.privateAudio
-      : this.assets;
+      : null;
+  }
+
+  private async storageForReadKey(key: string) {
+    const privateAudio = this.privateAudioStorageForKey(key);
+    if (!privateAudio) {
+      return this.assets;
+    }
+    return (await privateAudio.headObject(key)) ? privateAudio : this.assets;
   }
 }
