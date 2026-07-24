@@ -163,6 +163,10 @@ test("release workflows preserve immutable images and ECS runtime health", () =>
   assert.ok(firstDescribe >= 0 && firstDescribe < copyImage);
   assert.match(
     publishEcr,
+    /if: github\.ref_name == 'main' && vars\.AWS_ECR_PUBLISH_ROLE_ARN != ''/,
+  );
+  assert.match(
+    publishEcr,
     /if \[ -z "\$digest" \] \|\| \[ "\$digest" = "None" \]; then/,
   );
 
