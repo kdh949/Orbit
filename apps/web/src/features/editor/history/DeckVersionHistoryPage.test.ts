@@ -24,6 +24,6 @@ describe("DeckVersionHistoryPage", () => {
 
   it("현재 덱 버전과 일치하는 스냅샷만 현재 버전으로 표시한다", () => {
     expect(snapshotLabel(snapshot, 1)).toBe("현재 버전");
-    expect(snapshotTone(snapshot, 1)).toBe("lilac");
+    expect(snapshotTone(snapshot, 1)).toBe("primary");
   });
 });

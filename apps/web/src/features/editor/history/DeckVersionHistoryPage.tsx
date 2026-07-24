@@ -226,7 +226,7 @@ function HistoryState(props: { error?: boolean; title: string }) {
 }
 
 export function snapshotTone(snapshot: DeckSnapshot, currentVersion?: number): OrbitStatusTone {
-  if (snapshot.version === currentVersion) return "lilac";
+  if (snapshot.version === currentVersion) return "primary";
   if (snapshot.reason === "snapshot-restore") return "warning";
   return "neutral";
 }
