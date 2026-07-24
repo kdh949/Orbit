@@ -99,6 +99,28 @@ export type TableContextActionStates = Record<
   TableActionState
 >;
 
+export function getActivityRuntimeElementFrame(
+  canvas: Deck["canvas"],
+  kind: "qr" | "passcode",
+) {
+  if (kind === "qr") {
+    const size = Math.min(canvas.width, canvas.height) * 0.2;
+    return {
+      height: size,
+      width: size,
+      x: canvas.width * 0.28 - size / 2,
+      y: canvas.height * 0.65 - size / 2,
+    };
+  }
+
+  return {
+    height: 240,
+    width: 480,
+    x: canvas.width * 0.62,
+    y: canvas.height * 0.65 - 120,
+  };
+}
+
 const tableDisabledReasonLabels = {
   "cell-out-of-bounds": "선택한 셀을 찾을 수 없습니다.",
   "cell-covered-by-merge": "병합된 셀의 대표 셀을 선택해 주세요.",
@@ -469,17 +491,30 @@ export function useEditorCanvasCommands(args: {
     args.setInsertTool("select");
   }
 
-  function addActivityQrElement(activityId: string) {
+  function addActivityQrElement(
+    activityId: string,
+    placement: "center" | "runtime-palette" = "center"
+  ) {
     if (!canEditSlideCanvas(args.currentSlide) || !activityId.trim()) return false;
     const elementId = createElementId(args.deck);
     const size = Math.min(args.deck.canvas.width, args.deck.canvas.height) * 0.2;
+    const runtimeFrame = getActivityRuntimeElementFrame(
+      args.deck.canvas,
+      "qr",
+    );
     args.commitPatch((currentDeck) =>
       createAddElementPatch(currentDeck, args.currentSlide!.slideId, {
         elementId,
         type: "activity-qr",
         role: "media",
-        x: (args.deck.canvas.width - size) / 2,
-        y: (args.deck.canvas.height - size) / 2,
+        x:
+          placement === "runtime-palette"
+            ? runtimeFrame.x
+            : (args.deck.canvas.width - size) / 2,
+        y:
+          placement === "runtime-palette"
+            ? runtimeFrame.y
+            : (args.deck.canvas.height - size) / 2,
         width: size,
         height: size,
         rotation: 0,
@@ -507,11 +542,15 @@ export function useEditorCanvasCommands(args: {
       return false;
     }
     if (kind === "qr") {
-      return addActivityQrElement(slide.activity.activityId);
+      return addActivityQrElement(slide.activity.activityId, "runtime-palette");
     }
 
     const elementId = createElementId(args.deck);
     const zIndex = getNextElementZIndex(slide.elements);
+    const passcodeFrame = getActivityRuntimeElementFrame(
+      args.deck.canvas,
+      "passcode",
+    );
     const common = {
       elementId,
       rotation: 0,
@@ -526,10 +565,7 @@ export function useEditorCanvasCommands(args: {
             ...common,
             type: "presentation-passcode",
             role: "highlight",
-            x: 720,
-            y: 420,
-            width: 480,
-            height: 240,
+            ...passcodeFrame,
             props: {
               label: "입장 코드",
               unavailableText: "발표 시작 후 표시",
