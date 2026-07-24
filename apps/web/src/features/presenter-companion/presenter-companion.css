@@ -608,7 +608,7 @@
   font-size: var(--redesign-type-body-lg-size);
   line-height: var(--redesign-type-body-lg-line-height);
   padding: var(--redesign-space-3) var(--redesign-space-4);
-  transition: var(--redesign-transition-colors);
+  transition: var(--redesign-transition-color);
 }
 
 .presenter-companion-prompter-rows li[data-status="covered"],
