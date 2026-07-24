@@ -930,3 +930,15 @@
 - Rationale: `main` 승격이 현재 운영 아키텍처의 애플리케이션 배포로 이어지게 하면서 선택적인 ECS 준비 단계가 기존 GHCR·EC2 릴리스를 실패시키지 않게 한다. 수동 dispatch는 재실행과 복구 경로로 남기고 인프라 전환 승인은 애플리케이션 릴리스와 분리한다.
 - Affected files: `.github/workflows/build-images.yml`, `.github/workflows/deploy-aws-production.yml`, `infra/scripts/check-aws-production-compose.mjs`, `infra/scripts/assert-cfn-change-set-safe.test.mjs`, `docs/runbooks/aws-main-auto-deployment.md`, `docs/decision-log.md`.
 - Follow-up review notes: 이 변경을 `develop`에 병합한 뒤 별도 승격 PR로 `main`에 반영한다. 해당 `main` push에서 `Build and push images`의 GHCR jobs가 성공하고 ECR role이 없으면 `publish-ecr`가 `skipped`인지, `Deploy AWS Production`이 기존 EC2 instance를 대상으로 성공하는지, CloudFront `/api/health`, `/socket.io/`, `/` 검증이 통과하는지 확인한다. ECS 전환 재개 전에는 `AWS_ECR_PUBLISH_ROLE_ARN`을 설정하지 않는다.
+
+## ORBIT production AI Deck demo cache double lock
+
+- Context: AI Deck 시연 캐시는 일반 생성 결과 캐시가 아니라 지정 사용자와 정확히 일치하는 주제에서 검수된 source Deck을 새 target project로 복제하는 기능이다. 기존 설정 계약은 `APP_ENV=production`에서 이를 절대 금지했지만, production 시연을 위해 제한적으로 허용할 필요가 생겼다. source Deck의 asset URL을 그대로 유지하므로 잘못된 사용자·project 접근이나 asset 삭제는 교차 사용자 노출 또는 깨진 Deck을 만들 수 있다.
+- Options considered:
+  - production 절대 금지를 유지하고 staging에서만 시연한다.
+  - 기존 production guard를 삭제하거나 `DEMO_AI_DECK_CACHE_ENABLED` 하나만으로 허용한다.
+  - 별도 production 승인 flag를 추가하고 환경 allowlist, 정확한 사용자·주제, source membership과 Deck schema 검증을 모두 유지한다.
+- Final decision: 세 번째 안을 채택한다. `DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION`의 기본값은 `false`이며, production에서는 `DEMO_AI_DECK_CACHE_ENABLED=true`, `DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION=true`, `DEMO_FIXTURE_ENV_ALLOWLIST`의 정확한 `production` 항목이 모두 있어야 API가 시작된다. 기존의 정확한 사용자·주제 일치, source project `accepted` membership, source와 target 분리, canonical Deck schema 검증은 완화하지 않는다. 코드는 `develop` PR과 별도 `main` 승격을 거치고 runtime 값은 기존 EC2의 `/etc/orbit/production.env`에서만 관리한다.
+- Rationale: 기본 비활성화와 독립된 두 승인 신호로 단일 오설정의 production 활성화를 막으면서, 캐시 hit 범위를 시연 계정·문구·검수 Deck 하나로 제한한다. 기존 EC2 Compose 배포 구조와 ECS 전환 중지 결정도 그대로 유지한다.
+- Affected files: `packages/config/src/index.ts`, `apps/api/src/config/env.schema.spec.ts`, `apps/api/src/generate-deck/generate-deck.service.spec.ts`, `apps/api/src/generate-deck/design-selection.service.spec.ts`, `.env.example`, `.env.staging.example`, `.env.production.example`, `docker-compose.yml`, `docker-compose.staging.yml`, `infra/aws/ec2-production.env.example`, `infra/aws/main-production-bootstrap.yaml`, `infra/env/personal-staging-env-policy.json`, `infra/scripts/check-env.mjs`, `infra/scripts/check-aws-production-compose.mjs`, `docs/contracts.md`, `docs/conventions/environment.md`, `docs/demo-standards.md`, `docs/runbooks/ai-ppt-demo-cache.md`, `docs/decision-log.md`.
+- Follow-up review notes: production 활성화 전 최소권한 자격 증명으로 시연 user, source project membership, canonical Deck과 asset 접근성을 읽기 전용으로 확인한다. 이중 잠금 코드를 두 flag가 `false`인 상태로 먼저 배포한 뒤 필요한 key만 안전하게 동기화하고 API를 재배포한다. `ai_ppt.demo_cache.used`, Worker 미-enqueue, API와 CloudFront health, 다른 사용자·주제의 일반 생성 경로를 확인한다. 장애 시 두 cache flag를 모두 `false`로 되돌리고 재배포한다.

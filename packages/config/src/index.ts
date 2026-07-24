@@ -221,6 +221,7 @@ export const orbitEnvSchema = z.object({
   SLIDE_QUESTION_GUIDES_ENABLED: booleanStringSchema.default(false),
   DEMO_COACHING_FIXTURE_ENABLED: booleanStringSchema.default(false),
   DEMO_AI_DECK_CACHE_ENABLED: booleanStringSchema.default(false),
+  DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION: booleanStringSchema.default(false),
   DEMO_AI_DECK_SOURCE_PROJECT_ID: optionalString,
   DEMO_AI_DECK_TRIGGER_TOPIC: optionalString,
   DEMO_FIXTURE_ENV_ALLOWLIST: commaSeparatedStringSchema.default([]),
@@ -321,8 +322,29 @@ export const orbitEnvSchema = z.object({
   if (value.APP_ENV === "production" && value.DEMO_COACHING_FIXTURE_ENABLED) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["DEMO_COACHING_FIXTURE_ENABLED"], message: "Demo coaching fixtures are forbidden in production" });
   }
-  if (value.APP_ENV === "production" && value.DEMO_AI_DECK_CACHE_ENABLED) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["DEMO_AI_DECK_CACHE_ENABLED"], message: "Demo AI deck cache is forbidden in production" });
+  if (
+    value.APP_ENV === "production" &&
+    value.DEMO_AI_DECK_CACHE_ENABLED &&
+    !value.DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION"],
+      message:
+        "Production demo AI deck cache requires explicit production approval",
+    });
+  }
+  if (
+    value.APP_ENV === "production" &&
+    value.DEMO_AI_DECK_CACHE_ENABLED &&
+    !value.DEMO_FIXTURE_ENV_ALLOWLIST.includes("production")
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["DEMO_FIXTURE_ENV_ALLOWLIST"],
+      message:
+        "Production demo AI deck cache requires production in the fixture environment allowlist",
+    });
   }
   if (value.DEMO_AI_DECK_CACHE_ENABLED && !value.DEMO_AI_DECK_SOURCE_PROJECT_ID) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["DEMO_AI_DECK_SOURCE_PROJECT_ID"], message: "Demo AI deck source project is required when the cache is enabled" });

@@ -161,6 +161,7 @@ SLIDE_PRACTICE_ENABLED=false
 SLIDE_QUESTION_GUIDES_ENABLED=false
 DEMO_COACHING_FIXTURE_ENABLED=false
 DEMO_AI_DECK_CACHE_ENABLED=false
+DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION=false
 DEMO_AI_DECK_SOURCE_PROJECT_ID=
 DEMO_AI_DECK_TRIGGER_TOPIC=
 DEMO_FIXTURE_ENV_ALLOWLIST=local,test
@@ -180,7 +181,7 @@ AWS `main` production 계약은 모든 project에 기능을 공개하기 위해
 
 Focused Practice나 Challenge Q&A를 켜려면 Adaptive core도 켜야 한다. project allowlist가 비어 있으면 모든 project를 거부하고 `*`는 전체 project를 허용한다. demo fixture는 environment allowlist와 demo marker가 함께 일치해야 하며 production에서는 활성화할 수 없다. private evidence Redis와 HMAC secret은 browser runtime config에 노출하지 않는다. production HMAC secret은 32자 이상이어야 하고, 이전 secret과 key version은 rotation 기간에만 함께 설정한다.
 
-`DEMO_AI_DECK_CACHE_ENABLED=true`는 시연용 AI PPT 캐시 재생을 켠다. 이때 `DEMO_AI_DECK_SOURCE_PROJECT_ID`에는 검수 완료 덱이 저장된 source project를, `DEMO_AI_DECK_TRIGGER_TOPIC`에는 시연 입력 문구를 설정해야 한다. 기능은 `APP_ENV`가 `DEMO_FIXTURE_ENV_ALLOWLIST`에 있고 요청 사용자가 `DEMO_USER_ID`이며, 공백을 정규화한 topic이 trigger와 정확히 일치할 때만 동작한다. production에서는 시작 단계에서 활성화를 거부한다.
+`DEMO_AI_DECK_CACHE_ENABLED=true`는 시연용 AI PPT 캐시 재생을 켠다. 이때 `DEMO_AI_DECK_SOURCE_PROJECT_ID`에는 검수 완료 덱이 저장된 source project를, `DEMO_AI_DECK_TRIGGER_TOPIC`에는 시연 입력 문구를 설정해야 한다. 기능은 `APP_ENV`가 `DEMO_FIXTURE_ENV_ALLOWLIST`에 있고 요청 사용자가 `DEMO_USER_ID`이며, 공백을 정규화한 topic이 trigger와 정확히 일치할 때만 동작한다. production에서는 기본적으로 거부하며, 운영자가 `DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION=true`를 명시하고 `DEMO_FIXTURE_ENV_ALLOWLIST`에 `production`을 포함한 경우에만 시작한다. production 승인 flag는 캐시 활성화와 별도로 기본 `false`를 유지한다.
 
 ## Demo ID
 

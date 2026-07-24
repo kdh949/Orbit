@@ -12,6 +12,10 @@ const editorPracticeFlags = [
   "SLIDE_PRACTICE_ENABLED",
   "SLIDE_QUESTION_GUIDES_ENABLED",
 ];
+const demoDeckCacheFlags = [
+  "DEMO_AI_DECK_CACHE_ENABLED",
+  "DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION",
+];
 const failures = [];
 
 function assertContract(condition, message) {
@@ -227,6 +231,11 @@ assertTemplateValue(
   privateRedisUrl,
   true,
 );
+for (const flag of demoDeckCacheFlags) {
+  assertTemplateValue(productionEnvFile, flag, "false", false);
+  assertTemplateValue(envFile, flag, "false", false);
+  assertTemplateValue(bootstrapFile, flag, "false", true);
+}
 
 for (const flag of editorPracticeFlags) {
   assertTemplateValue(productionEnvFile, flag, "true", false);

@@ -31,6 +31,7 @@ docker compose exec postgres psql -U orbit -d orbit -c "SELECT project_id, user_
 APP_ENV=local
 DEMO_FIXTURE_ENV_ALLOWLIST=local,test
 DEMO_AI_DECK_CACHE_ENABLED=true
+DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION=false
 DEMO_AI_DECK_SOURCE_PROJECT_ID=<검수한 source project ID>
 DEMO_AI_DECK_TRIGGER_TOPIC=<발표자가 입력할 정확한 주제>
 DEMO_USER_ID=<실제 로그인한 시연 계정 user ID>
@@ -48,11 +49,7 @@ docker compose --env-file .env.local up -d --force-recreate api
 docker compose --env-file .env.local up -d --build
 ```
 
-적용된 API 설정은 값 전체를 출력하지 않고 필요한 key만 확인한다.
-
-```powershell
-docker compose exec api sh -lc 'env | grep -E "^(APP_ENV|DEMO_AI_DECK_CACHE_ENABLED|DEMO_AI_DECK_SOURCE_PROJECT_ID|DEMO_AI_DECK_TRIGGER_TOPIC|DEMO_USER_ID|DEMO_FIXTURE_ENV_ALLOWLIST)="'
-```
+적용된 API 설정은 `.env.local` 전체나 환경변수 값을 로그에 출력하지 않는다. API 시작 검증 성공 여부와 각 key의 존재 여부만 확인하고, source project ID, 주제와 사용자 ID는 출력하지 않는다.
 
 ## 4. 로컬 시연 실행
 
@@ -119,20 +116,38 @@ pnpm --filter @orbit/web test -- AiDeckGenerationPage.test.tsx
 
 브라우저나 OS에서 `prefers-reduced-motion: reduce`가 활성화되어 있으면 슬라이드가 즉시 모두 공개되고 마지막 장 대기도 생략된다. 발표 장비에서는 접근성 모션 감소 설정이 꺼져 있는지 리허설 때 확인한다.
 
-## 6. AWS ECS 시연 환경 설정
+## 6. AWS 시연 환경 설정
 
-AWS 배포 환경에서는 `.env.local`이나 `docker compose --env-file`을 사용하지 않는다. API ECS Task Definition의 container environment에 캐시 설정값을 넣고 새 revision으로 API service를 갱신한다. 이 값들은 API에서만 필요하며 Worker 설정으로 복제할 필요는 없다.
+이 값들은 API에서만 필요하며 Worker 설정으로 복제할 필요는 없다. AWS staging은 ECS Task Definition의 API container environment에 다음처럼 설정하고 새 revision으로 service를 갱신한다.
 
 ```text
 APP_ENV=staging
 DEMO_FIXTURE_ENV_ALLOWLIST=staging
 DEMO_AI_DECK_CACHE_ENABLED=true
+DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION=false
 DEMO_AI_DECK_SOURCE_PROJECT_ID=<staging RDS의 source project ID>
 DEMO_AI_DECK_TRIGGER_TOPIC=<발표 입력 문구>
 DEMO_USER_ID=<AWS 시연 계정 user ID>
 ```
 
-이 기능은 `APP_ENV=production`에서 API 시작 단계부터 거부된다. AWS 시연은 별도의 staging service와 staging DB에서 진행한다. source project ID와 사용자 ID도 로컬 DB 값이 아니라 해당 staging RDS에 실제 존재하는 값을 사용해야 한다.
+현재 production은 ECS 전환이 아니라 기존 EC2 Docker Compose 경로를 유지한다. production 예외는 기본적으로 거부되며 다음 세 조건이 모두 충족돼야 API가 시작된다.
+
+- `DEMO_AI_DECK_CACHE_ENABLED=true`
+- `DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION=true`
+- `DEMO_FIXTURE_ENV_ALLOWLIST`에 정확한 항목 `production` 포함
+
+적용 순서는 다음과 같다.
+
+1. 이중 잠금 코드가 포함된 release를 `main`에 먼저 배포하되 `.env.production.example`, `infra/aws/ec2-production.env.example`, `infra/aws/main-production-bootstrap.yaml`의 두 cache flag는 모두 `false`로 유지한다.
+2. production RDS에서 시연 계정의 user ID, source project의 `accepted` membership, canonical Deck schema와 asset URL 접근성을 읽기 전용으로 확인한다.
+3. 최소권한 production 운영 자격 증명으로 EC2의 `/etc/orbit/production.env`에 필요한 key만 반영한다. 파일 전체와 값은 터미널, GitHub Actions log 또는 PR에 출력하지 않는다.
+4. API container를 재생성하거나 `Deploy AWS Production`을 재실행한다.
+5. API와 CloudFront `/api/health`를 확인한 뒤 지정 사용자·지정 주제에서 `ai_ppt.demo_cache.used` event가 기록되고 Worker enqueue가 발생하지 않는지 확인한다.
+6. 다른 사용자 또는 다른 주제에서는 일반 AI 생성 경로가 실행되는지 확인한다.
+
+source project ID와 사용자 ID는 로컬이나 staging 값이 아니라 production RDS에 실제 존재하는 값을 사용해야 한다. production env 반영 전에는 source project와 target project가 다른지, source asset을 production S3에서 계속 읽을 수 있는지도 확인한다.
+
+롤백은 `/etc/orbit/production.env`의 `DEMO_AI_DECK_CACHE_ENABLED`와 `DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION`을 모두 `false`로 되돌린 후 API container를 재생성하거나 production workflow를 재배포한다. health와 일반 AI 생성 경로가 정상인지 확인할 때까지 source project 또는 asset은 삭제하지 않는다.
 
 재생 속도는 Web 정적 빌드에 포함되는 코드 값이다. 속도를 바꿨다면 Web을 다시 빌드해 S3/CloudFront에 배포하고, 캐시 무효화 또는 새 asset hash가 반영되었는지 확인한다. API Task Definition만 바꿔서는 재생 속도가 바뀌지 않는다.
 

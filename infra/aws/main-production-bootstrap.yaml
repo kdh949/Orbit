@@ -491,6 +491,8 @@ Resources:
           S3_FORCE_PATH_STYLE=false
           JOB_QUEUE_DRIVER=bullmq
           ASYNC_JOB_ADMISSION_MODE=accept
+          DEMO_AI_DECK_CACHE_ENABLED=false
+          DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION=false
           SLIDE_PRACTICE_ENABLED=true
           SLIDE_QUESTION_GUIDES_ENABLED=true
           LIVE_STT_PROVIDER=sherpa
