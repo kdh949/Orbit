@@ -184,6 +184,14 @@ test("release workflows preserve immutable images and ECS runtime health", () =>
   );
   assert.match(apiTask, /http:\/\/localhost:3000\/health/);
   assert.doesNotMatch(apiTask, /http:\/\/localhost:3000\/api\/health/);
+
+  const apiAndWorkerTaskRole = sectionBetween(
+    ecsTemplate,
+    "  ApiAndWorkerTaskRole:",
+    "  PythonWorkerTaskRole:",
+  );
+  assert.match(apiAndWorkerTaskRole, /s3:ListBucket/);
+  assert.match(apiAndWorkerTaskRole, /!Ref PrivateAudioBucketArn/);
 });
 
 test("bootstrap requires the ALB origin domain and verification secret together", () => {

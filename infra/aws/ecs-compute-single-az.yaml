@@ -154,7 +154,9 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:ListBucket
-                Resource: !Ref AssetsBucketArn
+                Resource:
+                  - !Ref AssetsBucketArn
+                  - !Ref PrivateAudioBucketArn
               - Effect: Allow
                 Action:
                   - s3:GetObject
