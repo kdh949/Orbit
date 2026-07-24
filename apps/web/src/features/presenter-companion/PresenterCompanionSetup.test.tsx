@@ -71,11 +71,13 @@ describe("PresenterCompanionSetup", () => {
           status: null,
           statusUnavailable: false,
         }}
+        onClose={vi.fn()}
         variant="popover"
       />,
     );
 
     expect(html).toContain('data-variant="popover"');
+    expect(html).toContain('aria-label="iPad 연결 창 닫기"');
     expect(html).not.toContain("iPad 입력 테스트 패드");
     expect(html).not.toContain("나중에 연결");
     expect(html).not.toContain("iPad 기기 확인 진행 단계");
