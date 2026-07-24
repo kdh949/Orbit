@@ -1,10 +1,123 @@
-# ORBIT
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/readme/orbit-logo-dark.png" />
+    <img src="./docs/assets/readme/orbit-logo-light.png" alt="ORBIT 로고" width="200" />
+  </picture>
+  <h1>ORBIT</h1>
+  <p><strong>발표를 만드는 순간부터, 무대에 오르는 순간까지.</strong></p>
+  <p>
+    AI 발표자료 생성, 편집, 리허설 코칭, 실전 발표를<br />
+    하나의 로컬 우선 워크스페이스에서 연결합니다.
+  </p>
+  <p>
+    <a href="#제품-둘러보기">제품 둘러보기</a> ·
+    <a href="#빠른-시작">빠른 시작</a> ·
+    <a href="#아키텍처">아키텍처</a> ·
+    <a href="#개발-가이드">개발 가이드</a>
+  </p>
+  <p>
+    <a href="https://github.com/na-man-mu-303-team2/Orbit/actions/workflows/typescript-ci.yml">
+      <img src="https://github.com/na-man-mu-303-team2/Orbit/actions/workflows/typescript-ci.yml/badge.svg?branch=develop" alt="TypeScript CI 상태" />
+    </a>
+    <a href="https://github.com/na-man-mu-303-team2/Orbit/actions/workflows/adaptive-coaching-ci.yml">
+      <img src="https://github.com/na-man-mu-303-team2/Orbit/actions/workflows/adaptive-coaching-ci.yml/badge.svg?branch=develop" alt="Adaptive Coaching CI 상태" />
+    </a>
+    <img src="https://img.shields.io/badge/pnpm-10.12.4-F69220?logo=pnpm&logoColor=white" alt="pnpm 10.12.4" />
+  </p>
+</div>
 
-ORBIT는 발표 자료 생성, 편집, 발표 리허설, 청중 참여 흐름을 하나의 로컬 우선 모노레포로 연결하는 프로젝트입니다.
+<p align="center">
+  <img
+    src="./docs/assets/readme/orbit-product-hero.jpg"
+    alt="내 프로젝트 목록과 AI 발표자료 만들기, 최근 프로젝트 카드가 보이는 ORBIT 작업 공간"
+    width="100%"
+  />
+</p>
 
-이 저장소는 `pnpm` workspace와 Turborepo를 사용하며, Web, API, Worker, Python worker, 공통 패키지를 한 저장소에서 함께 관리합니다.
+ORBIT는 발표자료 제작과 발표 연습을 서로 분리하지 않습니다. 주제와 참고자료를 바탕으로 덱을 만들고, Canvas에서 편집하고, AI 코칭과 함께 리허설한 뒤, 발표자·청중 화면과 리포트까지 하나의 제품 흐름으로 이어갑니다.
+
+이 저장소는 `pnpm` workspace와 Turborepo 기반 모노레포이며 Web, API, Worker, Python worker와 공통 계약 패키지를 함께 관리합니다.
+
+## 제품 둘러보기
+
+```mermaid
+flowchart LR
+    A["주제와 참고자료"] --> B["AI 발표자료 생성"]
+    B --> C["Canvas 편집"]
+    C --> D["AI 리허설"]
+    D --> E["리허설 리포트"]
+    E -- "다음 연습" --> D
+    D --> F["실전 발표"]
+```
+
+### 하나로 이어지는 발표 워크플로
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img
+        src="./docs/assets/readme/orbit-create-flow.jpg"
+        alt="발표 주제, 타깃 청중, 상세 내용과 대본 톤을 입력한 ORBIT AI 발표자료 생성 화면"
+        width="100%"
+      />
+      <br />
+      <strong>AI 발표자료 생성</strong><br />
+      발표 목적, 청중, 핵심 메시지와 참고자료를 입력해 Design Pack 기반의 Deck을 생성합니다. 기존 PPTX 가져오기나 빈 프로젝트로 시작할 수도 있습니다.
+    </td>
+    <td width="50%" valign="top">
+      <img
+        src="./docs/assets/readme/orbit-editor.jpg"
+        alt="슬라이드 목록, Canvas와 AI 어시스턴트 패널로 구성된 ORBIT 에디터"
+        width="100%"
+      />
+      <br />
+      <strong>Canvas 편집</strong><br />
+      Konva 기반 에디터에서 슬라이드를 다듬고 AI 코치, 디자인, 발표 메모를 같은 작업 공간에서 관리합니다. 완성한 Deck은 PPTX로 내보낼 수 있습니다.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img
+        src="./docs/assets/readme/orbit-rehearsal.jpg"
+        alt="현재 슬라이드, 타이머, 키워드와 발표 대본이 보이는 ORBIT 리허설 화면"
+        width="100%"
+      />
+      <br />
+      <strong>AI 리허설</strong><br />
+      Live STT, 말하기 속도, 핵심 키워드와 의미 단서를 바탕으로 발표 흐름을 점검하고 집중 연습으로 연결합니다.
+    </td>
+    <td width="50%" valign="top">
+      <img
+        src="./docs/assets/readme/orbit-report.jpg"
+        alt="다음 연습 목표와 AI 코칭 결과를 보여주는 ORBIT 리허설 리포트"
+        width="100%"
+      />
+      <br />
+      <strong>리허설 리포트</strong><br />
+      리허설 종료 후 회차별 분석, 강점과 개선점, 다음 연습 목표를 확인합니다.
+    </td>
+  </tr>
+</table>
+
+준비가 끝난 Deck은 발표자 화면과 청중 화면에 동기화하고, QR로 입장한 청중과 실시간 투표·평점·자유 응답 같은 활동 슬라이드로 상호작용하며 실전 발표로 이어집니다. 만든 Deck은 커뮤니티 템플릿으로 공유하거나 갤러리에서 다른 사용자의 템플릿을 가져와 시작할 수 있습니다.
+
+### 로컬 우선으로 설계했습니다
+
+> `docker compose up --build` 한 번으로 Web, API, Worker, Python worker, PostgreSQL, Redis, MinIO를 함께 실행합니다.
+
+- Deck, API, Job, WebSocket 데이터는 `packages/shared`의 Zod schema를 공통 계약으로 사용합니다.
+- Storage, Job Queue, AI/STT/OCR은 port와 provider interface 뒤에 두어 로컬 환경과 운영 환경을 교체할 수 있습니다.
+- 발표자 script, raw audio와 transcript 원문은 청중 API에 노출하지 않습니다.
 
 ## 빠른 시작
+
+### 요구 사항
+
+- Node.js `>=22.12`
+- pnpm `10.12.4`
+- Docker와 Docker Compose
+
+### 전체 서비스 실행
 
 ```bash
 corepack enable
@@ -15,17 +128,51 @@ node infra/scripts/check-env.mjs
 docker compose up --build
 ```
 
-로컬 서비스 주소:
+브라우저에서 <http://localhost:5173>을 열면 ORBIT Web을 확인할 수 있습니다.
 
-| 서비스 | 주소 |
-| --- | --- |
-| Web | <http://localhost:5173> |
-| API health | <http://localhost:3000/health> |
-| API Swagger | <http://localhost:3000/docs> |
+<details>
+<summary><strong>로컬 서비스 주소 보기</strong></summary>
+
+| 서비스               | 주소                           |
+| -------------------- | ------------------------------ |
+| Web                  | <http://localhost:5173>        |
+| API health           | <http://localhost:3000/health> |
+| API Swagger          | <http://localhost:3000/docs>   |
 | Python worker health | <http://localhost:8000/health> |
-| MinIO console | <http://localhost:9001> |
+| MinIO console        | <http://localhost:9001>        |
 
-## 폴더 구조
+</details>
+
+인프라와 migration을 포함한 개발 환경은 `pnpm dev:local`로도 시작할 수 있습니다. 자세한 내용은 [로컬 개발 Runbook](docs/runbooks/local-development.md)을 확인하세요.
+
+## 아키텍처
+
+```mermaid
+flowchart LR
+    Web["React + Vite Web"] <--> API["NestJS API\nREST + Socket.IO"]
+    API <--> DB[("PostgreSQL + pgvector")]
+    API <--> Redis[("Redis")]
+    API <--> Storage[("MinIO")]
+    Redis --> Worker["NestJS Worker"]
+    Worker <--> DB
+    Worker <--> Storage
+    Worker --> Python["FastAPI Python worker\nDocument · STT · AI"]
+```
+
+| 영역                 | 주요 기술                                        |
+| -------------------- | ------------------------------------------------ |
+| Web                  | React 19, Vite 7, TanStack Query, Zustand, Konva |
+| Realtime             | Socket.IO, Yjs                                   |
+| API                  | NestJS 11, TypeORM, Swagger, Zod                 |
+| Background jobs      | NestJS Worker, BullMQ, Redis                     |
+| Python worker        | FastAPI, Pydantic, OpenAI SDK                    |
+| Local infrastructure | PostgreSQL + pgvector, Redis, MinIO              |
+| Production target    | AWS ECS Fargate, RDS, ElastiCache, S3, SQS       |
+
+운영 매핑과 확장 원칙은 [로컬 우선 아키텍처](docs/architecture/local-first-stack.md), 정확한 버전은 [기술 스택 버전 기준](docs/architecture/tech-stack-versions.md)을 확인하세요.
+
+<details>
+<summary><strong>모노레포 구조 보기</strong></summary>
 
 ```text
 apps/
@@ -33,71 +180,37 @@ apps/
   api/              NestJS REST API + Socket.IO gateway
   worker/           NestJS background worker
 services/
-  python-worker/    FastAPI worker for document, speech, and AI helper tasks
+  python-worker/    FastAPI document, speech, and AI worker
 packages/
-  shared/           Zod schemas, shared contracts, API/Job/WebSocket types
+  shared/           Zod schemas and shared contracts
   config/           Environment validation and runtime config
-  editor-core/      Deck/editor domain helpers
+  editor-core/      Deck and editor domain helpers
   realtime/         Realtime event helpers
   job-queue/        Job queue ports and adapters
   storage/          Storage ports and adapters
-  ai/               LLM/STT/OCR provider interfaces
+  ai/               LLM, STT, and OCR provider interfaces
 infra/
   docker/           Service Dockerfiles
   scripts/          Environment and smoke-check scripts
-docs/
-  architecture/     Architecture and stack documents
-  conventions/      Git and environment conventions
-  runbooks/         Operational runbooks
-  spikes/           Research notes
-.github/
-  workflows/        GitHub Actions workflows, including personal staging deployment
+docs/               Architecture, conventions, runbooks, and research
 ```
 
-작업 영역 기준:
+</details>
 
-| 작업 영역 | 주로 수정하는 곳 |
-| --- | --- |
-| Web 화면/클라이언트 | `apps/web`, 필요 시 `packages/shared`, `packages/editor-core`, `packages/realtime` |
-| API | `apps/api`, 필요 시 `packages/shared`, `packages/config`, `packages/storage`, `packages/job-queue`, `packages/realtime` |
-| Background worker | `apps/worker`, 필요 시 `packages/shared`, `packages/job-queue`, `packages/storage`, `packages/ai` |
-| Python worker | `services/python-worker` |
-| 공통 계약 | `packages/shared`, `docs/contracts.md` |
+## 개발 가이드
 
-## 기술 스택
+변경 범위에 맞는 검증을 실행합니다.
 
-| 영역 | 기술 |
-| --- | --- |
-| Monorepo | pnpm workspace, Turborepo |
-| Runtime | Node.js `>=22.12`, Docker 기준 Node 24 |
-| Language | TypeScript 5.8, Python 3.12 |
-| Web | React 19, Vite 7, TanStack Query, Zustand |
-| Canvas editor | Konva, React Konva |
-| Realtime | Socket.IO, Yjs |
-| API | NestJS 11, TypeORM, Swagger, Zod |
-| Worker | NestJS, BullMQ, Redis |
-| Python worker | FastAPI, Uvicorn, Pydantic, OpenAI SDK |
-| Local DB | PostgreSQL + pgvector |
-| Local cache/queue | Redis |
-| Local storage | MinIO |
-| Production target | AWS ECS Fargate, RDS PostgreSQL, ElastiCache, S3, SQS |
+| 명령                               | 용도                 |
+| ---------------------------------- | -------------------- |
+| `pnpm build`                       | workspace 전체 빌드  |
+| `pnpm lint`                        | TypeScript lint      |
+| `pnpm test`                        | workspace 테스트     |
+| `pnpm typecheck`                   | TypeScript typecheck |
+| `node infra/scripts/check-env.mjs` | 환경변수 계약 검증   |
+| `docker compose config --quiet`    | Compose 구성 검증    |
 
-상세 버전 기준은 [docs/architecture/tech-stack-versions.md](docs/architecture/tech-stack-versions.md)를 확인합니다.
-
-## 주요 명령
-
-```bash
-pnpm dev
-pnpm build
-pnpm lint
-pnpm test
-pnpm typecheck
-node infra/scripts/check-env.mjs
-docker compose config
-docker compose up --build
-```
-
-Python worker 변경 시:
+Python worker를 변경한 경우 다음 검증을 추가합니다.
 
 ```bash
 cd services/python-worker
@@ -107,173 +220,24 @@ uv run mypy app
 uv run pytest
 ```
 
-DB migration 변경 시:
+공통 계약을 바꾸는 작업은 기능 구현과 분리해 작게 진행하고 `packages/shared` schema와 [공통 계약 문서](docs/contracts.md)를 함께 갱신합니다.
 
-```bash
-docker compose up -d postgres
-corepack pnpm db:migration:run
-docker compose exec postgres psql -U orbit -d orbit -c "\dt migration_command_checks"
-corepack pnpm db:migration:revert
-docker compose exec postgres psql -U orbit -d orbit -c "select to_regclass('public.migration_command_checks');"
-```
+### Git과 PR
 
-패키지 직접 실행도 가능합니다.
+GitHub Flow를 사용하며 `main`에 직접 커밋하지 않습니다. 목적이 드러나는 브랜치에서 작업하고 기본적으로 `develop` 대상 PR로 검증한 뒤 병합합니다.
 
-```bash
-corepack pnpm --filter api migration:run
-corepack pnpm --filter api migration:revert
-corepack pnpm --filter api migration:generate -- src/database/migrations/NextMigration
-```
+브랜치 이름, 커밋 메시지, PR 작성과 병합 기준은 [Git과 PR 규칙](docs/git-rules.md)을 따릅니다.
 
-현재 샘플 migration은 `migration_command_checks` 테이블 생성/삭제와 pgvector extension 연결만 검증합니다. 실제 도메인 테이블 migration은 후속 이슈에서 추가합니다.
+## 문서
 
-## Git 브랜치 전략
-
-기본 전략은 GitHub Flow입니다.
-
-- `main`에 직접 커밋하지 않습니다.
-- 모든 작업은 목적을 알아볼 수 있는 이름의 브랜치에서 진행합니다.
-- Jira는 사용하지 않으며 브랜치명, 커밋 메시지, PR 제목에 Jira 이슈 키를 요구하지 않습니다.
-- PR은 기본적으로 `develop`을 대상으로 만들고, 필요한 경우 `develop` 변경사항을 `main`으로 동기화합니다.
-- 이미 원격에 push된 공유 브랜치에는 rebase 또는 force push를 하지 않습니다.
-
-브랜치 이름 예시:
-
-```text
-feature/slide-control
-fix/keyword-detection
-docs/readme-current-state
-chore/github-workflow-maintenance
-sync/develop-main
-```
-
-권장 prefix:
-
-| prefix | 용도 |
-| --- | --- |
-| `feature` | 기능 추가 |
-| `fix` | 버그 수정 |
-| `docs` | 문서 변경 |
-| `test` | 테스트 추가/수정 |
-| `refactor` | 리팩터링 |
-| `chore` | 설정/잡무 |
-| `ci` | GitHub Actions/자동화 변경 |
-| `sync` | 브랜치 동기화 |
-
-## Commit, PR 규칙
-
-브랜치명, 커밋 메시지, PR 제목은 변경 목적을 짧고 명확하게 설명합니다.
-
-```text
-브랜치: docs/readme-current-state
-커밋: docs: README 최신화
-PR 제목: 문서: PR 자동 검사 사용 방법 정리
-```
-
-커밋 메시지 형식:
-
-```text
-<type>: 변경 요약
-```
-
-예시:
-
-```text
-feat: 실시간 슬라이드 제어 추가
-fix: 키워드 중복 알림 수정
-docs: README 최신화
-```
-
-PR 본문에는 변경 요약, 테스트/검증 결과, 영향 범위를 적습니다.
-
-```markdown
-## 변경 요약
-
-- README에 현재 폴더 구조, 기술 스택, 브랜치/PR 규칙을 정리했습니다.
-
-## 테스트/검증
-
-- `git diff --check`
-- `node infra/scripts/check-env.mjs`
-
-## 영향 범위
-
-- 문서 변경만 포함합니다.
-```
-
-## PR 검증과 병합
-
-현재 GitHub Actions는 모든 PR과 `develop` push에서 Environment Contract CI를 실행하고, TypeScript 관련 경로에서는 TypeScript CI도 실행합니다. Environment Contract CI는 환경 예시 파일의 키 누락·불일치·중복·필수값 공백을 검사하며, `develop` 검증 성공 뒤에만 개인 서버 자동 배포가 시작됩니다. Doppler `orbit / stg` 변경은 같은 배포 workflow의 환경변수 전용 경로로 앱 컨테이너에 자동 재적용됩니다. Python worker, Docker Compose, Playwright smoke 등 나머지 검증은 변경 범위에 맞게 수동 결과를 PR 본문에 남깁니다.
-
-권장 수동 검증:
-
-```bash
-pnpm build
-pnpm lint
-pnpm test
-node infra/scripts/check-env.mjs
-docker compose config --quiet
-```
-
-작업 완료 기준은 단순 push가 아니라 필요한 검증을 마친 PR의 merge입니다.
-
-```text
-작업 범위 확인
--> 목적이 드러나는 브랜치 생성
--> 구현/문서 수정
--> 변경 목적이 드러나는 커밋
--> develop 대상 PR 생성
--> 필요한 수동 검증 완료
--> PR merge
-```
-
-## 환경변수 규칙
-
-- 로컬 실행 전 `.env.example`을 복사해 `.env.local`을 만듭니다.
-- `.env`, `.env.local`, API 키, 토큰, 비밀값은 커밋하지 않습니다.
-- staging/production 예시는 `.env.staging.example`, `.env.production.example`을 기준으로 합니다.
-- `develop` 기본값 기준 Live STT는 `LIVE_STT_ENGINE=web-speech`(Chrome Web Speech, 고정 모델명 없음)를 사용합니다. `LIVE_STT_ENGINE=openai-realtime` 사용 시 Live STT 모델은 `gpt-realtime-whisper`이고, Report STT는 `OPENAI_TRANSCRIPTION_MODEL=whisper-1`입니다.
-- 환경변수 규칙은 [docs/conventions/environment.md](docs/conventions/environment.md)를 확인합니다.
-
-```bash
-cp .env.example .env.local
-node infra/scripts/check-env.mjs
-```
-
-## 공통 계약 규칙
-
-- Deck JSON의 기준은 Konva 상태가 아니라 `packages/shared` schema와 [docs/contracts.md](docs/contracts.md)입니다.
-- API request/response, Job, WebSocket payload는 `packages/shared`의 Zod schema를 기준으로 합니다.
-- 공통 계약을 바꾸는 PR은 `docs/contracts.md` 또는 shared schema 변경을 함께 포함합니다.
-- Demo ID는 [docs/demo-standards.md](docs/demo-standards.md), `.env.example`, `packages/shared`에서 일관되게 관리합니다.
-
-## 커밋 금지 항목
-
-다음 항목은 커밋하지 않습니다.
-
-```text
-.env
-.env.local
-API keys
-tokens
-secrets
-node_modules
-.venv
-dist
-.turbo
-build outputs
-cache files
-```
-
-## 참고 문서
-
-| 문서 | 내용 |
-| --- | --- |
-| [AGENTS.md](AGENTS.md) | 에이전트와 작업자가 지켜야 하는 최상위 작업 규칙 |
-| [docs/contracts.md](docs/contracts.md) | 공통 계약 |
-| [docs/git-rules.md](docs/git-rules.md) | Git과 PR 규칙 |
-| [docs/conventions/environment.md](docs/conventions/environment.md) | 환경변수 규칙 |
-| [docs/runbooks/local-development.md](docs/runbooks/local-development.md) | 로컬 개발 runbook |
-| [docs/architecture/local-first-stack.md](docs/architecture/local-first-stack.md) | 로컬 우선 아키텍처 |
-| [docs/architecture/tech-stack-versions.md](docs/architecture/tech-stack-versions.md) | 기술 스택 버전 |
-| [docs/deployment.md](docs/deployment.md) | AWS 배포 기준 |
+| 문서                                                    | 내용                              |
+| ------------------------------------------------------- | --------------------------------- |
+| [AGENTS.md](AGENTS.md)                                  | 저장소 최상위 작업 규칙           |
+| [ORBIT Design System](docs/orbit-design-system.md)      | 제품의 시각·상호작용 기준         |
+| [공통 계약](docs/contracts.md)                          | Deck, File, Job, WebSocket schema |
+| [Demo ID 기준](docs/demo-standards.md)                  | 로컬·E2E Demo 식별자              |
+| [로컬 개발 Runbook](docs/runbooks/local-development.md) | 실행, migration, smoke test       |
+| [환경변수 규칙](docs/conventions/environment.md)        | 환경변수 이름과 관리 기준         |
+| [서버 로그 규칙](docs/conventions/logging.md)           | 업무 이벤트와 민감정보 보호       |
+| [AWS 배포 기준](docs/deployment.md)                     | ECS Fargate 기반 운영 목표        |
+| [README 이미지 명세](docs/readme-assets.md)             | Hero와 제품 화면 캡처 기준        |
