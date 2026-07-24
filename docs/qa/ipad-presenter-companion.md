@@ -7,6 +7,8 @@
 | 계약 | strict pairing/bootstrap/output/annotation/laser/WebRTC schema |
 | 보안 | one-time atomic exchange, UA-bound credential, safe Deck/asset projection, log redaction |
 | realtime | authority lease, latest generation, bounded rate limit, reconnect/snapshot reconciliation |
+| prompter | current-slide-only rows, size fallback, focus revision, device-local expanded preference |
+| navigation | previous boundary, next-step ordering, stale revision, dedupe, one in-flight command |
 | WebRTC | video-only sender, offer/answer/ICE correlation, `replaceTrack`, 2초 timeout 격리 |
 | 좌표 | 16:9·4:3·portrait contain rect와 iPad/main overlay 정렬 |
 | lifecycle | share restart cleanup, slide annotation restore, revoke Redis cleanup |
@@ -72,3 +74,12 @@ point 배열, notes/script/transcript/private Deck marker는 스크린샷·trace
    main audience output이 계속되는지 확인한다.
 7. flag rollback에서 새 pairing이 닫히고 기존 presentation/audience/
    activity/rehearsal 동작이 유지되는지 확인한다.
+8. 리허설과 실전 발표에서 대본을 펼치고 음성 진행에 따라 현재 문장이
+   중앙으로 이동하는지 확인한다. 손으로 스크롤하면 자동 이동이 멈추고
+   `현재 대본으로`를 누르면 복귀해야 한다. reload 후에는 펼침 여부만
+   복원되고 대본 row가 localStorage에 남지 않아야 한다.
+9. 이전은 이전 슬라이드의 step 0으로 이동하고, 다음은 남은 animation
+   step을 먼저 진행한 뒤 다음 슬라이드로 이동하는지 확인한다. 경계,
+   빠른 연속 탭, stale revision, 권한 교체 중에는 중복 이동이 없어야 한다.
+10. iPad 가로 화면에서는 왼쪽 annotation toolbar, 세로 화면에서는 하단
+    annotation toolbar와 프롬프터 rail/drawer가 겹치지 않는지 확인한다.

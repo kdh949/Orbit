@@ -17,6 +17,7 @@ import { useCompanionSocket } from "./useCompanionSocket";
 import { CompanionAnnotationCanvas } from "./CompanionAnnotationCanvas";
 import { useCompanionWebRtc } from "./useCompanionWebRtc";
 import type { SurfaceRect } from "./surfaceGeometry";
+import { CompanionPrompter } from "./CompanionPrompter";
 import "./presenter-companion.css";
 
 export function CompanionPairingPage(props: { code: string }) {
@@ -161,40 +162,59 @@ function ConnectedCompanionShell(props: {
           <p>{companion.error}</p>
         </section>
       ) : (
-        <div className="presenter-companion-stage">
-          {companion.output?.outputMode === "screen-share" &&
-          webRtc.status === "failed" ? (
-            <p className="presenter-companion-stream-warning" role="status">
-              iPad 화면 공유 연결을 확인해주세요. 발표자와 청중 화면은 계속
-              진행됩니다.
-            </p>
-          ) : null}
-          <CompanionAudienceRenderer
-            deck={props.bootstrap.deck}
-            onSurfaceRectChange={setSurfaceRect}
-            output={companion.output}
-            stream={webRtc.stream}
-          />
-          {companion.output ? (
-            <CompanionAnnotationCanvas
-              annotation={companion.annotation}
-              canWrite={props.bootstrap.scopes.includes(
-                "write-annotation",
-              )}
-              connected={
-                companion.status === "connected" &&
-                Boolean(companion.authorityEpochId) &&
-                !companion.annotationRecovering &&
-                screenShareWritable
-              }
-              lastAcknowledgement={companion.lastAnnotationAck}
+        <>
+          <div className="presenter-companion-stage">
+            {companion.output?.outputMode === "screen-share" &&
+            webRtc.status === "failed" ? (
+              <p className="presenter-companion-stream-warning" role="status">
+                iPad 화면 공유 연결을 확인해주세요. 발표자와 청중 화면은 계속
+                진행됩니다.
+              </p>
+            ) : null}
+            <CompanionAudienceRenderer
+              deck={props.bootstrap.deck}
+              onSurfaceRectChange={setSurfaceRect}
               output={companion.output}
-              sendCommand={companion.sendAnnotationCommand}
-              sendLaser={companion.sendLaser}
-              surfaceRect={surfaceRect}
+              stream={webRtc.stream}
             />
-          ) : null}
-        </div>
+            {companion.output ? (
+              <CompanionAnnotationCanvas
+                annotation={companion.annotation}
+                canWrite={props.bootstrap.scopes.includes(
+                  "write-annotation",
+                )}
+                connected={
+                  companion.status === "connected" &&
+                  Boolean(companion.authorityEpochId) &&
+                  !companion.annotationRecovering &&
+                  screenShareWritable
+                }
+                lastAcknowledgement={companion.lastAnnotationAck}
+                output={companion.output}
+                sendCommand={companion.sendAnnotationCommand}
+                sendLaser={companion.sendLaser}
+                surfaceRect={surfaceRect}
+              />
+            ) : null}
+          </div>
+          <CompanionPrompter
+            canControl={props.bootstrap.scopes.includes(
+              "control-presentation",
+            )}
+            canViewPrompter={props.bootstrap.scopes.includes(
+              "view-prompter",
+            )}
+            connected={
+              companion.status === "connected" &&
+              Boolean(companion.authorityEpochId)
+            }
+            navigationError={companion.navigationError}
+            navigationPending={companion.navigationPending}
+            output={companion.output}
+            prompter={companion.prompter}
+            sendNavigation={companion.sendNavigation}
+          />
+        </>
       )}
     </main>
   );

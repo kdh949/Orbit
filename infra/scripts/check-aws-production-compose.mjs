@@ -264,8 +264,12 @@ assertContract(
   "AWS production deploy workflow must keep the manual workflow_dispatch trigger",
 );
 assertContract(
-  !/^\s{2}(push|pull_request|schedule):/m.test(triggerBlock),
-  "AWS production deploy workflow must not deploy automatically from Git events",
+  /^\s{2}push:\s*\n\s{4}branches:\s*\[main\]\s*$/m.test(triggerBlock),
+  "AWS production deploy workflow must deploy automatically from main pushes",
+);
+assertContract(
+  !/^\s{2}(pull_request|schedule):/m.test(triggerBlock),
+  "AWS production deploy workflow must not deploy from pull requests or schedules",
 );
 assertContract(
   deployWorkflow.includes("Ec2InstanceId"),

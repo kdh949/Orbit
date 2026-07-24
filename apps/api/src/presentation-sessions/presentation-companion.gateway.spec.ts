@@ -180,6 +180,120 @@ describe("PresentationCompanionGateway", () => {
     );
   });
 
+  it("isolates prompter state and navigation acknowledgements by scope", async () => {
+    const fixture = createFixture();
+    const presenter = socket({
+      cookie: "orbit_session=valid-auth-session",
+      id: "socket_presenter",
+    });
+    await fixture.gateway.claimAuthority(presenter, {
+      sessionId: "session_1",
+      authorityEpochId: "epoch_1",
+    });
+    fixture.server.to.mockClear();
+
+    const prompter = prompterState();
+    await fixture.gateway.relayPrompterState(presenter, prompter);
+    expect(fixture.server.to).toHaveBeenLastCalledWith(
+      "presentation:session_1:companion:2:scope:view-prompter",
+    );
+    expect(fixture.operator.emit).toHaveBeenLastCalledWith(
+      "presentation:companion:prompter-state",
+      expect.objectContaining({ payload: prompter }),
+    );
+
+    const acknowledgement = navigationAck();
+    await fixture.gateway.relayNavigationAck(
+      presenter,
+      acknowledgement,
+    );
+    expect(fixture.server.to).toHaveBeenLastCalledWith(
+      "presentation:session_1:companion:2:scope:control-presentation",
+    );
+    expect(fixture.operator.emit).toHaveBeenLastCalledWith(
+      "presentation:companion:navigation-ack",
+      expect.objectContaining({ payload: acknowledgement }),
+    );
+  });
+
+  it("relays a scoped navigation command only to the leased presenter", async () => {
+    const fixture = createFixture();
+    const presenter = socket({
+      cookie: "orbit_session=valid-auth-session",
+      id: "socket_presenter",
+    });
+    const companion = socket({
+      cookie: `${companionAccessCookieName}=valid-companion-token`,
+      id: "socket_companion",
+    });
+    await fixture.gateway.claimAuthority(presenter, {
+      sessionId: "session_1",
+      authorityEpochId: "epoch_1",
+    });
+    await fixture.gateway.joinCompanion(companion, {
+      sessionId: "session_1",
+    });
+    expect(companion.join).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        "presentation:session_1:companion:2",
+        "presentation:session_1:companion:2:scope:view-prompter",
+        "presentation:session_1:companion:2:scope:control-presentation",
+      ]),
+    );
+    fixture.server.to.mockClear();
+
+    const command = navigationCommand();
+    await expect(
+      fixture.gateway.relayNavigationCommand(companion, command),
+    ).resolves.toMatchObject({
+      type: "presentation:companion:navigation-command",
+      roomId: "presentation:session_1:companion-authority:epoch_1",
+      payload: command,
+    });
+    expect(fixture.rateLimit.consumeNavigation).toHaveBeenCalledWith(
+      "companion_opaque_1",
+    );
+  });
+
+  it("returns a navigation acknowledgement when authority or rate limit rejects the command", async () => {
+    const fixture = createFixture();
+    const companion = socket({
+      cookie: `${companionAccessCookieName}=valid-companion-token`,
+      id: "socket_companion",
+    });
+    await fixture.gateway.joinCompanion(companion, {
+      sessionId: "session_1",
+    });
+
+    fixture.companion.getAuthority.mockResolvedValueOnce("epoch_other");
+    await expect(
+      fixture.gateway.relayNavigationCommand(
+        companion,
+        navigationCommand(),
+      ),
+    ).resolves.toMatchObject({
+      payload: { accepted: false, reason: "not-authority" },
+    });
+
+    fixture.rateLimit.consumeNavigation.mockRejectedValueOnce(
+      new Error("rate limited"),
+    );
+    await expect(
+      fixture.gateway.relayNavigationCommand(
+        companion,
+        navigationCommand(),
+      ),
+    ).resolves.toMatchObject({
+      payload: { accepted: false, reason: "rate-limited" },
+    });
+    expect(companion.emit).toHaveBeenCalledWith(
+      "presentation:companion:navigation-ack",
+      expect.objectContaining({
+        payload: expect.objectContaining({ accepted: false }),
+      }),
+    );
+  });
+
   it("relays one share-scoped WebRTC negotiation in both directions", async () => {
     const fixture = createFixture();
     const presenter = socket({
@@ -343,7 +457,12 @@ function createFixture() {
     deckId: "deck_1",
     deckVersion: 1,
     pairingGeneration: 2,
-    scopes: ["view-audience-output", "write-annotation"],
+    scopes: [
+      "view-audience-output",
+      "write-annotation",
+      "view-prompter",
+      "control-presentation",
+    ],
     expiresAt: "2099-07-23T04:00:00.000Z",
     uaHash: "opaque-user-agent-hash-value",
   };
@@ -375,6 +494,7 @@ function createFixture() {
   const rateLimit = {
     consumeDrawing: vi.fn().mockResolvedValue(undefined),
     consumeLaser: vi.fn().mockResolvedValue(undefined),
+    consumeNavigation: vi.fn().mockResolvedValue(undefined),
   };
   const operator = {
     emit: vi.fn(),
@@ -466,5 +586,47 @@ function companionSignal(kind: "answer" | "offer") {
     shareEpochId: "share_1",
     signalId: "signal_1",
     targetGeneration: 2,
+  };
+}
+
+function prompterState() {
+  return {
+    sessionId: "session_1",
+    authorityEpochId: "epoch_1",
+    prompterRevision: 2,
+    slideId: "slide_1",
+    slideIndex: 0,
+    availability: "ready" as const,
+    trackingStatus: "listening" as const,
+    progressPercent: 50,
+    focusSentenceId: "sentence_1",
+    rows: [
+      {
+        sentenceId: "sentence_1",
+        text: "현재 문장",
+        status: "current" as const,
+      },
+    ],
+  };
+}
+
+function navigationCommand() {
+  return {
+    sessionId: "session_1",
+    authorityEpochId: "epoch_1",
+    clientOperationId: "operation_navigation_1",
+    expectedOutputRevision: 4,
+    action: "next-step" as const,
+  };
+}
+
+function navigationAck() {
+  return {
+    sessionId: "session_1",
+    authorityEpochId: "epoch_1",
+    clientOperationId: "operation_navigation_1",
+    accepted: true,
+    reason: "accepted" as const,
+    outputRevision: 4,
   };
 }

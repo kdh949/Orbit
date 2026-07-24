@@ -178,7 +178,7 @@ jobs:
     # ECS tasks consume an immutable repository digest. This job copies the
     # already-built main manifest list to the production ECR repositories; it
     # does not deploy or change CloudFormation.
-    if: github.ref_name == 'main'
+    if: github.ref_name == 'main' && vars.AWS_ECR_PUBLISH_ROLE_ARN != ''
     needs: merge
     runs-on: ubuntu-latest
     strategy:

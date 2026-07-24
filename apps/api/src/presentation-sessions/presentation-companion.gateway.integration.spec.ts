@@ -237,6 +237,8 @@ async function createGatewayServer() {
               scopes: [
                 "view-audience-output",
                 "write-annotation",
+                "view-prompter",
+                "control-presentation",
               ],
               expiresAt: "2099-07-23T04:00:00.000Z",
               uaHash: "opaque-user-agent-hash-value",
@@ -252,6 +254,7 @@ async function createGatewayServer() {
   const rateLimit = {
     consumeDrawing: vi.fn().mockResolvedValue(undefined),
     consumeLaser: vi.fn().mockResolvedValue(undefined),
+    consumeNavigation: vi.fn().mockResolvedValue(undefined),
   };
   const gateway = new PresentationCompanionGateway(
     {
@@ -288,6 +291,15 @@ async function createGatewayServer() {
     );
     bind(socket, "presentation:companion:output-state", (body) =>
       gateway.relayOutputState(socket, body),
+    );
+    bind(socket, "presentation:companion:prompter-state", (body) =>
+      gateway.relayPrompterState(socket, body),
+    );
+    bind(socket, "presentation:companion:navigation-command", (body) =>
+      gateway.relayNavigationCommand(socket, body),
+    );
+    bind(socket, "presentation:companion:navigation-ack", (body) =>
+      gateway.relayNavigationAck(socket, body),
     );
     bind(socket, "presentation:companion:laser", (body) =>
       gateway.relayLaser(socket, body),

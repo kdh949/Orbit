@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   createPresentationCompanionEvent,
   presentationCompanionAuthorityRoomId,
-  presentationCompanionRoomId
+  presentationCompanionRoomId,
+  presentationCompanionScopeRoomId
 } from "./index";
 
 describe("presentation companion realtime helpers", () => {
@@ -13,6 +14,15 @@ describe("presentation companion realtime helpers", () => {
     ).toBe("presentation:session_1:companion-authority:epoch_1");
     expect(presentationCompanionRoomId("session_1", 2)).toBe(
       "presentation:session_1:companion:2"
+    );
+    expect(
+      presentationCompanionScopeRoomId(
+        "session_1",
+        2,
+        "control-presentation"
+      )
+    ).toBe(
+      "presentation:session_1:companion:2:scope:control-presentation"
     );
     expect(() =>
       presentationCompanionAuthorityRoomId(

@@ -15,6 +15,8 @@ const output = {
   slideId: "slide_1",
   slideIndex: 0,
   animationStep: 0,
+  canGoNext: true,
+  canGoPrevious: false,
 };
 
 describe("CompanionAnnotationCanvas", () => {
@@ -53,6 +55,8 @@ describe("CompanionAnnotationCanvas", () => {
           slideId: "slide_1",
           slideIndex: 0,
           animationStep: 0,
+          canGoNext: false,
+          canGoPrevious: false,
         }}
         sendCommand={vi.fn()}
         sendLaser={vi.fn()}

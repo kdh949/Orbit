@@ -21,6 +21,7 @@ import { useAudienceScreenShare } from "../rehearsal/presenter/useAudienceScreen
 import { usePresentationChannelPublisher } from "../rehearsal/presenter/usePresentationChannelPublisher";
 import { usePresenterCompanionAuthority } from "../presenter-companion/usePresenterCompanionAuthority";
 import { usePresenterCompanionWebRtc } from "../presenter-companion/usePresenterCompanionWebRtc";
+import type { CompanionPrompterProjection } from "../presenter-companion/companionPrompterProjection";
 import type { ActivityElementRuntime } from "../activity-slides/rendering/ActivityElementRuntimeContext";
 
 export type LivePresentationDisplayRole =
@@ -31,6 +32,8 @@ export type LivePresentationDisplayRole =
 export function useLivePresentationOutput(input: {
   activityElementRuntime?: ActivityElementRuntime | null;
   audienceWindowConnected: boolean;
+  canGoNext?: boolean;
+  canGoPrevious?: boolean;
   companionEnabled?: boolean;
   deck: Deck | null;
   displayRole: LivePresentationDisplayRole;
@@ -43,6 +46,7 @@ export function useLivePresentationOutput(input: {
   onScreenShareEnded?: (reason: ScreenShareEndedReason) => void;
   outputMode: AudienceOutputMode;
   persistedSessionId?: string | null;
+  prompterState?: CompanionPrompterProjection | null;
   state: PresenterSlideshowState | null;
   triggerAnimationIds: string[];
 }) {
@@ -138,8 +142,16 @@ export function useLivePresentationOutput(input: {
       (input.enabled ?? true) &&
       input.displayRole === "presenter",
     sessionId: input.persistedSessionId,
+    canGoNext: input.canGoNext,
+    canGoPrevious: input.canGoPrevious,
+    prompterState: input.prompterState,
     shareEpochId: activeShare?.shareEpochId,
     state: input.state,
+    onNavigation: (action) => {
+      input.onCommand?.({
+        action: action === "previous-slide" ? "prev" : "next-step",
+      });
+    },
     onAnnotationDelta: (delta, snapshot) => {
       annotationSnapshotRef.current = snapshot;
       localChannel.publishAnnotationDelta(delta);

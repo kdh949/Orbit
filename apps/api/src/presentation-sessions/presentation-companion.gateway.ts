@@ -3,6 +3,7 @@ import {
   createPresentationCompanionEvent,
   presentationCompanionAuthorityRoomId,
   presentationCompanionRoomId,
+  presentationCompanionScopeRoomId,
   presentationPresenterRoomId,
 } from "@orbit/realtime";
 import {
@@ -13,7 +14,10 @@ import {
   presentationCompanionHeartbeatPayloadSchema,
   presentationCompanionJoinPayloadSchema,
   presentationCompanionLaserSchema,
+  presentationCompanionNavigationAckSchema,
+  presentationCompanionNavigationCommandSchema,
   presentationCompanionOutputStateSchema,
+  presentationCompanionPrompterStateSchema,
   presentationCompanionSignalSchema,
   presentationCompanionSnapshotRequestSchema,
   type CompanionAccessScope,
@@ -254,7 +258,16 @@ export class PresentationCompanionGateway
     if (typeof previousRoom === "string" && previousRoom !== roomId) {
       await client.leave(previousRoom);
     }
-    await client.join(roomId);
+    await client.join([
+      roomId,
+      ...credential.scopes.map((scope) =>
+        presentationCompanionScopeRoomId(
+          parsed.data.sessionId,
+          credential.pairingGeneration,
+          scope,
+        ),
+      ),
+    ]);
     const connectedAt = new Date().toISOString();
     client.data.presentationCompanionRole = "companion";
     client.data.presentationSessionId = parsed.data.sessionId;
@@ -369,6 +382,112 @@ export class PresentationCompanionGateway
       client,
       parsed.data.sessionId,
       "presentation:companion:output-state",
+      parsed.data,
+    );
+  }
+
+  @SubscribeMessage("presentation:companion:prompter-state")
+  async relayPrompterState(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: unknown,
+  ) {
+    const parsed =
+      presentationCompanionPrompterStateSchema.safeParse(body);
+    if (
+      !this.enabled() ||
+      !parsed.success ||
+      !(await this.requireAuthoritySocket(client, parsed.data))
+    ) {
+      return emitError(client, sessionIdFrom(body), "NOT_AUTHORITY");
+    }
+    return this.emitToCurrentCompanionScope(
+      client,
+      parsed.data.sessionId,
+      "view-prompter",
+      "presentation:companion:prompter-state",
+      parsed.data,
+    );
+  }
+
+  @SubscribeMessage("presentation:companion:navigation-command")
+  async relayNavigationCommand(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: unknown,
+  ) {
+    const parsed =
+      presentationCompanionNavigationCommandSchema.safeParse(body);
+    if (!this.enabled() || !parsed.success) {
+      return emitError(client, sessionIdFrom(body), "INVALID_PAYLOAD");
+    }
+    const credential = await this.requireCompanionSocket(
+      client,
+      parsed.data.sessionId,
+      "control-presentation",
+    );
+    if (!credential) {
+      return emitError(
+        client,
+        parsed.data.sessionId,
+        "STALE_GENERATION",
+      );
+    }
+    const authorityEpochId = await this.companion.getAuthority(
+      parsed.data.sessionId,
+    );
+    if (authorityEpochId !== parsed.data.authorityEpochId) {
+      return this.emitNavigationFailure(
+        client,
+        parsed.data,
+        "not-authority",
+      );
+    }
+    try {
+      await this.rateLimit.consumeNavigation(credential.companionId);
+    } catch {
+      this.companion.recordCommandRejected?.({
+        reasonCode: "RATE_LIMITED",
+        sessionId: parsed.data.sessionId,
+      });
+      return this.emitNavigationFailure(
+        client,
+        parsed.data,
+        "rate-limited",
+      );
+    }
+    const roomId = presentationCompanionAuthorityRoomId(
+      parsed.data.sessionId,
+      parsed.data.authorityEpochId,
+    );
+    const event = createPresentationCompanionEvent({
+      type: "presentation:companion:navigation-command",
+      roomId,
+      sessionId: parsed.data.sessionId,
+      userId: companionEventUserId(credential.companionId),
+      payload: parsed.data,
+    });
+    this.server.to(roomId).emit(event.type, event);
+    return event;
+  }
+
+  @SubscribeMessage("presentation:companion:navigation-ack")
+  async relayNavigationAck(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: unknown,
+  ) {
+    const parsed =
+      presentationCompanionNavigationAckSchema.safeParse(body);
+    if (
+      !this.enabled() ||
+      !parsed.success ||
+      !(await this.requireAuthoritySocket(client, parsed.data))
+    ) {
+      return emitError(client, sessionIdFrom(body), "NOT_AUTHORITY");
+    }
+    return this.emitToCurrentCompanionScope(
+      client,
+      parsed.data.sessionId,
+      "control-presentation",
+      "presentation:companion:navigation-ack",
       parsed.data,
     );
   }
@@ -701,6 +820,62 @@ export class PresentationCompanionGateway
       type,
       payload,
     );
+  }
+
+  private async emitToCurrentCompanionScope(
+    client: Socket,
+    sessionId: string,
+    scope: CompanionAccessScope,
+    type: PresentationCompanionEvent["type"],
+    payload: unknown,
+  ) {
+    const generation =
+      await this.companion.getLatestGeneration(sessionId);
+    if (generation === null) {
+      return emitError(client, sessionId, "STALE_GENERATION");
+    }
+    const roomId = presentationCompanionScopeRoomId(
+      sessionId,
+      generation,
+      scope,
+    );
+    const event = createPresentationCompanionEvent({
+      type,
+      roomId,
+      sessionId,
+      userId: String(client.data.presentationPresenterEventUserId),
+      payload,
+    });
+    this.server.to(roomId).emit(event.type, event);
+    return event;
+  }
+
+  private emitNavigationFailure(
+    client: Socket,
+    command: {
+      authorityEpochId: string;
+      clientOperationId: string;
+      expectedOutputRevision: number;
+      sessionId: string;
+    },
+    reason: "not-authority" | "rate-limited",
+  ) {
+    const event = createPresentationCompanionEvent({
+      type: "presentation:companion:navigation-ack",
+      roomId: String(client.data.presentationCompanionRoom),
+      sessionId: command.sessionId,
+      userId: "system",
+      payload: {
+        sessionId: command.sessionId,
+        authorityEpochId: command.authorityEpochId,
+        clientOperationId: command.clientOperationId,
+        accepted: false,
+        reason,
+        outputRevision: command.expectedOutputRevision,
+      },
+    });
+    client.emit(event.type, event);
+    return event;
   }
 
   private emitToGeneration(
