@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   consumeCompanionOutputState,
   consumeCompanionAnnotationSnapshot,
+  consumeCompanionPrompterState,
   createCompanionAnnotationCommand,
+  createCompanionNavigationCommand,
+  markCompanionNavigationDelayed,
   type CompanionOutputCursor,
 } from "./useCompanionSocket";
 
@@ -69,6 +72,8 @@ describe("consumeCompanionOutputState", () => {
       slideId: "slide_1",
       slideIndex: 0,
       animationStep: 0,
+      canGoNext: false,
+      canGoPrevious: false,
     };
 
     expect(consumeCompanionOutputState(cursor, blackOutput)).toEqual({
@@ -92,6 +97,129 @@ describe("consumeCompanionOutputState", () => {
       authorityEpochId: "epoch_2",
       outputRevision: 0,
     });
+  });
+});
+
+describe("consumeCompanionPrompterState", () => {
+  const current = {
+    sessionId: "session_1",
+    authorityEpochId: "epoch_1",
+    prompterRevision: 3,
+    slideId: "slide_1",
+    slideIndex: 0,
+    availability: "ready" as const,
+    trackingStatus: "listening" as const,
+    progressPercent: 40,
+    focusSentenceId: "sentence_1",
+    rows: [
+      {
+        sentenceId: "sentence_1",
+        text: "현재 문장",
+        status: "current" as const,
+      },
+    ],
+  };
+
+  it("accepts a newer authoritative prompter revision", () => {
+    const incoming = { ...current, prompterRevision: 4 };
+    expect(
+      consumeCompanionPrompterState({
+        authorityEpochId: "epoch_1",
+        current,
+        incoming,
+      }),
+    ).toBe(incoming);
+  });
+
+  it("ignores another authority and duplicate revisions", () => {
+    expect(
+      consumeCompanionPrompterState({
+        authorityEpochId: "epoch_1",
+        current,
+        incoming: { ...current, authorityEpochId: "epoch_2" },
+      }),
+    ).toBe(current);
+    expect(
+      consumeCompanionPrompterState({
+        authorityEpochId: "epoch_1",
+        current,
+        incoming: { ...current },
+      }),
+    ).toBe(current);
+  });
+});
+
+describe("createCompanionNavigationCommand", () => {
+  it("captures the current authority and output revision", () => {
+    expect(
+      createCompanionNavigationCommand({
+        action: "next-step",
+        authorityEpochId: "epoch_1",
+        expectedOutputRevision: 7,
+        sessionId: "session_1",
+      }),
+    ).toMatchObject({
+      action: "next-step",
+      authorityEpochId: "epoch_1",
+      expectedOutputRevision: 7,
+      sessionId: "session_1",
+    });
+  });
+});
+
+describe("markCompanionNavigationDelayed", () => {
+  it("keeps the command pending until a higher output revision arrives", () => {
+    const pending = createCompanionNavigationCommand({
+      action: "next-step",
+      authorityEpochId: "epoch_1",
+      expectedOutputRevision: 7,
+      sessionId: "session_1",
+    });
+    const pendingRef = { current: pending };
+    const timeoutRef = { current: 42 };
+    let error = "";
+
+    expect(
+      markCompanionNavigationDelayed({
+        clientOperationId: pending?.clientOperationId ?? "",
+        pendingRef,
+        setError: (message) => {
+          error = message;
+        },
+        timeoutRef,
+      }),
+    ).toBe(true);
+
+    expect(pendingRef.current).toBe(pending);
+    expect(timeoutRef.current).toBeNull();
+    expect(error).toBe("발표 제어 응답이 지연되고 있습니다.");
+  });
+
+  it("ignores a stale timeout from an earlier command", () => {
+    const pending = createCompanionNavigationCommand({
+      action: "previous-slide",
+      authorityEpochId: "epoch_1",
+      expectedOutputRevision: 8,
+      sessionId: "session_1",
+    });
+    const pendingRef = { current: pending };
+    const timeoutRef = { current: 43 };
+    let error = "";
+
+    expect(
+      markCompanionNavigationDelayed({
+        clientOperationId: "nav_stale",
+        pendingRef,
+        setError: (message) => {
+          error = message;
+        },
+        timeoutRef,
+      }),
+    ).toBe(false);
+
+    expect(pendingRef.current).toBe(pending);
+    expect(timeoutRef.current).toBe(43);
+    expect(error).toBe("");
   });
 });
 
@@ -199,5 +327,7 @@ function output(
     slideId: "slide_1",
     slideIndex: 0,
     animationStep: 0,
+    canGoNext: true,
+    canGoPrevious: false,
   };
 }

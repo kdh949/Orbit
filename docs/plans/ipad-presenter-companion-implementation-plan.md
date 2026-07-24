@@ -34,10 +34,14 @@ Apple Pencil 또는 손가락으로 그린 임시 주석을 메인 청중 화면
   `BroadcastChannel` 식별자가 섞이지 않는다.
 - companion-only 세션은 `audienceAccessEnabled: false`이며 일반 청중 URL을
   만들거나 표시하지 않는다.
-- iPad가 받는 HTTP, Socket.IO, DOM, 로그에는 발표자 노트, script, transcript,
-  raw audio, semantic cue, keyword, debug state가 없다.
+- iPad bootstrap, 일반 output, 로그에는 발표자 노트, script, transcript,
+  raw audio, semantic cue, keyword, debug state가 없다. `view-prompter`
+  scope의 WebSocket과 iPad DOM에만 현재 슬라이드의 bounded script row와
+  진행 위치를 전달한다.
 - 슬라이드와 animation step은 iPad에서 로컬 렌더링되고, 화면 공유는 활성
   video track만 WebRTC로 전달된다.
+- iPad에는 접이식 현재 슬라이드 프롬프터와 이전/다음 버튼이 있으며,
+  navigation은 데스크톱 authority가 revision을 검증한 뒤 적용한다.
 - 펜, 형광펜, 레이저, 전체 stroke 지우개, undo, 현재 surface clear가
   동작한다.
 - 슬라이드 주석은 슬라이드별로 복원되고 화면 공유 주석은 한
@@ -60,7 +64,8 @@ Apple Pencil 또는 손가락으로 그린 임시 주석을 메인 청중 화면
 다음 항목은 이 계획에서 구현하지 않는다.
 
 - iPad 여러 대 또는 청중 공동 그리기
-- iPad에서 슬라이드 이동, 타이머, 발표자 노트, STT 제어
+- iPad에서 timer, STT 설정, 발표 종료, 현재 슬라이드 범위를 넘는 발표자
+  노트 접근
 - Safari/PWA에서 Apple Pencil hardware double tap 감지
 - 주석 영구 저장, Deck patch, PPTX export, 발표 report 포함
 - 도형, 텍스트, lasso, 이미지 삽입, stroke 일부 지우기
@@ -1243,7 +1248,8 @@ video로 교차 확인한다. 원시 point나 전체 sample history는 서버로
 다음 상황은 측정값으로 결정하지 않고 제품 재승인을 요청한다.
 
 - 한 대 제한을 여러 대로 확대해야 하는 경우
-- iPad에 slide navigation이나 presenter-only 정보를 추가해야 하는 경우
+- iPad navigation을 이전/다음 외의 임의 이동으로 확대하거나 현재
+  슬라이드의 bounded prompter 외 presenter-only 정보를 추가해야 하는 경우
 - annotation을 저장/export해야 하는 경우
 - 동일 네트워크가 아닌 인터넷 연결을 release requirement로 바꾸는 경우
 - rehearsal companion을 테스트 경로가 아니라 별도 audience 공개 기능으로

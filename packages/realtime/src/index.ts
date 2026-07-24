@@ -2,6 +2,7 @@ import {
   WebsocketEvent,
   WebsocketEventType,
   PresentationActivityEvent,
+  CompanionAccessScope,
   PresentationCompanionEvent,
   demoIds,
   nowIso,
@@ -44,6 +45,17 @@ export function presentationCompanionRoomId(
   return `presentation:${roomSegment(
     sessionId
   )}:companion:${pairingGeneration}`;
+}
+
+export function presentationCompanionScopeRoomId(
+  sessionId: string,
+  pairingGeneration: number,
+  scope: CompanionAccessScope
+): string {
+  return `${presentationCompanionRoomId(
+    sessionId,
+    pairingGeneration
+  )}:scope:${roomSegment(scope)}`;
 }
 
 export function parsePresentationActivityEvent(
