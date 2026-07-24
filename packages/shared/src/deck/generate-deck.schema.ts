@@ -224,6 +224,25 @@ export const generateDeckSlideCountRangeSchema = z
     }
   });
 
+/**
+ * The deck generation pipeline never produces fewer than this many slides: the
+ * worker floors both the chosen count and the requested range to this value
+ * (services/python-worker/app/ai/deck_generation/pipeline.py). Consumers that
+ * surface an expected slide count (e.g. the preview API) must apply the same
+ * floor so the UI matches what the worker actually generates.
+ */
+export const MIN_GENERATED_SLIDE_COUNT = 4;
+
+export function effectiveGeneratedSlideCountRange(range: {
+  min: number;
+  max: number;
+}): { min: number; max: number } {
+  return {
+    min: Math.max(MIN_GENERATED_SLIDE_COUNT, range.min),
+    max: Math.max(MIN_GENERATED_SLIDE_COUNT, range.max)
+  };
+}
+
 export const generateDeckRequestSchema = z.object({
   topic: z.string().trim().min(1),
   prompt: z.string().trim().optional(),

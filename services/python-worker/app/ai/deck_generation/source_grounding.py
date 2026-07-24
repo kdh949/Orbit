@@ -23,6 +23,7 @@ from app.ai.deck_generation.models import (
     WebSearchAliasPlan,
     WebSourceVettingResult,
 )
+from app.ai.deck_generation.structural_policy import is_structural_slide_type
 
 
 WEB_SOURCE_VETTING_RESPONSE_FORMAT: dict[str, Any] = {
@@ -942,6 +943,8 @@ def design_pack_source_ledgers(
     *,
     include_official_web: bool = False,
 ) -> list[dict[str, Any]]:
+    if is_structural_slide_type(slide_plan.slide_type):
+        return []
     records = {
         record.source_id: record
         for record in (raw_input.source_records or initial_source_records(raw_input))

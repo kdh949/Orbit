@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getRehearsalTeleprompterCenterPadding,
   getRehearsalTeleprompterWheelDirection,
   normalizeRehearsalTeleprompterWheelDelta
 } from "./RehearsalScriptTeleprompter";
+
+describe("RehearsalScriptTeleprompter focus alignment", () => {
+  it("keeps enough scroll space to center the first and last sentence", () => {
+    expect(getRehearsalTeleprompterCenterPadding(600, 80)).toBe(260);
+    expect(getRehearsalTeleprompterCenterPadding(40, 80)).toBe(24);
+  });
+});
 
 describe("RehearsalScriptTeleprompter wheel navigation", () => {
   it("작은 트랙패드 입력은 누적 임계값 전까지 문장을 이동하지 않는다", () => {

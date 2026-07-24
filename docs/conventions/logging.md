@@ -64,6 +64,29 @@ LOG_PRETTY=false | true
 
 필요하면 `fileId`, `audioFileId`, `jobId`, `projectId`, `runId`, `fileCount`, `mimeType`처럼 추적 가능한 메타데이터만 남긴다.
 
+## iPad 발표 도우미
+
+허용하는 event는 다음으로 제한한다.
+
+```txt
+presentation_companion.pairing_created
+presentation_companion.pairing_exchanged
+presentation_companion.connected
+presentation_companion.disconnected
+presentation_companion.replaced
+presentation_companion.revoked
+presentation_companion.command_rejected
+presentation_companion.webrtc_failed
+```
+
+허용 field는 `projectId`, `presentationSessionId`, opaque `companionId`,
+`pairingGeneration`, `previousGeneration`, `reasonCode`, `rttBucket`,
+`webrtcState`, `elapsedBucket`처럼 bounded metadata뿐이다. pairing code와 URL,
+cookie/token, raw user-agent/IP, Deck·slide text, notes/script/transcript,
+annotation point·stroke 속성, SDP, ICE candidate와 username fragment는
+로그에 포함하지 않는다. WebRTC와 command 실패는 raw error object 대신
+고정 enum과 bucket만 기록한다.
+
 ## AI PPT stage 진단 로그
 
 AI PPT stage는 transport와 관계없이 `ai-ppt.stage.started`, `ai-ppt.stage.succeeded`,

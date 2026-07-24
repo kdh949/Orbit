@@ -1,8 +1,17 @@
-import type { Deck } from "@orbit/shared";
+import {
+  presentationCompanionAnnotationCommandSchema,
+  presentationCompanionAnnotationSnapshotSchema,
+  presentationCompanionLaserSchema,
+  type Deck,
+  type PresentationCompanionAnnotationCommand,
+  type PresentationCompanionAnnotationSnapshot,
+  type PresentationCompanionLaser,
+} from "@orbit/shared";
 import type {
   AudienceOutputMode,
   PresenterSlideshowState,
 } from "./presenterStateStore";
+import type { ActivityElementRuntime } from "../../activity-slides/rendering/ActivityElementRuntimeContext";
 
 export const presentationChannelPrefix = "orbit:presenter-screen";
 
@@ -11,9 +20,29 @@ export type PresentationChannelIdentity = {
   sessionId: string;
 };
 
+export type LivePresentationHostIdentity = {
+  localChannel: PresentationChannelIdentity;
+  persistedSessionId: string | null;
+};
+
+export function createLivePresentationHostIdentity(input: {
+  deckId: string;
+  localWindowSessionId: string;
+  persistedSessionId?: string | null;
+}): LivePresentationHostIdentity {
+  return {
+    localChannel: {
+      deckId: input.deckId,
+      sessionId: input.localWindowSessionId,
+    },
+    persistedSessionId: input.persistedSessionId ?? null,
+  };
+}
+
 export type SlideWindowDeckSnapshot = Deck;
 
 export type PresenterSnapshotMessage = {
+  activityElementRuntime?: ActivityElementRuntime | null;
   deck: SlideWindowDeckSnapshot;
   deckId: string;
   sentAt: number;
@@ -24,6 +53,7 @@ export type PresenterSnapshotMessage = {
 };
 
 export type PresenterStateMessage = {
+  activityElementRuntime?: ActivityElementRuntime | null;
   deckId: string;
   sentAt: number;
   sessionId: string;
@@ -79,6 +109,7 @@ export type PresenterRemoteHeartbeatMessage = {
 };
 
 export type PresenterRemoteCommand =
+  | { action: "finish" }
   | { action: "goto"; slideIndex: number; stepIndex?: number }
   | { action: "next-step" }
   | { action: "prev" }
@@ -109,6 +140,31 @@ export type ScreenShareEndedMessage = {
   type: "screen-share-ended";
 };
 
+export type PresenterAnnotationSnapshotMessage = {
+  annotation: PresentationCompanionAnnotationSnapshot;
+  deckId: string;
+  sentAt: number;
+  sessionId: string;
+  type: "presenter-annotation-snapshot";
+};
+
+export type PresenterAnnotationDeltaMessage = {
+  command: PresentationCompanionAnnotationCommand;
+  deckId: string;
+  sentAt: number;
+  sessionId: string;
+  surfaceRevision: number;
+  type: "presenter-annotation-delta";
+};
+
+export type PresenterLaserMessage = {
+  deckId: string;
+  laser: PresentationCompanionLaser;
+  sentAt: number;
+  sessionId: string;
+  type: "presenter-laser";
+};
+
 export type PresentationChannelMessage =
   | PresenterSnapshotMessage
   | PresenterStateMessage
@@ -120,7 +176,10 @@ export type PresentationChannelMessage =
   | PresenterRemoteReadyMessage
   | PresenterRemoteHeartbeatMessage
   | PresenterCommandMessage
-  | ScreenShareEndedMessage;
+  | ScreenShareEndedMessage
+  | PresenterAnnotationSnapshotMessage
+  | PresenterAnnotationDeltaMessage
+  | PresenterLaserMessage;
 
 export function createPresentationSessionId() {
   if (
@@ -196,7 +255,12 @@ function createSlideWindowSlideSnapshot(
   };
 
   if (slide.kind === "activity") {
-    return { ...common, kind: "activity", activity: slide.activity };
+    return {
+      ...common,
+      kind: "activity",
+      activity: slide.activity,
+      activityAppearance: slide.activityAppearance
+    };
   }
   if (slide.kind === "activity-results") {
     return {
@@ -230,21 +294,34 @@ export function parsePresentationChannelMessage(
       if (
         !isRecord(value.deck) ||
         !state ||
+        !isActivityElementRuntimeOrNull(value.activityElementRuntime) ||
         !isStringArray(value.triggerAnimationIds)
       ) {
         return null;
       }
-      return { ...value, state } as
+      return {
+        ...value,
+        activityElementRuntime: value.activityElementRuntime ?? null,
+        state,
+      } as
         | PresenterSnapshotMessage
         | PresenterRemoteSnapshotMessage;
     }
     case "presenter-state":
     case "presenter-remote-state": {
       const state = parsePresenterSlideshowState(value.state);
-      if (!state || !isStringArray(value.triggerAnimationIds)) {
+      if (
+        !state ||
+        !isActivityElementRuntimeOrNull(value.activityElementRuntime) ||
+        !isStringArray(value.triggerAnimationIds)
+      ) {
         return null;
       }
-      return { ...value, state } as
+      return {
+        ...value,
+        activityElementRuntime: value.activityElementRuntime ?? null,
+        state,
+      } as
         | PresenterStateMessage
         | PresenterRemoteStateMessage;
     }
@@ -262,6 +339,40 @@ export function parsePresentationChannelMessage(
       return isScreenShareEndedReason(value.reason)
         ? (value as unknown as ScreenShareEndedMessage)
         : null;
+    case "presenter-annotation-snapshot": {
+      const annotation =
+        presentationCompanionAnnotationSnapshotSchema.safeParse(
+          value.annotation,
+        );
+      return annotation.success
+        ? ({
+            ...value,
+            annotation: annotation.data,
+          } as PresenterAnnotationSnapshotMessage)
+        : null;
+    }
+    case "presenter-annotation-delta": {
+      const command =
+        presentationCompanionAnnotationCommandSchema.safeParse(
+          value.command,
+        );
+      return command.success &&
+        Number.isSafeInteger(value.surfaceRevision) &&
+        Number(value.surfaceRevision) >= 0
+        ? ({
+            ...value,
+            command: command.data,
+          } as PresenterAnnotationDeltaMessage)
+        : null;
+    }
+    case "presenter-laser": {
+      const laser = presentationCompanionLaserSchema.safeParse(
+        value.laser,
+      );
+      return laser.success
+        ? ({ ...value, laser: laser.data } as PresenterLaserMessage)
+        : null;
+    }
     default:
       return null;
   }
@@ -278,6 +389,7 @@ export function matchesPresentationChannelIdentity(
 }
 
 export function createPresenterSnapshotMessage(args: {
+  activityElementRuntime?: ActivityElementRuntime | null;
   deck: Deck;
   identity: PresentationChannelIdentity;
   sentAt?: number;
@@ -285,6 +397,7 @@ export function createPresenterSnapshotMessage(args: {
   triggerAnimationIds?: Iterable<string>;
 }): PresenterSnapshotMessage {
   return {
+    activityElementRuntime: args.activityElementRuntime ?? null,
     deck: createSlideWindowDeckSnapshot(args.deck),
     deckId: args.identity.deckId,
     sentAt: args.sentAt ?? Date.now(),
@@ -296,12 +409,14 @@ export function createPresenterSnapshotMessage(args: {
 }
 
 export function createPresenterStateMessage(args: {
+  activityElementRuntime?: ActivityElementRuntime | null;
   identity: PresentationChannelIdentity;
   sentAt?: number;
   state: PresenterSlideshowState;
   triggerAnimationIds?: Iterable<string>;
 }): PresenterStateMessage {
   return {
+    activityElementRuntime: args.activityElementRuntime ?? null,
     deckId: args.identity.deckId,
     sentAt: args.sentAt ?? Date.now(),
     sessionId: args.identity.sessionId,
@@ -312,6 +427,7 @@ export function createPresenterStateMessage(args: {
 }
 
 export function createPresenterRemoteSnapshotMessage(args: {
+  activityElementRuntime?: ActivityElementRuntime | null;
   deck: Deck;
   identity: PresentationChannelIdentity;
   sentAt?: number;
@@ -319,6 +435,7 @@ export function createPresenterRemoteSnapshotMessage(args: {
   triggerAnimationIds?: Iterable<string>;
 }): PresenterRemoteSnapshotMessage {
   return {
+    activityElementRuntime: args.activityElementRuntime ?? null,
     deck: createSlideWindowDeckSnapshot(args.deck),
     deckId: args.identity.deckId,
     sentAt: args.sentAt ?? Date.now(),
@@ -330,12 +447,14 @@ export function createPresenterRemoteSnapshotMessage(args: {
 }
 
 export function createPresenterRemoteStateMessage(args: {
+  activityElementRuntime?: ActivityElementRuntime | null;
   identity: PresentationChannelIdentity;
   sentAt?: number;
   state: PresenterSlideshowState;
   triggerAnimationIds?: Iterable<string>;
 }): PresenterRemoteStateMessage {
   return {
+    activityElementRuntime: args.activityElementRuntime ?? null,
     deckId: args.identity.deckId,
     sentAt: args.sentAt ?? Date.now(),
     sessionId: args.identity.sessionId,
@@ -437,6 +556,55 @@ export function createScreenShareEndedMessage(args: {
     sentAt: args.sentAt ?? Date.now(),
     sessionId: args.identity.sessionId,
     type: "screen-share-ended",
+  };
+}
+
+export function createPresenterAnnotationSnapshotMessage(args: {
+  annotation: PresentationCompanionAnnotationSnapshot;
+  identity: PresentationChannelIdentity;
+  sentAt?: number;
+}): PresenterAnnotationSnapshotMessage {
+  return {
+    annotation:
+      presentationCompanionAnnotationSnapshotSchema.parse(
+        args.annotation,
+      ),
+    deckId: args.identity.deckId,
+    sentAt: args.sentAt ?? Date.now(),
+    sessionId: args.identity.sessionId,
+    type: "presenter-annotation-snapshot",
+  };
+}
+
+export function createPresenterAnnotationDeltaMessage(args: {
+  command: PresentationCompanionAnnotationCommand;
+  identity: PresentationChannelIdentity;
+  sentAt?: number;
+  surfaceRevision: number;
+}): PresenterAnnotationDeltaMessage {
+  return {
+    command: presentationCompanionAnnotationCommandSchema.parse(
+      args.command,
+    ),
+    deckId: args.identity.deckId,
+    sentAt: args.sentAt ?? Date.now(),
+    sessionId: args.identity.sessionId,
+    surfaceRevision: args.surfaceRevision,
+    type: "presenter-annotation-delta",
+  };
+}
+
+export function createPresenterLaserMessage(args: {
+  identity: PresentationChannelIdentity;
+  laser: PresentationCompanionLaser;
+  sentAt?: number;
+}): PresenterLaserMessage {
+  return {
+    deckId: args.identity.deckId,
+    laser: presentationCompanionLaserSchema.parse(args.laser),
+    sentAt: args.sentAt ?? Date.now(),
+    sessionId: args.identity.sessionId,
+    type: "presenter-laser",
   };
 }
 
@@ -622,6 +790,7 @@ function isPresenterRemoteCommand(
   }
 
   if (
+    value.action === "finish" ||
     value.action === "next-step" ||
     value.action === "prev" ||
     value.action === "timer-pause" ||
@@ -663,4 +832,32 @@ function isNonNegativeInteger(value: unknown): value is number {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
+}
+
+function isActivityElementRuntimeOrNull(
+  value: unknown,
+): boolean {
+  if (value === undefined) return true;
+  if (value === null) return true;
+  if (!isRecord(value)) return false;
+  if (
+    value.audienceUrl !== null &&
+    typeof value.audienceUrl !== "string"
+  ) {
+    return false;
+  }
+  if (!isRecord(value.passcodeState)) return false;
+  switch (value.passcodeState.status) {
+    case "private":
+      return (
+        typeof value.passcodeState.displayPasscode === "string" &&
+        /^\d{4}$/.test(value.passcodeState.displayPasscode)
+      );
+    case "public":
+    case "not-prepared":
+    case "legacy-unavailable":
+      return true;
+    default:
+      return false;
+  }
 }

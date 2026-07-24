@@ -1,0 +1,266 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  ORBIT shared production services for a single-workload-AZ ECS cutover.
+  Public ALB subnets intentionally span two AZs; application, NAT, Redis, and
+  private-audio access reuses the retained production storage stack.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PublicSubnetAId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Existing public subnet in the workload AZ; hosts the NAT gateway.
+  PublicRouteTableId:
+    Type: String
+    Description: Existing route table with an Internet Gateway default route.
+  WorkloadAvailabilityZone:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: ap-northeast-2a
+  PublicSubnetBAvailabilityZone:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: ap-northeast-2b
+  PublicSubnetBCidr:
+    Type: String
+    Default: 10.42.1.0/24
+  PrivateAppSubnetACidr:
+    Type: String
+    Default: 10.42.20.0/24
+  ExistingPrivateAudioBucketArn:
+    Type: String
+    AllowedPattern: "^arn:[^:]+:s3:::[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+    Description: Retained private-audio bucket ARN from the existing production storage stack.
+  ExistingPrivateAudioAccessPolicyArn:
+    Type: String
+    AllowedPattern: "^arn:[^:]+:iam::[0-9]{12}:policy/.+$"
+    Description: Existing least-privilege private-audio runtime policy ARN.
+  QueueRedisAuthTokenSecretArn:
+    Type: String
+    NoEcho: true
+    Description: Secrets Manager ARN containing the Redis AUTH token in JSON key token.
+  PrivateEvidenceRedisAuthTokenSecretArn:
+    Type: String
+    NoEcho: true
+    Description: Secrets Manager ARN containing the private-evidence Redis AUTH token in JSON key token.
+
+Resources:
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VpcId
+      AvailabilityZone: !Ref PublicSubnetBAvailabilityZone
+      CidrBlock: !Ref PublicSubnetBCidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-public-b
+
+  PublicSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTableId
+      SubnetId: !Ref PublicSubnetB
+
+  NatEip:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEip.AllocationId
+      SubnetId: !Ref PublicSubnetAId
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-nat-a
+
+  PrivateAppSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VpcId
+      AvailabilityZone: !Ref WorkloadAvailabilityZone
+      CidrBlock: !Ref PrivateAppSubnetACidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-private-app-a
+
+  PrivateAppRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VpcId
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-private-app-a
+
+  PrivateAppDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateAppRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateAppRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateAppRouteTable
+      SubnetId: !Ref PrivateAppSubnetA
+
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PrivateAppRouteTable
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: s3:*
+            Resource: "*"
+
+  AppClientSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ORBIT ECS client egress and managed Redis ingress source
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+
+  QueueRedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ORBIT queue/session/realtime Redis ingress only from ECS clients
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref AppClientSecurityGroup
+
+  PrivateEvidenceRedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ORBIT private evidence Redis ingress only from ECS clients
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref AppClientSecurityGroup
+
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Single-workload-AZ subnet group for ORBIT managed Redis nodes
+      SubnetIds:
+        - !Ref PrivateAppSubnetA
+
+  QueueRedis:
+    Type: AWS::ElastiCache::ReplicationGroup
+    Properties:
+      ReplicationGroupDescription: ORBIT durable BullMQ, session, and Socket.IO Redis
+      Engine: redis
+      EngineVersion: "7.1"
+      CacheNodeType: cache.t4g.small
+      NumCacheClusters: 1
+      AutomaticFailoverEnabled: false
+      MultiAZEnabled: false
+      AtRestEncryptionEnabled: true
+      TransitEncryptionEnabled: true
+      AuthToken: !Sub "{{resolve:secretsmanager:${QueueRedisAuthTokenSecretArn}:SecretString:token}}"
+      CacheParameterGroupName: default.redis7
+      SnapshotRetentionLimit: 1
+      SnapshotWindow: 18:00-19:00
+      SecurityGroupIds:
+        - !Ref QueueRedisSecurityGroup
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+      AutoMinorVersionUpgrade: true
+
+  PrivateEvidenceRedis:
+    Type: AWS::ElastiCache::ReplicationGroup
+    Properties:
+      ReplicationGroupDescription: ORBIT non-persistent private evidence Redis
+      Engine: redis
+      EngineVersion: "7.1"
+      CacheNodeType: cache.t4g.micro
+      NumCacheClusters: 1
+      AutomaticFailoverEnabled: false
+      MultiAZEnabled: false
+      AtRestEncryptionEnabled: true
+      TransitEncryptionEnabled: true
+      AuthToken: !Sub "{{resolve:secretsmanager:${PrivateEvidenceRedisAuthTokenSecretArn}:SecretString:token}}"
+      CacheParameterGroupName: default.redis7
+      SnapshotRetentionLimit: 0
+      SecurityGroupIds:
+        - !Ref PrivateEvidenceRedisSecurityGroup
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+      AutoMinorVersionUpgrade: true
+
+  ApiRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: orbit/api
+      ImageTagMutability: IMMUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: '{"rules":[{"rulePriority":1,"description":"Keep the most recent immutable images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":30},"action":{"type":"expire"}}]}'
+
+  WorkerRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: orbit/worker
+      ImageTagMutability: IMMUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: '{"rules":[{"rulePriority":1,"description":"Keep the most recent immutable images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":30},"action":{"type":"expire"}}]}'
+
+  PythonWorkerRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: orbit/python-worker
+      ImageTagMutability: IMMUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: '{"rules":[{"rulePriority":1,"description":"Keep the most recent immutable images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":30},"action":{"type":"expire"}}]}'
+
+Outputs:
+  PrivateAppSubnetAId:
+    Value: !Ref PrivateAppSubnetA
+  PublicSubnetBId:
+    Value: !Ref PublicSubnetB
+  AppClientSecurityGroupId:
+    Value: !Ref AppClientSecurityGroup
+  QueueRedisSecurityGroupId:
+    Value: !Ref QueueRedisSecurityGroup
+  PrivateEvidenceRedisSecurityGroupId:
+    Value: !Ref PrivateEvidenceRedisSecurityGroup
+  QueueRedisEndpoint:
+    Value: !Sub
+      - rediss://${Address}:${Port}
+      - Address: !GetAtt QueueRedis.PrimaryEndPoint.Address
+        Port: !GetAtt QueueRedis.PrimaryEndPoint.Port
+  PrivateEvidenceRedisEndpoint:
+    Value: !Sub
+      - rediss://${Address}:${Port}
+      - Address: !GetAtt PrivateEvidenceRedis.PrimaryEndPoint.Address
+        Port: !GetAtt PrivateEvidenceRedis.PrimaryEndPoint.Port
+  PrivateAudioBucketName:
+    Value: !Select [5, !Split [":", !Ref ExistingPrivateAudioBucketArn]]
+  PrivateAudioBucketArn:
+    Value: !Ref ExistingPrivateAudioBucketArn
+  PrivateAudioAccessPolicyArn:
+    Value: !Ref ExistingPrivateAudioAccessPolicyArn
+  ApiRepositoryUri:
+    Value: !GetAtt ApiRepository.RepositoryUri
+  WorkerRepositoryUri:
+    Value: !GetAtt WorkerRepository.RepositoryUri
+  PythonWorkerRepositoryUri:
+    Value: !GetAtt PythonWorkerRepository.RepositoryUri

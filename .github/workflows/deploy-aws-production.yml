@@ -2,8 +2,7 @@ name: Deploy AWS Production
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:

@@ -56,11 +56,34 @@ Parameters:
     Type: String
     Default: "*"
     Description: CORS origin for presigned S3 asset PUT/GET. Keep * for initial bootstrap, then narrow after CloudFront domain is known.
+  CloudFrontAliases:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: Existing alternate domain names, for example tryorbit.site,www.tryorbit.site.
+  CloudFrontAcmCertificateArn:
+    Type: String
+    Default: ""
+    Description: Existing us-east-1 ACM certificate ARN for CloudFront aliases. Do not create a replacement certificate during migration.
+  ApplicationOriginDomainName:
+    Type: String
+    Default: ""
+    Description: Optional HTTPS origin hostname (normally origin.tryorbit.site) used after the ALB canary is approved.
+  ApplicationOriginVerificationHeaderName:
+    Type: String
+    Default: X-Orbit-Origin-Verify
+  ApplicationOriginVerificationSecretArn:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: Optional Secrets Manager ARN with JSON key value for the ALB origin verification header.
 
 Conditions:
   ShouldCreateGitHubOidcProvider: !Equals [!Ref CreateGitHubOidcProvider, "true"]
   HasCloudFrontOriginPrefixListId: !Not [!Equals [!Ref CloudFrontOriginPrefixListId, ""]]
   UseOriginIngressCidr: !Equals [!Ref CloudFrontOriginPrefixListId, ""]
+  HasCloudFrontAcmCertificate: !Not [!Equals [!Ref CloudFrontAcmCertificateArn, ""]]
+  HasApplicationOrigin: !Not [!Equals [!Ref ApplicationOriginDomainName, ""]]
+  HasApplicationOriginVerification: !Not [!Equals [!Ref ApplicationOriginVerificationSecretArn, ""]]
 
 Resources:
   Vpc:
@@ -460,11 +483,14 @@ Resources:
           S3_ENDPOINT=
           S3_PUBLIC_ENDPOINT=
           S3_BUCKET=REPLACE_WITH_ASSETS_BUCKET
+          S3_ASSETS_BUCKET=REPLACE_WITH_ASSETS_BUCKET
+          S3_PRIVATE_AUDIO_BUCKET=
           S3_REGION=ap-northeast-2
           S3_ACCESS_KEY_ID=
           S3_SECRET_ACCESS_KEY=
           S3_FORCE_PATH_STYLE=false
           JOB_QUEUE_DRIVER=bullmq
+          ASYNC_JOB_ADMISSION_MODE=accept
           SLIDE_PRACTICE_ENABLED=true
           SLIDE_QUESTION_GUIDES_ENABLED=true
           LIVE_STT_PROVIDER=sherpa
@@ -545,6 +571,13 @@ Resources:
         Comment: !Sub ${AWS::StackName} ORBIT production entry point
         DefaultRootObject: index.html
         Enabled: true
+        Aliases: !If [HasCloudFrontAcmCertificate, !Ref CloudFrontAliases, !Ref "AWS::NoValue"]
+        ViewerCertificate: !If
+          - HasCloudFrontAcmCertificate
+          - AcmCertificateArn: !Ref CloudFrontAcmCertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
         HttpVersion: http2and3
         IPV6Enabled: true
         PriceClass: PriceClass_200
@@ -555,10 +588,16 @@ Resources:
             S3OriginConfig:
               OriginAccessIdentity: ""
           - Id: ec2-nginx-origin
-            DomainName: !GetAtt AppServerInstance.PublicDnsName
+            DomainName: !If [HasApplicationOrigin, !Ref ApplicationOriginDomainName, !GetAtt AppServerInstance.PublicDnsName]
             CustomOriginConfig:
               HTTPPort: 80
-              OriginProtocolPolicy: http-only
+              HTTPSPort: 443
+              OriginProtocolPolicy: !If [HasApplicationOrigin, https-only, http-only]
+            OriginCustomHeaders: !If
+              - HasApplicationOriginVerification
+              - - HeaderName: !Ref ApplicationOriginVerificationHeaderName
+                  HeaderValue: !Sub "{{resolve:secretsmanager:${ApplicationOriginVerificationSecretArn}:SecretString:value}}"
+              - !Ref AWS::NoValue
         DefaultCacheBehavior:
           TargetOriginId: static-web-s3
           ViewerProtocolPolicy: redirect-to-https
@@ -591,7 +630,10 @@ Resources:
               - HEAD
               - OPTIONS
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
-            OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
+            OriginRequestPolicyId: !If
+              - HasApplicationOrigin
+              - b689b0a8-53d0-40ab-baf2-68738e2966ac
+              - 216adef6-5c7f-47e4-b989-5492eafa07d3
           - PathPattern: /api/*
             TargetOriginId: ec2-nginx-origin
             ViewerProtocolPolicy: redirect-to-https
@@ -608,7 +650,10 @@ Resources:
               - HEAD
               - OPTIONS
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
-            OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
+            OriginRequestPolicyId: !If
+              - HasApplicationOrigin
+              - b689b0a8-53d0-40ab-baf2-68738e2966ac
+              - 216adef6-5c7f-47e4-b989-5492eafa07d3
           - PathPattern: /socket.io/*
             TargetOriginId: ec2-nginx-origin
             ViewerProtocolPolicy: redirect-to-https
@@ -625,7 +670,10 @@ Resources:
               - HEAD
               - OPTIONS
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
-            OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
+            OriginRequestPolicyId: !If
+              - HasApplicationOrigin
+              - b689b0a8-53d0-40ab-baf2-68738e2966ac
+              - 216adef6-5c7f-47e4-b989-5492eafa07d3
 
   StaticWebBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -719,10 +767,14 @@ Outputs:
     Value: !Ref AssetsBucket
   Ec2InstanceId:
     Value: !Ref AppServerInstance
+  Ec2SecurityGroupId:
+    Value: !Ref Ec2SecurityGroup
   Ec2PublicDnsName:
     Value: !GetAtt AppServerInstance.PublicDnsName
   RdsEndpointAddress:
     Value: !GetAtt RdsInstance.Endpoint.Address
+  RdsSecurityGroupId:
+    Value: !Ref RdsSecurityGroup
   ProductionLogGroupName:
     Value: !Ref ProductionLogGroup
   GitHubActionsRoleArn:

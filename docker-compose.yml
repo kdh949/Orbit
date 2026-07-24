@@ -88,6 +88,7 @@ services:
       DATABASE_URL: postgres://orbit:orbit@postgres:5432/orbit
       REDIS_URL: redis://redis:6379
       PRIVATE_EVIDENCE_REDIS_URL: redis://private-evidence-redis:6379
+      IPAD_PRESENTER_COMPANION_ENABLED: ${IPAD_PRESENTER_COMPANION_ENABLED:-true}
       S3_ENDPOINT: http://minio:9000
       PYTHON_WORKER_URL: http://python-worker:8000
       ADAPTIVE_REHEARSAL_COACH_ENABLED: "${ADAPTIVE_REHEARSAL_COACH_ENABLED:-true}"

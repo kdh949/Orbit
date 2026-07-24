@@ -1,0 +1,316 @@
+{
+  "schemaVersion": 1,
+  "coordinateSpace": {
+    "width": 1920,
+    "height": 1080,
+    "sourceWidth": 1672,
+    "sourceHeight": 941,
+    "normalization": "각 레퍼런스의 픽셀 좌표를 ORBIT wide-16-9 Deck 좌표로 비례 변환한 추정값"
+  },
+  "fontEstimation": {
+    "family": "Pretendard",
+    "fallback": "Noto Sans KR, sans-serif",
+    "note": "레퍼런스의 산세리프 비례와 ORBIT 기본 글꼴 계약을 함께 고려한 추정"
+  },
+  "templates": [
+    {
+      "id": "spotlight",
+      "source": "spotlight-reference.png",
+      "textElements": [
+        {
+          "id": "spotlight-eyebrow",
+          "text": "LIVE ACTIVITY",
+          "boundingBox": { "x": 830, "y": 187, "width": 261, "height": 32 },
+          "alignment": "center",
+          "color": "#52651F",
+          "fontFamily": "Pretendard",
+          "fontSize": 28,
+          "fontWeight": 700,
+          "lineHeight": 32,
+          "emphasisRanges": [],
+          "group": "heading"
+        },
+        {
+          "id": "spotlight-title",
+          "text": "실시간 투표에 참여해 주세요",
+          "boundingBox": { "x": 450, "y": 311, "width": 1022, "height": 92 },
+          "alignment": "center",
+          "color": "#111311",
+          "fontFamily": "Pretendard",
+          "fontSize": 76,
+          "fontWeight": 800,
+          "lineHeight": 92,
+          "emphasisRanges": [
+            {
+              "start": 0,
+              "end": 15,
+              "fontWeight": 800,
+              "text": "실시간 투표에 참여해 주세요"
+            }
+          ],
+          "group": "heading"
+        },
+        {
+          "id": "spotlight-description",
+          "text": "QR 코드를 스캔하고 의견을 남겨주세요.",
+          "boundingBox": { "x": 670, "y": 436, "width": 577, "height": 46 },
+          "alignment": "center",
+          "color": "#3F423D",
+          "fontFamily": "Pretendard",
+          "fontSize": 34,
+          "fontWeight": 500,
+          "lineHeight": 46,
+          "emphasisRanges": [],
+          "group": "heading"
+        },
+        {
+          "id": "spotlight-passcode-label",
+          "text": "입장 코드",
+          "boundingBox": { "x": 1156, "y": 584, "width": 125, "height": 38 },
+          "alignment": "center",
+          "color": "#101210",
+          "fontFamily": "Pretendard",
+          "fontSize": 30,
+          "fontWeight": 700,
+          "lineHeight": 38,
+          "emphasisRanges": [],
+          "group": "passcode"
+        },
+        {
+          "id": "spotlight-passcode-helper",
+          "text": "발표 시작 후 코드가 표시됩니다.",
+          "boundingBox": { "x": 1077, "y": 830, "width": 305, "height": 28 },
+          "alignment": "left",
+          "color": "#6A6D67",
+          "fontFamily": "Pretendard",
+          "fontSize": 21,
+          "fontWeight": 400,
+          "lineHeight": 28,
+          "emphasisRanges": [],
+          "group": "passcode"
+        },
+        {
+          "id": "spotlight-footer",
+          "text": "휴대폰 카메라로 QR을 스캔하거나 입장 코드를 입력해 주세요.",
+          "boundingBox": { "x": 766, "y": 985, "width": 545, "height": 33 },
+          "alignment": "left",
+          "color": "#555853",
+          "fontFamily": "Pretendard",
+          "fontSize": 20,
+          "fontWeight": 400,
+          "lineHeight": 33,
+          "emphasisRanges": [],
+          "group": "footer"
+        }
+      ],
+      "runtimeSlots": [
+        {
+          "id": "spotlight-qr",
+          "type": "activity-qr",
+          "boundingBox": { "x": 489, "y": 538, "width": 342, "height": 342 },
+          "group": "participation"
+        },
+        {
+          "id": "spotlight-passcode",
+          "type": "presentation-passcode",
+          "boundingBox": { "x": 992, "y": 664, "width": 453, "height": 125 },
+          "group": "passcode"
+        }
+      ],
+      "excludedRasterContent": ["QR code", "ORBIT logo", "text", "passcode digits", "lock icon"]
+    },
+    {
+      "id": "split",
+      "source": "split-reference.png",
+      "textElements": [
+        {
+          "id": "split-eyebrow",
+          "text": "LIVE ACTIVITY",
+          "boundingBox": { "x": 112, "y": 264, "width": 268, "height": 33 },
+          "alignment": "left",
+          "color": "#6B8B20",
+          "fontFamily": "Pretendard",
+          "fontSize": 28,
+          "fontWeight": 700,
+          "lineHeight": 33,
+          "emphasisRanges": [],
+          "group": "heading"
+        },
+        {
+          "id": "split-title",
+          "text": "발표 전에\n궁금한 점을 알려주세요",
+          "boundingBox": { "x": 111, "y": 343, "width": 926, "height": 228 },
+          "alignment": "left",
+          "color": "#111311",
+          "fontFamily": "Pretendard",
+          "fontSize": 76,
+          "fontWeight": 800,
+          "lineHeight": 114,
+          "emphasisRanges": [
+            {
+              "start": 0,
+              "end": 18,
+              "fontWeight": 800,
+              "text": "발표 전에\n궁금한 점을 알려주세요"
+            }
+          ],
+          "group": "heading"
+        },
+        {
+          "id": "split-description",
+          "text": "QR 코드를 스캔해 질문을 남겨주세요.",
+          "boundingBox": { "x": 112, "y": 622, "width": 610, "height": 48 },
+          "alignment": "left",
+          "color": "#4D504B",
+          "fontFamily": "Pretendard",
+          "fontSize": 34,
+          "fontWeight": 500,
+          "lineHeight": 48,
+          "emphasisRanges": [],
+          "group": "heading"
+        },
+        {
+          "id": "split-passcode-label",
+          "text": "입장 코드",
+          "boundingBox": { "x": 1427, "y": 682, "width": 168, "height": 54 },
+          "alignment": "center",
+          "color": "#F7F7F2",
+          "fontFamily": "Pretendard",
+          "fontSize": 42,
+          "fontWeight": 700,
+          "lineHeight": 54,
+          "emphasisRanges": [],
+          "group": "passcode"
+        }
+      ],
+      "runtimeSlots": [
+        {
+          "id": "split-qr",
+          "type": "activity-qr",
+          "boundingBox": { "x": 1313, "y": 195, "width": 407, "height": 407 },
+          "group": "participation"
+        },
+        {
+          "id": "split-passcode",
+          "type": "presentation-passcode",
+          "boundingBox": { "x": 1267, "y": 760, "width": 497, "height": 130 },
+          "group": "passcode"
+        }
+      ],
+      "excludedRasterContent": ["QR code", "text", "passcode digits"]
+    },
+    {
+      "id": "editorial",
+      "source": "editorial-reference.png",
+      "textElements": [
+        {
+          "id": "editorial-eyebrow",
+          "text": "AUDIENCE PARTICIPATION",
+          "boundingBox": { "x": 142, "y": 279, "width": 491, "height": 29 },
+          "alignment": "left",
+          "color": "#4E611D",
+          "fontFamily": "Pretendard",
+          "fontSize": 27,
+          "fontWeight": 700,
+          "lineHeight": 29,
+          "emphasisRanges": [],
+          "group": "heading"
+        },
+        {
+          "id": "editorial-title",
+          "text": "여러분의 생각을\n들려주세요",
+          "boundingBox": { "x": 139, "y": 344, "width": 833, "height": 263 },
+          "alignment": "left",
+          "color": "#101210",
+          "fontFamily": "Pretendard",
+          "fontSize": 92,
+          "fontWeight": 800,
+          "lineHeight": 132,
+          "emphasisRanges": [
+            {
+              "start": 0,
+              "end": 14,
+              "fontWeight": 800,
+              "text": "여러분의 생각을\n들려주세요"
+            }
+          ],
+          "group": "heading"
+        },
+        {
+          "id": "editorial-description",
+          "text": "QR 코드를 스캔해 지금 참여할 수 있어요.",
+          "boundingBox": { "x": 142, "y": 715, "width": 649, "height": 47 },
+          "alignment": "left",
+          "color": "#30332F",
+          "fontFamily": "Pretendard",
+          "fontSize": 34,
+          "fontWeight": 500,
+          "lineHeight": 47,
+          "emphasisRanges": [],
+          "group": "heading"
+        },
+        {
+          "id": "editorial-passcode-label",
+          "text": "입장 코드",
+          "boundingBox": { "x": 1301, "y": 718, "width": 133, "height": 36 },
+          "alignment": "left",
+          "color": "#171917",
+          "fontFamily": "Pretendard",
+          "fontSize": 30,
+          "fontWeight": 700,
+          "lineHeight": 36,
+          "emphasisRanges": [],
+          "group": "passcode"
+        },
+        {
+          "id": "editorial-footer-primary",
+          "text": "실시간 설문 · 의견제출 · 만족도 조사에 참여해 주세요!",
+          "boundingBox": { "x": 278, "y": 969, "width": 822, "height": 46 },
+          "alignment": "left",
+          "color": "#111311",
+          "fontFamily": "Pretendard",
+          "fontSize": 31,
+          "fontWeight": 500,
+          "lineHeight": 46,
+          "emphasisRanges": [
+            {
+              "start": 0,
+              "end": 22,
+              "fontWeight": 800,
+              "text": "실시간 설문 · 의견제출 · 만족도 조사"
+            }
+          ],
+          "group": "footer"
+        },
+        {
+          "id": "editorial-footer-secondary",
+          "text": "발표 중 언제든 참여할 수 있습니다.",
+          "boundingBox": { "x": 1405, "y": 976, "width": 377, "height": 33 },
+          "alignment": "left",
+          "color": "#171917",
+          "fontFamily": "Pretendard",
+          "fontSize": 22,
+          "fontWeight": 500,
+          "lineHeight": 33,
+          "emphasisRanges": [],
+          "group": "footer"
+        }
+      ],
+      "runtimeSlots": [
+        {
+          "id": "editorial-qr",
+          "type": "activity-qr",
+          "boundingBox": { "x": 1251, "y": 243, "width": 522, "height": 411 },
+          "group": "participation"
+        },
+        {
+          "id": "editorial-passcode",
+          "type": "presentation-passcode",
+          "boundingBox": { "x": 1251, "y": 673, "width": 522, "height": 128 },
+          "group": "passcode"
+        }
+      ],
+      "excludedRasterContent": ["QR code", "ORBIT logo", "text", "passcode digits", "footer icons"]
+    }
+  ]
+}

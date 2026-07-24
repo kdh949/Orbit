@@ -10,6 +10,9 @@ export function getTransitionMutationDisabledReason(
   deck: Deck,
   slide: Slide
 ): string | null {
+  if (slide.kind !== "content") {
+    return "참여 및 결과 장표에서는 전환 효과를 편집할 수 없습니다.";
+  }
   if (deck.metadata.sourceType !== "import") return null;
   if (!slide.ooxmlSourceSlidePart) {
     return "가져온 슬라이드의 안정적인 OOXML 위치 정보가 없어 전환을 편집할 수 없습니다.";
@@ -24,6 +27,9 @@ export function getAnimationMutationDisabledReason(
   deck: Deck,
   slide: Slide
 ): string | null {
+  if (slide.kind !== "content") {
+    return "참여 및 결과 장표에서는 애니메이션을 편집할 수 없습니다.";
+  }
   if (deck.metadata.sourceType !== "import") return null;
   if (!slide.ooxmlSourceSlidePart) {
     return "가져온 슬라이드의 안정적인 OOXML 위치 정보가 없어 애니메이션을 편집할 수 없습니다.";

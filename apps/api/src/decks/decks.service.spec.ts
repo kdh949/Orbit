@@ -275,6 +275,30 @@ class InMemoryDeckDataSource {
 
     if (
       query.startsWith("SELECT snapshot_id, project_id, deck_id") &&
+      query.includes(
+        "WHERE project_id = $1 AND deck_id = $2 AND version = $3 AND reason = $4",
+      )
+    ) {
+      const [projectId, deckId, version, reason] = params as [
+        string,
+        string,
+        number,
+        DeckSnapshotReason,
+      ];
+      return this.snapshotRows
+        .filter(
+          (snapshot) =>
+            snapshot.project_id === projectId &&
+            snapshot.deck_id === deckId &&
+            snapshot.version === version &&
+            snapshot.reason === reason,
+        )
+        .sort(compareSnapshotRows)
+        .map(cloneSnapshotRow) as T;
+    }
+
+    if (
+      query.startsWith("SELECT snapshot_id, project_id, deck_id") &&
       query.includes("WHERE project_id = $1 AND deck_id = $2 AND version = $3")
     ) {
       const [projectId, deckId, version] = params as [string, string, number];
@@ -1432,6 +1456,64 @@ describe("DecksService", () => {
     });
   });
 
+  it("keeps OOXML-backed Deck mutations durable while admission is draining", async () => {
+    stubOrbitEnv();
+    vi.stubEnv("ASYNC_JOB_ADMISSION_MODE", "drain");
+    const dataSource = new InMemoryDeckDataSource();
+    const deck = createDeck();
+    const jobsService = {
+      create: vi.fn(),
+      update: vi.fn(),
+      getLatestPptxOoxmlSync: vi.fn(async () => null),
+    };
+    const enqueueSyncJob = vi.fn();
+    const service = new DecksService(
+      dataSource as unknown as DataSource,
+      jobsService as never,
+      enqueueSyncJob,
+    );
+
+    const initial = await service.putDeck(deck.projectId, { deck });
+    dataSource.templateBlueprintRows.push({
+      template_id: "template_file_1",
+      project_id: deck.projectId,
+      deck_id: deck.deckId,
+      blueprint_json: {
+        templateId: "template_file_1",
+        sourceFileId: "file_1",
+        currentPackageFileId: "file_current",
+        ooxmlSyncedDeckVersion: 1,
+        slides: [{ slideIndex: 1, sourceSlideIndex: 1, slots: [] }],
+      },
+    });
+
+    const patched = await service.appendPatch(deck.projectId, {
+      patch: createUpdateTitlePatch(deck, "drained patch"),
+    });
+    const replaced = await service.putDeck(deck.projectId, {
+      baseVersion: patched.deck.version,
+      deck: { ...patched.deck, title: "drained replacement" },
+    });
+    const restored = await service.restoreSnapshot(
+      deck.projectId,
+      initial.snapshot.snapshotId,
+    );
+    const state = await service.getOoxmlSyncState(deck.projectId);
+
+    expect(patched.deck.title).toBe("drained patch");
+    expect(replaced.deck.title).toBe("drained replacement");
+    expect(restored.deck.version).toBeGreaterThan(replaced.deck.version);
+    expect(patched).not.toHaveProperty("ooxmlSyncJob");
+    expect(replaced).not.toHaveProperty("ooxmlSyncJob");
+    expect(restored).not.toHaveProperty("ooxmlSyncJob");
+    expect(state.ooxmlSyncState).toMatchObject({
+      status: "stale",
+      retryable: true,
+    });
+    expect(jobsService.create).not.toHaveBeenCalled();
+    expect(enqueueSyncJob).not.toHaveBeenCalled();
+  });
+
   it("normalizes an imported full save, records its OOXML diff, and enqueues sync", async () => {
     stubOrbitEnv();
     const dataSource = new InMemoryDeckDataSource();
@@ -2362,6 +2444,55 @@ describe("DecksService", () => {
         query.includes("WHERE project_id = $1 AND deck_id = $2 FOR UPDATE"),
       ),
     ).toBe(true);
+  });
+
+  it("reuses an equivalent restore point and hides legacy duplicates", async () => {
+    const { dataSource, service } = createService();
+    const deck = createDeck();
+    const putResponse = await service.putDeck(deck.projectId, { deck });
+    await service.appendPatch(deck.projectId, {
+      patch: createUpdateTitlePatch(deck, "Version 2"),
+    });
+
+    await service.restoreSnapshot(
+      deck.projectId,
+      putResponse.snapshot.snapshotId,
+    );
+    const versionTwoRestorePoint = dataSource.snapshotRows.find(
+      (snapshot) =>
+        snapshot.reason === "snapshot-restore" && snapshot.version === 2,
+    );
+    if (!versionTwoRestorePoint) {
+      throw new Error("Expected a restore point for version 2");
+    }
+
+    await service.restoreSnapshot(
+      deck.projectId,
+      versionTwoRestorePoint.snapshot_id,
+    );
+    const snapshotCountBeforeRepeatedRestore = dataSource.snapshotRows.length;
+    await service.restoreSnapshot(
+      deck.projectId,
+      putResponse.snapshot.snapshotId,
+    );
+
+    expect(dataSource.snapshotRows).toHaveLength(
+      snapshotCountBeforeRepeatedRestore,
+    );
+
+    dataSource.snapshotRows.push({
+      ...cloneSnapshotRow(versionTwoRestorePoint),
+      snapshot_id: "snapshot_restore_duplicate_1",
+      created_at: "2026-07-24T17:07:00.000Z",
+    });
+    const snapshots = await service.listSnapshots(deck.projectId);
+
+    expect(
+      snapshots.snapshots.filter(
+        (snapshot) =>
+          snapshot.reason === "snapshot-restore" && snapshot.version === 2,
+      ),
+    ).toHaveLength(1);
   });
 
   it("restores an OOXML-backed snapshot as the next version and enqueues sync", async () => {

@@ -40,6 +40,7 @@ from app.ai.deck_generation.models import (
     ValidationIssue,
     ValidationResult,
 )
+from app.ai.deck_generation.structural_policy import is_structural_slide_type
 
 
 @dataclass(frozen=True)
@@ -799,9 +800,12 @@ def validate_slide_source_ledger(
     slide_index: int,
 ) -> list[ValidationIssue]:
     ai_notes = slide.get("aiNotes", {})
-    if not isinstance(ai_notes, dict) or (
-        "visualPlan" not in ai_notes and "timingPlan" not in ai_notes
-    ):
+    if not isinstance(ai_notes, dict):
+        return []
+    visual_type = str(ai_notes.get("visualPlan", {}).get("visualType", ""))
+    if is_structural_slide_type(visual_type):
+        return []
+    if "visualPlan" not in ai_notes and "timingPlan" not in ai_notes:
         return []
     source_ledger = ai_notes.get("sourceLedger")
     if not isinstance(source_ledger, list) or not source_ledger:
@@ -1459,7 +1463,11 @@ def validate_presentation(deck: dict[str, Any]) -> list[ValidationIssue]:
         visual_type = str(
             slide.get("aiNotes", {}).get("visualPlan", {}).get("visualType", "")
         )
-        if slide_index > 0 and visual_type not in {"cover", "quote", "summary"}:
+        if (
+            slide_index > 0
+            and not is_structural_slide_type(visual_type)
+            and visual_type not in {"quote", "summary"}
+        ):
             if action_title_requires_attention(str(slide.get("title", ""))):
                 issues.append(
                     ValidationIssue(
@@ -1504,18 +1512,17 @@ def validate_presentation(deck: dict[str, Any]) -> list[ValidationIssue]:
 
     if profile in {"proposal", "product-launch", "executive-report"}:
         closing = deck["slides"][-1]
-        closing_visual_type = str(
-            closing.get("aiNotes", {}).get("visualPlan", {}).get("visualType", "")
-        )
-        has_thank_you_closing = closing_visual_type == "closing"
-        action_slides = deck["slides"][2:-1] if has_thank_you_closing else [closing]
-        action_text = " ".join(visible_slide_text(slide) for slide in action_slides)
-        if not has_profile_closing_action(action_text.casefold(), profile):
+        has_thank_you_closing = is_thank_you_closing(closing)
+        closing_text = visible_slide_text(closing)
+        if not has_thank_you_closing and not has_profile_closing_action(
+            closing_text.casefold(),
+            profile,
+        ):
             issues.append(
                 ValidationIssue(
                     code="CTA_MISSING",
-                    scope="deck" if has_thank_you_closing else "slide",
-                    path="slides" if has_thank_you_closing else f"slides.{len(deck['slides']) - 1}",
+                    scope="slide",
+                    path=f"slides.{len(deck['slides']) - 1}",
                     message=(
                         "마지막 슬라이드에 결정 또는 승인 요청이 필요합니다."
                         if profile == "executive-report"
@@ -1819,6 +1826,47 @@ def visible_slide_text(slide: dict[str, Any]) -> str:
         and element.get("role") not in {"caption", "footer"}
     )
     return " ".join(part for part in parts if part.strip())
+
+
+def is_thank_you_closing(slide: dict[str, Any]) -> bool:
+    visual_type = str(
+        slide.get("aiNotes", {}).get("visualPlan", {}).get("visualType", "")
+    )
+    if visual_type != "closing":
+        return False
+    if not is_short_closing_copy(str(slide.get("title", ""))):
+        return False
+
+    visible_copy = [
+        str(element.get("props", {}).get("text", ""))
+        for element in slide.get("elements", [])
+        if element.get("visible", True)
+        and element.get("type") == "text"
+        and element.get("role") not in {"caption", "footer"}
+        and str(element.get("props", {}).get("text", "")).strip()
+    ]
+    return all(is_short_closing_copy(text) for text in visible_copy)
+
+
+def is_short_closing_copy(value: str) -> bool:
+    normalized = normalize_structural_content_text(value)
+    if not normalized or len(normalized) > 60:
+        return False
+    exact_copy = {
+        "thankyou",
+        "thanks",
+        "마무리",
+        "끝",
+        "이상입니다",
+    }
+    closing_suffixes = (
+        "감사합니다",
+        "고맙습니다",
+        "마치겠습니다",
+        "마칩니다",
+        "마무리하겠습니다",
+    )
+    return normalized in exact_copy or normalized.endswith(closing_suffixes)
 
 
 def is_design_pack_grid_element(

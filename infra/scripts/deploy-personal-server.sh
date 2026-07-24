@@ -53,17 +53,47 @@ if [[ -n "$EXPECTED_SHA" && "$(git rev-parse HEAD)" != "$EXPECTED_SHA" ]]; then
   exit 1
 fi
 
+DEPLOY_SHA="$(git rev-parse HEAD)"
+IMAGE_TAG="$DEPLOY_BRANCH"
+WEB_IMAGE_TAG="$DEPLOY_SHA"
+export IMAGE_TAG WEB_IMAGE_TAG
+
+verify_app_images() {
+  local resolved_images
+  local image
+  local -a app_images
+
+  resolved_images="$(doppler run -- "${COMPOSE[@]}" config --images)"
+  mapfile -t app_images < <(
+    printf '%s\n' "$resolved_images" |
+      grep -E '/orbit-(api|worker|python-worker|web):' || true
+  )
+
+  if [[ "${#app_images[@]}" -ne 4 ]]; then
+    echo "Expected exactly four personal staging app images, found ${#app_images[@]}."
+    return 1
+  fi
+
+  for image in "${app_images[@]}"; do
+    if ! docker image inspect "$image" >/dev/null 2>&1; then
+      echo "Required personal staging app image is not available locally: $image"
+      return 1
+    fi
+  done
+}
+
 doppler run -- bash infra/scripts/check-personal-staging-env.sh
 doppler run -- "${COMPOSE[@]}" config --quiet
 
 if [[ "$DEPLOYMENT_MODE" == "environment-only" ]]; then
+  verify_app_images
   doppler run -- "${COMPOSE[@]}" run --rm --no-deps api \
     node -e 'const { loadOrbitConfig } = require("/app/packages/config/dist/index.js"); loadOrbitConfig(process.env, { service: "api" });'
   doppler run -- "${COMPOSE[@]}" run --rm --no-deps worker \
     node -e 'const { loadOrbitConfig } = require("/app/packages/config/dist/index.js"); loadOrbitConfig(process.env, { service: "worker" });'
   doppler run -- "${COMPOSE[@]}" run --rm --no-deps python-worker \
     uv run python -c 'from app.config import load_config; load_config()'
-  doppler run -- "${COMPOSE[@]}" up -d --no-build --force-recreate api worker python-worker web
+  doppler run -- "${COMPOSE[@]}" up -d --no-build --pull never --force-recreate api worker python-worker web
 else
   # Prepare service images. Use prebuilt GHCR images when a GHCR token is
   # available; otherwise fall back to building on-box so deploys keep working
@@ -83,8 +113,6 @@ else
     # commits that touch only scripts or docs do not trigger build-images, so
     # a per-SHA tag may not exist, while the branch tag always points at the
     # latest built app image.
-    IMAGE_TAG="${IMAGE_TAG:-$DEPLOY_BRANCH}"
-    export IMAGE_TAG
     ghcr_user="${GHCR_USERNAME:-$(doppler secrets get GHCR_USERNAME --plain 2>/dev/null || echo orbit-deploy)}"
     printf '%s' "$ghcr_token" | docker login "$IMAGE_REGISTRY" -u "$ghcr_user" --password-stdin
     doppler run -- "${COMPOSE[@]}" pull api worker python-worker
@@ -95,8 +123,6 @@ else
     # a web-changing commit deploys. Pull the per-SHA tag and fall back to an
     # on-box build when it is missing (build not finished, or a commit that did
     # not trigger build-web).
-    WEB_IMAGE_TAG="$(git rev-parse HEAD)"
-    export WEB_IMAGE_TAG
     if ! doppler run -- "${COMPOSE[@]}" pull web; then
       echo "web image ${WEB_IMAGE_TAG} not available; building web on-box as a fallback."
       doppler run -- "${COMPOSE[@]}" build web
@@ -104,9 +130,10 @@ else
   else
     doppler run -- "${COMPOSE[@]}" build
   fi
+  verify_app_images
   doppler run -- "${COMPOSE[@]}" up -d postgres redis minio minio-init
   doppler run -- "${COMPOSE[@]}" run --rm api corepack pnpm db:migration:run
-  doppler run -- "${COMPOSE[@]}" up -d
+  doppler run -- "${COMPOSE[@]}" up -d --pull never
 fi
 
 for attempt in $(seq 1 30); do

@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 import app.ai.deck_generation.design_planning as design_planning_module
+import app.ai.deck_generation.stage_runtime as stage_runtime_module
 from app.ai.design_program import DeckDesignProgram
 from app.ai.deck_generation.content_planning import (
     compose_cover_detail,
@@ -17,6 +18,7 @@ from app.ai.deck_generation.design_planning import resolve_style_prompt_context
 from app.ai.deck_generation.diagnostics import assemble_generation_diagnostics
 from app.ai.deck_generation.models import (
     ContentPlan,
+    ContentFactIssue,
     CoverContent,
     GenerationDiagnosticsInput,
     GenerationDiagnosticsResult,
@@ -34,10 +36,12 @@ from app.ai.deck_generation.stage_runtime import (
     ContentPlanningStageInput,
     DesignPlanningStageInput,
     LayoutCompileStageInput,
+    SlideComposeStageInput,
     SourceGroundingStageInput,
     run_content_planning_stage,
     run_design_planning_stage,
     run_layout_compile_stage,
+    run_slide_compose_stage,
     run_source_grounding_stage,
 )
 
@@ -130,7 +134,11 @@ def test_staged_story_plan_uses_one_llm_call_without_slide_details() -> None:
     assert responses.calls == 1
     assert content.slide_plans[0].cover_content is not None
     assert content.slide_plans[0].slide_type == "cover"
-    assert all(not slide.speaker_notes for slide in content.slide_plans)
+    assert all(
+        bool(slide.speaker_notes)
+        == (slide.slide_type in {"cover", "agenda", "closing"})
+        for slide in content.slide_plans
+    )
     assert all(not slide.content_items for slide in content.slide_plans)
 
 
@@ -298,3 +306,101 @@ def test_planning_stage_runtime_preserves_typed_stage_boundaries(
         for order in range(1, content.content_plan.slide_count + 1)
     ]
     assert "slides" not in layout.deck_shell
+
+    agenda_manifest = layout.slides[1]
+    agenda = run_slide_compose_stage(
+        SlideComposeStageInput(
+            rawInput=content.raw_input,
+            contentPlan=content.content_plan,
+            designPlan=design.design_plan,
+            sourceOrder=agenda_manifest.source_order,
+            order=agenda_manifest.order,
+            slideId=agenda_manifest.slide_id,
+        )
+    )
+    agenda_text = " ".join(
+        str(element.get("props", {}).get("text", ""))
+        for element in agenda.slide["elements"]
+        if element.get("type") == "text"
+    )
+    body_titles = [
+        slide.title
+        for slide in content.content_plan.slide_plans
+        if 2 < slide.order < content.content_plan.slide_count
+    ]
+    assert body_titles
+    assert all(title in agenda_text for title in body_titles[:6])
+
+    content.raw_input.fact_repair_eligible_slide_orders = [2]
+    validated_items: list[list[str]] = []
+
+    def validate_agenda_detail(
+        _raw_input: Any,
+        target: SlidePlan,
+        _all_slides: list[SlidePlan],
+    ) -> tuple[list[ContentFactIssue], int]:
+        validated_items.append([item.text for item in target.content_items])
+        return (
+            [
+                ContentFactIssue(
+                    code="FACT_REPAIR_REQUIRED",
+                    message="repair required",
+                    slideOrder=2,
+                    priority=2,
+                )
+            ],
+            1,
+        )
+
+    def compose_incorrect_agenda(
+        _raw_input: Any,
+        target: SlidePlan,
+        _style_context: Any,
+        **_kwargs: Any,
+    ) -> SlidePlan:
+        raise AssertionError("agenda compose must not call the LLM repair path")
+
+    monkeypatch.setattr(
+        stage_runtime_module,
+        "validate_slide_detail",
+        validate_agenda_detail,
+    )
+    monkeypatch.setattr(
+        stage_runtime_module,
+        "compose_slide_detail_with_llm",
+        compose_incorrect_agenda,
+    )
+
+    validated_agenda = run_slide_compose_stage(
+        SlideComposeStageInput(
+            rawInput=content.raw_input,
+            contentPlan=content.content_plan,
+            designPlan=design.design_plan,
+            sourceOrder=agenda_manifest.source_order,
+            order=agenda_manifest.order,
+            slideId=agenda_manifest.slide_id,
+        )
+    )
+
+    assert validated_agenda.fact_diagnostics.repair_attempted is False
+    assert validated_items == [body_titles[:6]]
+    assert validated_agenda.slide["aiNotes"]["sourceLedger"] == []
+
+    closing_manifest = layout.slides[-1]
+    validated_closing = run_slide_compose_stage(
+        SlideComposeStageInput(
+            rawInput=content.raw_input,
+            contentPlan=content.content_plan,
+            designPlan=design.design_plan,
+            sourceOrder=closing_manifest.source_order,
+            order=closing_manifest.order,
+            slideId=closing_manifest.slide_id,
+        )
+    )
+
+    assert validated_closing.fact_diagnostics.repair_attempted is False
+    assert validated_closing.slide["aiNotes"]["sourceLedger"] == []
+    assert all(
+        element.get("role") not in {"body", "highlight"}
+        for element in validated_closing.slide["elements"]
+    )

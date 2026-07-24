@@ -49,12 +49,25 @@ from app.ai.deck_generation.source_grounding import (
     reference_keywords_for,
     unique_non_empty,
 )
+from app.ai.deck_generation.structural_policy import (
+    body_slide_orders,
+    is_body_slide_type,
+    is_structural_slide_type,
+    resolve_constraint_order,
+)
 
 
 DECK_CONTENT_PLAN_CACHE_VERSION = "v4"
 
 
 SPEAKER_NOTES_CHARS_PER_MINUTE = 400
+
+
+STRUCTURAL_SPEAKER_NOTES_MAX_CHARS = {
+    "cover": 140,
+    "agenda": 180,
+    "closing": 100,
+}
 
 
 DECK_CONTENT_PLAN_CACHE_MAX = 128
@@ -104,10 +117,12 @@ Rules:
 - Return evidenceObligations for open-ended domain claims, constraints, and
   exceptions. User wording such as 반드시 포함, 주의, 제외, 예외, 조건, and 금지
   is always a candidate. evidenceText must be copied from the referenced source.
-- Assign every obligation to a slide through obligationRefs.
+- Assign every obligation to a body slide through obligationRefs. Never assign
+  facts, obligations, or placement constraints to agenda or closing slides.
 - Return one communicationContract. Explicit user placement wins over inference;
   for example, a request to put an identifier in the cover subtitle must become
-  a cover/subtitle placementConstraint. Assumptions never satisfy evidence.
+  a cover/subtitle placementConstraint. Other placements must use slideRole=body.
+  slideOrder is the absolute final deck order. Assumptions never satisfy evidence.
 - Do not create per-slide speaker notes, content items, keywords, visual intent,
   media intent, coordinates, or final Deck JSON. coverContent.speakerNotes is the
   only speaker-note field allowed in this story response.
@@ -333,7 +348,7 @@ def story_plan_response_format_for(raw_input: RawInput) -> dict[str, Any]:
                                         "targetId": {"type": "string"},
                                         "slideRole": {
                                             "type": "string",
-                                            "enum": ["cover", "body", "closing"],
+                                            "enum": ["cover", "body"],
                                         },
                                         "elementRole": {
                                             "type": "string",
@@ -914,6 +929,40 @@ def apply_timing_to_slide_plans(
         raw_input.timing_plan.target_total_chars,
         weights,
     )
+    body_indices = [
+        index
+        for index, slide_plan in enumerate(slide_plans)
+        if is_body_slide_type(slide_plan.slide_type)
+    ]
+    structural_notes: dict[int, str] = {}
+    structural_remainder = 0
+    for index, slide_plan in enumerate(slide_plans):
+        maximum_chars = STRUCTURAL_SPEAKER_NOTES_MAX_CHARS.get(
+            slide_plan.slide_type
+        )
+        if maximum_chars is None:
+            continue
+        bounded_target = min(note_chars[index], maximum_chars)
+        note = structural_speaker_notes_for_slide(
+            raw_input,
+            slide_plan,
+            slide_plans,
+            maximum_chars=bounded_target,
+        )
+        structural_remainder += note_chars[index] - bounded_target
+        note_chars[index] = bounded_target
+        structural_notes[index] = note
+    if structural_remainder > 0 and body_indices:
+        redistributed = allocate_weighted_integers(
+            structural_remainder,
+            [weights[index] for index in body_indices],
+        )
+        for index, additional_chars in zip(
+            body_indices,
+            redistributed,
+            strict=True,
+        ):
+            note_chars[index] += additional_chars
     for slide_plan, target_seconds, target_spoken_seconds, target_chars in zip(
         slide_plans,
         seconds,
@@ -925,7 +974,15 @@ def apply_timing_to_slide_plans(
         slide_plan.target_spoken_seconds = target_spoken_seconds
         slide_plan.target_speaker_notes_chars = target_chars
         slide_plan.speaker_notes = " ".join(slide_plan.speaker_notes.split())
-        compact_dense_speaker_notes(slide_plan)
+    for index, slide_plan in enumerate(slide_plans):
+        if index in structural_notes:
+            slide_plan.speaker_notes = structural_notes[index]
+            if slide_plan.cover_content is not None:
+                slide_plan.cover_content = slide_plan.cover_content.model_copy(
+                    update={"speaker_notes": structural_notes[index]}
+                )
+        else:
+            compact_dense_speaker_notes(slide_plan)
     ensure_research_first_web_source_coverage(raw_input, slide_plans)
     return slide_plans
 
@@ -956,7 +1013,13 @@ def ensure_research_first_web_source_coverage(
     ]
     if not missing_ids:
         return
-    eligible_slides = slide_plans[1:-1] or slide_plans
+    eligible_slides = [
+        slide_plan
+        for slide_plan in slide_plans
+        if is_body_slide_type(slide_plan.slide_type)
+    ]
+    if not eligible_slides:
+        return
     for index, source_id in enumerate(missing_ids):
         slide_plan = eligible_slides[index % len(eligible_slides)]
         slide_plan.source_refs = [*slide_plan.source_refs, source_id]
@@ -1668,17 +1731,18 @@ def repair_short_speaker_notes_with_llm(
     short_slides = [
         slide
         for slide in slide_plans
-        if slide.target_speaker_notes_chars > 0
+        if is_body_slide_type(slide.slide_type)
+        and slide.target_speaker_notes_chars > 0
         and count_speaker_note_chars(slide.speaker_notes)
         < speaker_notes_minimum_chars(slide.target_speaker_notes_chars)
     ]
     if not short_slides:
-        return slide_plans
+        return ensure_deck_minimum_speaker_notes(raw_input, slide_plans)
 
     api_client: Any = client
     if api_client is None:
         if not api_key:
-            return slide_plans
+            return ensure_deck_minimum_speaker_notes(raw_input, slide_plans)
         from openai import OpenAI
 
         api_client = OpenAI(api_key=api_key)
@@ -1824,6 +1888,13 @@ def repair_short_speaker_notes_with_llm(
         grounded_chars = count_speaker_note_chars(grounded_notes)
         if minimum_chars <= grounded_chars <= maximum_chars:
             slide.speaker_notes = grounded_notes
+    return ensure_deck_minimum_speaker_notes(raw_input, slide_plans)
+
+
+def ensure_deck_minimum_speaker_notes(
+    raw_input: RawInput,
+    slide_plans: list[SlidePlan],
+) -> list[SlidePlan]:
     minimum_total_chars = round(
         raw_input.target_duration_minutes
         * raw_input.timing_plan.chars_per_minute
@@ -1833,8 +1904,19 @@ def repair_short_speaker_notes_with_llm(
         count_speaker_note_chars(slide.speaker_notes) for slide in slide_plans
     )
     if actual_total_chars < minimum_total_chars:
+        body_slides = [
+            slide
+            for slide in slide_plans
+            if is_body_slide_type(slide.slide_type)
+        ]
+        source_records = {
+            source.source_id: source
+            for source in (
+                raw_input.source_records or initial_source_records(raw_input)
+            )
+        }
         for slide in sorted(
-            slide_plans,
+            body_slides,
             key=lambda item: (
                 speaker_notes_maximum_chars(item.target_speaker_notes_chars)
                 - count_speaker_note_chars(item.speaker_notes)
@@ -1856,8 +1938,6 @@ def repair_short_speaker_notes_with_llm(
                 if (source := source_records.get(source_id)) is not None
                 for fragment in speaker_note_fragments(source.content)
             ]
-            if not source_fragments:
-                continue
             required_chars = min(
                 maximum_chars,
                 current_chars + minimum_total_chars - actual_total_chars,
@@ -1868,6 +1948,7 @@ def repair_short_speaker_notes_with_llm(
                     *source_fragments,
                     *[content_item.text for content_item in slide.content_items],
                     slide.message,
+                    *grounded_speaker_note_transitions(slide),
                 ],
                 minimum_chars=required_chars,
                 preferred_max_chars=maximum_chars,
@@ -2147,6 +2228,265 @@ def agenda_section_slides(slide_plans: list[SlidePlan]) -> list[SlidePlan]:
     return [body_slides[index] for index in dict.fromkeys(indices)]
 
 
+def structural_speaker_notes_for_slide(
+    raw_input: RawInput,
+    target: SlidePlan,
+    slide_plans: list[SlidePlan],
+    *,
+    maximum_chars: int | None = None,
+) -> str:
+    if target.slide_type == "cover":
+        candidates = [
+            f"안녕하세요. 오늘은 {raw_input.topic}에 대해 말씀드리겠습니다.",
+            "먼저 발표의 배경과 목적을 공유하겠습니다.",
+            "이어지는 장표에서 핵심 내용을 순서대로 살펴보겠습니다.",
+            "각 내용을 실제 맥락과 연결해 이해할 수 있도록 설명하겠습니다.",
+            "발표 전체에서 반복해서 확인할 기준도 함께 짚어보겠습니다.",
+            "마지막에는 앞선 내용을 하나의 흐름으로 정리하겠습니다.",
+        ]
+    elif target.slide_type == "agenda":
+        sections = agenda_section_slides(slide_plans)
+        candidates = ["발표 순서를 간단히 말씀드리겠습니다."]
+        for index, section in enumerate(sections):
+            if index == 0:
+                candidates.append(f"먼저 {section.title}를 살펴보겠습니다.")
+            elif index == len(sections) - 1:
+                candidates.append(f"마지막으로 {section.title}를 정리하겠습니다.")
+            else:
+                candidates.append(f"이어서 {section.title}를 확인하겠습니다.")
+        candidates.extend(
+            [
+                "각 항목에서는 핵심 배경과 주요 내용을 차례로 설명하겠습니다.",
+                "앞선 내용이 다음 주제와 어떻게 연결되는지도 함께 살펴보겠습니다.",
+                "이 순서를 따라가며 발표의 전체 흐름을 정리하겠습니다.",
+                "각 장표의 핵심 메시지와 근거가 연결되는 지점도 짚겠습니다.",
+                "발표를 마칠 때 기억해야 할 내용을 마지막에 다시 묶겠습니다.",
+            ]
+        )
+    else:
+        candidates = [
+            f"이상으로 {raw_input.topic} 발표를 마치겠습니다.",
+            "오늘 살펴본 핵심 내용을 기준으로 발표를 정리하겠습니다.",
+            "발표 내용이 이후 논의를 이해하는 데 도움이 되길 바랍니다.",
+            "경청해 주셔서 감사합니다.",
+            "앞서 말씀드린 내용이 주제를 정리하는 기준으로 남기를 바랍니다.",
+        ]
+    notes = remove_redundant_speaker_note_sentences(" ".join(candidates))
+    allowed_chars = maximum_chars or STRUCTURAL_SPEAKER_NOTES_MAX_CHARS[
+        target.slide_type
+    ]
+    if count_speaker_note_chars(notes) > allowed_chars:
+        notes = trim_speaker_notes_to_chars(notes, allowed_chars)
+    additions = {
+        "cover": [
+            "차분히 시작하겠습니다.",
+            "핵심에 집중하겠습니다.",
+        ],
+        "agenda": [
+            "순서대로 이어가겠습니다.",
+            "흐름을 함께 보겠습니다.",
+        ],
+        "closing": [
+            "이상으로 마치겠습니다.",
+        ],
+    }[target.slide_type]
+    for addition in additions:
+        candidate = f"{notes} {addition}".strip()
+        if count_speaker_note_chars(candidate) <= allowed_chars:
+            notes = candidate
+    return notes
+
+
+def normalize_story_structural_policy(
+    plan: GeneratedStoryPlan,
+) -> GeneratedStoryPlan:
+    normalized = plan.model_copy(deep=True)
+    total = len(normalized.slides)
+    if not total:
+        return normalized
+
+    for order, slide in enumerate(normalized.slides, start=1):
+        expected_type = slide_type_for(order, total)
+        if expected_type in {"cover", "agenda", "closing"}:
+            slide.slide_type = expected_type
+        elif is_structural_slide_type(slide.slide_type):
+            slide.slide_type = expected_type
+
+    slide_types = {
+        order: slide.slide_type
+        for order, slide in enumerate(normalized.slides, start=1)
+    }
+    body_orders = body_slide_orders(slide_types)
+    body_order_set = set(body_orders)
+    first_body_order = body_orders[0] if body_orders else None
+
+    normalized_constraints = []
+    explicit_cover_target_ids: set[str] = set()
+    for constraint in normalized.communication_contract.placement_constraints:
+        if (
+            constraint.slide_role == "cover"
+            and constraint.element_role in {"title", "subtitle"}
+        ):
+            explicit_cover_target_ids.add(constraint.target_id)
+            normalized_constraints.append(
+                constraint.model_copy(update={"slide_order": 1})
+            )
+            continue
+        if first_body_order is None:
+            continue
+        normalized_constraints.append(
+            constraint.model_copy(
+                update={
+                    "slide_role": "body",
+                    "slide_order": resolve_constraint_order(
+                        "body",
+                        constraint.slide_order,
+                        slide_types,
+                    ),
+                }
+            )
+        )
+    normalized.communication_contract = (
+        normalized.communication_contract.model_copy(
+            update={"placement_constraints": normalized_constraints}
+        )
+    )
+
+    fact_sources = {
+        fact.fact_id: list(fact.source_refs) for fact in normalized.critical_facts
+    }
+    obligations = {
+        obligation.obligation_id: obligation
+        for obligation in normalized.evidence_obligations
+    }
+    cover_source_refs = list(
+        dict.fromkeys(
+            source_ref
+            for target_id in explicit_cover_target_ids
+            for source_ref in (
+                obligations[target_id].source_refs
+                if target_id in obligations
+                else fact_sources.get(target_id, [])
+            )
+        )
+    )
+    orphaned_obligation_ids: list[str] = []
+    for order, slide in enumerate(normalized.slides, start=1):
+        if order in body_order_set:
+            continue
+        retained_obligations = (
+            [
+                obligation_id
+                for obligation_id in slide.obligation_refs
+                if obligation_id in explicit_cover_target_ids
+            ]
+            if slide.slide_type == "cover"
+            else []
+        )
+        orphaned_obligation_ids.extend(
+            obligation_id
+            for obligation_id in slide.obligation_refs
+            if obligation_id not in retained_obligations
+        )
+        slide.obligation_refs = retained_obligations
+        slide.source_refs = (
+            cover_source_refs if slide.slide_type == "cover" else []
+        )
+
+    for obligation_id in dict.fromkeys(orphaned_obligation_ids):
+        obligation = obligations.get(obligation_id)
+        if obligation is None:
+            continue
+        canonical_tokens = set(
+            re.findall(
+                r"[0-9A-Za-z가-힣]{2,}",
+                unicodedata.normalize(
+                    "NFKC",
+                    obligation.canonical_text,
+                ).casefold(),
+            )
+        )
+        candidates: list[tuple[tuple[int, int, int], int]] = []
+        for order in body_orders:
+            slide = normalized.slides[order - 1]
+            slide_text = f"{slide.title}\n{slide.message}"
+            slide_tokens = set(
+                re.findall(
+                    r"[0-9A-Za-z가-힣]{2,}",
+                    unicodedata.normalize("NFKC", slide_text).casefold(),
+                )
+            )
+            claim_score = len(canonical_tokens & slide_tokens)
+            source_score = len(
+                set(obligation.source_refs) & set(slide.source_refs)
+            )
+            if claim_score == 0 and source_score == 0:
+                continue
+            candidates.append(((claim_score, source_score, -order), order))
+        if not candidates:
+            continue
+        selected_order = max(candidates)[1]
+        selected = normalized.slides[selected_order - 1]
+        selected.obligation_refs = list(
+            dict.fromkeys([*selected.obligation_refs, obligation_id])
+        )
+    return normalized
+
+
+def compose_agenda_detail(
+    raw_input: RawInput,
+    target: SlidePlan,
+    slide_plans: list[SlidePlan],
+) -> SlidePlan:
+    sections = agenda_section_slides(slide_plans)
+    return target.model_copy(
+        deep=True,
+        update={
+            "speaker_notes": (
+                target.speaker_notes
+                or structural_speaker_notes_for_slide(
+                    raw_input,
+                    target,
+                    slide_plans,
+                )
+            ),
+            "content_items": [
+                GeneratedContentItem(
+                    contentItemId=f"content_{target.order}_agenda_{index}",
+                    text=section.title,
+                )
+                for index, section in enumerate(sections, start=1)
+            ],
+            "media_intent": MediaIntent(),
+        },
+    )
+
+
+def compose_closing_detail(
+    raw_input: RawInput,
+    target: SlidePlan,
+    slide_plans: list[SlidePlan],
+) -> SlidePlan:
+    return target.model_copy(
+        deep=True,
+        update={
+            "speaker_notes": (
+                target.speaker_notes
+                or structural_speaker_notes_for_slide(
+                    raw_input,
+                    target,
+                    slide_plans,
+                )
+            ),
+            "keywords": [],
+            "media_intent": MediaIntent(),
+            "content_items": [],
+            "source_refs": [],
+            "obligation_refs": [],
+        },
+    )
+
+
 def normalize_structural_slide_plans(
     raw_input: RawInput,
     slide_plans: list[SlidePlan],
@@ -2173,11 +2513,14 @@ def normalize_structural_slide_plans(
             slide.title = "목차"
             slide.message = "발표 순서"
             slide.media_intent = MediaIntent()
+            slide.source_refs = []
+            slide.obligation_refs = []
         elif slide.slide_type == "closing":
             slide.title = "감사합니다"
             slide.message = "경청해 주셔서 감사합니다."
             slide.content_items = []
             slide.media_intent = MediaIntent()
+            slide.source_refs = []
             slide.obligation_refs = []
 
     agenda = normalized[1] if len(normalized) >= 2 else None
@@ -2190,13 +2533,8 @@ def normalize_structural_slide_plans(
             )
             for index, section in enumerate(sections, start=1)
         ]
-        agenda.source_refs = list(
-            dict.fromkeys(
-                source_ref
-                for section in sections
-                for source_ref in section.source_refs
-            )
-        )
+        agenda.source_refs = []
+        agenda.obligation_refs = []
     return normalized
 
 
@@ -2496,6 +2834,10 @@ def plan_deck_content(
                     api_key=api_key,
                 )
                 deduplicate_speaker_notes_across_slides(slide_plans)
+            slide_plans = ensure_deck_minimum_speaker_notes(
+                raw_input,
+                slide_plans,
+            )
             slide_plans = compact_program_v2_content_items(slide_plans)
             slide_plans = normalize_program_v2_action_titles(slide_plans)
             return (
@@ -2601,7 +2943,9 @@ def repair_story_plan_with_llm(
             instructions=(
                 "Return only JSON matching the schema. Repair only eligible slides. "
                 "Do not add, delete, or reorder slides. Preserve source fidelity and "
-                "change only title, message, slideType, sourceRefs, and obligationRefs."
+                "change only title, message, slideType, sourceRefs, and obligationRefs. "
+                "Eligible slides are body slides; never move facts or obligations to "
+                "cover, agenda, or closing slides."
             ),
             input=prompt,
             text=story_repair_response_format_for(
@@ -2735,6 +3079,7 @@ def plan_story_content(
                 ],
             },
         )
+        generated = normalize_story_structural_policy(generated)
         initial_fact_issues = validate_story_plan(
             raw_input,
             generated,
@@ -2743,7 +3088,12 @@ def plan_story_content(
         validation_duration_ms = round(
             (time.perf_counter() - validation_started) * 1000
         )
-        eligible_orders = select_repair_slide_orders(initial_fact_issues)
+        eligible_orders = [
+            order
+            for order in select_repair_slide_orders(initial_fact_issues)
+            if order <= len(generated.slides)
+            and is_body_slide_type(generated.slides[order - 1].slide_type)
+        ]
         repair_started = time.perf_counter()
         repaired = (
             repair_story_plan_with_llm(
@@ -2761,7 +3111,7 @@ def plan_story_content(
         )
         repair_duration_ms = round((time.perf_counter() - repair_started) * 1000)
         if repaired is not None:
-            generated = repaired
+            generated = normalize_story_structural_policy(repaired)
         second_validation_started = time.perf_counter()
         final_fact_issues = validate_story_plan(
             raw_input,
@@ -2823,13 +3173,19 @@ def plan_story_content(
                     "LLM story plan referenced unavailable source IDs: "
                     + ", ".join(sorted(unknown_refs))
                 )
-            source_refs = story_source_refs or default_source_refs(raw_input, order)
             fallback_type = slide_type_for(order, raw_input.slide_count)
             slide_type = normalize_slide_type(story_slide.slide_type, fallback_type)
             if fallback_type in {"cover", "agenda", "closing"}:
                 slide_type = fallback_type
             elif slide_type in {"cover", "agenda", "closing"}:
                 slide_type = fallback_type
+            source_refs = (
+                story_source_refs or default_source_refs(raw_input, order)
+                if is_body_slide_type(slide_type)
+                else story_source_refs
+                if slide_type == "cover"
+                else []
+            )
             slide_plans.append(
                 SlidePlan(
                     order=order,
@@ -2902,12 +3258,17 @@ def normalize_cover_content(
 
 def compose_cover_detail(raw_input: RawInput, target: SlidePlan) -> SlidePlan:
     cover = target.cover_content or normalize_cover_content(raw_input, None, target)
+    speaker_notes = (
+        target.speaker_notes
+        or structural_speaker_notes_for_slide(raw_input, target, [target])
+    )
+    cover = cover.model_copy(update={"speaker_notes": speaker_notes})
     return target.model_copy(
         deep=True,
         update={
             "title": cover.title,
             "message": cover.subtitle or cover.title,
-            "speaker_notes": cover.speaker_notes,
+            "speaker_notes": speaker_notes,
             "keywords": keywords_for(raw_input.topic, raw_input.prompt)[:6],
             "media_intent": MediaIntent(
                 kind=(
@@ -3030,8 +3391,6 @@ def compose_slide_detail_with_llm(
     ]
     if target.slide_type in {"cover", "closing"}:
         content_items: list[GeneratedContentItem] = []
-    elif target.slide_type == "agenda":
-        content_items = list(target.content_items)
     else:
         content_items = generated_content_items or content_items_from_message(
             target.message,
@@ -3559,9 +3918,9 @@ def uses_conversational_design_flow(raw_input: RawInput) -> bool:
 
 
 PRESENTATION_PROFILE_BEATS: dict[PresentationProfile, tuple[str, ...]] = {
-    "proposal": ("context", "problem", "question", "solution", "evidence", "execution", "CTA"),
-    "executive-report": ("conclusion", "evidence", "impact", "risk", "decision request"),
-    "product-launch": ("anticipation", "differentiator", "experience", "evidence", "release information", "CTA"),
+    "proposal": ("context", "problem", "question", "solution", "evidence", "execution"),
+    "executive-report": ("conclusion", "evidence", "impact", "risk"),
+    "product-launch": ("anticipation", "differentiator", "experience", "evidence", "release information"),
     "education": ("objective", "concept", "example", "application", "summary", "questions"),
     "technical": ("problem", "principle", "architecture", "flow", "trade-off", "result"),
     "research": ("research question", "method", "result", "interpretation", "limitation", "conclusion"),
@@ -3580,7 +3939,7 @@ def presentation_rule_prompt(raw_input: RawInput) -> list[str]:
         "Keep body content within six rendered lines and move detail into speakerNotes.",
         "Always use slide 1 as cover, slide 2 as agenda, and the final slide as closing; use every slide between them for body content.",
         "The cover contains only a title and concise subtitle. The agenda contains 1-6 labels copied from actual body slide titles.",
-        "The closing title is '감사합니다' and may contain only a short thank-you subtitle; place every CTA, question, contact detail, summary, statistic, bullet, profile-specific decision, concrete next action, or release detail in body slides before it.",
+        "The closing title is '감사합니다' and may contain only a short thank-you subtitle.",
         "merge adjacent beats for short decks, expand evidence, examples, or execution for long decks, and never repeat a message to fill slide count.",
         "Ground every factual claim and number in the supplied sources.",
     ]

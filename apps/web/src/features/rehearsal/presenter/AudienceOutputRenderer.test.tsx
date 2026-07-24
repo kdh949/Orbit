@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { createActivitySlide, createDemoDeck } from "@orbit/editor-core";
 import { p0AnimationDeck } from "./__fixtures__/animationDeck";
 import {
   AudienceOutputRenderer,
@@ -10,7 +11,17 @@ import {
 import { createPresenterSlideshowState } from "./presenterStateStore";
 
 vi.mock("./SlideshowRenderer", () => ({
-  SlideshowRenderer: () => <div>Slideshow Renderer</div>,
+  SlideshowRenderer: (props: {
+    activityElementRuntime?: { passcodeState: { status: string } };
+  }) => (
+    <div
+      data-passcode-status={
+        props.activityElementRuntime?.passcodeState.status
+      }
+    >
+      Slideshow Renderer
+    </div>
+  ),
 }));
 
 const audienceOutputRendererSourcePath = fileURLToPath(
@@ -30,6 +41,40 @@ describe("AudienceOutputRenderer", () => {
 
     expect(html).toContain("Slideshow Renderer");
     expect(html).not.toContain("첫 문장입니다");
+  });
+
+  it("renders editable Activity design with the injected runtime", () => {
+    const base = createDemoDeck();
+    const activitySlide = createActivitySlide(base, "poll", {
+      preset: "spotlight",
+    });
+    const deck = {
+      ...base,
+      slides: [...base.slides, activitySlide],
+    };
+    const html = renderToStaticMarkup(
+      <AudienceOutputRenderer
+        activityElementRuntime={{
+          audienceUrl: "https://orbit.example/audience/session_live",
+          passcodeState: {
+            status: "private",
+            displayPasscode: "4821",
+          },
+        }}
+        deck={deck}
+        scale={0.5}
+        state={{
+          ...createPresenterSlideshowState(deck),
+          slideId: activitySlide.slideId,
+          slideIndex: deck.slides.length - 1,
+        }}
+        triggerAnimationIds={[]}
+      />,
+    );
+
+    expect(html).toContain("Slideshow Renderer");
+    expect(html).toContain('data-passcode-status="private"');
+    expect(html).not.toContain("청중 참여 장표");
   });
 
   it("renders only a black surface and small logo in black mode", () => {

@@ -26,30 +26,35 @@ def run_bitmap_decode_with_timeout(
         raise PptxRenderResourceLimitError(timeout_code)
 
     started_at = time.monotonic()
-    can_interrupt = (
-        threading.current_thread() is threading.main_thread()
-        and hasattr(signal, "SIGALRM")
-        and hasattr(signal, "setitimer")
-        and signal.getitimer(signal.ITIMER_REAL)[0] == 0
-    )
-    if not can_interrupt:
+    sigalrm = getattr(signal, "SIGALRM", None)
+    itimer_real = getattr(signal, "ITIMER_REAL", None)
+    getitimer = getattr(signal, "getitimer", None)
+    setitimer = getattr(signal, "setitimer", None)
+    if (
+        threading.current_thread() is not threading.main_thread()
+        or sigalrm is None
+        or itimer_real is None
+        or not callable(getitimer)
+        or not callable(setitimer)
+        or getitimer(itimer_real)[0] != 0
+    ):
         result = operation()
         if time.monotonic() - started_at > timeout_seconds:
             raise PptxRenderResourceLimitError(timeout_code)
         return result
 
-    previous_handler = signal.getsignal(signal.SIGALRM)
+    previous_handler = signal.getsignal(sigalrm)
 
     def deadline_reached(_signum: int, _frame: object) -> None:
         raise PptxRenderResourceLimitError(timeout_code)
 
-    signal.signal(signal.SIGALRM, deadline_reached)
-    signal.setitimer(signal.ITIMER_REAL, timeout_seconds)
+    signal.signal(sigalrm, deadline_reached)
+    setitimer(itimer_real, timeout_seconds)
     try:
         return operation()
     finally:
-        signal.setitimer(signal.ITIMER_REAL, 0)
-        signal.signal(signal.SIGALRM, previous_handler)
+        setitimer(itimer_real, 0)
+        signal.signal(sigalrm, previous_handler)
 
 
 def validate_rendered_bitmap(

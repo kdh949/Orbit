@@ -4,6 +4,7 @@ import {
   aiDeckPreviewResponseSchema,
   deckShellSchema,
   deckSchema,
+  effectiveGeneratedSlideCountRange,
   generateDeckResponseSchema,
   generateDeckStoredJobPayloadSchema,
   jobErrorSchema,
@@ -223,7 +224,12 @@ export class AiDeckPreviewService {
 
     return projectAiDeckPreview({
       job: parsedJob,
-      expectedSlideCountRange: storedPayload.request.slideCountRange,
+      // The worker floors the generated count/range to a minimum (see
+      // effectiveGeneratedSlideCountRange), so surface the same floored range or
+      // the preview would promise fewer slides than the deck actually produces.
+      expectedSlideCountRange: effectiveGeneratedSlideCountRange(
+        storedPayload.request.slideCountRange,
+      ),
       stageRows: rows(stageRows).map((row) => stageRowSchema.parse(row)),
       planningRows: rows(planningRows).map((row) =>
         planningRowSchema.parse(row),

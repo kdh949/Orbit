@@ -100,8 +100,14 @@ const createdAt = "2026-06-29T00:00:00.000Z";
 const rehearsalWorkspaceSourcePath = fileURLToPath(
   new URL("./RehearsalWorkspace.tsx", import.meta.url),
 );
+const livePresentationOutputSourcePath = fileURLToPath(
+  new URL("../presentation/useLivePresentationOutput.ts", import.meta.url),
+);
 const rehearsalWorkspaceCssPath = fileURLToPath(
   new URL("./rehearsal-workspace-orbit.css", import.meta.url),
+);
+const globalStylesPath = fileURLToPath(
+  new URL("../../styles.css", import.meta.url),
 );
 const editorTopbarSourcePath = fileURLToPath(
   new URL("../editor/shell/components/EditorTopbar.tsx", import.meta.url),
@@ -145,6 +151,35 @@ vi.mock("react-konva", () => {
 });
 
 describe("RehearsalWorkspace", () => {
+  it("isolates a rehearsal-purpose companion session from rehearsal runs", () => {
+    const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
+
+    expect(source).toContain("ensurePresenterCompanionSession");
+    expect(source).toContain('sessionPurpose: "rehearsal"');
+    expect(source).toContain("closeRehearsalCompanionSession");
+    expect(source).not.toContain(
+      "startPresentationRuntime({\n      projectId: deck.projectId",
+    );
+  });
+
+  it("does not create a rehearsal companion session while the feature is disabled", () => {
+    const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
+    const effectStart = source.indexOf(
+      "if (!presenterCompanionEnabled || !deck || props.presenterWindow)",
+    );
+    const effectEnd = source.indexOf(
+      "useEffect(() => {",
+      effectStart + 1,
+    );
+    const effect = source.slice(effectStart, effectEnd);
+
+    expect(effectStart).toBeGreaterThan(-1);
+    expect(effect).toContain(
+      "void ensureRehearsalCompanionSession().catch(() => undefined)",
+    );
+    expect(effect).toContain("presenterCompanionEnabled,");
+  });
+
   it("measures the presenter stage before painting the slide at an incorrect scale", () => {
     const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
     const hookStart = source.indexOf("function usePresenterStageScale");
@@ -663,7 +698,8 @@ describe("RehearsalWorkspace", () => {
     expect(html).toContain("대본");
     expect(html).toContain("현재 슬라이드");
     expect(html).toContain("다음 슬라이드");
-    expect(html).toContain("핵심 키워드");
+    expect(html).toContain('aria-label="발표 진행 패널"');
+    expect(html).toContain('aria-label="키워드 체크리스트"');
     expect(html).toContain("타이머");
     expect(html).not.toContain("슬라이드 목표");
     expect(html).toContain("첫 문장입니다");
@@ -691,6 +727,8 @@ describe("RehearsalWorkspace", () => {
     expect(commandBody).toContain("pauseActiveRehearsal()");
     expect(commandBody).toContain('command.action === "timer-reset"');
     expect(commandBody).toContain("resetRehearsalTimerState");
+    expect(commandBody).toContain('command.action === "finish"');
+    expect(commandBody).toContain("finishRehearsal()");
     expect(stateBody).toContain("timing:");
     expect(stateBody).toContain("currentSlideTargetSeconds");
     expect(stateBody).toContain("isLiveSttActive");
@@ -764,15 +802,13 @@ describe("RehearsalWorkspace", () => {
 
   it("wires audience output state, popup reattach, and receiver failure cleanup", () => {
     const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
+    const hostSource = fs.readFileSync(livePresentationOutputSourcePath, "utf8");
     const publisherStart = source.indexOf(
-      "const presentationChannel = usePresentationChannelPublisher",
-    );
-    const controllerStart = source.indexOf(
-      "const audienceScreenShare = useAudienceScreenShare",
+      "const livePresentationOutput = useLivePresentationOutput",
     );
     const controllerEnd = source.indexOf(
       "const displayManager = useMemo",
-      controllerStart,
+      publisherStart,
     );
     const integrationBody = source.slice(publisherStart, controllerEnd);
 
@@ -782,7 +818,7 @@ describe("RehearsalWorkspace", () => {
     expect(integrationBody).toContain("stopAudienceStreamRef.current()");
     expect(integrationBody).toContain("slideWindowRef.current");
     expect(integrationBody).toContain("setAudienceOutputMode");
-    expect(integrationBody).toContain("handlePeerUnavailable");
+    expect(hostSource).toContain("screenShare.handlePeerUnavailable()");
   });
 
   it("supports Surface Swap fullscreen before opening the presenter remote popup", () => {
@@ -793,7 +829,7 @@ describe("RehearsalWorkspace", () => {
       surfaceStart,
     );
     const publisherStart = source.indexOf(
-      "const presentationChannel = usePresentationChannelPublisher",
+      "const livePresentationOutput = useLivePresentationOutput",
     );
     const publisherBody = source.slice(
       publisherStart,
@@ -846,14 +882,74 @@ describe("RehearsalWorkspace", () => {
     expect(keyboardBody).toContain("!isRehearsalCompletionVisible");
   });
 
-  it("returns to the rehearsal preflight instead of forcing microphone recording", () => {
+  it("uses the neutral scrim behind report generation progress", () => {
+    const css = fs.readFileSync(globalStylesPath, "utf8");
+
+    expect(css).toMatch(
+      /\.rehearsal-completion-modal-backdrop \{[^}]*background: var\(--redesign-color-scrim\);/s,
+    );
+  });
+
+  it("restarts a completed rehearsal from the beginning without showing preflight", () => {
     const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
     const start = source.indexOf("const handleCompletionPracticeAgain =");
     const end = source.indexOf("const handleCompletionPrimaryAction =", start);
     const practiceAgainBody = source.slice(start, end);
 
     expect(practiceAgainBody).toContain("returnToPreflight()");
-    expect(practiceAgainBody).not.toContain("startRecording()");
+    expect(practiceAgainBody).toContain("resetRehearsalAttemptToBeginning()");
+    expect(practiceAgainBody).toContain("startPracticeWithoutVoice()");
+    expect(practiceAgainBody).toContain(
+      "void startRecording({ allowDuringReport: true })",
+    );
+    expect(practiceAgainBody).toContain(
+      'shouldAutoStartRef.current = "starting"',
+    );
+    expect(practiceAgainBody).toContain("shouldAutoStartRef.current = null");
+
+    const resetStart = source.indexOf(
+      "const resetRehearsalAttemptToBeginning =",
+    );
+    const resetEnd = source.indexOf(
+      "const publishSlideWindowSnapshot =",
+      resetStart,
+    );
+    const resetBody = source.slice(resetStart, resetEnd);
+
+    expect(resetBody).toContain("resetSlideDisplayToBeginning()");
+    expect(resetBody).toContain("resetLiveSessionTranscript()");
+    expect(resetBody).toContain("resetLivePlaybackForSlide(firstSlide)");
+    expect(resetBody).toContain("resetSlideTranscriptSnapshots(deck, 0)");
+  });
+
+  it("ignores a previous report completion after a new rehearsal starts", () => {
+    const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
+    const startRecordingStart = source.indexOf(
+      "async function startRecording(",
+    );
+    const startRecordingEnd = source.indexOf(
+      "useEffect(() => {",
+      startRecordingStart,
+    );
+    const startRecordingBody = source.slice(
+      startRecordingStart,
+      startRecordingEnd,
+    );
+    const submitStart = source.indexOf("async function submitRecording(");
+    const submitEnd = source.indexOf(
+      "async function prepareEvaluationSnapshot(",
+      submitStart,
+    );
+    const submitBody = source.slice(submitStart, submitEnd);
+
+    expect(startRecordingBody).toContain(
+      "!options.allowDuringReport && !canRecord",
+    );
+    expect(startRecordingBody).toContain(
+      "recordingSubmissionVersionRef.current += 1",
+    );
+    expect(submitBody).toContain("const isCurrentSubmission =");
+    expect(submitBody).toContain("if (!isCurrentSubmission())");
   });
 
   it("keeps the presence avatar as the socket status dialog trigger", () => {

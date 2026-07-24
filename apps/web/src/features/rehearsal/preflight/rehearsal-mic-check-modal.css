@@ -21,6 +21,10 @@
   width: min(500px, 100%);
 }
 
+.rehearsal-mic-modal-with-companion {
+  width: min(760px, 100%);
+}
+
 .rehearsal-mic-modal-scroll {
   max-height: inherit;
   overflow-y: auto;

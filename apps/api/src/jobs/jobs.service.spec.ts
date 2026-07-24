@@ -27,6 +27,7 @@ const validEnv = {
   S3_SECRET_ACCESS_KEY: "orbit-password",
   S3_FORCE_PATH_STYLE: "true",
   JOB_QUEUE_DRIVER: "bullmq",
+  ASYNC_JOB_ADMISSION_MODE: "accept",
   LIVE_STT_PROVIDER: "sherpa",
   REPORT_STT_PROVIDER: "openai",
   OCR_PROVIDER: "python",
@@ -89,6 +90,24 @@ describe("JobsService", () => {
       jobId: "job-1",
       projectId: "project-a",
     });
+  });
+
+  it("rejects every new job before a DB row is created while admission drains", async () => {
+    process.env.ASYNC_JOB_ADMISSION_MODE = "drain";
+    const query = vi.fn();
+    const service = new JobsService(
+      { query } as unknown as DataSource,
+      vi.fn(),
+      createLogger(),
+    );
+
+    await expect(
+      service.create({
+        projectId: "project-a",
+        type: "reference-extract",
+      }),
+    ).rejects.toMatchObject({ status: 503 });
+    expect(query).not.toHaveBeenCalled();
   });
 
   it("marks worker health check jobs failed when enqueue fails", async () => {
@@ -233,6 +252,21 @@ describe("JobsService", () => {
       }),
       "AI deck generation retry queued.",
     );
+  });
+
+  it("rejects AI deck retries before opening a transaction while admission drains", async () => {
+    process.env.ASYNC_JOB_ADMISSION_MODE = "drain";
+    const transaction = vi.fn();
+    const service = new JobsService(
+      { transaction } as unknown as DataSource,
+      vi.fn(),
+      createLogger(),
+    );
+
+    await expect(
+      service.retryAiDeckGeneration("project-a", "job-1"),
+    ).rejects.toMatchObject({ status: 503 });
+    expect(transaction).not.toHaveBeenCalled();
   });
 
   it("restarts the coordinator only when no failed reference checkpoint exists", async () => {

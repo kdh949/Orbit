@@ -8,6 +8,9 @@ from app.ai.deck_generation.content_fact_quality import (
     select_repair_slide_orders,
     validate_story_plan,
 )
+from app.ai.deck_generation.content_planning import (
+    normalize_story_structural_policy,
+)
 from app.ai.deck_generation.models import (
     CommunicationContract,
     ContentFactIssue,
@@ -16,6 +19,7 @@ from app.ai.deck_generation.models import (
     GenerateDeckRequest,
     GeneratedStoryPlan,
     GeneratedStorySlide,
+    PlacementConstraint,
 )
 from app.ai.deck_generation.pipeline import analyze_input
 from app.ai.deck_generation.source_grounding import ground_sources
@@ -174,3 +178,226 @@ def test_explicit_cover_subtitle_placement_overrides_story_inference() -> None:
     placement = updated.communication_contract.placement_constraints[0]
     assert placement.slide_role == "cover"
     assert placement.element_role == "subtitle"
+
+
+def test_structural_story_obligations_move_to_matching_body_slides() -> None:
+    raw = raw_input()
+    source_id = raw.source_records[0].source_id
+    agenda_obligation = EvidenceObligation(
+        obligationId="agenda_obligation",
+        canonicalText="공동 승인이 필요하다",
+        evidenceText="공동 승인이 필요하며",
+        sourceRefs=[source_id],
+        reason="decision-critical",
+        mustInclude=True,
+    )
+    closing_obligation = EvidenceObligation(
+        obligationId="closing_obligation",
+        canonicalText="예산은 37억 4천만 원이다",
+        evidenceText="예산은 37억 4천만 원이다",
+        sourceRefs=[source_id],
+        reason="user-required",
+        mustInclude=True,
+    )
+    plan = GeneratedStoryPlan(
+        title="구조 장표 정규화",
+        slides=[
+            GeneratedStorySlide(
+                title="표지",
+                message="발표 소개",
+                slideType="cover",
+                sourceRefs=[source_id],
+            ),
+            GeneratedStorySlide(
+                title="목차",
+                message="발표 순서",
+                slideType="agenda",
+                sourceRefs=[source_id],
+                obligationRefs=[agenda_obligation.obligation_id],
+            ),
+            GeneratedStorySlide(
+                title="승인 조건",
+                message="운영 책임자와 보안 책임자의 공동 승인이 필요하다",
+                slideType="problem",
+                sourceRefs=[source_id],
+            ),
+            GeneratedStorySlide(
+                title="예산",
+                message="예산은 37억 4천만 원이다",
+                slideType="data",
+                sourceRefs=[source_id],
+            ),
+            GeneratedStorySlide(
+                title="감사합니다",
+                message="경청해 주셔서 감사합니다",
+                slideType="closing",
+                sourceRefs=[source_id],
+                obligationRefs=[closing_obligation.obligation_id],
+            ),
+        ],
+        evidenceObligations=[agenda_obligation, closing_obligation],
+    )
+
+    normalized = normalize_story_structural_policy(plan)
+
+    assert normalized.slides[1].source_refs == []
+    assert normalized.slides[1].obligation_refs == []
+    assert normalized.slides[-1].source_refs == []
+    assert normalized.slides[-1].obligation_refs == []
+    assert normalized.slides[2].obligation_refs == ["agenda_obligation"]
+    assert normalized.slides[3].obligation_refs == ["closing_obligation"]
+
+
+def test_unmatched_structural_obligation_remains_unassigned() -> None:
+    raw = raw_input()
+    source_id = raw.source_records[0].source_id
+    obligation = EvidenceObligation(
+        obligationId="unmatched_obligation",
+        canonicalText="완전히 다른 필수 조건",
+        evidenceText="공동 승인이 필요하며",
+        sourceRefs=["unmatched:source"],
+        reason="user-required",
+        mustInclude=True,
+    )
+    plan = normalize_story_structural_policy(
+        GeneratedStoryPlan(
+            title="미배치 obligation",
+            slides=[
+                GeneratedStorySlide(
+                    title="표지",
+                    message="발표 소개",
+                    slideType="cover",
+                ),
+                GeneratedStorySlide(
+                    title="목차",
+                    message="발표 순서",
+                    slideType="agenda",
+                    obligationRefs=[obligation.obligation_id],
+                ),
+                GeneratedStorySlide(
+                    title="본문",
+                    message="공동 승인 절차",
+                    slideType="problem",
+                    sourceRefs=[source_id],
+                ),
+                GeneratedStorySlide(
+                    title="감사합니다",
+                    message="경청해 주셔서 감사합니다",
+                    slideType="closing",
+                ),
+            ],
+            evidenceObligations=[obligation],
+        )
+    )
+
+    issues = validate_story_plan(raw, plan)
+
+    assert all(
+        obligation.obligation_id not in slide.obligation_refs
+        for slide in plan.slides
+    )
+    assert "EVIDENCE_OBLIGATION_MISSING" in {issue.code for issue in issues}
+
+
+def test_body_placement_on_agenda_order_resolves_to_first_body() -> None:
+    raw = raw_input()
+    source_id = raw.source_records[0].source_id
+    fact = CriticalFact(
+        factId="body_fact",
+        kind="required-phrase",
+        canonicalText="공동 승인이 필요하다",
+        sourceRefs=[source_id],
+    )
+    plan = normalize_story_structural_policy(
+        GeneratedStoryPlan(
+            title="본문 배치",
+            slides=[
+                GeneratedStorySlide(
+                    title="표지",
+                    message="발표 소개",
+                    slideType="cover",
+                ),
+                GeneratedStorySlide(
+                    title="목차",
+                    message="발표 순서",
+                    slideType="agenda",
+                ),
+                GeneratedStorySlide(
+                    title="승인 조건",
+                    message="공동 승인이 필요하다",
+                    slideType="problem",
+                    sourceRefs=[source_id],
+                ),
+                GeneratedStorySlide(
+                    title="실행 계획",
+                    message="실행 계획을 설명한다",
+                    slideType="process",
+                ),
+                GeneratedStorySlide(
+                    title="감사합니다",
+                    message="경청해 주셔서 감사합니다",
+                    slideType="closing",
+                ),
+            ],
+            criticalFacts=[fact],
+            communicationContract=CommunicationContract(
+                placementConstraints=[
+                    PlacementConstraint(
+                        targetId=fact.fact_id,
+                        slideRole="body",
+                        elementRole="message",
+                        slideOrder=2,
+                    )
+                ]
+            ),
+        )
+    )
+
+    issues = validate_story_plan(raw, plan)
+
+    assert "FACT_PLACEMENT_MISMATCH" not in {issue.code for issue in issues}
+
+
+def test_unplaced_fact_falls_back_to_first_body() -> None:
+    raw = raw_input()
+    source_id = raw.source_records[0].source_id
+    fact = CriticalFact(
+        factId="missing_body_fact",
+        kind="required-phrase",
+        canonicalText="PROJECT_UNPLACED_991",
+        sourceRefs=[source_id],
+    )
+    plan = normalize_story_structural_policy(
+        GeneratedStoryPlan(
+            title="본문 fallback",
+            slides=[
+                GeneratedStorySlide(
+                    title="표지",
+                    message="발표 소개",
+                    slideType="cover",
+                ),
+                GeneratedStorySlide(
+                    title="목차",
+                    message="발표 순서",
+                    slideType="agenda",
+                ),
+                GeneratedStorySlide(
+                    title="첫 본문",
+                    message="본문 내용",
+                    slideType="problem",
+                ),
+                GeneratedStorySlide(
+                    title="감사합니다",
+                    message="경청해 주셔서 감사합니다",
+                    slideType="closing",
+                ),
+            ],
+            criticalFacts=[fact],
+        )
+    )
+
+    issues = validate_story_plan(raw, plan)
+
+    assert next(
+        issue for issue in issues if issue.code == "FACT_EXACT_PHRASE_MISMATCH"
+    ).slide_order == 3

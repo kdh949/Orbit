@@ -5,6 +5,7 @@ import { liveSttEngineSchema } from "./runtime";
 export const runtimeConfigResponseSchema = z
   .object({
     liveSttEngine: liveSttEngineSchema,
+    ipadPresenterCompanionEnabled: z.boolean(),
     adaptiveRehearsalCoachEnabled: z.boolean(),
     focusedPracticeEnabled: z.boolean(),
     challengeQnaEnabled: z.boolean(),

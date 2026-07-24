@@ -128,8 +128,12 @@ export function AudienceLinkModal({
         ...(audienceAccessMode === "passcode"
           ? { passcode: audiencePasscode }
           : {}),
-        projectId
+        projectId,
+        sessionId: audienceSession?.sessionId
       });
+      if (!payload.audienceUrl) {
+        throw new Error("청중 링크를 활성화하지 못했습니다.");
+      }
       const nextAudienceUrl = resolveAbsoluteAudienceUrl(payload.audienceUrl);
       setAudienceSession(payload.session);
       setAudienceUrl(nextAudienceUrl);
@@ -152,11 +156,11 @@ export function AudienceLinkModal({
     setAudienceLinkError("");
 
     try {
-      await closeAudienceAccessSession({
+      const disabledSession = await closeAudienceAccessSession({
         projectId,
         sessionId: audienceSession.sessionId
       });
-      setAudienceSession(null);
+      setAudienceSession(disabledSession);
       setAudienceUrl("");
       setAudienceQrDataUrl("");
       setIsAudienceCloseConfirming(false);
@@ -248,7 +252,7 @@ export function AudienceLinkModal({
                 onClick={() => setIsAudienceCloseConfirming(true)}
                 disabled={isAudienceLinkLoading || audienceSession.status === "ended"}
               >
-                세션 닫기
+                청중 링크 닫기
               </button>
               <button className="audience-link-modal-dismiss" type="button" onClick={closeModal}>
                 닫기
@@ -269,10 +273,10 @@ export function AudienceLinkModal({
               role="alertdialog"
               onMouseDown={(event) => event.stopPropagation()}
             >
-              <strong>세션을 닫을까요?</strong>
+              <strong>청중 링크를 닫을까요?</strong>
               <p>
-                현재 청중 입장 링크가 닫히고, 이 QR 코드로는 더 이상 입장할 수
-                없습니다.
+                현재 청중 입장 링크와 QR만 비활성화됩니다. 발표자 companion
+                세션은 유지됩니다.
               </p>
               <div className="audience-link-confirm-actions">
                 <button
@@ -288,13 +292,13 @@ export function AudienceLinkModal({
                   onClick={() => void handleCloseAudienceLink()}
                   disabled={isAudienceLinkLoading}
                 >
-                  {isAudienceLinkLoading ? "닫는 중" : "세션 닫기"}
+                  {isAudienceLinkLoading ? "닫는 중" : "청중 링크 닫기"}
                 </button>
               </div>
             </section>
           </div>
         ) : null}
-        {!audienceSession ? (
+        {!audienceUrl ? (
           <section className="audience-link-create">
             <label className="audience-expiry-field">
               <span>입장 방식</span>

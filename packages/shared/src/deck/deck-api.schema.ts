@@ -379,14 +379,12 @@ export const restoreDeckSnapshotResponseSchema = z
         ["ooxmlSyncJob", "projectId"],
       );
     }
-    if (response.deck.version !== response.restoredSnapshot.version) {
-      if (response.ooxmlSyncJob?.type !== "pptx-ooxml-sync") {
+    if (response.ooxmlSyncJob && response.ooxmlSyncJob.type !== "pptx-ooxml-sync") {
         addMismatchIssue(
           ctx,
           ["ooxmlSyncJob", "type"],
-          "version-normalized restore requires a pptx-ooxml-sync job",
+          "ooxmlSyncJob must be a pptx-ooxml-sync job when supplied",
         );
-      }
     }
   });
 

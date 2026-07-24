@@ -586,7 +586,7 @@ def test_program_v2_evidence_ledger_includes_deck_official_source() -> None:
     ]
     slide = SlidePlan(
         order=1,
-        slide_type="cover",
+        slide_type="data",
         title="Official reveal",
         message="The official reveal is available.",
         speaker_notes="Introduce the official reveal.",
@@ -988,7 +988,7 @@ def test_program_v2_golden_pipeline_contract() -> None:
         "researchIssueCodes": [],
         "researchFactCoverageSatisfied": False,
         "repairAttempted": True,
-        "repairReasons": ["SPEAKER_NOTES_SHORT", "CONTENT_DUPLICATED"],
+        "repairReasons": ["CONTENT_DUPLICATED"],
         "uniqueCoreLayoutCount": 8,
         "validationIssueCount": 0,
         "visualQaStatus": "not-run",
@@ -1269,7 +1269,7 @@ def golden_slide_plans() -> list[SlidePlan]:
 
 
 def golden_content_plan() -> dict[str, Any]:
-    speaker_note_lengths = [205, 315, 315, 363, 363, 363, 363, 362, 315, 236]
+    speaker_note_lengths = [140, 180, 359, 413, 413, 413, 412, 412, 358, 100]
     visual_intent = {
         "emphasis": "",
         "mood": "",
@@ -1291,7 +1291,7 @@ def golden_content_plan() -> dict[str, Any]:
         start=1,
     ):
         slide_type, title, message, items = definition
-        note_seed = "".join([title, message, *items])
+        note_seed = "".join("".join([title, message, *items]).split())
         speaker_notes = (note_seed * (target // len(note_seed) + 1))[:target]
         if order == 10:
             speaker_notes = (

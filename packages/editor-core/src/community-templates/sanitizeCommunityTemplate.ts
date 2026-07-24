@@ -208,7 +208,9 @@ function sanitizeElement(
   if (
     element.type === "image" ||
     element.type === "svg" ||
-    element.type === "activity-qr"
+    element.type === "activity-qr" ||
+    element.type === "activity-copy" ||
+    element.type === "presentation-passcode"
   ) {
     return createNeutralPlaceholder(base, theme);
   }

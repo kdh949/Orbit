@@ -4,7 +4,27 @@
 
 이 문서는 `main` 브랜치 push를 ORBIT AWS production 배포로 연결하는 절차를 다룬다.
 
-`main`에 PR이 merge되면 GitHub 이벤트는 `push` to `main`으로 발생하므로, production 배포 workflow는 `push: main`과 수동 `workflow_dispatch`만 사용한다. `pull_request.closed` 트리거는 중복 배포를 피하기 위해 사용하지 않는다.
+현재 production 배포 workflow는 `main` push와 수동 `workflow_dispatch`를 사용한다.
+`main` 병합이 만든 commit은 기존 CloudFront, S3 Static Web, EC2 Docker Compose,
+RDS 경로로 자동 배포된다. ECS Change Set 생성·실행이나 ALB traffic 전환은 이
+workflow에 포함하지 않는다.
+
+`develop` 또는 `main` 대상 PR은 병합 전에 `ec2-release-gate`를 통과해야 한다.
+GitHub branch protection의 required status check에는 정확히
+`ec2-release-gate`를 등록한다. 이 검사는 다음 순서로 기존 EC2 릴리스 호환성을
+검증한다.
+
+1. `docker-compose.aws.yml`을 production 예시 환경으로 렌더링한다.
+2. 환경변수 계약과 EC2 service/healthcheck 구성을 검사한다.
+3. 깨끗한 PostgreSQL에 전체 TypeORM migration을 적용한다.
+4. 같은 migration 명령을 다시 실행해 pending migration이 없는 상태에서도
+   실패하지 않는지 확인한다.
+5. EC2 deploy wrapper가 Compose 검증, migration, direct API와 nginx proxy
+   health check를 계속 수행하는지 확인한다.
+
+이 gate는 AWS 계정이나 production instance를 변경하지 않는 배포 전 검사다.
+실제 배포는 아래 수동 workflow에서 EC2 내부와 CloudFront endpoint의 health를
+다시 확인한다.
 
 현재 production 구성은 비용을 줄이기 위해 ECS/ECR/ElastiCache 없이 다음 형태로 시작한다.
 
@@ -59,6 +79,11 @@ GitHub secret 값은 이 배포 workflow에 넣지 않는다. 앱 secret 원본�
 workflow job이 `environment: production`을 사용하므로 GitHub OIDC subject는 environment 형식도 허용해야 한다. CloudFormation template의 `GitHubDeployEnvironment` 기본값은 `production`이며, GitHub environment `production`의 deployment branch rule은 `main`만 허용하도록 유지한다.
 
 production deploy branch에는 `package.json`, `pnpm-lock.yaml`, `apps/`, `packages/`, `infra/docker/`가 모두 있어야 한다. workflow와 EC2 wrapper는 같은 branch를 배포하므로, `main`이 앱 workspace 없이 문서만 가진 상태이면 `pnpm install`, web build, Docker Compose build가 모두 실패한다.
+
+`Build and push images`의 `publish-ecr` job은 `main`이면서 repository variable
+`AWS_ECR_PUBLISH_ROLE_ARN`이 설정된 경우에만 실행한다. 이 변수가 없으면 ECR
+게시만 `skipped`가 되고 GHCR image build와 기존 EC2 배포는 계속 진행된다.
+ECR role을 설정하는 것은 추후 ECS 전환을 다시 승인할 때 별도로 검토한다.
 
 이미 생성된 stack이 이전 template으로 만들어졌다면 첫 workflow 실행 전에 같은 CloudFormation deploy 명령을 다시 실행해 `GitHubActionsDeployRole` trust policy를 갱신한다.
 
@@ -197,7 +222,9 @@ sudo chmod 0600 /etc/orbit/production.env
 
 ## 자동 배포 흐름
 
-`.github/workflows/deploy-aws-production.yml`은 다음 순서로 실행된다.
+`.github/workflows/deploy-aws-production.yml`은 `main` push 또는 운영자의 수동
+`workflow_dispatch`에서 다음 순서로 실행된다. `concurrency`는 실행 중인 배포를
+취소하지 않고 다음 commit 배포를 대기시킨다.
 
 1. GitHub OIDC로 AWS role assume
 2. CloudFormation output에서 S3 bucket, CloudFront distribution, EC2 instance id 조회

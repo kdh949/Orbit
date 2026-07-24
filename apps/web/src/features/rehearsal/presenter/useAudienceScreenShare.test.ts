@@ -54,6 +54,38 @@ describe("useAudienceScreenShare controller", () => {
     );
   });
 
+  it("publishes one opaque share epoch with the active same-origin stream", async () => {
+    const capture = createCapture([]);
+    const activeShares: Array<{
+      shareEpochId: string;
+      stream: MediaStream;
+    } | null> = [];
+    const controller = createAudienceScreenShareController({
+      capturePort: { isSupported: () => true, start: async () => capture },
+      getConnected: () => true,
+      getTargetWindow: () => createTargetWindow([]),
+      identity,
+      onActiveStreamChange: (active) => activeShares.push(active),
+      onOutputModeChange: vi.fn(),
+    });
+
+    await controller.start("tab-or-window");
+
+    expect(controller.getActiveStream()).toBe(capture.stream);
+    expect(controller.getShareEpochId()).toMatch(
+      /^share_[A-Za-z0-9_-]{1,128}$/,
+    );
+    expect(activeShares).toEqual([
+      {
+        shareEpochId: controller.getShareEpochId(),
+        stream: capture.stream,
+      },
+    ]);
+
+    controller.returnToSlide();
+    expect(activeShares.at(-1)).toBeNull();
+  });
+
   it("returns to slide before waiting for a replacement capture", async () => {
     const order: string[] = [];
     const firstCapture = createCapture(order);

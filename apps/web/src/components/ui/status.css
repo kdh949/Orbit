@@ -12,6 +12,7 @@
 }
 
 .redesign-status-neutral { background: var(--redesign-color-surface-container); color: var(--redesign-color-on-surface-variant); }
+.redesign-status-primary { background: var(--redesign-color-primary-subtle); border-color: var(--redesign-color-primary-outline); color: var(--redesign-color-primary-emphasis); }
 .redesign-status-lilac { background: var(--redesign-color-secondary-container); border-color: var(--redesign-color-secondary); color: var(--redesign-color-on-secondary-container); }
 .redesign-status-success { background: var(--redesign-color-success-container); border-color: var(--redesign-color-success); color: var(--redesign-color-on-success-container); }
 .redesign-status-warning { background: var(--redesign-color-warning-container); border-color: var(--redesign-color-warning); color: var(--redesign-color-on-warning-container); }

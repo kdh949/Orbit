@@ -14,6 +14,10 @@ import {
 } from "../../../components/ui";
 import { ActivityAudienceSlideRenderer } from "../rendering/ActivityAudienceSlideRenderer";
 import { ActivityEditorOperationsPanel } from "./ActivityEditorOperationsPanel";
+import {
+  ActivityDesignPicker,
+  type ActivityDesignPresetId
+} from "./ActivityDesignPicker";
 import { ActivityPreQuestionInbox } from "./ActivityPreQuestionInbox";
 import { useActivityEditorRuntime } from "./useActivityEditorRuntime";
 
@@ -39,6 +43,10 @@ const templateDescriptions = {
 export function ActivitySlideInspector(props: {
   deckId?: string;
   onOpenAudienceLink?: () => void;
+  onAddRuntimeElement?: (
+    kind: "title" | "description" | "qr" | "passcode"
+  ) => void;
+  onApplyDesignPreset?: (presetId: ActivityDesignPresetId) => void;
   onChange: (activity: ActivityDefinition) => void;
   projectId?: string;
   slide: ActivitySlide;
@@ -75,6 +83,12 @@ export function ActivitySlideInspector(props: {
         </div>
       </div>
 
+      <ActivityDesignPicker
+        onAddRuntimeElement={props.onAddRuntimeElement}
+        onApplyPreset={props.onApplyDesignPreset}
+        slide={props.slide}
+      />
+
       <fieldset
         className="activity-semantic-fields"
         data-semantic-locked={editorRuntime.locked ? "true" : "false"}
@@ -86,9 +100,10 @@ export function ActivitySlideInspector(props: {
             <span>청중이 장표를 열었을 때 맨 위에 보여지는 문구입니다.</span>
           </div>
           <OrbitField id="activity-slide-title" label="슬라이드 제목">
-            <OrbitInput
+            <OrbitTextarea
               maxLength={120}
               placeholder="예: 발표 전에 궁금한 점을 알려주세요"
+              rows={2}
               value={activity.title}
               onChange={(event) => updateActivity({ title: event.currentTarget.value })}
             />

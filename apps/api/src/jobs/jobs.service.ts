@@ -21,6 +21,7 @@ import { InjectPinoLogger, PinoLogger } from "nestjs-pino";
 import type { DataSource } from "typeorm";
 import { DbJobQueue } from "./db-job-queue";
 import { serializeLogError } from "../logging";
+import { assertAsyncJobAdmissionOpen } from "./async-job-admission";
 
 export type WorkerHealthCheckEnqueueJob = (
   input: EnqueueWorkerHealthCheckJobInput,
@@ -44,6 +45,7 @@ export class JobsService {
   }
 
   async create(input: EnqueueJobInput) {
+    assertAsyncJobAdmissionOpen();
     const queuedJob = await this.queue.enqueue(input);
 
     if (queuedJob.type !== "worker-health-check") {
@@ -127,6 +129,7 @@ export class JobsService {
   }
 
   async retryAiDeckGeneration(projectId: string, jobId: string) {
+    assertAsyncJobAdmissionOpen();
     const retried = await this.dataSource.transaction(async (manager) => {
       const rows = await manager.query(
         `

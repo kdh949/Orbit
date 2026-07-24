@@ -1,3 +1,4 @@
+import { createActivitySlide } from "@orbit/editor-core";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { p0AnimationDeck } from "./__fixtures__/animationDeck";
@@ -46,10 +47,15 @@ describe("PresenterRemoteWindow", () => {
     expect(html).toContain("대본");
     expect(html).toContain("현재 슬라이드");
     expect(html).toContain("다음 슬라이드");
-    expect(html).toContain("타이머");
+    expect(html).toContain('class="rehearsal-side-timer-card"');
+    expect(html).toContain("발표 스톱워치");
+    expect(html).toContain("총 발표 시간");
+    expect(html).toContain("현재 슬라이드");
     expect(html).toContain("시작");
-    expect(html).toContain("리셋");
-    expect(html).toContain("핵심 키워드");
+    expect(html).toContain('aria-label="스톱워치 초기화"');
+    expect(html).toContain('aria-label="발표 진행 패널"');
+    expect(html).toContain('aria-label="키워드 체크리스트"');
+    expect(html).toContain("rehearsal-panel-top-grid");
     expect(html).not.toContain("음성인식 대기");
     expect(html).not.toContain('<header class="presenter-remote-header"');
     expect(html).not.toContain("슬라이드 목표");
@@ -57,13 +63,34 @@ describe("PresenterRemoteWindow", () => {
     expect(html).toContain("첫 문장입니다");
     expect(html).toContain("이전");
     expect(html).toContain("다음");
-    expect(html).toContain("웹·실습 보여주기");
+    expect(html).toContain("애플리케이션 공유하기");
     expect(html).toContain("청중 화면 가리기");
     expect(html).toContain("발표 종료");
-    expect(html).toContain('class="presenter-remote-topbar"');
-    expect(html).toContain('class="presenter-remote-header-action"');
+    expect(html).not.toContain('class="presenter-remote-topbar"');
+    expect(html).not.toContain("presenter-remote-header-action");
+    expect(html).toContain("audience-output-controls--collapsible");
     expect(html).not.toContain("Partial transcript");
     expect(html).not.toContain("rawAudio");
+  });
+
+  it("renders activity controls beside the keyword progress panel", () => {
+    const activitySlide = createActivitySlide(p0AnimationDeck, "pre-question");
+    const deck = {
+      ...p0AnimationDeck,
+      slides: [activitySlide],
+    };
+    const html = renderToStaticMarkup(
+      <PresenterRemoteWindow
+        deck={deck}
+        identity={identity}
+        initialState={createPresenterSlideshowState(deck)}
+      />,
+    );
+
+    expect(html).not.toContain("rehearsal-panel-live-slot");
+    expect(html).toMatch(
+      /class="rehearsal-panel presenter-remote-progress-panel"[^>]*>[\s\S]*?<\/div><\/section><section class="activity-presenter-panel"/,
+    );
   });
 
   it("마지막 슬라이드에서는 다음 슬라이드 번호 대신 없음을 표시한다", () => {
@@ -198,8 +225,9 @@ describe("PresenterRemoteWindow", () => {
     expect(html).not.toContain("슬라이드 목표");
     expect(html).not.toContain("현재 큐");
     expect(html).not.toContain("발표 시간 상태");
-    expect(html).toContain("음성인식 중");
-    expect(html).toContain("일시정지");
+    expect(html).toContain("총 발표 시간");
+    expect(html).toContain("현재 0:25");
+    expect(html).toContain('aria-label="리허설 일시정지"');
   });
 
   it("renders paused remote timer controls as resume", () => {
@@ -227,8 +255,7 @@ describe("PresenterRemoteWindow", () => {
       />,
     );
 
-    expect(html).toContain("일시정지됨");
-    expect(html).toContain("다시 시작");
+    expect(html).toContain('aria-label="리허설 다시 시작"');
   });
 
   it("renders semantic debug panel from owner presenter speech state", () => {
@@ -324,8 +351,8 @@ describe("PresenterRemoteWindow", () => {
     );
 
     expect(getPresenterRemoteCurrentSentenceIndex(sentences, state)).toBe(1);
-    expect(html).toContain("presenter-script-row--covered");
-    expect(html).toContain("presenter-script-row--current");
+    expect(html).toContain("rehearsal-teleprompter-line-covered");
+    expect(html).toContain("rehearsal-teleprompter-line-current");
   });
 
   it("keeps remote current and next cues on committed prompter progress", () => {
@@ -364,7 +391,7 @@ describe("PresenterRemoteWindow", () => {
 
     expect(getPresenterRemoteCurrentSentenceIndex(sentences, state)).toBe(0);
     expect(getPresenterRemoteNextSentenceIndex(sentences, state, 0)).toBe(1);
-    expect(html).not.toContain("presenter-script-row--covered");
+    expect(html).not.toContain("rehearsal-teleprompter-line-covered");
   });
 
   it("shows a leading display-only cue until lexical evidence reaches tracking", () => {
@@ -454,8 +481,7 @@ describe("PresenterRemoteWindow", () => {
       />,
     );
 
-    expect(html).toContain("presenter-script-row--paraphrased");
-    expect(html).toContain("체크됨");
+    expect(html).toContain("rehearsal-teleprompter-line-paraphrased");
   });
 
   it("retries idempotent remote timer pause commands across transient channel races", () => {

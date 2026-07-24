@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
 import re
 import time
@@ -16,6 +17,10 @@ from app.ai.deck_generation.models import (
     RawInput,
     SlidePlan,
     ValidationIssue,
+)
+from app.ai.deck_generation.structural_policy import (
+    body_slide_orders,
+    resolve_constraint_order,
 )
 
 
@@ -264,6 +269,10 @@ def validate_story_plan(
         order: set(slide.source_refs)
         for order, slide in enumerate(plan.slides, start=1)
     }
+    slide_types = {
+        order: slide.slide_type
+        for order, slide in enumerate(plan.slides, start=1)
+    }
     placements = {
         constraint.target_id: constraint
         for constraint in plan.communication_contract.placement_constraints
@@ -276,6 +285,7 @@ def validate_story_plan(
             slide_text,
             slide_refs,
             placements,
+            slide_types,
         )
         if not _fact_matches(fact, slide_text.get(order, "")):
             issues.append(
@@ -307,6 +317,7 @@ def validate_story_plan(
                 slide_text,
                 slide_refs,
                 placements,
+                slide_types,
             )
         )
         if not assigned:
@@ -356,8 +367,10 @@ def validate_story_plan(
         )
         if target is None:
             continue
-        order = _constraint_order(
-            constraint.slide_role, constraint.slide_order, len(plan.slides)
+        order = resolve_constraint_order(
+            constraint.slide_role,
+            constraint.slide_order,
+            slide_types,
         )
         slide = plan.slides[order - 1]
         element_text = (
@@ -409,6 +422,7 @@ def validate_slide_detail(
         slide.order: f"{slide.title}\n{slide.message}" for slide in all_slides
     }
     story_refs = {slide.order: set(slide.source_refs) for slide in all_slides}
+    slide_types = {slide.order: slide.slide_type for slide in all_slides}
     placements = {
         constraint.target_id: constraint
         for constraint in raw_input.communication_contract.placement_constraints
@@ -421,6 +435,7 @@ def validate_slide_detail(
             story_text,
             story_refs,
             placements,
+            slide_types,
         )
         if order == target.order and not _fact_matches(fact, all_text):
             issues.append(
@@ -460,10 +475,10 @@ def validate_slide_detail(
                 )
             )
     for constraint in raw_input.communication_contract.placement_constraints:
-        order = _constraint_order(
+        order = resolve_constraint_order(
             constraint.slide_role,
             constraint.slide_order,
-            len(all_slides),
+            slide_types,
         )
         if order != target.order:
             continue
@@ -537,19 +552,21 @@ def _target_order(
     slide_text: dict[int, str],
     slide_refs: dict[int, set[str]],
     placements: dict[str, PlacementConstraint],
+    slide_types: Mapping[int, str],
 ) -> int:
     constraint = placements.get(target_id)
     if constraint is not None:
-        return _constraint_order(
+        return resolve_constraint_order(
             getattr(constraint, "slide_role"),
             getattr(constraint, "slide_order"),
-            len(slide_text),
+            slide_types,
         )
+    candidate_orders = body_slide_orders(slide_types)
     matching_order = next(
         (
             order
             for order, text in slide_text.items()
-            if _claim_matches(canonical_text, text)
+            if order in candidate_orders and _claim_matches(canonical_text, text)
         ),
         None,
     )
@@ -557,8 +574,12 @@ def _target_order(
         return matching_order
     refs = set(source_refs)
     return next(
-        (order for order, current in slide_refs.items() if refs & current),
-        1,
+        (
+            order
+            for order, current in slide_refs.items()
+            if order in candidate_orders and refs & current
+        ),
+        candidate_orders[0] if candidate_orders else 1,
     )
 
 
@@ -568,41 +589,45 @@ def _fact_target_order(
     slide_text: dict[int, str],
     slide_refs: dict[int, set[str]],
     placements: dict[str, PlacementConstraint],
+    slide_types: Mapping[int, str],
 ) -> int:
     constraint = placements.get(fact.fact_id)
     if constraint is not None:
-        return _constraint_order(
+        return resolve_constraint_order(
             getattr(constraint, "slide_role"),
             getattr(constraint, "slide_order"),
-            len(slide_text),
+            slide_types,
         )
+    candidate_orders = body_slide_orders(slide_types)
     matched = next(
-        (order for order, text in slide_text.items() if _fact_matches(fact, text)),
+        (
+            order
+            for order, text in slide_text.items()
+            if order in candidate_orders and _fact_matches(fact, text)
+        ),
         None,
     )
     if matched is not None:
         return matched
     related = next(
-        (order for order, text in slide_text.items() if _fact_related(fact, text)),
+        (
+            order
+            for order, text in slide_text.items()
+            if order in candidate_orders and _fact_related(fact, text)
+        ),
         None,
     )
     if related is not None:
         return related
     refs = set(source_refs)
     return next(
-        (order for order, current in slide_refs.items() if refs & current),
-        1,
+        (
+            order
+            for order, current in slide_refs.items()
+            if order in candidate_orders and refs & current
+        ),
+        candidate_orders[0] if candidate_orders else 1,
     )
-
-
-def _constraint_order(role: str, explicit: int | None, slide_count: int) -> int:
-    if explicit is not None:
-        return min(max(1, explicit), slide_count)
-    if role == "cover":
-        return 1
-    if role == "closing":
-        return slide_count
-    return 2 if slide_count > 2 else 1
 
 
 def _fact_related(fact: CriticalFact, text: str) -> bool:

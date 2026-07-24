@@ -93,6 +93,22 @@
       "source": "doppler-required",
       "delivery": "compose"
     },
+    "PRESENTATION_PASSCODE_ENCRYPTION_KEY": {
+      "source": "doppler-required",
+      "delivery": "compose"
+    },
+    "PRESENTATION_PASSCODE_ENCRYPTION_KEY_VERSION": {
+      "source": "doppler-required",
+      "delivery": "compose"
+    },
+    "PRESENTATION_PASSCODE_ENCRYPTION_PREVIOUS_KEY": {
+      "source": "doppler-optional",
+      "delivery": "compose"
+    },
+    "PRESENTATION_PASSCODE_ENCRYPTION_PREVIOUS_KEY_VERSION": {
+      "source": "doppler-optional",
+      "delivery": "compose"
+    },
     "DATABASE_URL": {
       "source": "doppler-required",
       "delivery": "compose"
@@ -152,6 +168,10 @@
     "IMAGE_PROVIDER": {
       "source": "repo-default",
       "delivery": "code-default"
+    },
+    "IPAD_PRESENTER_COMPANION_ENABLED": {
+      "source": "repo-default",
+      "delivery": "compose"
     },
     "JOB_QUEUE_DRIVER": {
       "source": "repo-default",
@@ -225,6 +245,10 @@
       "source": "doppler-required",
       "delivery": "compose"
     },
+    "ASYNC_JOB_ADMISSION_MODE": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
     "PUBLIC_IMAGE_PROVIDER": {
       "source": "repo-default",
       "delivery": "code-default"
@@ -258,6 +282,14 @@
       "delivery": "compose"
     },
     "S3_BUCKET": {
+      "source": "doppler-optional",
+      "delivery": "compose"
+    },
+    "S3_ASSETS_BUCKET": {
+      "source": "doppler-optional",
+      "delivery": "compose"
+    },
+    "S3_PRIVATE_AUDIO_BUCKET": {
       "source": "doppler-optional",
       "delivery": "compose"
     },

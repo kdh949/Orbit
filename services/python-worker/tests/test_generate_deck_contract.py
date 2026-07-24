@@ -25,10 +25,15 @@ from app.ai.deck_generation.content_planning import (
     clear_deck_content_plan_cache,
     compact_dense_speaker_notes,
     compact_program_v2_content_items,
+    compose_agenda_detail,
+    compose_closing_detail,
+    compose_cover_detail,
+    count_speaker_note_chars,
     content_plan_repair_reasons,
     deck_content_prompt,
     deck_content_response_format_for,
     deduplicate_speaker_notes_across_slides,
+    ensure_research_first_web_source_coverage,
     ensure_profile_closing_action,
     generate_content_plan_with_llm,
     merge_grounded_repair_notes,
@@ -966,7 +971,7 @@ def test_presentation_rule_prompt_is_compact_and_profile_specific() -> None:
     assert len(rules) <= 10
     assert rules[0] == "Presentation profile: product-launch"
     assert "release information" in rules[1]
-    assert any("concrete next action" in rule for rule in rules)
+    assert all("concrete next action" not in rule for rule in rules)
     assert "Presentation profile: product-launch" in deck_content_prompt(
         raw_input,
         style_prompt_context(raw_input),
@@ -1297,6 +1302,196 @@ def test_profile_fallback_closing_is_thank_you_only(
     closing = response.deck["slides"][-1]
     assert closing["title"] == "감사합니다"
     assert all(element.get("role") not in {"body", "highlight"} for element in closing["elements"])
+    assert "CTA_MISSING" not in {
+        issue.code for issue in response.validation.presentation_issues
+    }
+
+
+def test_agenda_detail_uses_planned_body_titles() -> None:
+    raw_input = analyze_input(
+        GenerateDeckRequest(
+            projectId="project_demo_1",
+            topic="ORBIT",
+            prompt="ORBIT 소개 자료를 만들어줘",
+        )
+    )
+    slides = [
+        SlidePlan(
+            order=order,
+            slide_type=slide_type,
+            title=title,
+            message=message,
+            speaker_notes="",
+            keywords=[],
+            evidence=[],
+            content_items=[],
+        )
+        for order, slide_type, title, message in [
+            (1, "cover", "ORBIT", "소개"),
+            (2, "agenda", "목차", "발표 순서"),
+            (3, "problem", "시장 문제", "시장 문제를 설명합니다."),
+            (4, "solution", "해결 전략", "해결 전략을 설명합니다."),
+            (5, "closing", "감사합니다", "경청해 주셔서 감사합니다."),
+        ]
+    ]
+
+    detailed = compose_agenda_detail(
+        raw_input,
+        slides[1],
+        slides,
+    )
+
+    assert [item.text for item in detailed.content_items] == [
+        "시장 문제",
+        "해결 전략",
+    ]
+    assert [item.content_item_id for item in detailed.content_items] == [
+        "content_2_agenda_1",
+        "content_2_agenda_2",
+    ]
+
+
+def test_structural_speaker_notes_use_bounded_targets_and_redistribute_remainder() -> None:
+    raw_input = analyze_input(
+        GenerateDeckRequest(
+            projectId="project_demo_1",
+            topic="ORBIT",
+            slideCountRange={"min": 5, "max": 5},
+        )
+    )
+    slides = [
+        SlidePlan(
+            order=order,
+            slide_type=slide_type,
+            title=title,
+            message=message,
+            speaker_notes="",
+            keywords=[],
+            evidence=[],
+            content_items=[],
+        )
+        for order, slide_type, title, message in [
+            (1, "cover", "ORBIT", "소개"),
+            (2, "agenda", "목차", "발표 순서"),
+            (3, "problem", "시장 문제", "시장 문제를 설명합니다."),
+            (4, "solution", "해결 전략", "해결 전략을 설명합니다."),
+            (5, "closing", "감사합니다", "경청해 주셔서 감사합니다."),
+        ]
+    ]
+
+    timed = apply_timing_to_slide_plans(raw_input, slides)
+    detailed = {
+        "cover": compose_cover_detail(raw_input, timed[0]),
+        "agenda": compose_agenda_detail(raw_input, timed[1], timed),
+        "closing": compose_closing_detail(raw_input, timed[-1], timed),
+    }
+
+    assert sum(slide.target_speaker_notes_chars for slide in timed) == (
+        raw_input.timing_plan.target_total_chars
+    )
+    for slide_type, maximum in {
+        "cover": 140,
+        "agenda": 180,
+        "closing": 100,
+    }.items():
+        slide = detailed[slide_type]
+        actual = count_speaker_note_chars(slide.speaker_notes)
+        assert 0 < slide.target_speaker_notes_chars <= maximum
+        assert speaker_notes_minimum_chars(slide.target_speaker_notes_chars) <= actual
+        assert actual <= speaker_notes_maximum_chars(
+            slide.target_speaker_notes_chars
+        )
+
+
+def test_research_first_source_coverage_uses_body_slides_only() -> None:
+    raw_input = analyze_input(
+        GenerateDeckRequest(
+            projectId="project_demo_1",
+            topic="ORBIT",
+            brief={"referencePolicy": "research-first"},
+            slideCountRange={"min": 5, "max": 5},
+        )
+    )
+    raw_input.source_records = [
+        SourceRecord(
+            sourceType="web",
+            sourceId=f"web:source-{index}",
+            url=f"https://example.com/{index}",
+            title=f"공식 출처 {index}",
+            content=f"검증된 내용 {index}",
+            authority="official",
+        )
+        for index in range(1, 3)
+    ]
+    slides = [
+        SlidePlan(
+            order=order,
+            slide_type=slide_type,
+            title=title,
+            message=title,
+            speaker_notes="",
+            keywords=[],
+            evidence=[],
+            content_items=[],
+        )
+        for order, slide_type, title in [
+            (1, "cover", "표지"),
+            (2, "agenda", "목차"),
+            (3, "problem", "문제"),
+            (4, "solution", "해결"),
+            (5, "closing", "감사합니다"),
+        ]
+    ]
+
+    ensure_research_first_web_source_coverage(raw_input, slides)
+
+    assert slides[0].source_refs == []
+    assert slides[1].source_refs == []
+    assert slides[-1].source_refs == []
+    assert {
+        source_ref
+        for slide in slides[2:4]
+        for source_ref in slide.source_refs
+    } == {"web:source-1", "web:source-2"}
+
+
+def test_structural_slides_allow_empty_source_ledgers_and_body_title_rules_skip_them() -> None:
+    deck = generate_deck(
+        GenerateDeckRequest(
+            projectId="project_demo_1",
+            topic="ORBIT",
+            design={"profile": "startup-pitch"},
+        )
+    ).deck
+    structural_indexes = [
+        index
+        for index, slide in enumerate(deck["slides"])
+        if slide["aiNotes"]["visualPlan"]["visualType"]
+        in {"cover", "agenda", "closing"}
+    ]
+
+    assert structural_indexes == [0, 1, len(deck["slides"]) - 1]
+    assert all(
+        deck["slides"][index]["aiNotes"]["sourceLedger"] == []
+        for index in structural_indexes
+    )
+    content_issues = validate_content(deck)
+    presentation_issues = validate_presentation(deck)
+    assert not any(
+        issue.path
+        == f"slides.{index}.aiNotes.sourceLedger"
+        for issue in content_issues
+        for index in structural_indexes
+    )
+    assert not any(
+        issue.code == "ACTION_TITLE_WEAK"
+        and issue.path
+        in {
+            "slides.1.title",
+            f"slides.{len(deck['slides']) - 1}.title",
+        }
+        for issue in presentation_issues
+    )
 
 
 def test_release_nouns_do_not_count_as_product_launch_closing_action() -> None:
@@ -1332,7 +1527,7 @@ def test_release_nouns_do_not_count_as_product_launch_closing_action() -> None:
     assert design_pack_source_ledgers(raw_input, closing)[0]["claim"] == closing.message
 
 
-def test_presentation_validation_detects_missing_profile_closing_action() -> None:
+def test_presentation_validation_rejects_stale_thank_you_closing_metadata() -> None:
     deck = generate_deck(
         GenerateDeckRequest(
             projectId="project_demo_1",
@@ -1354,7 +1549,41 @@ def test_presentation_validation_detects_missing_profile_closing_action() -> Non
     assert "CTA_MISSING" in codes
 
 
-def test_presentation_validation_rejects_release_nouns_without_action() -> None:
+@pytest.mark.parametrize(
+    "closing_copy",
+    [
+        "고맙습니다",
+        "Thank you",
+        "이상으로 발표를 마치겠습니다",
+        "발표를 마칩니다",
+        "마무리",
+    ],
+)
+def test_presentation_validation_allows_short_closing_copy_without_action(
+    closing_copy: str,
+) -> None:
+    deck = generate_deck(
+        GenerateDeckRequest(
+            projectId="project_demo_1",
+            topic="ORBIT",
+            design={"profile": "startup-pitch"},
+        )
+    ).deck
+    closing = deck["slides"][-1]
+    closing["title"] = closing_copy
+    for element in closing["elements"]:
+        if element.get("type") == "text" and element.get("role") not in {
+            "caption",
+            "footer",
+        }:
+            element["props"]["text"] = closing_copy
+
+    codes = {issue.code for issue in validate_presentation(deck)}
+
+    assert "CTA_MISSING" not in codes
+
+
+def test_presentation_validation_rejects_stale_product_closing_metadata() -> None:
     deck = generate_deck(
         GenerateDeckRequest(
             projectId="project_demo_1",
@@ -3202,9 +3431,7 @@ def test_references_first_falls_back_without_leaking_attachment_commands_to_sear
     assert attachment_command not in str(web_request["input"])
     assert "private-file.pptx" not in str(web_request["input"])
     assert any("Web research was unavailable" in warning for warning in response.warnings)
-    assert response.deck["slides"][0]["aiNotes"]["sourceLedger"][0][
-        "sourceType"
-    ] == "uploaded"
+    assert response.deck["slides"][0]["aiNotes"]["sourceLedger"] == []
 
 
 def test_design_pack_rejects_fabricated_source_refs() -> None:
@@ -3367,7 +3594,7 @@ def test_content_plan_repair_prompt_declares_non_whitespace_ranges() -> None:
     plan = GeneratedDeckContentPlan.model_validate(payload)
     slide_plan = SlidePlan(
         order=1,
-        slide_type="cover",
+        slide_type="data",
         title="Repair title",
         message="Repair message",
         speaker_notes="짧은 노트",
@@ -3549,7 +3776,7 @@ def test_short_speaker_note_repair_merges_grounded_content_below_model_limit() -
     )
     slide = SlidePlan(
         order=1,
-        slide_type="cover",
+        slide_type="data",
         title="Verified release",
         message=(
             "The verified release date and platform define the announcement."
@@ -3679,7 +3906,7 @@ def test_short_speaker_note_repair_trims_model_output_above_limit() -> None:
     )
     slide = SlidePlan(
         order=1,
-        slide_type="cover",
+        slide_type="data",
         title="Bounded notes",
         message="The verified facts define the announcement.",
         speaker_notes="Short notes.",
@@ -3722,7 +3949,7 @@ def test_short_speaker_note_repair_batches_large_decks() -> None:
     slides = [
         SlidePlan(
             order=order,
-            slide_type="cover" if order == 1 else "summary" if order == 4 else "data",
+            slide_type="summary" if order == 4 else "data",
             title=f"Slide {order}",
             message=f"Message {order}",
             speaker_notes="Short notes.",
@@ -3792,7 +4019,7 @@ def test_short_speaker_note_repair_retries_remaining_slide_individually() -> Non
     )
     slide = SlidePlan(
         order=1,
-        slide_type="cover",
+        slide_type="data",
         title="Retry notes",
         message="A supported message",
         speaker_notes="Short notes.",
@@ -5300,8 +5527,7 @@ def test_generate_deck_design_pack_applies_font_and_trace_notes(
     assert composition_ids[0] == ai_notes["compositionPlan"]["compositionId"]
     assert ai_notes["visualPlan"]["imageSourcePolicy"] == "minimal"
     assert ai_notes["visualPlan"]["imageNeeded"] is False
-    assert ai_notes["sourceLedger"][0]["sourceType"] == "topic"
-    assert ai_notes["sourceLedger"][0]["usedInSlideId"] == "slide_1"
+    assert ai_notes["sourceLedger"] == []
 
 
 def test_generate_deck_design_pack_applies_v2_timing_media_reference_contract() -> None:
@@ -5451,8 +5677,14 @@ def test_generate_deck_design_pack_applies_v2_timing_media_reference_contract() 
         )
         assert has_placeholder is ai_notes["visualPlan"]["imageNeeded"]
         visual_slide_count += int(has_placeholder)
-        assert ai_notes["sourceLedger"]
-        assert ai_notes["sourceLedger"][0]["sourceType"] == "uploaded"
+        if ai_notes["visualPlan"]["visualType"] in {
+            "cover",
+            "agenda",
+            "closing",
+        }:
+            assert ai_notes["sourceLedger"] == []
+        else:
+            assert ai_notes["sourceLedger"][0]["sourceType"] == "uploaded"
     assert 0 <= visual_slide_count <= 3
 
     validation_messages = [
@@ -5565,7 +5797,14 @@ def test_generate_deck_design_pack_repairs_seven_minute_gowun_reference_deck() -
             for element in slide["elements"]
         )
         assert slide["aiNotes"]["visualPlan"]["imageNeeded"] is False
-        assert slide["aiNotes"]["sourceLedger"][0]["sourceType"] == "uploaded"
+        if slide["aiNotes"]["visualPlan"]["visualType"] in {
+            "cover",
+            "agenda",
+            "closing",
+        }:
+            assert slide["aiNotes"]["sourceLedger"] == []
+        else:
+            assert slide["aiNotes"]["sourceLedger"][0]["sourceType"] == "uploaded"
 
 
 def test_generate_deck_design_pack_enforces_background_constraints() -> None:
