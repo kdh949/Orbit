@@ -1,7 +1,10 @@
 import type { Deck } from "@orbit/shared";
+import { IconPlayerPlay } from "@tabler/icons-react";
 import { createPortal } from "react-dom";
+import { useEffect } from "react";
 import { OrbitButton, OrbitDialog } from "../../../../components/ui";
 import { ReadOnlySlideCanvas } from "../../../slides/rendering";
+import { useEditorAnimationPreview } from "../../shell/components/animation/hooks";
 import {
   canApplyDesignProposal,
   type DesignProposalLifecycle,
@@ -27,6 +30,22 @@ export function DesignProposalPreviewModal(
   const afterSlide = props.afterDeck.slides.find(
     (slide) => slide.slideId === props.slideId,
   );
+  const animationPreview = useEditorAnimationPreview({
+    deck: props.afterDeck,
+    slide: afterSlide ?? null,
+  });
+  const hasAnimationChanges = Boolean(
+    beforeSlide &&
+      afterSlide &&
+      JSON.stringify(beforeSlide.animations) !== JSON.stringify(afterSlide.animations),
+  );
+
+  useEffect(() => {
+    if (hasAnimationChanges && animationPreview.canPlay) {
+      animationPreview.play();
+    }
+  }, [animationPreview.canPlay, animationPreview.play, hasAnimationChanges]);
+
   if (!beforeSlide || !afterSlide) return null;
 
   const isApplying = props.lifecycle === "applying";
@@ -60,6 +79,20 @@ export function DesignProposalPreviewModal(
       open
       title="AI 디자인 제안 비교"
     >
+      {hasAnimationChanges && animationPreview.canPlay ? (
+        <div className="design-proposal-modal-toolbar">
+          <OrbitButton
+            className="design-proposal-modal-animation-replay"
+            disabled={animationPreview.isPlaying}
+            icon={<IconPlayerPlay aria-hidden="true" size={15} />}
+            size="compact"
+            variant="secondary"
+            onClick={animationPreview.play}
+          >
+            {animationPreview.isPlaying ? "재생 중..." : "애니메이션 다시 재생"}
+          </OrbitButton>
+        </div>
+      ) : null}
       <div className="design-proposal-modal-comparison">
         <figure>
           <figcaption>Before</figcaption>
@@ -76,6 +109,7 @@ export function DesignProposalPreviewModal(
           <div className="design-proposal-modal-slide after">
             <ReadOnlySlideCanvas
               deck={props.afterDeck}
+              elementStates={animationPreview.elementStates ?? undefined}
               scale={afterScale}
               slide={afterSlide}
             />

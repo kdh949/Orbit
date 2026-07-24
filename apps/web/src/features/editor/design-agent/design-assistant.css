@@ -84,6 +84,7 @@
 }
 
 .design-proposal-compare-card {
+  container-type: inline-size;
   display: grid;
   gap: var(--redesign-space-3);
   margin: 0 var(--redesign-space-4) var(--redesign-space-3);
@@ -164,6 +165,16 @@
 
 .design-proposal-inline-slide.after {
   border-color: var(--redesign-color-secondary-fixed-dim);
+}
+
+@container (max-width: 280px) {
+  .design-proposal-inline-comparison {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .design-proposal-compare-arrow {
+    display: none;
+  }
 }
 
 .design-proposal-compare-arrow {
@@ -331,6 +342,12 @@
 
 .design-proposal-modal-slide.after {
   border-color: var(--redesign-color-secondary-fixed-dim);
+}
+
+.design-proposal-modal-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: var(--redesign-space-3);
 }
 
 .design-proposal-modal-state,
