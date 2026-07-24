@@ -9,6 +9,7 @@ import { activityPublicResultSchema } from "../activity/activity-results.schema"
 import { activityRuntimeStatusSchema } from "../activity/activity-runtime.schema";
 import { animationSchema } from "../deck/animation.schema";
 import {
+  activityAppearanceSchema,
   deckCanvasSchema,
   slideImportRenderModeSchema,
   slideKindSchema,
@@ -61,6 +62,7 @@ export const companionActivitySlideSchema = z
     ...companionSlideBaseFields,
     kind: z.literal("activity"),
     activity: activityDefinitionSchema,
+    activityAppearance: activityAppearanceSchema,
   })
   .strict();
 
