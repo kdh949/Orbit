@@ -10,6 +10,7 @@ import {
   type ActivityPresenterResult,
   type Deck,
   type DeckElement,
+  type TextElementProps,
 } from "@orbit/shared";
 import type { DataSource } from "typeorm";
 
@@ -56,7 +57,7 @@ export async function projectActivityDeckForStaticExport(
     if (slide.kind === "content") {
       projected.slides[index] = {
         ...slide,
-        elements: staticActivityQrElements(slide.elements),
+        elements: staticRuntimeElements(slide.elements, sourceActivities),
       };
       continue;
     }
@@ -66,7 +67,13 @@ export async function projectActivityDeckForStaticExport(
         ...base,
         kind: "content",
         speakerNotes: "",
-        elements: staticActivityElements(slide.slideId, activity),
+        elements:
+          slide.activityAppearance.mode === "editable"
+            ? staticRuntimeElements(
+                slide.elements,
+                new Map([[activity.activityId, activity]]),
+              )
+            : staticActivityElements(slide.slideId, activity),
       };
       continue;
     }
@@ -131,28 +138,77 @@ export async function projectActivityDeckForStaticExport(
   return deckSchema.parse(projected);
 }
 
-function staticActivityQrElements(elements: DeckElement[]) {
+function staticRuntimeElements(
+  elements: DeckElement[],
+  definitions: Map<
+    string,
+    ReturnType<typeof activityDefinitionSchema.parse>
+  >,
+): DeckElement[] {
   return elements.map((element) => {
-    if (element.type !== "activity-qr") {
-      return element;
+    if (element.type === "activity-copy") {
+      const definition = definitions.get(element.props.activityId);
+      const text =
+        (element.props.field === "title"
+          ? definition?.title
+          : definition?.description) || element.props.fallbackText;
+      return runtimeTextElement(element, text, element.props.textStyle);
     }
-
-    return {
-      ...element,
-      role: "body",
-      type: "text",
-      props: {
-        text: "참여 QR 코드는 라이브 발표에서 표시됩니다.",
-        color: "#475467",
-        fontFamily: "Arial",
-        fontSize: 24,
-        fontWeight: "normal",
-        align: "center",
-        verticalAlign: "middle",
-        lineHeight: 1.2,
-      },
-    } satisfies DeckElement;
+    if (
+      element.type === "activity-qr" ||
+      element.type === "presentation-passcode"
+    ) {
+      return runtimeTextElement(
+        element,
+        element.type === "activity-qr"
+          ? "참여 QR 코드는 라이브 발표에서 표시됩니다."
+          : "입장 코드는 라이브 발표에서 표시됩니다.",
+        {
+          color:
+            element.type === "presentation-passcode"
+              ? element.props.codeTextStyle.color
+              : "#475467",
+          fontFamily:
+            element.type === "presentation-passcode"
+              ? element.props.codeTextStyle.fontFamily
+              : "Arial",
+          fontSize:
+            element.type === "presentation-passcode"
+              ? element.props.codeTextStyle.fontSize
+              : 24,
+          fontWeight:
+            element.type === "presentation-passcode"
+              ? element.props.codeTextStyle.fontWeight
+              : "normal",
+          align: "center",
+          verticalAlign: "middle",
+          lineHeight: 1.2,
+        },
+      );
+    }
+    return element;
   });
+}
+
+function runtimeTextElement(
+  element: DeckElement,
+  text: string,
+  style: Partial<TextElementProps>,
+): DeckElement {
+  return {
+    ...element,
+    role: element.role ?? "body",
+    type: "text",
+    props: {
+      ...style,
+      text,
+      fontSize: style.fontSize ?? 24,
+      fontWeight: style.fontWeight ?? "normal",
+      align: style.align ?? "left",
+      verticalAlign: style.verticalAlign ?? "middle",
+      lineHeight: style.lineHeight ?? 1.2,
+    },
+  } as DeckElement;
 }
 
 async function loadActivityExportResult(

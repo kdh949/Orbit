@@ -533,6 +533,7 @@ export function SelectionQuickBar(props: {
 function getElementTypeLabel(type: DeckElement["type"]) {
   const labels: Record<DeckElement["type"], string> = {
     arrow: "화살표",
+    "activity-copy": "참여 문구",
     "activity-qr": "참여 QR 코드",
     chart: "차트",
     customShape: "사용자 도형",
@@ -541,6 +542,7 @@ function getElementTypeLabel(type: DeckElement["type"]) {
     image: "이미지",
     line: "선",
     polygon: "다각형",
+    "presentation-passcode": "입장 코드",
     rect: "직사각형",
     ring: "링",
     star: "별",

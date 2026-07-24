@@ -231,7 +231,7 @@ function applyOperation(
 
       const [deletedSlide] = deck.slides.splice(slideIndex, 1);
       if (deletedSlide.kind === "activity") {
-        removeActivityQrElements(deck, deletedSlide.activity.activityId);
+        removeActivityBoundElements(deck, deletedSlide.activity.activityId);
       }
       normalizeSlideOrders(deck);
       return { ok: true };
@@ -652,6 +652,30 @@ function applyOperation(
       return { ok: true };
     }
 
+    case "replace_activity_design": {
+      const slide = findSlide(deck, operation.slideId);
+
+      if (!slide) {
+        return slideNotFound(operation.type, operation.slideId);
+      }
+      if (slide.kind !== "activity") {
+        return failure(
+          "SLIDE_KIND_MISMATCH",
+          "Activity design replacement requires an Activity slide",
+          {
+            operationType: operation.type,
+            details: [`slideId=${operation.slideId}`]
+          }
+        );
+      }
+
+      slide.activityAppearance = cloneJson(operation.activityAppearance);
+      slide.style = cloneJson(operation.style);
+      slide.elements = cloneJson(operation.elements);
+      sortElements(slide);
+      return { ok: true };
+    }
+
     case "update_activity_result_definition": {
       const slide = findSlide(deck, operation.slideId);
 
@@ -679,12 +703,13 @@ function applyOperation(
   }
 }
 
-function removeActivityQrElements(deck: Deck, activityId: string) {
+function removeActivityBoundElements(deck: Deck, activityId: string) {
   for (const slide of deck.slides) {
     const removedElementIds = slide.elements
       .filter(
         (element) =>
-          element.type === "activity-qr" &&
+          (element.type === "activity-qr" ||
+            element.type === "activity-copy") &&
           element.props.activityId === activityId,
       )
       .map((element) => element.elementId);

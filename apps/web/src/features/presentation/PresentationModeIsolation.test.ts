@@ -19,7 +19,10 @@ describe("presentation mode isolation", () => {
 
   it("keeps activity slides, exit protection, and reports on one presentation session", () => {
     expect(presentationWorkspaceSource).toContain(
-      "presentationSession={presenterSessionRef.current ?? undefined}",
+      "runtimeRef.current ??",
+    );
+    expect(presentationWorkspaceSource).toContain(
+      "sessionId: presenterSession.sessionId",
     );
     expect(presentationWorkspaceSource).toContain(
       "await ensurePresentationSession()",

@@ -41,6 +41,7 @@ export type ShapeInsertType =
   | "customShape";
 
 export function EditorContextMenus(props: {
+  canInsertCustomShape: boolean;
   chartMenuPosition: ShapeMenuPosition | null;
   elementContextMenu: ElementContextMenuState | null;
   isChartMenuOpen: boolean;
@@ -138,7 +139,17 @@ export function EditorContextMenus(props: {
                 <ShapeMenuItem icon={<Triangle />} label="삼각형" onClick={() => props.onInsertShape("triangle")} />
                 <ShapeMenuItem icon={<Polygon />} label="다각형" onClick={() => props.onInsertShape("polygon")} />
                 <ShapeMenuItem icon={<Star />} label="별" onClick={() => props.onInsertShape("star")} />
-                <ShapeMenuItem icon={<PenLine />} label="커스텀 도형 그리기" onClick={() => props.onInsertShape("customShape")} />
+                <ShapeMenuItem
+                  disabled={!props.canInsertCustomShape}
+                  icon={<PenLine />}
+                  label="커스텀 도형 그리기"
+                  onClick={() => props.onInsertShape("customShape")}
+                  title={
+                    props.canInsertCustomShape
+                      ? undefined
+                      : "참여 장표에는 커스텀 도형을 추가할 수 없습니다."
+                  }
+                />
                 <ShapeMenuItem icon={<Minus />} label="선" onClick={() => props.onInsertShape("line")} />
                 <ShapeMenuItem icon={<MoveRight />} label="화살표" onClick={() => props.onInsertShape("arrow")} />
               </div>
@@ -306,12 +317,21 @@ function TableContextMenuItem(props: {
 }
 
 function ShapeMenuItem(props: {
+  disabled?: boolean;
   icon: ReactNode;
   label: string;
   onClick: () => void;
+  title?: string;
 }) {
   return (
-    <button className="shape-menu-item" role="menuitem" type="button" onClick={props.onClick}>
+    <button
+      className="shape-menu-item"
+      disabled={props.disabled}
+      role="menuitem"
+      title={props.title}
+      type="button"
+      onClick={props.onClick}
+    >
       <span aria-hidden="true" className="shape-menu-symbol">{props.icon}</span>
       <span>{props.label}</span>
     </button>

@@ -31,8 +31,17 @@ describe("database migration registry", () => {
         "AddPresentationSessionPurposeAndAudienceAccess2026072301000",
       ),
     );
+    expect(
+      migrationNames.indexOf(
+        "AddPresentationSessionPurposeAndAudienceAccess2026072301000",
+      ),
+    ).toBeLessThan(
+      migrationNames.indexOf(
+        "AddPresentationPasscodeDisplayCiphertext2026072401000",
+      ),
+    );
     expect(latest).toBe(
-      "AddPresentationSessionPurposeAndAudienceAccess2026072301000",
+      "AddPresentationPasscodeDisplayCiphertext2026072401000",
     );
   });
 });

@@ -98,6 +98,10 @@ describe("PresentWindow", () => {
   it("renders a received sanitized snapshot without presenter-only content", () => {
     const privateDeck = createDeckWithPrivateOccurrence();
     const snapshotMessage = createPresenterSnapshotMessage({
+      activityElementRuntime: {
+        audienceUrl: "https://orbit.example/audience/session_live",
+        passcodeState: { status: "private", displayPasscode: "4821" },
+      },
       deck: privateDeck,
       identity,
       sentAt: 10,
@@ -111,6 +115,7 @@ describe("PresentWindow", () => {
       <PresentWindowContent
         identity={identity}
         snapshot={{
+          activityElementRuntime: snapshotMessage.activityElementRuntime,
           deck: snapshotMessage.deck,
           state: snapshotMessage.state,
           triggerAnimationIds: snapshotMessage.triggerAnimationIds,

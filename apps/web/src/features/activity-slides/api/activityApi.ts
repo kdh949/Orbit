@@ -11,6 +11,7 @@ import {
   getCurrentPresentationSessionResponseSchema,
   listPresentationSessionsResponseSchema,
   moderateActivityTextResponseSchema,
+  presenterAccessResponseSchema,
   presentationSessionResponseSchema,
   presentationSessionWithAudienceUrlResponseSchema,
   supersedeActivityRunResponseSchema,
@@ -53,6 +54,13 @@ export const activityApi = {
       `/api/v1/projects/${segment(projectId)}/presentation-sessions/${segment(sessionId)}/close`,
       jsonRequest("POST", {}),
       presentationSessionResponseSchema
+    );
+  },
+  getPresenterAccess(projectId: string, sessionId: string) {
+    return request(
+      `/api/v1/projects/${segment(projectId)}/presentation-sessions/${segment(sessionId)}/presenter-access`,
+      undefined,
+      presenterAccessResponseSchema
     );
   },
   ensureRun(projectId: string, sessionId: string, activityId: string) {

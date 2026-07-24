@@ -20,6 +20,20 @@ describe("API logging redaction", () => {
     );
   });
 
+  it("redacts presentation passcodes and their encrypted display copy", () => {
+    expect(redactedPaths).toEqual(
+      expect.arrayContaining([
+        "passcode",
+        "*.passcode",
+        "body.passcode",
+        "displayPasscode",
+        "*.displayPasscode",
+        "passwordDisplayCiphertext",
+        "*.passwordDisplayCiphertext"
+      ])
+    );
+  });
+
   it("redacts companion WebRTC and annotation payload fields", () => {
     expect(redactedPaths).toEqual(
       expect.arrayContaining([

@@ -120,7 +120,12 @@ function projectSlide(input: {
   };
 
   if (input.slide.kind === "activity") {
-    return { ...base, kind: "activity" as const, activity: input.slide.activity };
+    return {
+      ...base,
+      kind: "activity" as const,
+      activity: input.slide.activity,
+      activityAppearance: input.slide.activityAppearance,
+    };
   }
   if (input.slide.kind === "activity-results") {
     return {
@@ -189,6 +194,9 @@ function projectImageSource(input: {
   if (input.source.startsWith("//")) {
     return null;
   }
+  if (isBundledPresentationAsset(input.source)) {
+    return input.source;
+  }
   const internal = parseProjectAssetUrl(
     input.source,
     input.trustedAssetOrigins,
@@ -211,6 +219,13 @@ function projectImageSource(input: {
   } catch {
     return null;
   }
+}
+
+function isBundledPresentationAsset(source: string) {
+  return (
+    /^\/activity-presets\/[A-Za-z0-9._/-]+$/.test(source) ||
+    /^\/brand\/[A-Za-z0-9._/-]+$/.test(source)
+  ) && !source.includes("..");
 }
 
 export function parseProjectAssetUrl(
