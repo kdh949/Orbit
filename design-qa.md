@@ -87,9 +87,9 @@ P0 또는 P1 시각 문제는 발견되지 않았다.
 
 ## 발표 런타임 증거
 
-- [editorial-presenter-runtime.jpg](docs/product/qa/activity-slide-design/editorial-presenter-runtime.jpg)
 - 실제 청중 URL로 만든 QR과 발표자 전용 입장 코드가 플레이스홀더를 대체한다.
 - 응답 집계 패널은 별도 결과 흐름을 그대로 사용한다.
+- Chrome에서 런타임 주입을 확인했으며 입장 코드 값은 QA 산출물에 기록하지 않았다.
 
 ## 자동 검증
 
