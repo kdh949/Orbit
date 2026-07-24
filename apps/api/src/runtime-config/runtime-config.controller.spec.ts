@@ -27,6 +27,7 @@ const validEnv = {
   JOB_QUEUE_DRIVER: "bullmq",
   LIVE_STT_PROVIDER: "sherpa",
   LIVE_STT_ENGINE: "openai-realtime",
+  IPAD_PRESENTER_COMPANION_ENABLED: "true",
   REPORT_STT_PROVIDER: "openai",
   OCR_PROVIDER: "python",
   LLM_PROVIDER: "openai",
@@ -64,11 +65,31 @@ describe("RuntimeConfigController", () => {
 
     expect(new RuntimeConfigController().getRuntimeConfig()).toEqual({
       liveSttEngine: "web-speech",
+      ipadPresenterCompanionEnabled: true,
       adaptiveRehearsalCoachEnabled: false,
       focusedPracticeEnabled: false,
       challengeQnaEnabled: false,
       slidePracticeEnabled: false,
       slideQuestionGuidesEnabled: false,
     });
+  });
+
+  it("exposes only the public companion feature flag", () => {
+    vi.stubEnv("IPAD_PRESENTER_COMPANION_ENABLED", "false");
+
+    const runtimeConfig = new RuntimeConfigController().getRuntimeConfig();
+
+    expect(runtimeConfig.ipadPresenterCompanionEnabled).toBe(false);
+    expect(runtimeConfig).not.toHaveProperty("REDIS_URL");
+    expect(runtimeConfig).not.toHaveProperty("SESSION_SECRET");
+  });
+
+  it("enables the companion feature by default", () => {
+    delete process.env.IPAD_PRESENTER_COMPANION_ENABLED;
+
+    expect(
+      new RuntimeConfigController().getRuntimeConfig()
+        .ipadPresenterCompanionEnabled
+    ).toBe(true);
   });
 });

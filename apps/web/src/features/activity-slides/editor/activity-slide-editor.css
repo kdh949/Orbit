@@ -22,6 +22,18 @@
   grid-template-rows: max-content max-content minmax(0, max-content);
 }
 
+.activity-special-thumbnail--editable {
+  align-items: center;
+  background: transparent;
+  justify-content: center;
+  padding: 0;
+}
+
+.activity-special-thumbnail--editable .orbit-read-only-slide-viewport {
+  max-height: 100%;
+  max-width: 100%;
+}
+
 .activity-special-thumbnail--results {
   align-content: end;
   border-left: 8px solid var(--activity-color-accent);
@@ -600,31 +612,67 @@
 }
 
 .activity-qr-insert-dialog {
-  width: min(620px, calc(100vw - 40px));
+  background: var(--redesign-color-surface-container-low);
+  border: 1px solid var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius-xl);
+  max-width: 560px;
+  width: min(560px, calc(100vw - 40px));
+}
+
+.activity-qr-insert-dialog .redesign-dialog-header {
+  border-bottom: 0;
+  padding: var(--redesign-space-5) var(--redesign-space-5) var(--redesign-space-3);
+}
+
+.activity-qr-insert-dialog .redesign-dialog-header h2 {
+  font-size: var(--redesign-type-title-lg-size);
+}
+
+.activity-qr-insert-dialog .redesign-dialog-header .redesign-icon-button {
+  background: var(--redesign-color-surface-container);
+  border: 1px solid var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius-xl);
+  color: var(--redesign-color-on-surface-variant);
+}
+
+.activity-qr-insert-dialog .redesign-dialog-header .redesign-icon-button:hover {
+  background: var(--redesign-color-primary-subtle);
+  color: var(--redesign-color-primary);
 }
 
 .activity-qr-insert-dialog .redesign-dialog-body {
   display: grid;
-  gap: var(--redesign-space-4);
+  gap: var(--redesign-space-3);
+  padding: var(--redesign-space-3) var(--redesign-space-5) var(--redesign-space-4);
+}
+
+.activity-qr-insert-dialog .redesign-dialog-footer {
+  border-color: var(--redesign-color-outline-variant);
+  padding: var(--redesign-space-3) var(--redesign-space-5) var(--redesign-space-4);
+}
+
+.activity-qr-insert-dialog .redesign-button {
+  border-radius: var(--redesign-radius-xl);
 }
 
 .activity-qr-insert-summary {
   align-items: center;
-  background: linear-gradient(135deg, var(--redesign-color-primary-subtle), var(--redesign-color-surface-container-low));
+  background: var(--redesign-color-surface-container);
   border: 1px solid var(--redesign-color-primary-outline);
   border-radius: var(--redesign-radius-xl);
   display: grid;
   gap: var(--redesign-space-3);
   grid-template-columns: auto minmax(0, 1fr);
-  padding: var(--redesign-space-4);
+  padding: var(--redesign-space-3);
 }
 
 .activity-qr-insert-summary-icon,
 .activity-qr-insert-option-icon {
   align-items: center;
-  background: var(--redesign-color-primary);
+  background: var(--redesign-color-primary-subtle);
+  border: 1px solid var(--redesign-color-primary-outline);
   border-radius: var(--redesign-radius-lg);
-  color: var(--redesign-color-on-primary);
+  color: var(--redesign-color-primary);
   display: inline-flex;
   flex: 0 0 auto;
   justify-content: center;
@@ -669,8 +717,9 @@
 
 .activity-qr-insert-target {
   align-items: center;
-  background: var(--redesign-color-surface-container-low);
-  border-radius: var(--redesign-radius-lg);
+  background: var(--redesign-color-surface-container);
+  border: 1px solid var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius-xl);
   color: var(--redesign-color-on-surface-variant);
   display: grid;
   font-size: var(--redesign-type-label-sm-size);
@@ -719,14 +768,14 @@
 .activity-qr-insert-options > button {
   align-items: center;
   background: var(--redesign-color-surface-container-lowest);
-  border: var(--redesign-border-subtle);
+  border: 1px solid var(--redesign-color-outline-variant);
   border-radius: var(--redesign-radius-xl);
   color: var(--redesign-color-on-surface);
   cursor: pointer;
   display: grid;
   gap: var(--redesign-space-3);
   grid-template-columns: auto minmax(0, 1fr) auto;
-  min-height: 78px;
+  min-height: 68px;
   padding: var(--redesign-space-3);
   text-align: left;
   transition: var(--redesign-transition-color), box-shadow var(--redesign-duration-fast) var(--redesign-ease-standard), var(--redesign-transition-transform);
@@ -737,7 +786,7 @@
 .activity-qr-insert-options > button:focus-visible {
   background: var(--redesign-color-primary-subtle);
   border-color: var(--redesign-color-primary);
-  box-shadow: var(--redesign-shadow-card-hover);
+  box-shadow: var(--redesign-glow-primary);
   outline: none;
   transform: translateY(-1px);
 }
@@ -1187,4 +1236,61 @@
     gap: var(--redesign-space-1);
     padding: var(--redesign-space-2);
   }
+}
+.activity-design-picker {
+  display: grid;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+}
+
+.activity-design-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.activity-design-preset-card {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-2);
+  color: var(--color-text-primary);
+  text-align: left;
+  background: var(--color-surface-primary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.activity-design-preset-card:hover,
+.activity-design-preset-card:focus-visible {
+  border-color: var(--color-border-strong);
+}
+
+.activity-design-preset-card small {
+  color: var(--color-text-secondary);
+  line-height: 1.35;
+}
+
+.activity-design-preset-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  color: var(--color-text-primary);
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-sm);
+  place-items: center;
+}
+
+.activity-runtime-element-palette {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-md);
+}
+
+.activity-runtime-element-palette > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }

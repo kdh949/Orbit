@@ -405,6 +405,7 @@ export function CompanionSpikeCapturePage({ spikeId }: { spikeId: string }) {
       }
       const result = attachAudienceStreamToWindow({
         identity: companionSpikeIdentity(spikeId),
+        shareEpochId: `share_spike_${spikeId}`,
         stream,
         targetWindow:
           window.opener as unknown as AudienceStreamBridgeWindow,

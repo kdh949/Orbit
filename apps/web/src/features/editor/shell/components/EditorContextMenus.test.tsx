@@ -20,6 +20,7 @@ describe("EditorContextMenus table actions", () => {
   it("shows selected-cell row and column actions with disabled reasons", () => {
     const html = renderToStaticMarkup(
       <EditorContextMenus
+        canInsertCustomShape
         chartMenuPosition={null}
         elementContextMenu={{
           actionDisabledReasons: {

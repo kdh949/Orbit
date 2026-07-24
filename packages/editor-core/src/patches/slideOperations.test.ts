@@ -1,7 +1,7 @@
 import { createKeywordOccurrenceId, deckSchema, type Deck } from "@orbit/shared";
 import { describe, expect, it } from "vitest";
 
-import { createDemoDeck } from "../index";
+import { createActivitySlide, createDemoDeck } from "../index";
 import { applyDeckPatch } from "./applyPatch";
 import {
   createAddSlidePatch,
@@ -151,6 +151,59 @@ describe("slide operation helpers", () => {
       ]);
       expect(result.deck.slides.map((slide) => slide.order)).toEqual([1, 2, 3]);
     }
+  });
+
+  it("duplicates editable Activity IDs and runtime bindings through the editor command", () => {
+    const base = createDemoDeck();
+    const source = createActivitySlide(base, "poll", { preset: "spotlight" });
+    const deck = deckSchema.parse({
+      ...base,
+      slides: [...base.slides, source],
+    });
+
+    const result = applyDeckPatch(
+      deck,
+      createDuplicateSlidePatch(deck, source.slideId),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const duplicate = result.deck.slides.find(
+      (slide) =>
+        slide.kind === "activity" &&
+        slide.slideId !== source.slideId,
+    );
+    expect(duplicate?.kind).toBe("activity");
+    if (duplicate?.kind !== "activity") return;
+    expect(duplicate.activity.activityId).not.toBe(source.activity.activityId);
+    expect(duplicate.activity.questions[0]?.questionId).not.toBe(
+      source.activity.questions[0]?.questionId,
+    );
+    expect(
+      duplicate.activity.questions[0]?.type === "single-choice"
+        ? duplicate.activity.questions[0].options.map(
+            (option) => option.optionId,
+          )
+        : [],
+    ).not.toEqual(
+      source.activity.questions[0]?.type === "single-choice"
+        ? source.activity.questions[0].options.map(
+            (option) => option.optionId,
+          )
+        : [],
+    );
+    expect(
+      duplicate.elements
+        .filter(
+          (element) =>
+            element.type === "activity-qr" ||
+            element.type === "activity-copy",
+        )
+        .every(
+          (element) =>
+            element.props.activityId === duplicate.activity.activityId,
+        ),
+    ).toBe(true);
   });
 
   it("does not inherit imported OOXML capabilities when duplicating a slide", () => {

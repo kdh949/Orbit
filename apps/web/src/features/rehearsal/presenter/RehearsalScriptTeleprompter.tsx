@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   type ReactNode,
   type WheelEvent as ReactWheelEvent
@@ -46,6 +47,13 @@ export function normalizeRehearsalTeleprompterWheelDelta(
   return deltaY;
 }
 
+export function getRehearsalTeleprompterCenterPadding(
+  viewportHeight: number,
+  focusRowHeight: number
+) {
+  return Math.max(24, (viewportHeight - focusRowHeight) / 2);
+}
+
 export function RehearsalScriptTeleprompter(props: {
   children?: ReactNode;
   focusScopeId: string;
@@ -67,30 +75,48 @@ export function RehearsalScriptTeleprompter(props: {
     ? `${props.focusScopeId}:${focusSentenceId}`
     : null;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const scrollBehavior = getRehearsalTeleprompterScrollBehavior(
       previousFocusSentenceIdRef.current,
       focusKey
     );
     previousFocusSentenceIdRef.current = focusKey;
-    if (!scrollBehavior) return;
-
     const viewport = scrollViewportRef.current;
     const focusRow = focusRowRef.current;
     if (!viewport || !focusRow) return;
 
-    const viewportBounds = viewport.getBoundingClientRect();
-    const focusRowBounds = focusRow.getBoundingClientRect();
-    viewport.scrollTo({
-      behavior: scrollBehavior,
-      top: Math.max(
-        0,
-        viewport.scrollTop +
-          focusRowBounds.top -
-          viewportBounds.top -
-          (viewportBounds.height - focusRowBounds.height) / 2
-      )
-    });
+    let frameId = 0;
+    const alignFocusRow = () => {
+      const centerPadding = getRehearsalTeleprompterCenterPadding(
+        viewport.clientHeight,
+        focusRow.offsetHeight
+      );
+      viewport.style.setProperty(
+        "--rehearsal-teleprompter-center-padding",
+        `${centerPadding}px`
+      );
+      frameId = window.requestAnimationFrame(() => {
+        viewport.scrollTo({
+          behavior: scrollBehavior ?? "auto",
+          top:
+            focusRow.offsetTop -
+            (viewport.clientHeight - focusRow.offsetHeight) / 2
+        });
+      });
+    };
+
+    alignFocusRow();
+    const resizeObserver = new ResizeObserver(alignFocusRow);
+    resizeObserver.observe(viewport);
+    resizeObserver.observe(focusRow);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.cancelAnimationFrame(frameId);
+      viewport.style.removeProperty(
+        "--rehearsal-teleprompter-center-padding"
+      );
+    };
   }, [focusKey]);
 
   useEffect(() => {

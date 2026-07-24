@@ -1,4 +1,4 @@
-import { FilePurpose } from "@orbit/shared";
+import { FilePurpose, privateAudioPurposes } from "@orbit/shared";
 import { Readable } from "node:stream";
 import {
   DeleteObjectCommand,
@@ -22,6 +22,7 @@ export interface StorageUploadUrlInput {
   key: string;
   contentType: string;
   expiresInSeconds: number;
+  purpose?: FilePurpose;
 }
 
 export interface StorageUploadUrl {
@@ -275,5 +276,55 @@ export class LocalMinioStorage extends S3CompatibleStorage {
 export class S3Storage extends S3CompatibleStorage {
   constructor(options: S3CompatibleStorageOptions) {
     super(options);
+  }
+}
+
+const privateAudioStoragePrefixes = ["raw/", "evidence/"] as const;
+
+export class PurposeRoutedStorage implements StoragePort {
+  constructor(
+    private readonly assets: StoragePort,
+    private readonly privateAudio: StoragePort | null,
+  ) {}
+
+  async putObject(input: StoragePutInput): Promise<StorageObject> {
+    return this.storageForPurpose(input.purpose).putObject(input);
+  }
+
+  async createUploadUrl(input: StorageUploadUrlInput): Promise<StorageUploadUrl> {
+    return this.storageForPurpose(input.purpose).createUploadUrl(input);
+  }
+
+  async getObject(key: string): Promise<StorageReadResult> {
+    return this.storageForKey(key).getObject(key);
+  }
+
+  async getObjectStream(key: string): Promise<StorageStreamReadResult> {
+    return this.storageForKey(key).getObjectStream(key);
+  }
+
+  async getSignedReadUrl(key: string, expiresInSeconds?: number): Promise<string> {
+    return this.storageForKey(key).getSignedReadUrl(key, expiresInSeconds);
+  }
+
+  async removeObject(key: string): Promise<void> {
+    return this.storageForKey(key).removeObject(key);
+  }
+
+  async headObject(key: string): Promise<StorageHeadResult | null> {
+    return this.storageForKey(key).headObject(key);
+  }
+
+  private storageForPurpose(purpose: FilePurpose | undefined) {
+    return purpose && privateAudioPurposes.has(purpose) && this.privateAudio
+      ? this.privateAudio
+      : this.assets;
+  }
+
+  private storageForKey(key: string) {
+    return privateAudioStoragePrefixes.some((prefix) => key.startsWith(prefix)) &&
+      this.privateAudio
+      ? this.privateAudio
+      : this.assets;
   }
 }

@@ -321,13 +321,12 @@ describe("restore deck snapshot API schema", () => {
     expect(parsed.ooxmlSyncJob).toBeUndefined();
   });
 
-  it("requires a matching OOXML sync job for a normalized restore version", () => {
-    expect(() =>
-      restoreDeckSnapshotResponseSchema.parse({
-        ...response,
-        ooxmlSyncJob: undefined,
-      }),
-    ).toThrow();
+  it("allows a normalized restore without a job when asynchronous admission is draining", () => {
+    const parsed = restoreDeckSnapshotResponseSchema.parse({
+      ...response,
+      ooxmlSyncJob: undefined,
+    });
+    expect(parsed.ooxmlSyncJob).toBeUndefined();
     expect(() =>
       restoreDeckSnapshotResponseSchema.parse({
         ...response,

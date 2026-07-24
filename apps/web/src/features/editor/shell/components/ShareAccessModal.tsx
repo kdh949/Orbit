@@ -35,7 +35,7 @@ export function ShareAccessModal(props: {
   onTabChange: (tab: ShareAccessTab) => void;
 }) {
   return (
-    <OrbitDialog className="orbit-share-dialog" description="사용자를 초대하고 프로젝트 접근 요청을 관리합니다." onClose={props.onClose} open title="프로젝트 공유">
+    <OrbitDialog className="orbit-share-dialog redesign-dark" description="사용자를 초대하고 프로젝트 접근 요청을 관리합니다." onClose={props.onClose} open title="프로젝트 공유">
       <OrbitTabs activeTab={props.activeTab} ariaLabel="공유 관리" onChange={(tab) => props.onTabChange(tab as ShareAccessTab)} tabs={[{ id: "status", label: `함께 작업 중 ${props.members.length}` }, { id: "requests", label: `승인 요청 ${props.requests.length}` }]}>
         {props.activeTab === "status" ? (
           <div className="orbit-share-panel">

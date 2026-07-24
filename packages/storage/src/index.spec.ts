@@ -1,8 +1,35 @@
 import { Readable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
-import { LocalMinioStorage } from "./index";
+import { LocalMinioStorage, PurposeRoutedStorage, type StoragePort } from "./index";
 
 describe("ORBIT-93 S3-compatible storage presign", () => {
+  it("routes new private-audio writes to the dedicated bucket while preserving legacy asset reads", async () => {
+    const assets = storagePortMock();
+    const privateAudio = storagePortMock();
+    const storage = new PurposeRoutedStorage(assets, privateAudio);
+
+    await storage.createUploadUrl({
+      key: "raw/rehearsals/2026-07-24/project-a/run-a/audio.webm",
+      contentType: "audio/webm",
+      expiresInSeconds: 60,
+      purpose: "rehearsal-audio",
+    });
+    await storage.getSignedReadUrl(
+      "evidence/rehearsals/2026-07-24/project-a/run-a/clip.wav",
+    );
+    await storage.getSignedReadUrl("rehearsals/2026-07-23/project-a/run-a/audio.webm");
+
+    expect(privateAudio.createUploadUrl).toHaveBeenCalledOnce();
+    expect(privateAudio.getSignedReadUrl).toHaveBeenCalledWith(
+      "evidence/rehearsals/2026-07-24/project-a/run-a/clip.wav",
+      undefined,
+    );
+    expect(assets.getSignedReadUrl).toHaveBeenCalledWith(
+      "rehearsals/2026-07-23/project-a/run-a/audio.webm",
+      undefined,
+    );
+  });
+
   it("creates a browser-facing MinIO PUT URL without contacting the bucket", async () => {
     const storage = new LocalMinioStorage({
       endpoint: "http://minio:9000",
@@ -121,3 +148,21 @@ describe("ORBIT-93 S3-compatible storage presign", () => {
     );
   });
 });
+
+function storagePortMock(): StoragePort & Record<string, ReturnType<typeof vi.fn>> {
+  return {
+    putObject: vi.fn(),
+    createUploadUrl: vi.fn(async (input) => ({
+      key: input.key,
+      url: "https://example.invalid/upload",
+      method: "PUT" as const,
+      headers: {},
+      expiresAt: "2026-07-24T00:00:00.000Z",
+    })),
+    getObject: vi.fn(),
+    getObjectStream: vi.fn(),
+    getSignedReadUrl: vi.fn(async () => "https://example.invalid/read"),
+    removeObject: vi.fn(),
+    headObject: vi.fn(),
+  } as StoragePort & Record<string, ReturnType<typeof vi.fn>>;
+}

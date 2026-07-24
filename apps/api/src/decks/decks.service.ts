@@ -91,6 +91,10 @@ import { InjectPinoLogger, PinoLogger } from "nestjs-pino";
 import { DataSource, EntityManager } from "typeorm";
 import { ZodError } from "zod";
 import { JobsService } from "../jobs/jobs.service";
+import {
+  assertAsyncJobAdmissionOpen,
+  isAsyncJobAdmissionDraining,
+} from "../jobs/async-job-admission";
 import { serializeLogError } from "../logging";
 
 type DeckRow = {
@@ -524,6 +528,7 @@ export class DecksService {
       throw new ConflictException("PPTX OOXML sync job is not retryable.");
     }
 
+    assertAsyncJobAdmissionOpen();
     const job = await this.enqueueOoxmlSync(projectId, {
       deckId: deck.deckId,
       changeId: `retry_${randomUUID()}`,
@@ -676,7 +681,10 @@ export class DecksService {
       ? await this.enqueueOoxmlSync(projectId, syncInput)
       : undefined;
 
-    return putDeckResponseSchema.parse({ ...response, ooxmlSyncJob });
+    return putDeckResponseSchema.parse({
+      ...response,
+      ...(ooxmlSyncJob ? { ooxmlSyncJob } : {}),
+    });
   }
 
   async appendPatch(
@@ -807,12 +815,15 @@ export class DecksService {
         version: response.deck.version,
         changeRecord: response.changeRecord,
         ...(response.snapshot ? { snapshot: response.snapshot } : {}),
-        ooxmlSyncJob,
+        ...(ooxmlSyncJob ? { ooxmlSyncJob } : {}),
         updatedAt: response.updatedAt,
       });
     }
 
-    return appendDeckPatchResponseSchema.parse({ ...response, ooxmlSyncJob });
+    return appendDeckPatchResponseSchema.parse({
+      ...response,
+      ...(ooxmlSyncJob ? { ooxmlSyncJob } : {}),
+    });
   }
 
   async createSemanticCueExtractionJob(
@@ -1094,10 +1105,11 @@ export class DecksService {
       `,
       [projectId],
     );
+    const snapshots = deduplicateRestoreSnapshotRows(rows);
 
     return listDeckSnapshotsResponseSchema.parse({
       projectId,
-      snapshots: rows.map(parseSnapshotRow),
+      snapshots: snapshots.map(parseSnapshotRow),
     });
   }
 
@@ -1205,12 +1217,16 @@ export class DecksService {
           currentDeck.deckId,
           currentDeck,
         );
-        await this.createSnapshot(
-          manager,
-          currentDeck,
-          "snapshot-restore",
-          updatedAt,
-        );
+        const existingRestoreSnapshot =
+          await this.findEquivalentRestoreSnapshot(manager, currentDeck);
+        if (!existingRestoreSnapshot) {
+          await this.createSnapshot(
+            manager,
+            currentDeck,
+            "snapshot-restore",
+            updatedAt,
+          );
+        }
       }
 
       if (currentDeck && templateBlueprint) {
@@ -1258,7 +1274,7 @@ export class DecksService {
 
     return restoreDeckSnapshotResponseSchema.parse({
       ...response,
-      ooxmlSyncJob,
+      ...(ooxmlSyncJob ? { ooxmlSyncJob } : {}),
     });
   }
 
@@ -1514,6 +1530,31 @@ export class DecksService {
     return parseSnapshotRow(rows[0]);
   }
 
+  private async findEquivalentRestoreSnapshot(
+    executor: QueryExecutor,
+    deck: Deck,
+  ): Promise<DeckSnapshotRow | undefined> {
+    const rows = await executor.query<DeckSnapshotRow[]>(
+      `
+        SELECT snapshot_id, project_id, deck_id, deck_json, version, reason, created_at
+        FROM deck_snapshots
+        WHERE project_id = $1
+          AND deck_id = $2
+          AND version = $3
+          AND reason = $4
+        ORDER BY created_at DESC, snapshot_id DESC
+      `,
+      [deck.projectId, deck.deckId, deck.version, "snapshot-restore"],
+    );
+
+    return rows.find((row) =>
+      isDeepStrictEqual(
+        removeLegacyAiGeneratedTitleAnimations(parseDeckJson(row.deck_json)),
+        deck,
+      ),
+    );
+  }
+
   private async deletePatchRowsAfterVersion(
     executor: QueryExecutor,
     projectId: string,
@@ -1670,6 +1711,18 @@ export class DecksService {
     input: PptxOoxmlSyncJobInput,
   ) {
     if (!this.jobsService) {
+      return undefined;
+    }
+    if (isAsyncJobAdmissionDraining()) {
+      this.logger?.info(
+        {
+          event: "pptx_ooxml.sync.skipped_admission_drain",
+          projectId,
+          deckId: input.deckId,
+          targetDeckVersion: input.targetDeckVersion,
+        },
+        "PPTX OOXML sync was skipped while asynchronous job admission is draining.",
+      );
       return undefined;
     }
 
@@ -2294,6 +2347,28 @@ function normalizeLegacyKeywordTermKey(value: string): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function deduplicateRestoreSnapshotRows(
+  rows: DeckSnapshotRow[],
+): DeckSnapshotRow[] {
+  const restoreStates: Array<{ deckId: string; deck: Deck }> = [];
+
+  return rows.filter((row) => {
+    if (row.reason !== "snapshot-restore") return true;
+
+    const deck = removeLegacyAiGeneratedTitleAnimations(
+      parseDeckJson(row.deck_json),
+    );
+    const isDuplicate = restoreStates.some(
+      (state) =>
+        state.deckId === row.deck_id && isDeepStrictEqual(state.deck, deck),
+    );
+    if (isDuplicate) return false;
+
+    restoreStates.push({ deckId: row.deck_id, deck });
+    return true;
+  });
 }
 
 function parseSnapshotRow(row: DeckSnapshotRow): DeckSnapshot {

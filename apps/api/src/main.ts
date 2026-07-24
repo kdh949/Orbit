@@ -11,6 +11,7 @@ import { resolveAllowedWebOrigins } from "./common/web-origin";
 import { configureHttpTrustProxy } from "./common/http-trust-proxy";
 import { DatabaseReadinessService } from "./database/database-readiness.service";
 import { writeBootstrapError } from "./logging";
+import { RedisIoAdapter } from "./realtime/redis-io.adapter";
 
 async function bootstrap() {
   const config = loadOrbitConfig(process.env, { service: "api" });
@@ -46,6 +47,14 @@ async function bootstrap() {
   SwaggerModule.setup("docs", app, document);
 
   await databaseReadiness.assertReady();
+  const redisIoAdapter = new RedisIoAdapter({
+    app,
+    config,
+    logger,
+  });
+  await redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
+  app.enableShutdownHooks();
   await app.listen(config.API_PORT, "0.0.0.0");
   logger.log(
     {

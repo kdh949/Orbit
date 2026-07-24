@@ -46,3 +46,7 @@ export {
   getActivityResultRenderState,
   type ActivityResultRenderState
 } from "./rendering/ActivityResultSlideRenderer";
+export {
+  ActivityPublicProjectionProvider,
+  type ActivityPublicRuntimeProjection,
+} from "./rendering/activityPublicProjectionContext";

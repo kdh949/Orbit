@@ -1,16 +1,9 @@
 import type { Deck } from "@orbit/shared";
 import {
   AlertCircle,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Circle,
-  ListChecks,
-  Maximize2,
-  PauseCircle,
-  PlayCircle,
-  Power,
-  RotateCcw,
+  CircleSlash2,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -19,9 +12,17 @@ import {
   ActivitySlidePreview,
 } from "../../activity-slides";
 import {
+  getPresenterTimingProgress,
+  PresenterTimerCard,
+  type PresenterTimingProgressItem,
+} from "../../presenter-shell/PresenterScaffold";
+import {
   SemanticSpeechDebugPanel,
   shouldShowSemanticSpeechDebugPanel,
 } from "../panel/SemanticSpeechDebugPanel";
+import {
+  RehearsalPanelTopGrid,
+} from "../panel/RehearsalPanel";
 import { splitSpeakerNotesIntoSentences } from "../speech/phraseExtractor";
 import {
   createPresenterCommandMessage,
@@ -35,8 +36,7 @@ import {
   type PresenterRemoteCommand,
 } from "./presentationChannel";
 import type { PresenterSlideshowState } from "./presenterStateStore";
-import { PresenterScriptList, type PresenterScriptListRow } from "./PresenterScriptList";
-import { getRehearsalTeleprompterScrollBehavior } from "./RehearsalScriptTeleprompter";
+import { RehearsalScriptTeleprompter } from "./RehearsalScriptTeleprompter";
 import { SlideshowRenderer } from "./SlideshowRenderer";
 import { usePresenterKeyboard } from "./usePresenterKeyboard";
 import { getPresenterAidPolicy } from "./presenterAidPolicy";
@@ -103,11 +103,6 @@ export function PresenterRemoteWindow(props: {
   const channelRef = useRef<ChannelLike | null>(null);
   const commandRetryTimersRef = useRef<number[]>([]);
   const lastOwnerSeenAtRef = useRef<number | null>(null);
-  const scriptViewportRef = useRef<HTMLElement | null>(null);
-  const currentScriptRowRef = useRef<HTMLLIElement | null>(null);
-  const previousScriptFocusKeyRef = useRef<string | null | undefined>(
-    undefined,
-  );
   const pendingAudienceOutputModeRef = useRef<PendingAudienceOutputMode | null>(
     null,
   );
@@ -181,13 +176,6 @@ export function PresenterRemoteWindow(props: {
     }
   };
 
-  const requestRemoteFullscreen = () => {
-    const request = document.documentElement.requestFullscreen?.();
-    if (request) {
-      void request.catch(() => undefined);
-    }
-  };
-
   const updateAudienceOutputMode = (mode: PresenterSlideshowState["audienceOutputMode"]) => {
     pendingAudienceOutputModeRef.current = { mode, sentAt: Date.now() };
     setState((current) => ({ ...current, audienceOutputMode: mode }));
@@ -224,7 +212,7 @@ export function PresenterRemoteWindow(props: {
     () => getPresenterRemoteSlideContext(deck, state),
     [deck, state],
   );
-  const { nextSlide, slide, slideNumber } = slideContext;
+  const { nextSlide, previousSlide, slide, slideNumber } = slideContext;
   const notes = slide?.speakerNotes?.trim() || "발표자 노트가 없습니다.";
   const noteSentences = useMemo(
     () => splitPresenterRemoteNotes(notes),
@@ -234,34 +222,6 @@ export function PresenterRemoteWindow(props: {
     noteSentences,
     state,
   );
-  const currentScriptFocusKey =
-    slide && currentSentenceIndex >= 0
-      ? `${slide.slideId}:${getPresenterRemoteSentenceId(currentSentenceIndex)}`
-      : null;
-
-  useEffect(() => {
-    const scrollBehavior = getRehearsalTeleprompterScrollBehavior(
-      previousScriptFocusKeyRef.current,
-      currentScriptFocusKey,
-    );
-    previousScriptFocusKeyRef.current = currentScriptFocusKey;
-    if (!scrollBehavior) {
-      return;
-    }
-
-    const viewport = scriptViewportRef.current;
-    const currentRow = currentScriptRowRef.current;
-    if (!viewport || !currentRow) {
-      return;
-    }
-
-    scrollPresenterRemoteScriptRowIntoView(
-      viewport,
-      currentRow,
-      scrollBehavior,
-    );
-  }, [currentScriptFocusKey]);
-
   const nextSentenceIndex = getPresenterRemoteNextSentenceIndex(
     noteSentences,
     state,
@@ -271,6 +231,19 @@ export function PresenterRemoteWindow(props: {
     () => getPresenterRemoteKeywordRows(slide, state.stepIndex),
     [slide, state.stepIndex],
   );
+  const panelKeywords = useMemo(
+    () => (slide?.keywords ?? []).slice(0, 5),
+    [slide],
+  );
+  const hitKeywordIds = useMemo(
+    () =>
+      new Set(
+        keywordRows
+          .filter((keyword) => keyword.status === "done")
+          .map((keyword) => keyword.keywordId),
+      ),
+    [keywordRows],
+  );
   const timing = getPresenterRemoteTimingState(deck, slide, state);
   const isTimerActive = timing.isRunning || timing.isLiveSttActive;
   const timerPrimaryAction = isTimerActive ? "timer-pause" : "timer-start";
@@ -279,9 +252,31 @@ export function PresenterRemoteWindow(props: {
     : isTimerActive
       ? "일시정지"
       : "시작";
-  const timerProgressPercent = getPresenterRemoteTimerProgressPercent(timing);
+  const totalTimingProgress = getPresenterTimingProgress(
+    timing.elapsedSeconds,
+    timing.timerDurationSeconds,
+  );
+  const slideTimingProgress = getPresenterTimingProgress(
+    timing.currentSlideElapsedSeconds,
+    timing.currentSlideTargetSeconds,
+  );
+  const timerProgressItems: PresenterTimingProgressItem[] = [
+    {
+      currentLabel: `현재 ${formatPresenterRemoteDuration(timing.elapsedSeconds)}`,
+      label: "총 발표 시간",
+      percent: totalTimingProgress.percent,
+      targetLabel: `예상 ${formatPresenterRemoteDuration(timing.timerDurationSeconds)}`,
+      tone: totalTimingProgress.tone,
+    },
+    {
+      currentLabel: `현재 ${formatPresenterRemoteDuration(timing.currentSlideElapsedSeconds)}`,
+      label: "현재 슬라이드",
+      percent: slideTimingProgress.percent,
+      targetLabel: `예상 ${formatPresenterRemoteDuration(timing.currentSlideTargetSeconds)}`,
+      tone: slideTimingProgress.tone,
+    },
+  ];
   const previewScale = getPresenterRemotePreviewScale(deck);
-  const visibleSlides = getPresenterRemoteVisibleSlides(deck, state.slideIndex);
   const cueProgressCurrent =
     noteSentences.length > 0
       ? Math.min(currentSentenceIndex + 1, noteSentences.length)
@@ -307,24 +302,6 @@ export function PresenterRemoteWindow(props: {
 
   return (
     <main className="presenter-remote-shell" aria-label="발표자 제어 창">
-      <header className="presenter-remote-topbar">
-        <button
-          className="presenter-remote-header-action"
-          type="button"
-          onClick={requestRemoteFullscreen}
-        >
-          <Maximize2 size={16} />
-          전체 화면
-        </button>
-        <button
-          className="presenter-remote-header-action presenter-remote-header-action--danger"
-          type="button"
-          onClick={() => window.close()}
-        >
-          <Power size={16} />
-          발표 종료
-        </button>
-      </header>
       {visibleCapabilityItems.map((item) =>
         item.key === dismissedCapabilityKey ? null : (
           <section
@@ -355,14 +332,24 @@ export function PresenterRemoteWindow(props: {
         </section>
       ) : null}
 
-      {slide?.kind === "activity" ? (
-        <ActivityPresenterPanel
-          deckId={deck.deckId}
-          deckVersion={deck.version}
-          projectId={deck.projectId}
-          slide={slide}
-        />
-      ) : null}
+      <AudienceOutputControls
+        collapsible
+        connected={isAudienceSurfaceConnected}
+        error={audienceScreenShare.error}
+        onEndPresentation={() => {
+          if (!window.confirm("발표를 종료할까요?")) {
+            return;
+          }
+          sendCommand({ action: "finish" });
+          window.close();
+        }}
+        onReturnToSlide={audienceScreenShare.returnToSlide}
+        onShowBlack={audienceScreenShare.showBlack}
+        onStartMonitor={audienceScreenShare.startMonitor}
+        onStartTabOrWindow={audienceScreenShare.startTabOrWindow}
+        outputMode={state.audienceOutputMode}
+        status={audienceScreenShare.status}
+      />
 
       <section
         className="presenter-remote-stage"
@@ -372,6 +359,24 @@ export function PresenterRemoteWindow(props: {
           className="presenter-remote-preview-rail"
           aria-label="슬라이드 미리보기"
         >
+          <button
+            aria-label="이전 슬라이드"
+            className="presenter-remote-preview-control"
+            disabled={state.slideIndex <= 0}
+            type="button"
+            onClick={() => sendCommand({ action: "prev" })}
+          >
+            <ChevronLeft aria-hidden="true" size={20} />
+            <span>이전</span>
+          </button>
+          <PresenterSlidePreview
+            deck={deck}
+            label="이전 슬라이드"
+            previewScale={previewScale}
+            slide={previousSlide}
+            slideNumber={previousSlide ? slideNumber - 1 : null}
+            stepIndex={0}
+          />
           <PresenterSlidePreview
             deck={deck}
             label="현재 슬라이드"
@@ -388,44 +393,25 @@ export function PresenterRemoteWindow(props: {
             slideNumber={nextSlide ? slideNumber + 1 : null}
             stepIndex={0}
           />
-          <nav
-            className="presenter-remote-slide-list"
-            aria-label="슬라이드 이동"
+          <button
+            aria-label="다음 슬라이드"
+            className="presenter-remote-preview-control"
+            disabled={!nextSlide}
+            type="button"
+            onClick={() => sendCommand({ action: "next-step" })}
           >
-            {visibleSlides.map(({ slide: candidate, index }) => (
-              <button
-                aria-current={index === state.slideIndex ? "true" : undefined}
-                key={candidate.slideId}
-                type="button"
-                onClick={() =>
-                  sendCommand({ action: "goto", slideIndex: index })
-                }
-              >
-                <span>{index + 1}</span>
-                {candidate.title || `Slide ${index + 1}`}
-              </button>
-            ))}
-          </nav>
+            <span>다음</span>
+            <ChevronRight aria-hidden="true" size={20} />
+          </button>
         </aside>
 
-        <section
-          className="presenter-remote-script"
-          aria-label="발표자 대본"
-          data-auto-scroll="true"
-          ref={scriptViewportRef}
-        >
-          <div className="presenter-remote-section-heading">
-            <span>대본</span>
-            <strong>
-              현재 문장 {cueProgressCurrent} / {cueProgressTotal}
-            </strong>
-          </div>
-          <PresenterScriptList
-            emptyLabel="대본 없음"
-            getRowRef={(row) =>
-              row.status === "current" ? currentScriptRowRef : undefined
-            }
-            rows={noteSentences.map((sentence, index): PresenterScriptListRow => {
+        <section className="presenter-remote-script" aria-label="발표자 대본">
+          <RehearsalScriptTeleprompter
+            focusScopeId={slide?.slideId ?? "presenter-remote"}
+            progressPercent={Math.round(
+              (cueProgressCurrent / cueProgressTotal) * 100,
+            )}
+            rows={noteSentences.map((sentence, index) => {
               const sentenceId = getPresenterRemoteSentenceId(index);
               const covered = Boolean(
                 state.speech?.coveredSentenceIds.includes(sentenceId),
@@ -438,14 +424,8 @@ export function PresenterRemoteWindow(props: {
               const matchKind =
                 state.speech?.coveredSentenceMatchKinds[sentenceId];
               return {
-                content: sentence,
                 id: sentenceId,
-                label:
-                  committed
-                    ? "체크됨"
-                    : matchKind === "paraphrased"
-                    ? "의미 전달"
-                    : undefined,
+                isFocusTarget: index === currentSentenceIndex,
                 status:
                   index === currentSentenceIndex
                     ? "current"
@@ -456,6 +436,7 @@ export function PresenterRemoteWindow(props: {
                       : index === nextSentenceIndex
                         ? "next"
                         : "pending",
+                text: sentence,
               };
             })}
           />
@@ -465,114 +446,51 @@ export function PresenterRemoteWindow(props: {
           className="presenter-remote-cue-sidebar"
           aria-label="키워드 및 큐 상태"
         >
-          <section
-            className="presenter-remote-timer-panel"
-            aria-label="타이머 및 음성인식 제어"
-          >
-            <div className="presenter-remote-section-heading">
-              <span>타이머</span>
-              {timing.isPaused ? (
-                <strong>일시정지됨</strong>
-              ) : timing.isLiveSttActive ? (
-                <strong>음성인식 중</strong>
-              ) : null}
-            </div>
-            <strong
-              className="presenter-remote-timer-display"
-              aria-live="polite"
-            >
-              {formatPresenterRemoteDuration(timing.displayedSeconds)}
-            </strong>
-            <div className="presenter-remote-timer-progress" aria-hidden="true">
-              <span style={{ width: `${timerProgressPercent}%` }} />
-            </div>
-            <div className="presenter-remote-timer-actions">
-              <button
-                type="button"
-                aria-label={`리허설 ${timerPrimaryLabel}`}
-                onClick={() => sendCommand({ action: timerPrimaryAction })}
-              >
-                {isTimerActive ? (
-                  <PauseCircle size={16} />
-                ) : (
-                  <PlayCircle size={16} />
-                )}
-                {timerPrimaryLabel}
-              </button>
-              <button
-                type="button"
-                onClick={() => sendCommand({ action: "timer-reset" })}
-              >
-                <RotateCcw size={15} />
-                리셋
-              </button>
-            </div>
-          </section>
+          <PresenterTimerCard
+            ariaLabel="리허설 타이머"
+            currentTimeLabel="경과 발표 시간"
+            meterPercent={0}
+            onPrimaryAction={() =>
+              sendCommand({ action: timerPrimaryAction })
+            }
+            onReset={() => sendCommand({ action: "timer-reset" })}
+            onTimeInputBlur={() => undefined}
+            onTimeInputChange={() => undefined}
+            onTimeInputFocus={() => undefined}
+            primaryActionAriaLabel={`리허설 ${timerPrimaryLabel}`}
+            primaryActionRunning={isTimerActive}
+            progressItems={timerProgressItems}
+            progressPercent={totalTimingProgress.percent}
+            resetAriaLabel="스톱워치 초기화"
+            timeInputValue={formatPresenterRemoteDuration(
+              timing.displayedSeconds,
+            )}
+            timeMetaLeft=""
+            timeMetaRight=""
+            timeReadOnly
+            title="발표 스톱워치"
+          />
 
           <section
-            className="presenter-remote-cue-panel"
-            aria-label="핵심 키워드"
+            className="rehearsal-panel presenter-remote-progress-panel"
+            aria-label="발표 진행 패널"
           >
-            <div className="presenter-remote-section-heading">
-              <span>핵심 키워드</span>
-              <strong>
-                <ListChecks size={15} />
-                {
-                  keywordRows.filter((keyword) => keyword.status === "done")
-                    .length
-                }
-                /{keywordRows.length}
-              </strong>
-            </div>
-            <ul className="presenter-remote-keyword-list">
-              {keywordRows.map((keyword) => (
-                <li
-                  className={`presenter-remote-keyword-row presenter-remote-keyword-row--${keyword.status}`}
-                  key={keyword.keywordId}
-                >
-                  {keyword.status === "done" ? (
-                    <CheckCircle2 aria-hidden="true" size={17} />
-                  ) : (
-                    <Circle aria-hidden="true" size={17} />
-                  )}
-                  <span>{keyword.text}</span>
-                </li>
-              ))}
-            </ul>
+            <RehearsalPanelTopGrid
+              hitKeywordIds={hitKeywordIds}
+              keywords={panelKeywords}
+              provisionalMissingKeywordIds={new Set()}
+            />
           </section>
-
+          {slide?.kind === "activity" ? (
+            <ActivityPresenterPanel
+              deckId={deck.deckId}
+              deckVersion={deck.version}
+              projectId={deck.projectId}
+              slide={slide}
+            />
+          ) : null}
         </aside>
       </section>
-
-      <AudienceOutputControls
-        connected={isAudienceSurfaceConnected}
-        error={audienceScreenShare.error}
-        onReturnToSlide={audienceScreenShare.returnToSlide}
-        onShowBlack={audienceScreenShare.showBlack}
-        onStartMonitor={audienceScreenShare.startMonitor}
-        onStartTabOrWindow={audienceScreenShare.startTabOrWindow}
-        outputMode={state.audienceOutputMode}
-        status={audienceScreenShare.status}
-      />
-
-      <div className="presenter-remote-command-dock" aria-label="발표 제어">
-        <button
-          className="presenter-remote-command"
-          type="button"
-          onClick={() => sendCommand({ action: "prev" })}
-        >
-          <ChevronLeft size={17} />
-          이전
-        </button>
-        <button
-          className="presenter-remote-command presenter-remote-command--primary"
-          type="button"
-          onClick={() => sendCommand({ action: "next-step" })}
-        >
-          다음
-          <ChevronRight size={17} />
-        </button>
-      </div>
       {state.speech && shouldShowSemanticDebugPanel ? (
         <SemanticSpeechDebugPanel
           semanticMatchingEnabled={state.speech.semanticMatchingEnabled}
@@ -720,7 +638,9 @@ function PresenterSlidePreview(props: {
             />
           )
         ) : (
-          <div className="presenter-remote-preview-empty">마지막 슬라이드</div>
+          <div className="presenter-remote-preview-empty" aria-label="마지막 슬라이드">
+            <CircleSlash2 aria-hidden="true" />
+          </div>
         )}
       </div>
       {slide ? <p>{slide.title || slide.slideId}</p> : null}
@@ -743,6 +663,7 @@ export function getPresenterRemoteSlideContext(
 
   return {
     nextSlide: deck.slides[normalizedSlideIndex + 1],
+    previousSlide: deck.slides[normalizedSlideIndex - 1],
     slide,
     slideNumber: deck.slides.length > 0 ? normalizedSlideIndex + 1 : 0,
   };
@@ -920,48 +841,6 @@ export function getPresenterRemoteTimingState(
       Math.round((deck.targetDurationMinutes ?? 0) * 60),
     ),
   };
-}
-
-function getPresenterRemoteTimerProgressPercent(
-  timing: PresenterRemoteTimingState,
-) {
-  if (timing.mode === "timer") {
-    if (timing.timerDurationSeconds <= 0) {
-      return 0;
-    }
-
-    return Math.min(
-      100,
-      Math.max(0, (timing.elapsedSeconds / timing.timerDurationSeconds) * 100),
-    );
-  }
-
-  if (timing.currentSlideTargetSeconds <= 0) {
-    return 0;
-  }
-
-  return Math.min(
-    100,
-    Math.max(
-      0,
-      (timing.currentSlideElapsedSeconds / timing.currentSlideTargetSeconds) *
-        100,
-    ),
-  );
-}
-
-function getPresenterRemoteVisibleSlides(
-  deck: Deck,
-  currentSlideIndex: number,
-) {
-  const start = Math.max(
-    0,
-    Math.min(currentSlideIndex - 2, deck.slides.length - 5),
-  );
-  return deck.slides.slice(start, start + 5).map((slide, offset) => ({
-    index: start + offset,
-    slide,
-  }));
 }
 
 function getPresenterRemotePreviewScale(deck: Deck) {

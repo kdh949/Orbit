@@ -1,9 +1,18 @@
-import type { Deck } from "@orbit/shared";
+import type {
+  Deck,
+  PresentationCompanionAnnotationCommand,
+  PresentationCompanionAnnotationSnapshot,
+  PresentationCompanionLaser,
+} from "@orbit/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PresenterSlideshowState } from "./presenterStateStore";
+import type { ActivityElementRuntime } from "../../activity-slides/rendering/ActivityElementRuntimeContext";
 import {
   createPresentationSessionId,
+  createPresenterAnnotationDeltaMessage,
+  createPresenterAnnotationSnapshotMessage,
   createPresenterHeartbeatMessage,
+  createPresenterLaserMessage,
   createPresenterSnapshotMessage,
   createPresenterStateMessage,
   createPresenterRemoteSnapshotMessage,
@@ -45,14 +54,19 @@ export type PresentationChannelFactory = (
 export type PresentationPublisherController = {
   close: () => void;
   handleIncoming: (data: unknown) => void;
+  publishAnnotationSnapshot: () => void;
   publishSnapshot: () => void;
   publishState: () => void;
 };
 
 export function usePresentationChannelPublisher(args: {
+  activityElementRuntime?: ActivityElementRuntime | null;
   channelFactory?: PresentationChannelFactory;
   deck: Deck | null;
   enabled?: boolean;
+  getAnnotationSnapshot?: () =>
+    | PresentationCompanionAnnotationSnapshot
+    | null;
   sessionId?: string;
   state: PresenterSlideshowState | null;
   triggerAnimationIds: string[];
@@ -64,6 +78,7 @@ export function usePresentationChannelPublisher(args: {
     channelFactory = createBroadcastChannel,
     deck,
     enabled = true,
+    getAnnotationSnapshot,
     onCommand,
     onPeerReady,
     onScreenShareEnded,
@@ -85,11 +100,23 @@ export function usePresentationChannelPublisher(args: {
   const latestPeerReadyHandlerRef = useRef<typeof onPeerReady>(onPeerReady);
   const latestScreenShareEndedHandlerRef =
     useRef<typeof onScreenShareEnded>(onScreenShareEnded);
-  const latestRef = useRef({ deck, state, triggerAnimationIds });
+  const latestRef = useRef({
+    activityElementRuntime: args.activityElementRuntime ?? null,
+    deck,
+    state,
+    triggerAnimationIds,
+  });
+  const latestAnnotationSnapshotRef = useRef(getAnnotationSnapshot);
   latestCommandHandlerRef.current = onCommand;
   latestPeerReadyHandlerRef.current = onPeerReady;
   latestScreenShareEndedHandlerRef.current = onScreenShareEnded;
-  latestRef.current = { deck, state, triggerAnimationIds };
+  latestRef.current = {
+    activityElementRuntime: args.activityElementRuntime ?? null,
+    deck,
+    state,
+    triggerAnimationIds,
+  };
+  latestAnnotationSnapshotRef.current = getAnnotationSnapshot;
 
   const identity = useMemo<PresentationChannelIdentity | null>(
     () => (deck ? { deckId: deck.deckId, sessionId } : null),
@@ -124,12 +151,15 @@ export function usePresentationChannelPublisher(args: {
         }
 
         return createPresenterSnapshotMessage({
+          activityElementRuntime: latest.activityElementRuntime,
           deck: latest.deck,
           identity,
           state: latest.state,
           triggerAnimationIds: latest.triggerAnimationIds,
         });
       },
+      getAnnotationSnapshot: () =>
+        latestAnnotationSnapshotRef.current?.() ?? null,
       getState: () => {
         const latest = latestRef.current;
         if (!latest.state) {
@@ -137,6 +167,7 @@ export function usePresentationChannelPublisher(args: {
         }
 
         return createPresenterStateMessage({
+          activityElementRuntime: latest.activityElementRuntime,
           identity,
           state: latest.state,
           triggerAnimationIds: latest.triggerAnimationIds,
@@ -162,6 +193,7 @@ export function usePresentationChannelPublisher(args: {
           return null;
         }
         return createPresenterRemoteSnapshotMessage({
+          activityElementRuntime: latest.activityElementRuntime,
           deck: latest.deck,
           identity,
           state: latest.state,
@@ -174,6 +206,7 @@ export function usePresentationChannelPublisher(args: {
           return null;
         }
         return createPresenterRemoteStateMessage({
+          activityElementRuntime: latest.activityElementRuntime,
           identity,
           state: latest.state,
           triggerAnimationIds: latest.triggerAnimationIds,
@@ -255,9 +288,44 @@ export function usePresentationChannelPublisher(args: {
 
     controllerRef.current?.publishState();
     presenterRemoteControllerRef.current?.publishState();
-  }, [deck, enabled, state, triggerAnimationIds]);
+  }, [
+    args.activityElementRuntime,
+    deck,
+    enabled,
+    state,
+    triggerAnimationIds,
+  ]);
 
   return {
+    publishAnnotationDelta: (input: {
+      command: PresentationCompanionAnnotationCommand;
+      surfaceRevision: number;
+    }) => {
+      if (!identity || !channelRef.current) return;
+      channelRef.current.postMessage(
+        createPresenterAnnotationDeltaMessage({
+          ...input,
+          identity,
+        }),
+      );
+    },
+    publishAnnotationSnapshot: (
+      annotation: PresentationCompanionAnnotationSnapshot,
+    ) => {
+      if (!identity || !channelRef.current) return;
+      channelRef.current.postMessage(
+        createPresenterAnnotationSnapshotMessage({
+          annotation,
+          identity,
+        }),
+      );
+    },
+    publishLaser: (laser: PresentationCompanionLaser) => {
+      if (!identity || !channelRef.current) return;
+      channelRef.current.postMessage(
+        createPresenterLaserMessage({ identity, laser }),
+      );
+    },
     publishSnapshot: () => {
       if (!controllerRef.current) {
         return;
@@ -284,6 +352,9 @@ export function publishPresenterHeartbeat(args: {
 
 export function createPresentationPublisherController(args: {
   channel: Pick<PresentationChannelLike, "close" | "postMessage">;
+  getAnnotationSnapshot?: () =>
+    | PresentationCompanionAnnotationSnapshot
+    | null;
   getSnapshot: () =>
     | PresenterSnapshotMessage
     | PresenterRemoteSnapshotMessage
@@ -299,6 +370,7 @@ export function createPresentationPublisherController(args: {
   const {
     channel,
     getSnapshot,
+    getAnnotationSnapshot,
     getState,
     identity,
     onCommand,
@@ -332,6 +404,15 @@ export function createPresentationPublisherController(args: {
           if (snapshot) {
             channel.postMessage(snapshot);
           }
+          const annotation = getAnnotationSnapshot?.();
+          if (annotation) {
+            channel.postMessage(
+              createPresenterAnnotationSnapshotMessage({
+                annotation,
+                identity,
+              }),
+            );
+          }
         },
         setConnected: () => onStatusChange?.("connected"),
       });
@@ -340,6 +421,17 @@ export function createPresentationPublisherController(args: {
       const snapshot = getSnapshot();
       if (snapshot) {
         channel.postMessage(snapshot);
+      }
+    },
+    publishAnnotationSnapshot: () => {
+      const annotation = getAnnotationSnapshot?.();
+      if (annotation) {
+        channel.postMessage(
+          createPresenterAnnotationSnapshotMessage({
+            annotation,
+            identity,
+          }),
+        );
       }
     },
     publishState: () => {

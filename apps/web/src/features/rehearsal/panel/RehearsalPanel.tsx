@@ -64,6 +64,62 @@ export type RehearsalPanelProps = {
   onDismissComparisonReminder?: () => void;
 };
 
+export type RehearsalPanelTopGridProps = {
+  hitKeywordIds: ReadonlySet<string>;
+  keywords: readonly RehearsalPanelKeyword[];
+  liveSlot?: ReactNode;
+  provisionalMissingKeywordIds: ReadonlySet<string>;
+};
+
+export function RehearsalPanelTopGrid(
+  props: RehearsalPanelTopGridProps
+) {
+  return (
+    <div className="rehearsal-panel-top-grid">
+      <section className="rehearsal-panel-section" aria-label="키워드 체크리스트">
+        <div className="rehearsal-panel-section-heading">
+          <span>키워드</span>
+          <strong>
+            {props.hitKeywordIds.size}/{props.keywords.length}
+          </strong>
+        </div>
+        {props.keywords.length > 0 ? (
+          <ul className="rehearsal-panel-keywords">
+            {props.keywords.map((keyword) => {
+              const hit = props.hitKeywordIds.has(keyword.keywordId);
+              const provisionalMissing =
+                props.provisionalMissingKeywordIds.has(keyword.keywordId);
+
+              return (
+                <li
+                  className={[
+                    "rehearsal-panel-keyword",
+                    hit ? "rehearsal-panel-keyword-hit" : "",
+                    provisionalMissing ? "rehearsal-panel-keyword-missing" : ""
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  key={keyword.keywordId}
+                >
+                  <em>
+                    {hit ? "체크" : provisionalMissing ? "미확인" : "미언급"}
+                  </em>
+                  <span>{keyword.text}</span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="rehearsal-panel-empty">키워드 없음</p>
+        )}
+      </section>
+      {props.liveSlot ? (
+        <div className="rehearsal-panel-live-slot">{props.liveSlot}</div>
+      ) : null}
+    </div>
+  );
+}
+
 export function RehearsalPanel(props: RehearsalPanelProps) {
   const hitKeywordIds = new Set(props.snapshot.hitKeywordIds);
   const provisionalMissingKeywordIds = new Set(
@@ -189,49 +245,12 @@ export function RehearsalPanel(props: RehearsalPanelProps) {
 
       <SemanticCueChecklist items={props.semanticCueItems ?? []} />
 
-      <div className="rehearsal-panel-top-grid">
-        <section className="rehearsal-panel-section" aria-label="키워드 체크리스트">
-          <div className="rehearsal-panel-section-heading">
-            <span>키워드</span>
-            <strong>
-              {hitKeywordIds.size}/{props.keywords.length}
-            </strong>
-          </div>
-          {props.keywords.length > 0 ? (
-            <ul className="rehearsal-panel-keywords">
-              {props.keywords.map((keyword) => {
-                const hit = hitKeywordIds.has(keyword.keywordId);
-                const provisionalMissing = provisionalMissingKeywordIds.has(
-                  keyword.keywordId
-                );
-
-                return (
-                  <li
-                    className={[
-                      "rehearsal-panel-keyword",
-                      hit ? "rehearsal-panel-keyword-hit" : "",
-                      provisionalMissing ? "rehearsal-panel-keyword-missing" : ""
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    key={keyword.keywordId}
-                  >
-                    <em>
-                      {hit ? "체크" : provisionalMissing ? "미확인" : "미언급"}
-                    </em>
-                    <span>{keyword.text}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <p className="rehearsal-panel-empty">키워드 없음</p>
-          )}
-        </section>
-        {props.liveSlot ? (
-          <div className="rehearsal-panel-live-slot">{props.liveSlot}</div>
-        ) : null}
-      </div>
+      <RehearsalPanelTopGrid
+        hitKeywordIds={hitKeywordIds}
+        keywords={props.keywords}
+        liveSlot={props.liveSlot}
+        provisionalMissingKeywordIds={provisionalMissingKeywordIds}
+      />
 
       {showAdvice ? (
         <section className="rehearsal-panel-section" aria-label="실시간 조언">

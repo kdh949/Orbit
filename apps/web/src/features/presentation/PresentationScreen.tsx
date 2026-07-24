@@ -11,6 +11,7 @@ import {
   type AnimationFlowNavigation,
 } from "../rehearsal/presenter/AnimationFlowNavigator";
 import { SlideshowRenderer } from "../rehearsal/presenter/SlideshowRenderer";
+import type { ActivityPasscodeRuntimeState } from "../activity-slides/rendering/ActivityElementRuntimeContext";
 import type { SpeechTrackerSnapshot } from "../rehearsal/speech/speechTrackingEvents";
 import {
   PresenterStageSection,
@@ -27,6 +28,7 @@ export function PresentationScreen(props: {
   deck: Deck | null;
   currentSlide: Slide | null;
   currentSlideIndex: number;
+  displayToolbar?: ReactNode;
   elapsedTimeInput: string;
   highlightedKeywordOccurrences?: Parameters<typeof RehearsalPanel>[0]["highlightedKeywordOccurrences"];
   infoCards: readonly PresenterInfoCardItem[];
@@ -50,7 +52,8 @@ export function PresentationScreen(props: {
   onTimeModeChange: (value: PresenterTimeMode) => void;
   panelSnapshot: SpeechTrackerSnapshot;
   presentationSession?: {
-    audienceUrl: string;
+    audienceUrl: string | null;
+    passcodeState: ActivityPasscodeRuntimeState;
     sessionId: string;
   };
   presenterScale: number;
@@ -111,6 +114,12 @@ export function PresentationScreen(props: {
         totalElapsedInput={props.elapsedTimeInput}
       />
 
+      {props.displayToolbar ? (
+        <div className="rehearsal-display-toolbar">
+          {props.displayToolbar}
+        </div>
+      ) : null}
+
       <section className="rehearsal-presenter-layout">
         <PresenterStageSection
           currentIndex={props.currentSlideIndex}
@@ -128,6 +137,12 @@ export function PresentationScreen(props: {
           nextSlideContent={
             props.deck && props.nextSlide ? (
               <SlideshowRenderer
+                activityElementRuntime={{
+                  audienceUrl: props.presentationSession?.audienceUrl ?? null,
+                  passcodeState:
+                    props.presentationSession?.passcodeState ??
+                    { status: "not-prepared" },
+                }}
                 deck={props.deck}
                 playInitialEntryAnimations={false}
                 renderMode="presenter"
@@ -145,6 +160,12 @@ export function PresentationScreen(props: {
           renderStage={
             props.deck && props.currentSlide ? (
               <SlideshowRenderer
+                activityElementRuntime={{
+                  audienceUrl: props.presentationSession?.audienceUrl ?? null,
+                  passcodeState:
+                    props.presentationSession?.passcodeState ??
+                    { status: "not-prepared" },
+                }}
                 deck={props.deck}
                 scale={props.presenterScale}
                 slideId={props.currentSlide.slideId}

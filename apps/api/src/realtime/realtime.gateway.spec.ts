@@ -62,6 +62,7 @@ describe("RealtimeGateway", () => {
         adapter: { rooms: new Map() },
         sockets: new Map(),
       },
+      fetchSockets: vi.fn(async () => [client]),
     } as unknown as Server;
     const client = {
       id: "socket-1",
@@ -79,7 +80,7 @@ describe("RealtimeGateway", () => {
     } as unknown as Socket;
 
     gateway.handleConnection(client);
-    const response = gateway.handleUsersList();
+    const response = await gateway.handleUsersList();
     gateway.handleDisconnect(client);
 
     expect(response.data).toHaveLength(1);
@@ -89,4 +90,51 @@ describe("RealtimeGateway", () => {
     expect(JSON.stringify(response.data)).not.toContain("Mozilla/5.0");
     expect(JSON.stringify(response.data)).not.toContain("ko-KR");
   });
+
+  it("collects project presence from every Socket.IO server through fetchSockets", async () => {
+    Object.assign(process.env, validEnv);
+    const { RealtimeGateway } = await import("./realtime.gateway");
+    const gateway = new RealtimeGateway(
+      {} as AuthService,
+      {} as ProjectsService,
+    );
+    const localSocket = realtimeSocket("socket-local", "2026-07-24T00:00:00.000Z");
+    const remoteSocket = realtimeSocket("socket-remote", "2026-07-24T00:01:00.000Z");
+    localSocket.data.userId = "user-local";
+    localSocket.data.userEmail = "local@example.com";
+    remoteSocket.data.userId = "user-remote";
+    remoteSocket.data.userEmail = "remote@example.com";
+
+    const to = { emit: vi.fn() };
+    gateway.server = {
+      emit: vi.fn(),
+      to: vi.fn(() => to),
+      in: vi.fn(() => ({ fetchSockets: vi.fn(async () => [localSocket, remoteSocket]) })),
+      fetchSockets: vi.fn(async () => [localSocket, remoteSocket]),
+    } as unknown as Server;
+
+    gateway.handleConnection(localSocket);
+    gateway.handleConnection(remoteSocket);
+    const response = await gateway.handleUsersList();
+
+    expect(response.data.map((user) => user.id)).toEqual(["socket-local", "socket-remote"]);
+    expect(JSON.stringify(response.data)).not.toContain("203.0.113");
+  });
 });
+
+function realtimeSocket(id: string, connectedAt: string) {
+  return {
+    id,
+    handshake: { headers: { "user-agent": "Mozilla/5.0 Chrome/126.0" } },
+    conn: { transport: { name: "websocket" } },
+    data: {
+      realtimeUser: {
+        id,
+        connectedAt,
+        transport: "websocket",
+        environment: { browserLabel: "Chrome" },
+      },
+    },
+    emit: vi.fn(),
+  } as unknown as Socket;
+}

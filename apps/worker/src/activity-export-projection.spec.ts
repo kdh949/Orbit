@@ -81,6 +81,107 @@ describe("projectActivityDeckForStaticExport", () => {
     expect(JSON.stringify(projected)).not.toContain('"activity-qr"');
   });
 
+  it("preserves an editable activity design while replacing every runtime element", async () => {
+    const deck = activityDeck();
+    const activitySlide = deck.slides.find(
+      (slide) => slide.kind === "activity",
+    );
+    if (!activitySlide || activitySlide.kind !== "activity") {
+      throw new Error("activity fixture");
+    }
+    activitySlide.activityAppearance = { mode: "editable" };
+    activitySlide.elements = [
+      {
+        elementId: "el_background",
+        type: "rect",
+        role: "decoration",
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+        rotation: 0,
+        opacity: 1,
+        zIndex: 0,
+        locked: false,
+        visible: true,
+        props: {
+          fill: "#F3F1FF",
+          stroke: "transparent",
+          strokeWidth: 0,
+          borderRadius: 0,
+        },
+      },
+      {
+        elementId: "el_title",
+        type: "activity-copy",
+        role: "title",
+        x: 120,
+        y: 120,
+        width: 900,
+        height: 140,
+        rotation: 0,
+        opacity: 1,
+        zIndex: 1,
+        locked: false,
+        visible: true,
+        props: {
+          activityId: activitySlide.activity.activityId,
+          field: "title",
+          fallbackText: "질문",
+          textStyle: {
+            color: "#171917",
+            fontSize: 60,
+            fontWeight: "bold",
+          },
+        },
+      },
+      {
+        elementId: "el_passcode",
+        type: "presentation-passcode",
+        role: "body",
+        x: 120,
+        y: 400,
+        width: 600,
+        height: 180,
+        rotation: 0,
+        opacity: 1,
+        zIndex: 2,
+        locked: false,
+        visible: true,
+        props: {
+          label: "입장 코드",
+          unavailableText: "발표 시작 후 표시",
+          publicAccessText: "비밀번호 없이 바로 참여",
+          legacyUnavailableText: "입장 코드를 다시 설정해 주세요",
+          labelTextStyle: {},
+          codeTextStyle: { color: "#171917", fontSize: 54 },
+          fill: "#FFFFFF",
+          stroke: "#D0D5DD",
+          strokeWidth: 1,
+          borderRadius: 18,
+        },
+      },
+    ];
+
+    const projected = await projectActivityDeckForStaticExport(
+      { query: vi.fn() } as unknown as DataSource,
+      deck.projectId,
+      deck,
+    );
+    const exported = projected.slides.find(
+      (slide) => slide.slideId === activitySlide.slideId,
+    );
+    const serialized = JSON.stringify(exported);
+
+    expect(exported?.elements).toHaveLength(3);
+    expect(serialized).toContain("#F3F1FF");
+    expect(serialized).toContain(activitySlide.activity.title);
+    expect(serialized).toContain("입장 코드는 라이브 발표에서 표시됩니다.");
+    expect(serialized).not.toMatch(
+      /"activity-copy"|"activity-qr"|"presentation-passcode"/,
+    );
+  });
+
   it("exports distinct summary, chart, and approved-text layouts", async () => {
     const deck = activityDeck();
     const query = vi.fn(async (sql: string) => {

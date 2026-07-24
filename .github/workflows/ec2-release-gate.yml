@@ -1,0 +1,74 @@
+name: EC2 release gate
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ec2-release-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ec2-release-gate:
+    name: ec2-release-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_DB: orbit
+          POSTGRES_USER: orbit
+          POSTGRES_PASSWORD: orbit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U orbit -d orbit"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+    env:
+      NODE_ENV: test
+      APP_ENV: test
+      DATABASE_URL: postgresql://orbit:orbit@127.0.0.1:5432/orbit
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare test environment
+        run: cp .env.example .env.local
+
+      - name: Validate EC2 Compose, environment, and health contracts
+        run: |
+          bash -n infra/scripts/deploy-aws-ec2.sh
+          node infra/scripts/check-env.mjs
+          node infra/scripts/check-aws-production-compose.mjs
+
+      - name: Apply all migrations to a clean database
+        run: pnpm db:migration:run
+
+      - name: Verify migrations are safe to rerun
+        run: pnpm db:migration:run

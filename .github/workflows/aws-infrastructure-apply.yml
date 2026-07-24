@@ -1,0 +1,78 @@
+name: Apply AWS infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      change_set_arn:
+        description: Previously reviewed CloudFormation change set ARN
+        required: true
+        type: string
+      region:
+        description: Deployment region (use us-east-1 for edge WAF)
+        required: true
+        default: ap-northeast-2
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: aws-production-infrastructure-apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 45
+    env:
+      CHANGE_SET_ARN: ${{ inputs.change_set_arn }}
+      AWS_REGION: ${{ inputs.region }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate approved deployment inputs
+        env:
+          AWS_INFRA_APPLY_ROLE_ARN: ${{ vars.AWS_INFRA_APPLY_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+          : "${AWS_INFRA_APPLY_ROLE_ARN:?Repository variable AWS_INFRA_APPLY_ROLE_ARN must be configured}"
+          if [[ ! "$AWS_REGION" =~ ^[a-z]{2}(-[a-z0-9]+)+-[0-9]+$ ]]; then
+            echo "Invalid AWS region format" >&2
+            exit 1
+          fi
+          if [[ ! "$CHANGE_SET_ARN" =~ ^arn:(aws|aws-us-gov|aws-cn):cloudformation:${AWS_REGION}:[0-9]{12}:changeSet/[A-Za-z][-A-Za-z0-9]*/[A-Za-z0-9-]+$ ]]; then
+            echo "Change set ARN must match the selected region" >&2
+            exit 1
+          fi
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_INFRA_APPLY_ROLE_ARN }}
+      - name: Recheck reviewed change set before execution
+        run: |
+          set -euo pipefail
+          aws cloudformation describe-change-set --change-set-name "$CHANGE_SET_ARN" --region "$AWS_REGION" --output json > change-set.json
+          node infra/scripts/assert-cfn-change-set-safe.mjs change-set.json
+      - name: Execute approved change set
+        run: |
+          set -euo pipefail
+          aws cloudformation describe-change-set --change-set-name "$CHANGE_SET_ARN" --region "$AWS_REGION" --output json > approved-change-set.json
+          node infra/scripts/assert-cfn-change-set-safe.mjs approved-change-set.json
+          stack_id="$(jq -r '.StackId' approved-change-set.json)"
+          change_set_type="$(jq -r '.ChangeSetType' approved-change-set.json)"
+          aws cloudformation execute-change-set --change-set-name "$CHANGE_SET_ARN" --region "$AWS_REGION"
+          if [ "$change_set_type" = "CREATE" ]; then
+            aws cloudformation wait stack-create-complete --stack-name "$stack_id" --region "$AWS_REGION"
+          else
+            aws cloudformation wait stack-update-complete --stack-name "$stack_id" --region "$AWS_REGION"
+          fi
+          aws cloudformation describe-stacks --stack-name "$stack_id" --region "$AWS_REGION" --output json > applied-stack.json
+      - name: Upload apply evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudformation-apply-${{ github.run_id }}
+          path: |
+            approved-change-set.json
+            applied-stack.json
+          retention-days: 30

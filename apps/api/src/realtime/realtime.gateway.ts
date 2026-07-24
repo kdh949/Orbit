@@ -26,7 +26,6 @@ import {
 } from "./canvas-room.store";
 import { resolveAllowedWebOrigins } from "../common/web-origin";
 
-const connectedUsers = new Map<string, ConnectedRealtimeUser>();
 const orbitConfig = loadOrbitConfig(process.env, { service: "api" });
 const realtimeCorsOrigins = resolveAllowedWebOrigins(
   orbitConfig.WEB_ORIGIN
@@ -50,25 +49,24 @@ export class RealtimeGateway
   server!: Server;
 
   handleConnection(client: Socket) {
-    connectedUsers.set(client.id, buildConnectedUser(client));
+    client.data.realtimeUser = buildConnectedUser(client);
     client.emit("server:hello", {
       message: "connected",
       socketId: client.id
     });
-    this.emitUsers();
+    void this.emitUsers();
   }
 
   handleDisconnect(client: Socket) {
     const roomId = readSocketRoomId(client);
     const projectId = readSocketProjectId(client);
-    connectedUsers.delete(client.id);
-    this.emitUsers();
+    void this.emitUsers();
 
     if (roomId) {
-      this.emitRoomUsers(roomId);
+      void this.emitRoomUsers(roomId);
     }
     if (projectId) {
-      this.emitProjectPresence(projectId);
+      void this.emitProjectPresence(projectId);
     }
   }
 
@@ -98,7 +96,7 @@ export class RealtimeGateway
       const previousProjectId = readSocketProjectId(client);
       if (previousProjectId && previousProjectId !== project.projectId) {
         client.leave(projectSocketRoomName(previousProjectId));
-        this.emitProjectPresence(previousProjectId);
+        await this.emitProjectPresence(previousProjectId);
       }
 
       await client.join(roomName);
@@ -114,7 +112,7 @@ export class RealtimeGateway
       });
 
       this.server.to(roomName).emit("project-joined", event);
-      this.emitProjectPresence(project.projectId);
+      await this.emitProjectPresence(project.projectId);
       return event;
     } catch {
       return emitProjectError(client, "Project member permission required.");
@@ -158,7 +156,7 @@ export class RealtimeGateway
   }
 
   @SubscribeMessage("room:join")
-  handleRoomJoin(
+  async handleRoomJoin(
     @MessageBody() body: unknown,
     @ConnectedSocket() client: Socket
   ) {
@@ -188,12 +186,12 @@ export class RealtimeGateway
     const previousRoomId = readSocketRoomId(client);
     if (previousRoomId) {
       client.leave(canvasSocketRoomName(previousRoomId));
-      this.emitRoomUsers(previousRoomId);
+      await this.emitRoomUsers(previousRoomId);
     }
 
     client.join(canvasSocketRoomName(room.roomId));
     client.data.canvasRoomId = room.roomId;
-    this.emitRoomUsers(room.roomId);
+    await this.emitRoomUsers(room.roomId);
 
     return {
       event: "room:joined",
@@ -205,15 +203,15 @@ export class RealtimeGateway
   }
 
   @SubscribeMessage("users:list")
-  handleUsersList() {
+  async handleUsersList() {
     return {
       event: "users:list",
-      data: this.users()
+      data: await this.users()
     };
   }
 
   @SubscribeMessage("room:users")
-  handleRoomUsers(
+  async handleRoomUsers(
     @MessageBody() body: unknown,
     @ConnectedSocket() client: Socket
   ) {
@@ -227,7 +225,7 @@ export class RealtimeGateway
 
     return {
       event: "room:users",
-      data: this.roomUsers(roomId)
+      data: await this.roomUsers(roomId)
     };
   }
 
@@ -287,24 +285,24 @@ export class RealtimeGateway
     };
   }
 
-  private emitUsers() {
-    this.server.emit("users:list", this.users());
+  private async emitUsers() {
+    this.server.emit("users:list", await this.users());
   }
 
-  private emitRoomUsers(roomId: string) {
+  private async emitRoomUsers(roomId: string) {
     this.server
       .to(canvasSocketRoomName(roomId))
-      .emit("room:users", this.roomUsers(roomId));
+      .emit("room:users", await this.roomUsers(roomId));
   }
 
-  private emitProjectPresence(projectId: string) {
+  private async emitProjectPresence(projectId: string) {
     const event = createRealtimeEvent({
       type: "project-presence",
       roomId: projectId,
       userId: demoIds.userId,
       payload: {
         projectId,
-        users: this.projectUsers(projectId)
+        users: await this.projectUsers(projectId)
       }
     });
 
@@ -313,39 +311,27 @@ export class RealtimeGateway
       .emit("project:presence", event);
   }
 
-  private users() {
-    return [...connectedUsers.values()].sort((a, b) =>
+  private async users() {
+    return (await this.server.fetchSockets())
+      .map(readSocketRealtimeUser)
+      .filter((user): user is ConnectedRealtimeUser => Boolean(user))
+      .sort((a, b) =>
       a.connectedAt.localeCompare(b.connectedAt)
     );
   }
 
-  private roomUsers(roomId: string) {
-    const socketIds = this.server.sockets.adapter.rooms.get(
-      canvasSocketRoomName(roomId)
-    );
-    if (!socketIds) {
-      return [];
-    }
-
-    return [...socketIds]
-      .map((socketId) => connectedUsers.get(socketId))
+  private async roomUsers(roomId: string) {
+    return (await this.server.in(canvasSocketRoomName(roomId)).fetchSockets())
+      .map(readSocketRealtimeUser)
       .filter((user): user is ConnectedRealtimeUser => Boolean(user))
       .sort((a, b) => a.connectedAt.localeCompare(b.connectedAt));
   }
 
-  private projectUsers(projectId: string) {
-    const socketIds = this.server.sockets.adapter.rooms.get(
-      projectSocketRoomName(projectId)
-    );
-    if (!socketIds) {
-      return [];
-    }
-
-    return [...socketIds]
-      .map((socketId) => {
-        const socket = this.server.sockets.sockets.get(socketId);
-        const user = connectedUsers.get(socketId);
-        if (!socket || !user) {
+  private async projectUsers(projectId: string) {
+    return (await this.server.in(projectSocketRoomName(projectId)).fetchSockets())
+      .map((socket) => {
+        const user = readSocketRealtimeUser(socket);
+        if (!user) {
           return null;
         }
 
@@ -381,6 +367,27 @@ function buildConnectedUser(client: Socket): ConnectedRealtimeUser {
     environment: {
       browserLabel: parseBrowserLabel(userAgent)
     }
+  };
+}
+
+function readSocketRealtimeUser(socket: Pick<Socket, "data">): ConnectedRealtimeUser | null {
+  const value = socket.data.realtimeUser;
+  if (!isRecord(value)) return null;
+  if (
+    typeof value.id !== "string" ||
+    typeof value.connectedAt !== "string" ||
+    typeof value.transport !== "string" ||
+    !isRecord(value.environment) ||
+    typeof value.environment.browserLabel !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    id: value.id,
+    connectedAt: value.connectedAt,
+    transport: value.transport,
+    environment: { browserLabel: value.environment.browserLabel },
   };
 }
 

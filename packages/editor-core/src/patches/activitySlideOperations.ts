@@ -5,16 +5,25 @@ import {
 } from "@orbit/shared";
 import type {
   ActivityDefinition,
+  ActivityAppearance,
   ActivityResultsSlide,
   ActivitySlide,
   ActivityTemplate,
   Deck,
-  DeckPatch
+  DeckElement,
+  DeckPatch,
+  Slide
 } from "@orbit/shared";
+
+import {
+  createActivityDesignPreset,
+  type ActivityDesignPresetId
+} from "../activity-layouts/activityDesignPresets";
 
 type CreateActivitySlideOptions = {
   title?: string;
   description?: string;
+  preset?: ActivityDesignPresetId;
 };
 
 export function createActivitySlide(
@@ -38,6 +47,13 @@ export function createActivitySlide(
     optionIds,
     options
   );
+  const design = options.preset
+    ? createActivityDesignPreset(deck, activityId, options.preset)
+    : {
+        activityAppearance: { mode: "system" as const },
+        style: {},
+        elements: []
+      };
 
   return activitySlideSchema.parse({
     kind: "activity",
@@ -45,14 +61,15 @@ export function createActivitySlide(
     order: nextSlideOrder(deck),
     title: definition.title,
     thumbnailUrl: "",
-    style: {},
+    style: design.style,
     speakerNotes: "",
-    elements: [],
+    elements: design.elements,
     keywords: [],
     semanticCues: [],
     animations: [],
     actions: [],
-    activity: definition
+    activity: definition,
+    activityAppearance: design.activityAppearance
   });
 }
 
@@ -123,6 +140,56 @@ export function createUpdateActivityResultDefinitionPatch(
   };
 }
 
+export function createReplaceActivityDesignPatch(
+  deck: Deck,
+  slideId: string,
+  design: {
+    activityAppearance: ActivityAppearance;
+    style: Slide["style"];
+    elements: DeckElement[];
+  }
+): DeckPatch {
+  const slide = deck.slides.find((candidate) => candidate.slideId === slideId);
+  if (slide?.kind !== "activity") {
+    throw new Error(`Activity slide not found: ${slideId}`);
+  }
+
+  return {
+    deckId: deck.deckId,
+    baseVersion: deck.version,
+    source: "user",
+    operations: [
+      {
+        type: "replace_activity_design",
+        slideId,
+        activityAppearance: design.activityAppearance,
+        style: design.style,
+        elements: design.elements
+      }
+    ]
+  };
+}
+
+export function createApplyActivityDesignPresetPatch(
+  deck: Deck,
+  slideId: string,
+  presetId: ActivityDesignPresetId
+): DeckPatch {
+  const slide = deck.slides.find(
+    (candidate): candidate is ActivitySlide =>
+      candidate.slideId === slideId && candidate.kind === "activity"
+  );
+  if (!slide) {
+    throw new Error(`Activity slide not found: ${slideId}`);
+  }
+
+  return createReplaceActivityDesignPatch(
+    deck,
+    slideId,
+    createActivityDesignPreset(deck, slide.activity.activityId, presetId)
+  );
+}
+
 export function duplicateActivitySlide(
   deck: Deck,
   sourceSlideId: string
@@ -138,6 +205,7 @@ export function duplicateActivitySlide(
 
   const ids = collectActivityIds(deck);
   const cloned = cloneJson(source);
+  const previousActivityId = cloned.activity.activityId;
   cloned.slideId = nextId(
     "slide_",
     new Set(deck.slides.map((slide) => slide.slideId))
@@ -145,6 +213,15 @@ export function duplicateActivitySlide(
   cloned.order = nextSlideOrder(deck);
   cloned.activity.activityId = nextId("activity_", ids.activityIds);
   remapQuestionAndOptionIds(cloned.activity, ids.questionIds, ids.optionIds);
+  for (const element of cloned.elements) {
+    if (
+      (element.type === "activity-qr" ||
+        element.type === "activity-copy") &&
+      element.props.activityId === previousActivityId
+    ) {
+      element.props.activityId = cloned.activity.activityId;
+    }
+  }
 
   return activitySlideSchema.parse(cloned);
 }
@@ -206,7 +283,10 @@ export function remapActivityDefinitionsForDeckDuplicate(
 
   for (const slide of clone.slides) {
     for (const element of slide.elements) {
-      if (element.type !== "activity-qr") {
+      if (
+        element.type !== "activity-qr" &&
+        element.type !== "activity-copy"
+      ) {
         continue;
       }
       element.props.activityId =

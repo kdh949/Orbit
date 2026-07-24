@@ -1,4 +1,7 @@
-import type { PresentationAccessMode } from "@orbit/shared";
+import type {
+  PresentationAccessMode,
+  PresentationSessionPurpose,
+} from "@orbit/shared";
 import { Injectable } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource, EntityManager } from "typeorm";
@@ -13,8 +16,12 @@ export type PresentationSessionRow = {
   presenter_user_id: string | null;
   created_by: string | null;
   status: PresentationSessionStatus;
+  session_purpose: PresentationSessionPurpose;
+  audience_access_enabled: boolean;
   access_mode: PresentationAccessMode;
   session_password_hash: string | null;
+  session_password_display_ciphertext: string | null;
+  session_password_key_version: number | null;
   starts_at: Date | string;
   expires_at: Date | string;
   active_activity_run_id: string | null;
@@ -36,7 +43,9 @@ type QueryExecutor = DataSource | EntityManager;
 
 const sessionColumns = `
   session_id, project_id, deck_id, deck_version, presenter_user_id, created_by,
-  status, access_mode, session_password_hash, starts_at, expires_at,
+  status, session_purpose, audience_access_enabled, access_mode,
+  session_password_hash, session_password_display_ciphertext,
+  session_password_key_version, starts_at, expires_at,
   active_activity_run_id, started_at, ended_at, closed_at,
   raw_responses_delete_after, raw_responses_deleted_at, results_deleted_at,
   created_at, updated_at
@@ -44,8 +53,10 @@ const sessionColumns = `
 
 const qualifiedSessionColumns = `
   sessions.session_id, sessions.project_id, sessions.deck_id, sessions.deck_version,
-  sessions.presenter_user_id, sessions.created_by, sessions.status, sessions.access_mode,
-  sessions.session_password_hash, sessions.starts_at, sessions.expires_at,
+  sessions.presenter_user_id, sessions.created_by, sessions.status,
+  sessions.session_purpose, sessions.audience_access_enabled, sessions.access_mode,
+  sessions.session_password_hash, sessions.session_password_display_ciphertext,
+  sessions.session_password_key_version, sessions.starts_at, sessions.expires_at,
   sessions.active_activity_run_id, sessions.started_at, sessions.ended_at,
   sessions.closed_at, sessions.raw_responses_delete_after,
   sessions.raw_responses_deleted_at, sessions.results_deleted_at,
@@ -60,19 +71,24 @@ export class PresentationSessionRepository {
     return this.dataSource.transaction(work);
   }
 
-  async findCurrent(projectId: string, deckId: string): Promise<PresentationSessionRow | null> {
+  async findCurrent(
+    projectId: string,
+    deckId: string,
+    sessionPurpose: PresentationSessionPurpose,
+  ): Promise<PresentationSessionRow | null> {
     const rows = await this.dataSource.query<PresentationSessionRow[]>(
       `
         SELECT ${sessionColumns}
         FROM presentation_sessions
         WHERE project_id = $1
           AND deck_id = $2
+          AND session_purpose = $3
           AND status IN ('draft', 'live')
           AND expires_at > now()
         ORDER BY created_at DESC
         LIMIT 1
       `,
-      [projectId, deckId]
+      [projectId, deckId, sessionPurpose]
     );
     return rows[0] ?? null;
   }
@@ -80,7 +96,8 @@ export class PresentationSessionRepository {
   async findCurrentForUpdate(
     manager: EntityManager,
     projectId: string,
-    deckId: string
+    deckId: string,
+    sessionPurpose: PresentationSessionPurpose,
   ): Promise<PresentationSessionRow | null> {
     const rows = await manager.query<PresentationSessionRow[]>(
       `
@@ -88,13 +105,14 @@ export class PresentationSessionRepository {
         FROM presentation_sessions
         WHERE project_id = $1
           AND deck_id = $2
+          AND session_purpose = $3
           AND status IN ('draft', 'live')
           AND expires_at > now()
         ORDER BY created_at DESC
         LIMIT 1
         FOR UPDATE
       `,
-      [projectId, deckId]
+      [projectId, deckId, sessionPurpose]
     );
     return rows[0] ?? null;
   }
@@ -123,6 +141,7 @@ export class PresentationSessionRepository {
               started_at = COALESCE(started_at, starts_at),
               updated_at = $2
           WHERE session_id = $1
+            AND audience_access_enabled = true
             AND status = 'draft'
             AND starts_at <= $2
             AND expires_at > $2
@@ -133,12 +152,33 @@ export class PresentationSessionRepository {
         SELECT ${sessionColumns}
         FROM presentation_sessions
         WHERE session_id = $1
+          AND audience_access_enabled = true
           AND status = 'live'
           AND starts_at <= $2
           AND expires_at > $2
         LIMIT 1
       `,
       [sessionId, now]
+    );
+    return rows[0] ?? null;
+  }
+
+  async findActiveCompanionSession(
+    sessionId: string,
+    now = new Date(),
+  ): Promise<PresentationSessionRow | null> {
+    const rows = await this.dataSource.query<PresentationSessionRow[]>(
+      `
+        SELECT ${sessionColumns}
+        FROM presentation_sessions
+        WHERE session_id = $1
+          AND status IN ('draft', 'live')
+          AND expires_at > $2
+          AND deck_id IS NOT NULL
+          AND deck_version IS NOT NULL
+        LIMIT 1
+      `,
+      [sessionId, now],
     );
     return rows[0] ?? null;
   }
@@ -201,16 +241,19 @@ export class PresentationSessionRepository {
   async closeActive(
     manager: EntityManager,
     projectId: string,
+    sessionPurpose: PresentationSessionPurpose,
     now: Date
   ): Promise<string[]> {
     const active = await manager.query<Array<{ session_id: string }>>(
       `
         SELECT session_id
         FROM presentation_sessions
-        WHERE project_id = $1 AND status IN ('draft', 'live')
+        WHERE project_id = $1
+          AND session_purpose = $2
+          AND status IN ('draft', 'live')
         FOR UPDATE
       `,
-      [projectId]
+      [projectId, sessionPurpose]
     );
     const sessionIds = active.map((row) => row.session_id);
     if (sessionIds.length === 0) return [];
@@ -247,8 +290,12 @@ export class PresentationSessionRepository {
       deckVersion: number;
       userId: string;
       status: Exclude<PresentationSessionStatus, "ended">;
+      sessionPurpose: PresentationSessionPurpose;
+      audienceAccessEnabled: boolean;
       accessMode: PresentationAccessMode;
       passwordHash: string | null;
+      passwordDisplayCiphertext: string | null;
+      passwordKeyVersion: number | null;
       startsAt: Date;
       expiresAt: Date;
       now: Date;
@@ -257,19 +304,23 @@ export class PresentationSessionRepository {
     const rows = await manager.query<PresentationSessionRow[]>(
       `
         INSERT INTO presentation_sessions (
-          session_id, session_password_hash, project_id, status, created_at, expires_at,
+          session_id, session_password_hash, session_password_display_ciphertext,
+          session_password_key_version, project_id, status, created_at, expires_at,
           deck_id, deck_version, presenter_user_id, created_by, access_mode,
-          starts_at, updated_at, started_at, raw_responses_delete_after
+          starts_at, updated_at, started_at, raw_responses_delete_after,
+          session_purpose, audience_access_enabled
         )
         VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11, $5, $12,
-          $6::timestamptz + interval '90 days'
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11, $12, $13, $7, $14,
+          $8::timestamptz + interval '90 days', $15, $16
         )
         RETURNING ${sessionColumns}
       `,
       [
         input.sessionId,
         input.passwordHash,
+        input.passwordDisplayCiphertext,
+        input.passwordKeyVersion,
         input.projectId,
         input.status,
         input.now,
@@ -279,7 +330,9 @@ export class PresentationSessionRepository {
         input.userId,
         input.accessMode,
         input.startsAt,
-        input.status === "live" ? input.now : null
+        input.status === "live" ? input.now : null,
+        input.sessionPurpose,
+        input.audienceAccessEnabled,
       ]
     );
     return rows[0];
@@ -289,22 +342,51 @@ export class PresentationSessionRepository {
     manager: EntityManager,
     projectId: string,
     sessionId: string,
-    input: {
-      status: Exclude<PresentationSessionStatus, "ended">;
-      accessMode: PresentationAccessMode;
-      passwordHash: string | null;
-      startsAt: Date;
-      expiresAt: Date;
-      now: Date;
-    }
+    input:
+      | {
+          audienceAccessEnabled: false;
+          now: Date;
+        }
+      | {
+          audienceAccessEnabled: true;
+          status: Exclude<PresentationSessionStatus, "ended">;
+          accessMode: PresentationAccessMode;
+          passwordHash: string | null;
+          passwordDisplayCiphertext: string | null;
+          passwordKeyVersion: number | null;
+          startsAt: Date;
+          expiresAt: Date;
+          now: Date;
+        },
   ): Promise<PresentationSessionRow | null> {
+    if (!input.audienceAccessEnabled) {
+      const rows = await manager.query<PresentationSessionRow[]>(
+        `
+          UPDATE presentation_sessions
+          SET audience_access_enabled = false,
+              session_password_hash = NULL,
+              session_password_display_ciphertext = NULL,
+              session_password_key_version = NULL,
+              updated_at = $3
+          WHERE project_id = $1
+            AND session_id = $2
+            AND status IN ('draft', 'live')
+          RETURNING ${sessionColumns}
+        `,
+        [projectId, sessionId, input.now],
+      );
+      return rows[0] ?? null;
+    }
     const rows = await manager.query<PresentationSessionRow[]>(
       `
         UPDATE presentation_sessions
-        SET status = $3, access_mode = $4, session_password_hash = $5,
-            starts_at = $6, expires_at = $7, updated_at = $8,
-            raw_responses_delete_after = $7::timestamptz + interval '90 days',
-            started_at = CASE WHEN $3 = 'live' THEN COALESCE(started_at, $8) ELSE NULL END
+        SET status = $3, audience_access_enabled = true,
+            access_mode = $4, session_password_hash = $5,
+            session_password_display_ciphertext = $6,
+            session_password_key_version = $7,
+            starts_at = $8, expires_at = $9, updated_at = $10,
+            raw_responses_delete_after = $9::timestamptz + interval '90 days',
+            started_at = CASE WHEN $3 = 'live' THEN COALESCE(started_at, $10) ELSE NULL END
         WHERE project_id = $1 AND session_id = $2 AND status IN ('draft', 'live')
         RETURNING ${sessionColumns}
       `,
@@ -314,6 +396,8 @@ export class PresentationSessionRepository {
         input.status,
         input.accessMode,
         input.passwordHash,
+        input.passwordDisplayCiphertext,
+        input.passwordKeyVersion,
         input.startsAt,
         input.expiresAt,
         input.now
