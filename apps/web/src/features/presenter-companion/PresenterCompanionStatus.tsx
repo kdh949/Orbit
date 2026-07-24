@@ -84,6 +84,7 @@ export function PresenterCompanionStatus(props: {
       {showPairing ? (
         <PresenterCompanionSetup
           {...props}
+          onClose={() => setShowPairing(false)}
           statusController={statusController}
           variant="popover"
         />
