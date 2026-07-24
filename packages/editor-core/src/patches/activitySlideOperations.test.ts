@@ -260,9 +260,14 @@ describe("Activity slide operations", () => {
   });
 
   it("duplicates Activity definitions with fresh IDs", () => {
-    const deck = deckWithSatisfaction();
-    const source = deck.slides.find((slide) => slide.kind === "activity");
-    if (!source) throw new Error("missing activity slide");
+    const base = createDemoDeck();
+    const source = createActivitySlide(base, "satisfaction", {
+      preset: "spotlight",
+    });
+    const deck = deckSchema.parse({
+      ...base,
+      slides: [...base.slides, source],
+    });
     const duplicate = duplicateActivitySlide(deck, source.slideId);
 
     expect(duplicate.activity.activityId).not.toBe(source.activity.activityId);
@@ -271,6 +276,18 @@ describe("Activity slide operations", () => {
     );
     expect(
       deckSchema.safeParse({ ...deck, slides: [...deck.slides, duplicate] }).success
+    ).toBe(true);
+    expect(
+      duplicate.elements
+        .filter(
+          (element) =>
+            element.type === "activity-qr" ||
+            element.type === "activity-copy",
+        )
+        .every(
+          (element) =>
+            element.props.activityId === duplicate.activity.activityId,
+        ),
     ).toBe(true);
   });
 

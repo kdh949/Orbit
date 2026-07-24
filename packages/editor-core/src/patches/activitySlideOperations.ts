@@ -205,6 +205,7 @@ export function duplicateActivitySlide(
 
   const ids = collectActivityIds(deck);
   const cloned = cloneJson(source);
+  const previousActivityId = cloned.activity.activityId;
   cloned.slideId = nextId(
     "slide_",
     new Set(deck.slides.map((slide) => slide.slideId))
@@ -212,6 +213,15 @@ export function duplicateActivitySlide(
   cloned.order = nextSlideOrder(deck);
   cloned.activity.activityId = nextId("activity_", ids.activityIds);
   remapQuestionAndOptionIds(cloned.activity, ids.questionIds, ids.optionIds);
+  for (const element of cloned.elements) {
+    if (
+      (element.type === "activity-qr" ||
+        element.type === "activity-copy") &&
+      element.props.activityId === previousActivityId
+    ) {
+      element.props.activityId = cloned.activity.activityId;
+    }
+  }
 
   return activitySlideSchema.parse(cloned);
 }
