@@ -36,6 +36,71 @@ final result: passed
 
 ---
 
+# 편집 가능한 참여 장표 디자인 QA (2026-07-24)
+
+## 범위
+
+- 대상: 실시간 투표 참여 장표
+- 브라우저: Chrome
+- 편집기 뷰포트: 1440 × 900
+- 비교 캔버스: 편집기 안의 842 × 474 슬라이드 영역을 같은 16:9 비율로 정규화
+- QA 프로젝트: `project_c72aed75-d58e-4527-b2ed-2627a7d7a2e7`
+
+## 레퍼런스 비교
+
+각 비교 이미지의 왼쪽은 Product Design으로 만든 레퍼런스, 오른쪽은 실제 편집기 캔버스다.
+
+| 프리셋 | 비교 결과 | 증거 |
+| --- | --- | --- |
+| Spotlight | 질문 중심 계층, QR/입장 코드 병렬 구성, 밝은 배경과 형광 강조선이 의도대로 유지됨 | [compare-spotlight.png](docs/product/qa/activity-slide-design/compare-spotlight.png) |
+| Split | 밝은 질문 영역과 어두운 참여 영역의 1:1 분할, QR/입장 코드 수직 배치가 의도대로 유지됨 | [compare-split.png](docs/product/qa/activity-slide-design/compare-split.png) |
+| Editorial | 좌측 제목, 우측 참여 카드, 하단 형광 안내 밴드의 행사형 구성이 의도대로 유지됨 | [compare-editorial.png](docs/product/qa/activity-slide-design/compare-editorial.png) |
+
+레퍼런스의 고정 문구는 실제 활동의 제목과 설명을 표시하는 런타임 슬롯으로 치환했다. 편집기에서는 QR과 입장 코드가 안전한 플레이스홀더로 보이고, 발표 화면에서만 실제 값이 주입된다.
+
+## 상호작용 검증
+
+- 시스템 레이어인 기본 참여 장표에서 Spotlight를 적용하면 일반 캔버스 편집 모드로 전환된다.
+- 이미 디자인된 장표에서 다른 프리셋을 선택하면 `현재 디자인을 교체할까요?` 확인창이 표시된다.
+- Spotlight, Split, Editorial, Essentials, Blank가 모두 선택 가능하다.
+- Editable 모드에서 텍스트, 도형, 아이콘, 이미지, QR을 사용할 수 있고 차트는 비활성화된다.
+- QR 슬롯을 드래그해 이동하고 실행 취소로 원래 위치를 복원했다.
+- Blank를 적용하면 완전한 빈 캔버스에서 시작할 수 있다.
+- Blank에 QR과 입장 코드를 연속 추가해 서로 겹치지 않는 기본 위치에 배치되는 것을 확인했다.
+- 발표 세션을 비밀번호 방식으로 생성한 뒤 발표 화면에서 실제 QR과 입장 코드가 Editorial 슬롯에 주입되는 것을 확인했다.
+- 편집기 운영 패널에서 기존 `모든 응답 보기` 결과 화면 링크가 유지되는 것을 확인했다.
+- 편집기와 발표 화면의 Chrome 콘솔 오류는 각각 0건이었다.
+
+## 발견 사항과 수정
+
+### P2 — Blank 런타임 슬롯 초기 위치 겹침
+
+초기 구현에서는 Blank에 QR과 입장 코드를 연속 추가하면 두 요소의 기본 위치가 겹쳐 QR이 가려졌다.
+
+- 수정: 런타임 팔레트에서 추가하는 QR은 좌측 하단, 입장 코드는 우측 하단에 배치하도록 캔버스 비율 기반 기본 프레임을 분리했다.
+- 회귀 테스트: 두 프레임이 겹치지 않고 캔버스 안에 들어오는지 검증한다.
+- 수정 커밋: `e7562713 fix: 빈 참여 장표 요소 겹침 방지`
+- 수정 전: [blank-with-runtime-slots.jpg](docs/product/qa/activity-slide-design/blank-with-runtime-slots.jpg)
+- 수정 후: [blank-with-runtime-slots-fixed.jpg](docs/product/qa/activity-slide-design/blank-with-runtime-slots-fixed.jpg)
+
+P0 또는 P1 시각 문제는 발견되지 않았다.
+
+## 발표 런타임 증거
+
+- [editorial-presenter-runtime.jpg](docs/product/qa/activity-slide-design/editorial-presenter-runtime.jpg)
+- 실제 청중 URL로 만든 QR과 발표자 전용 입장 코드가 플레이스홀더를 대체한다.
+- 응답 집계 패널은 별도 결과 흐름을 그대로 사용한다.
+
+## 자동 검증
+
+- Web: 299 test files, 1,867 tests passed
+- Web TypeScript lint/typecheck passed
+- 전체 구현 검증에서 `pnpm build`, `pnpm lint`, `pnpm test`, `node infra/scripts/check-env.mjs`, `docker compose config --quiet` passed
+
+final result: passed
+
+---
+
 # Presenter slide controller design QA (2026-07-23)
 
 - Reference: `C:\Users\Runner\AppData\Local\Temp\codex-clipboard-717a61a0-1b0d-49d5-925f-cbbd87a925a5.png`
