@@ -8,6 +8,8 @@ export const companionAccessCookieName = "orbit_presentation_companion";
 export const companionAccessScopes = [
   "view-audience-output",
   "write-annotation",
+  "view-prompter",
+  "control-presentation",
 ] as const;
 
 const companionAccessTokenPayloadSchema = z
