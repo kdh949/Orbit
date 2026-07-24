@@ -3,6 +3,9 @@ import {
   presentationCompanionAnnotationCommandEventSchema,
   presentationCompanionPresenceEventSchema,
   presentationCompanionLaserEventSchema,
+  presentationCompanionNavigationAckSchema,
+  presentationCompanionNavigationCommandEventSchema,
+  presentationCompanionPrompterStateSchema,
   presentationCompanionSnapshotRequestEventSchema,
   presentationCompanionOutputStateSchema,
   presentationCompanionSignalEventSchema,
@@ -10,6 +13,8 @@ import {
   type PresentationCompanionOutputState,
   type PresentationCompanionAnnotationSnapshot,
   type PresentationCompanionLaser,
+  type PresentationCompanionNavigationAck,
+  type PresentationCompanionNavigationCommand,
   type PresentationCompanionSignal,
 } from "@orbit/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -20,6 +25,7 @@ import {
   type AcceptedAnnotationDelta,
 } from "./annotationAuthority";
 import type { CompanionSignalInput } from "./companionWebRtc";
+import type { CompanionPrompterProjection } from "./companionPrompterProjection";
 
 type PresenterCompanionSocket = Pick<
   Socket,
@@ -35,7 +41,13 @@ export function usePresenterCompanionAuthority(input: {
   sessionId: string | null | undefined;
   shareEpochId?: string | null;
   state: PresenterSlideshowState | null;
+  canGoPrevious?: boolean;
+  canGoNext?: boolean;
+  prompterState?: CompanionPrompterProjection | null;
   createSocket?: () => PresenterCompanionSocket;
+  onNavigation?: (
+    action: PresentationCompanionNavigationCommand["action"],
+  ) => void;
   onAnnotationDelta?: (
     delta: AcceptedAnnotationDelta,
     snapshot: PresentationCompanionAnnotationSnapshot,
@@ -52,8 +64,14 @@ export function usePresenterCompanionAuthority(input: {
   const pairingGenerationRef = useRef<number | null>(null);
   const authorityEpochIdRef = useRef("");
   const outputRevisionRef = useRef(-1);
+  const prompterRevisionRef = useRef(-1);
   const socketRef = useRef<PresenterCompanionSocket | null>(null);
   const stateRef = useRef(input.state);
+  const navigationAvailabilityRef = useRef({
+    canGoNext: Boolean(input.canGoNext),
+    canGoPrevious: Boolean(input.canGoPrevious),
+  });
+  const prompterStateRef = useRef(input.prompterState);
   const shareEpochIdRef = useRef(input.shareEpochId);
   const latestOutputRef =
     useRef<PresentationCompanionOutputState | null>(null);
@@ -65,14 +83,24 @@ export function usePresenterCompanionAuthority(input: {
     input.onAnnotationSnapshot,
   );
   const laserHandlerRef = useRef(input.onLaser);
+  const navigationHandlerRef = useRef(input.onNavigation);
+  const navigationAcknowledgementsRef = useRef(
+    new Map<string, PresentationCompanionNavigationAck>(),
+  );
   const signalListenersRef = useRef(
     new Set<(signal: PresentationCompanionSignal) => void>(),
   );
   stateRef.current = input.state;
+  navigationAvailabilityRef.current = {
+    canGoNext: Boolean(input.canGoNext),
+    canGoPrevious: Boolean(input.canGoPrevious),
+  };
+  prompterStateRef.current = input.prompterState;
   shareEpochIdRef.current = input.shareEpochId;
   annotationDeltaHandlerRef.current = input.onAnnotationDelta;
   annotationSnapshotHandlerRef.current = input.onAnnotationSnapshot;
   laserHandlerRef.current = input.onLaser;
+  navigationHandlerRef.current = input.onNavigation;
 
   const publishCurrentOutput = useCallback(() => {
     const socket = socketRef.current;
@@ -98,6 +126,9 @@ export function usePresenterCompanionAuthority(input: {
       slideId: state.slideId,
       slideIndex: state.slideIndex,
       animationStep: state.stepIndex,
+      canGoPrevious:
+        navigationAvailabilityRef.current.canGoPrevious,
+      canGoNext: navigationAvailabilityRef.current.canGoNext,
       ...(surface
         ? {
             surfaceRevision:
@@ -114,6 +145,31 @@ export function usePresenterCompanionAuthority(input: {
     latestOutputRef.current = output;
     currentSurfaceIdRef.current = surface?.surfaceId ?? null;
     socket.emit("presentation:companion:output-state", output);
+  }, [input.sessionId]);
+
+  const publishCurrentPrompterState = useCallback(() => {
+    const socket = socketRef.current;
+    const projection = prompterStateRef.current;
+    const sessionId = input.sessionId;
+    if (
+      !socket ||
+      !projection ||
+      !sessionId ||
+      !authorityEpochIdRef.current
+    ) {
+      return;
+    }
+    const parsed = presentationCompanionPrompterStateSchema.safeParse({
+      ...projection,
+      sessionId,
+      authorityEpochId: authorityEpochIdRef.current,
+      prompterRevision: Math.max(0, prompterRevisionRef.current),
+    });
+    if (!parsed.success) return;
+    socket.emit(
+      "presentation:companion:prompter-state",
+      parsed.data,
+    );
   }, [input.sessionId]);
 
   const publishAnnotationSnapshot = useCallback(() => {
@@ -140,7 +196,9 @@ export function usePresenterCompanionAuthority(input: {
     pairingGenerationRef.current = null;
     setPairingGeneration(null);
     outputRevisionRef.current = -1;
+    prompterRevisionRef.current = -1;
     latestOutputRef.current = null;
+    navigationAcknowledgementsRef.current.clear();
     currentSurfaceIdRef.current =
       resolveCompanionSurface(input.state, input.shareEpochId)?.surfaceId ??
       null;
@@ -207,6 +265,7 @@ export function usePresenterCompanionAuthority(input: {
           parsed.data.payload.pairingGeneration;
         setPairingGeneration(parsed.data.payload.pairingGeneration);
         publishCurrentOutput();
+        publishCurrentPrompterState();
         publishAnnotationSnapshot();
       } else if (
         parsed.success &&
@@ -294,6 +353,57 @@ export function usePresenterCompanionAuthority(input: {
         laserHandlerRef.current?.(parsed.data.payload);
       }
     };
+    const handleNavigationCommand = (value: unknown) => {
+      const parsed =
+        presentationCompanionNavigationCommandEventSchema.safeParse(
+          value,
+        );
+      if (
+        !parsed.success ||
+        parsed.data.sessionId !== sessionId ||
+        parsed.data.payload.authorityEpochId !==
+          authorityEpochIdRef.current
+      ) {
+        return;
+      }
+      const command = parsed.data.payload;
+      const previousAcknowledgement =
+        navigationAcknowledgementsRef.current.get(
+          command.clientOperationId,
+        );
+      if (previousAcknowledgement) {
+        socket.emit(
+          "presentation:companion:navigation-ack",
+          previousAcknowledgement,
+        );
+        return;
+      }
+      const acknowledgement =
+        createPresenterNavigationAcknowledgement({
+          command,
+          output: latestOutputRef.current,
+        });
+      navigationAcknowledgementsRef.current.set(
+        command.clientOperationId,
+        acknowledgement,
+      );
+      if (navigationAcknowledgementsRef.current.size > 64) {
+        const oldestOperationId =
+          navigationAcknowledgementsRef.current.keys().next().value;
+        if (oldestOperationId) {
+          navigationAcknowledgementsRef.current.delete(
+            oldestOperationId,
+          );
+        }
+      }
+      socket.emit(
+        "presentation:companion:navigation-ack",
+        acknowledgement,
+      );
+      if (acknowledgement.accepted) {
+        navigationHandlerRef.current?.(command.action);
+      }
+    };
     const handleSnapshotRequest = (value: unknown) => {
       const parsed =
         presentationCompanionSnapshotRequestEventSchema.safeParse(value);
@@ -305,6 +415,7 @@ export function usePresenterCompanionAuthority(input: {
           authorityEpochIdRef.current
       ) {
         publishCurrentOutput();
+        publishCurrentPrompterState();
         publishAnnotationSnapshot();
       }
     };
@@ -322,6 +433,10 @@ export function usePresenterCompanionAuthority(input: {
       handleAnnotationCommand,
     );
     socket.on("presentation:companion:laser", handleLaser);
+    socket.on(
+      "presentation:companion:navigation-command",
+      handleNavigationCommand,
+    );
     socket.on(
       "presentation:companion:snapshot-request",
       handleSnapshotRequest,
@@ -348,6 +463,10 @@ export function usePresenterCompanionAuthority(input: {
       );
       socket.off("presentation:companion:laser", handleLaser);
       socket.off(
+        "presentation:companion:navigation-command",
+        handleNavigationCommand,
+      );
+      socket.off(
         "presentation:companion:snapshot-request",
         handleSnapshotRequest,
       );
@@ -365,6 +484,7 @@ export function usePresenterCompanionAuthority(input: {
     input.sessionId,
     Boolean(input.state),
     publishCurrentOutput,
+    publishCurrentPrompterState,
     publishAnnotationSnapshot,
   ]);
 
@@ -390,9 +510,28 @@ export function usePresenterCompanionAuthority(input: {
     input.state?.slideId,
     input.state?.slideIndex,
     input.state?.stepIndex,
+    input.canGoNext,
+    input.canGoPrevious,
     input.shareEpochId,
     publishCurrentOutput,
     publishAnnotationSnapshot,
+    status,
+  ]);
+
+  useEffect(() => {
+    if (
+      !input.enabled ||
+      !input.prompterState ||
+      status !== "active"
+    ) {
+      return;
+    }
+    prompterRevisionRef.current += 1;
+    publishCurrentPrompterState();
+  }, [
+    input.enabled,
+    input.prompterState,
+    publishCurrentPrompterState,
     status,
   ]);
 
@@ -441,10 +580,41 @@ export function usePresenterCompanionAuthority(input: {
     },
     pairingGeneration,
     publishCurrentOutput,
+    publishCurrentPrompterState,
     sendSignal,
     status,
     subscribeSignal,
   };
+}
+
+export function createPresenterNavigationAcknowledgement(input: {
+  command: PresentationCompanionNavigationCommand;
+  output: PresentationCompanionOutputState | null;
+}): PresentationCompanionNavigationAck {
+  const currentRevision = input.output?.outputRevision ?? 0;
+  let reason: PresentationCompanionNavigationAck["reason"] =
+    "accepted";
+  if (
+    !input.output ||
+    input.command.expectedOutputRevision !== currentRevision
+  ) {
+    reason = "stale-output";
+  } else if (
+    (input.command.action === "previous-slide" &&
+      !input.output.canGoPrevious) ||
+    (input.command.action === "next-step" &&
+      !input.output.canGoNext)
+  ) {
+    reason = "at-boundary";
+  }
+  return presentationCompanionNavigationAckSchema.parse({
+    sessionId: input.command.sessionId,
+    authorityEpochId: input.command.authorityEpochId,
+    clientOperationId: input.command.clientOperationId,
+    accepted: reason === "accepted",
+    reason,
+    outputRevision: currentRevision,
+  });
 }
 
 export function createPresenterAuthorityLeaseController(input: {

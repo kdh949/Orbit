@@ -129,6 +129,8 @@ describe("materializeCompanionDeck", () => {
           slideId: safeDeck.slides[0]!.slideId,
           slideIndex: 0,
           animationStep: 1,
+          canGoNext: true,
+          canGoPrevious: false,
         }}
       />,
     );
@@ -151,6 +153,8 @@ describe("materializeCompanionDeck", () => {
           slideId: safeDeck.slides[0]!.slideId,
           slideIndex: 0,
           animationStep: 1,
+          canGoNext: false,
+          canGoPrevious: false,
         }}
       />,
     );

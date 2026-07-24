@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  createPresenterNavigationAcknowledgement,
   createPresenterAuthorityLeaseController,
   createCompanionShareSurfaceId,
   createCompanionSurfaceId,
@@ -57,11 +58,71 @@ describe("createCompanionSurfaceId", () => {
           slideId: "slide_1",
           slideIndex: 0,
           animationStep: 0,
+          canGoNext: false,
+          canGoPrevious: false,
         },
         state,
         surfaceId: "surface_slide_1",
       }),
     ).toBe(false);
+  });
+});
+
+describe("createPresenterNavigationAcknowledgement", () => {
+  const output = {
+    sessionId: "session_1",
+    authorityEpochId: "epoch_1",
+    outputRevision: 3,
+    outputMode: "slide" as const,
+    slideId: "slide_1",
+    slideIndex: 0,
+    animationStep: 0,
+    canGoNext: true,
+    canGoPrevious: false,
+    surfaceRevision: 0,
+    surfaceId: "surface_1",
+  };
+
+  it("accepts a current command within the navigation boundary", () => {
+    expect(
+      createPresenterNavigationAcknowledgement({
+        command: {
+          sessionId: "session_1",
+          authorityEpochId: "epoch_1",
+          clientOperationId: "nav_1",
+          expectedOutputRevision: 3,
+          action: "next-step",
+        },
+        output,
+      }),
+    ).toMatchObject({ accepted: true, reason: "accepted" });
+  });
+
+  it("rejects stale and boundary commands without changing state", () => {
+    expect(
+      createPresenterNavigationAcknowledgement({
+        command: {
+          sessionId: "session_1",
+          authorityEpochId: "epoch_1",
+          clientOperationId: "nav_2",
+          expectedOutputRevision: 2,
+          action: "next-step",
+        },
+        output,
+      }).reason,
+    ).toBe("stale-output");
+    expect(
+      createPresenterNavigationAcknowledgement({
+        command: {
+          sessionId: "session_1",
+          authorityEpochId: "epoch_1",
+          clientOperationId: "nav_3",
+          expectedOutputRevision: 3,
+          action: "previous-slide",
+        },
+        output,
+      }).reason,
+    ).toBe("at-boundary");
   });
 });
 

@@ -81,6 +81,11 @@ import { PresenterCompanionSetup } from "../presenter-companion/PresenterCompani
 import { PresenterCompanionStatus } from "../presenter-companion/PresenterCompanionStatus";
 import { usePresenterCompanionFeatureFlag } from "../presenter-companion/usePresenterCompanionFeatureFlag";
 import {
+  createCompanionPrompterProjection,
+  getCompanionPrompterTrackingStatus,
+} from "../presenter-companion/companionPrompterProjection";
+import { createRehearsalScriptPrompterRows } from "../rehearsal/panel/rehearsalScriptPrompter";
+import {
   getTriggerAnimationIdsForSlide,
   getKeywordOccurrenceTriggerIdsForSlide,
   restoreSlidePlaybackAtStep,
@@ -508,6 +513,39 @@ export function PresentationWorkspace(props: {
       slideId: currentSlide?.slideId ?? "presentation-empty",
     });
   }, [currentSlide?.slideId, sentences, speech.state.snapshot]);
+  const companionPrompterState = useMemo(
+    () =>
+      currentSlide
+        ? createCompanionPrompterProjection({
+            progressPercent:
+              (panelSnapshot.scriptProgress?.ratio ?? 0) * 100,
+            rows: createRehearsalScriptPrompterRows({
+              sentences,
+              coveredSentenceIds: panelSnapshot.coveredSentenceIds,
+              coveredSentenceMatchKinds:
+                panelSnapshot.coveredSentenceMatchKinds,
+              prompterProgress: panelSnapshot.prompterProgress,
+            }).map((row) => ({
+              isFocusTarget: row.isFocusTarget,
+              sentenceId: row.sentence.sentenceId,
+              status: row.status,
+              text: row.sentence.text,
+            })),
+            slideId: currentSlide.slideId,
+            slideIndex: currentSlideIndex,
+            trackingStatus: getCompanionPrompterTrackingStatus(
+              speech.state.status,
+            ),
+          })
+        : null,
+    [
+      currentSlide,
+      currentSlideIndex,
+      panelSnapshot,
+      sentences,
+      speech.state.status,
+    ],
+  );
   const presentationOutputState = useMemo<PresenterSlideshowState | null>(
     () =>
       currentSlide
@@ -1363,6 +1401,13 @@ export function PresentationWorkspace(props: {
     audienceWindowConnected: Boolean(
       slideWindowRef.current && !slideWindowRef.current.closed,
     ),
+    canGoNext: Boolean(
+      deck &&
+        (presenterStepIndex <
+          (slideshowAnimationPlan?.maxStepIndex ?? 0) ||
+          currentSlideIndex < deck.slides.length - 1),
+    ),
+    canGoPrevious: currentSlideIndex > 0,
     companionEnabled: presenterCompanionEnabled,
     deck,
     displayRole,
@@ -1384,6 +1429,7 @@ export function PresentationWorkspace(props: {
     onScreenShareEnded: () => stopAudienceStreamRef.current(),
     outputMode: audienceOutputMode,
     persistedSessionId: presenterSession?.sessionId,
+    prompterState: companionPrompterState,
     state: presentationOutputState,
     triggerAnimationIds,
   });
