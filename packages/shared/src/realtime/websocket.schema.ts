@@ -32,6 +32,9 @@ export const websocketEventTypeSchema = z.enum([
   "presentation:companion:joined",
   "presentation:companion:presence",
   "presentation:companion:output-state",
+  "presentation:companion:prompter-state",
+  "presentation:companion:navigation-command",
+  "presentation:companion:navigation-ack",
   "presentation:companion:annotation-command",
   "presentation:companion:annotation-ack",
   "presentation:companion:annotation-snapshot",
@@ -155,6 +158,9 @@ export const presentationCompanionMaxSurfaceStrokes = 500;
 export const presentationCompanionMaxSurfacePoints = 50_000;
 export const presentationCompanionMaxSdpLength = 32 * 1024;
 export const presentationCompanionMaxIceCandidateLength = 4 * 1024;
+export const presentationCompanionMaxPrompterBytes = 128 * 1024;
+export const presentationCompanionMaxPrompterRows = 256;
+export const presentationCompanionMaxPrompterRowLength = 2_048;
 
 const companionOpaqueIdSchema = z
   .string()
@@ -290,6 +296,8 @@ const presentationCompanionOutputStateBase = {
   slideId: deckSlideIdSchema,
   slideIndex: z.number().int().nonnegative(),
   animationStep: z.number().int().nonnegative(),
+  canGoPrevious: z.boolean().default(false),
+  canGoNext: z.boolean().default(false),
 };
 
 const presentationCompanionDrawableOutputStateBase = {
@@ -322,6 +330,114 @@ export const presentationCompanionOutputStateSchema = z.discriminatedUnion(
       .strict()
   ]
 );
+
+export const presentationCompanionPrompterRowStatusSchema = z.enum([
+  "covered",
+  "current",
+  "next",
+  "paraphrased",
+  "pending",
+  "unmatchable"
+]);
+
+export const presentationCompanionPrompterRowSchema = z
+  .object({
+    sentenceId: companionOpaqueIdSchema,
+    text: z.string().min(1).max(presentationCompanionMaxPrompterRowLength),
+    status: presentationCompanionPrompterRowStatusSchema
+  })
+  .strict();
+
+export const presentationCompanionPrompterStateSchema = z
+  .object({
+    sessionId: companionSessionIdSchema,
+    authorityEpochId: companionOpaqueIdSchema,
+    prompterRevision: companionRevisionSchema,
+    slideId: deckSlideIdSchema,
+    slideIndex: z.number().int().nonnegative(),
+    availability: z.enum(["ready", "empty", "too-large"]),
+    trackingStatus: z.enum(["waiting", "listening", "paused", "error"]),
+    progressPercent: z.number().int().min(0).max(100),
+    focusSentenceId: companionOpaqueIdSchema.nullable(),
+    rows: z
+      .array(presentationCompanionPrompterRowSchema)
+      .max(presentationCompanionMaxPrompterRows)
+  })
+  .strict()
+  .superRefine((state, context) => {
+    if (state.availability === "ready" && state.rows.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["rows"],
+        message: "ready prompter state requires rows"
+      });
+    }
+    if (state.availability !== "ready" && state.rows.length > 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["rows"],
+        message: "unavailable prompter state must not expose rows"
+      });
+    }
+    if (
+      state.focusSentenceId !== null &&
+      !state.rows.some((row) => row.sentenceId === state.focusSentenceId)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["focusSentenceId"],
+        message: "focus sentence must reference a projected row"
+      });
+    }
+    if (
+      new TextEncoder().encode(JSON.stringify(state)).byteLength >
+      presentationCompanionMaxPrompterBytes
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "prompter state exceeds byte limit"
+      });
+    }
+  });
+
+export const presentationCompanionNavigationCommandSchema = z
+  .object({
+    sessionId: companionSessionIdSchema,
+    authorityEpochId: companionOpaqueIdSchema,
+    clientOperationId: companionOpaqueIdSchema,
+    expectedOutputRevision: companionRevisionSchema,
+    action: z.enum(["previous-slide", "next-step"])
+  })
+  .strict();
+
+export const presentationCompanionNavigationAckSchema = z
+  .object({
+    sessionId: companionSessionIdSchema,
+    authorityEpochId: companionOpaqueIdSchema,
+    clientOperationId: companionOpaqueIdSchema,
+    accepted: z.boolean(),
+    reason: z.enum([
+      "accepted",
+      "at-boundary",
+      "stale-output",
+      "not-authority",
+      "rate-limited"
+    ]),
+    outputRevision: companionRevisionSchema
+  })
+  .strict()
+  .superRefine((acknowledgement, context) => {
+    if (
+      acknowledgement.accepted !==
+      (acknowledgement.reason === "accepted")
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["reason"],
+        message: "navigation acknowledgement reason is inconsistent"
+      });
+    }
+  });
 
 export const presentationCompanionAnnotationAckSchema = z
   .object({
@@ -552,6 +668,24 @@ export const presentationCompanionOutputStateEventSchema =
     presentationCompanionOutputStateSchema
   );
 
+export const presentationCompanionPrompterStateEventSchema =
+  companionEventSchema(
+    "presentation:companion:prompter-state",
+    presentationCompanionPrompterStateSchema
+  );
+
+export const presentationCompanionNavigationCommandEventSchema =
+  companionEventSchema(
+    "presentation:companion:navigation-command",
+    presentationCompanionNavigationCommandSchema
+  );
+
+export const presentationCompanionNavigationAckEventSchema =
+  companionEventSchema(
+    "presentation:companion:navigation-ack",
+    presentationCompanionNavigationAckSchema
+  );
+
 export const presentationCompanionAnnotationCommandEventSchema =
   companionEventSchema(
     "presentation:companion:annotation-command",
@@ -634,6 +768,9 @@ export const presentationCompanionEventSchema =
     presentationCompanionJoinedEventSchema,
     presentationCompanionPresenceEventSchema,
     presentationCompanionOutputStateEventSchema,
+    presentationCompanionPrompterStateEventSchema,
+    presentationCompanionNavigationCommandEventSchema,
+    presentationCompanionNavigationAckEventSchema,
     presentationCompanionAnnotationCommandEventSchema,
     presentationCompanionAnnotationAckEventSchema,
     presentationCompanionAnnotationSnapshotEventSchema,
@@ -652,6 +789,18 @@ export type PresentationCompanionAnnotationCommand = z.infer<
 >;
 export type PresentationCompanionOutputState = z.infer<
   typeof presentationCompanionOutputStateSchema
+>;
+export type PresentationCompanionPrompterRow = z.infer<
+  typeof presentationCompanionPrompterRowSchema
+>;
+export type PresentationCompanionPrompterState = z.infer<
+  typeof presentationCompanionPrompterStateSchema
+>;
+export type PresentationCompanionNavigationCommand = z.infer<
+  typeof presentationCompanionNavigationCommandSchema
+>;
+export type PresentationCompanionNavigationAck = z.infer<
+  typeof presentationCompanionNavigationAckSchema
 >;
 export type PresentationCompanionAnnotationAck = z.infer<
   typeof presentationCompanionAnnotationAckSchema

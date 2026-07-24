@@ -205,7 +205,17 @@ history.
 ## iPad Interaction
 
 The companion uses a landscape-first, full-screen canvas with an auto-hiding
-toolbar.
+annotation toolbar. A separate presenter rail remains visible above the safe
+area with previous, current-script, and next controls. The current-script
+control expands into a dark prompter drawer and remembers only its expanded
+preference on that iPad.
+
+The desktop remains authoritative for speech tracking and navigation. The iPad
+receives only the current slide's bounded script rows and focus position through
+the `view-prompter` scope. It does not run STT, receive raw transcript/audio, or
+persist script content. Previous moves to the previous slide at step zero; next
+advances the next animation step before moving to the next slide. Manual
+prompter scrolling pauses follow mode until `현재 대본으로` is selected.
 
 The release policy supports the current and previous stable iPadOS Safari at
 the time of release. Capability detection, not the operating-system version or
@@ -248,10 +258,10 @@ Pointer Events available to Safari web content do not define an equivalent
 event. Supporting it would therefore require a separately built and distributed
 native iPad app, which this browser companion project does not include.
 
-The Safari companion does not expose slide or animation control through this
-gesture. Two Pencil-tip contacts may be inferred from web pointer events, but
-that is a different gesture and conflicts with drawing, so it is not used as a
-fallback.
+The Safari companion does not bind slide or animation control to this gesture.
+Previous/next remain explicit touch buttons. Two Pencil-tip contacts may be
+inferred from web pointer events, but that is a different gesture and conflicts
+with drawing, so it is not used as a fallback.
 
 ## Key Assumptions to Validate
 
@@ -288,6 +298,8 @@ fallback.
 - persisted `PresentationSession` integration with opt-in audience access;
 - audience-safe bootstrap snapshot;
 - slide/step/black state synchronization;
+- scoped current-slide prompter synchronization and collapsible follow UI;
+- explicit previous-slide and next-step controls with authoritative ack;
 - laser, pen, highlighter, stroke eraser, undo, and clear;
 - per-slide temporary annotation restoration;
 - screen-share video through WebRTC and per-share temporary annotations;
@@ -342,8 +354,10 @@ Suggested implementation boundaries:
   job.
 - **Permanent Deck storage, PPTX export, or report inclusion** — contradicts the
   temporary live-annotation assumption.
-- **Slide navigation, timer, speaker notes, or STT controls on iPad** — turns the
-  companion into a second presenter console and expands its privacy boundary.
+- **Timer, STT settings, session finish, or unrestricted presenter notes on
+  iPad** — these would turn the companion into a second presenter console and
+  expand its privacy boundary beyond the scoped current-slide prompter and
+  previous/next controls.
 - **Apple Pencil hardware double tap in Safari/PWA** — no documented web API
   exposes this gesture, and a native iPad app is outside this implementation
   scope.

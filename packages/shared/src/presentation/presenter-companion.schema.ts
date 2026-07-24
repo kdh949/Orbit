@@ -30,12 +30,14 @@ import { presentationSessionPurposeSchema } from "./presentation.schema";
 export const companionAccessScopeSchema = z.enum([
   "view-audience-output",
   "write-annotation",
+  "view-prompter",
+  "control-presentation",
 ]);
 
 export const companionAccessScopesSchema = z
   .array(companionAccessScopeSchema)
   .min(1)
-  .max(2);
+  .max(4);
 
 const companionSlideBaseFields = {
   slideId: deckSlideIdSchema,

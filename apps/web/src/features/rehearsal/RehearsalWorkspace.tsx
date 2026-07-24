@@ -195,6 +195,10 @@ import { useLivePresentationOutput } from "../presentation/useLivePresentationOu
 import { PresenterCompanionSetup } from "../presenter-companion/PresenterCompanionSetup";
 import { PresenterCompanionStatus } from "../presenter-companion/PresenterCompanionStatus";
 import { usePresenterCompanionFeatureFlag } from "../presenter-companion/usePresenterCompanionFeatureFlag";
+import {
+  createCompanionPrompterProjection,
+  getCompanionPrompterTrackingStatus,
+} from "../presenter-companion/companionPrompterProjection";
 import type { AudienceStreamBridgeWindow } from "./presenter/audienceStreamBridge";
 import { usePresenterKeyboard } from "./presenter/usePresenterKeyboard";
 import { AutoAdvanceSettings } from "./advance/AutoAdvanceSettings";
@@ -2640,18 +2644,62 @@ export function RehearsalWorkspace(props: {
         : [],
     [currentSlide?.slideId, currentSlide?.speakerNotes],
   );
-  const p3PanelSnapshot =
-    currentSlide && p3SessionState?.snapshot?.slideId === currentSlide.slideId
-      ? p3SessionState.snapshot
-      : createEmptySpeechTrackerSnapshot({
-          slideId: currentSlide?.slideId ?? "slide-empty",
-          matchableSentenceCount: p3Sentences.filter(
-            (sentence) => sentence.matchable,
-          ).length,
-        });
+  const p3PanelSnapshot = useMemo(
+    () =>
+      currentSlide &&
+      p3SessionState?.snapshot?.slideId === currentSlide.slideId
+        ? p3SessionState.snapshot
+        : createEmptySpeechTrackerSnapshot({
+            slideId: currentSlide?.slideId ?? "slide-empty",
+            matchableSentenceCount: p3Sentences.filter(
+              (sentence) => sentence.matchable,
+            ).length,
+          }),
+    [currentSlide?.slideId, p3Sentences, p3SessionState?.snapshot],
+  );
   const triggerAnimationIds = useMemo(
     () => (currentSlide ? getTriggerAnimationIdsForSlide(currentSlide) : []),
     [currentSlide],
+  );
+  const slideshowAnimationPlan = currentSlide
+    ? createSlideshowAnimationPlan({
+        slide: currentSlide,
+        triggerAnimationIds,
+      })
+    : null;
+  const companionPrompterState = useMemo(
+    () =>
+      currentSlide
+        ? createCompanionPrompterProjection({
+            progressPercent:
+              (p3PanelSnapshot.scriptProgress?.ratio ?? 0) * 100,
+            rows: createRehearsalScriptPrompterRows({
+              sentences: p3Sentences,
+              coveredSentenceIds:
+                p3PanelSnapshot.coveredSentenceIds,
+              coveredSentenceMatchKinds:
+                p3PanelSnapshot.coveredSentenceMatchKinds,
+              prompterProgress: p3PanelSnapshot.prompterProgress,
+            }).map((row) => ({
+              isFocusTarget: row.isFocusTarget,
+              sentenceId: row.sentence.sentenceId,
+              status: row.status,
+              text: row.sentence.text,
+            })),
+            slideId: currentSlide.slideId,
+            slideIndex: currentSlideIndex,
+            trackingStatus: getCompanionPrompterTrackingStatus(
+              liveStatus,
+            ),
+          })
+        : null,
+    [
+      currentSlide,
+      currentSlideIndex,
+      liveStatus,
+      p3PanelSnapshot,
+      p3Sentences,
+    ],
   );
   const presentationChannelState = useMemo(
     () =>
@@ -2715,6 +2763,13 @@ export function RehearsalWorkspace(props: {
     audienceWindowConnected: Boolean(
       slideWindowRef.current && !slideWindowRef.current.closed,
     ),
+    canGoNext: Boolean(
+      deck &&
+        (presenterStepIndex <
+          (slideshowAnimationPlan?.maxStepIndex ?? 0) ||
+          currentSlideIndex < deck.slides.length - 1),
+    ),
+    canGoPrevious: currentSlideIndex > 0,
     companionEnabled: presenterCompanionEnabled,
     deck,
     displayRole,
@@ -2734,6 +2789,7 @@ export function RehearsalWorkspace(props: {
     onScreenShareEnded: () => stopAudienceStreamRef.current(),
     outputMode: audienceOutputMode,
     persistedSessionId: companionSession?.sessionId,
+    prompterState: companionPrompterState,
     state: presentationChannelState,
     triggerAnimationIds,
   });
@@ -2745,12 +2801,6 @@ export function RehearsalWorkspace(props: {
   stopAudienceStreamRef.current = () =>
     audienceScreenShare.stopSharing({ returnToSlide: true });
   const displayManager = useMemo(() => createDisplayManager(), []);
-  const slideshowAnimationPlan = currentSlide
-    ? createSlideshowAnimationPlan({
-        slide: currentSlide,
-        triggerAnimationIds,
-      })
-    : null;
   const remainingTriggerSteps = slideshowAnimationPlan
     ? getRemainingTriggerStepsFromPlan(
         slideshowAnimationPlan.maxStepIndex,

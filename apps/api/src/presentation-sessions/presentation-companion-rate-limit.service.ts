@@ -17,6 +17,8 @@ export const companionDrawingRatePerSecond = 120;
 export const companionDrawingBurst = 180;
 export const companionLaserRatePerSecond = 60;
 export const companionLaserBurst = 60;
+export const companionNavigationRatePerSecond = 6;
+export const companionNavigationBurst = 6;
 
 type RateLimitRedis = Pick<
   Redis,
@@ -88,6 +90,15 @@ export class PresentationCompanionCommandRateLimitService
     );
   }
 
+  consumeNavigation(identity: string): Promise<void> {
+    return this.consume(
+      "navigation",
+      identity,
+      companionNavigationRatePerSecond,
+      companionNavigationBurst,
+    );
+  }
+
   async onModuleDestroy(): Promise<void> {
     if (this.redis.status === "end") return;
     if (this.redis.status === "wait") {
@@ -98,7 +109,7 @@ export class PresentationCompanionCommandRateLimitService
   }
 
   private async consume(
-    scope: "drawing" | "laser",
+    scope: "drawing" | "laser" | "navigation",
     identity: string,
     rate: number,
     burst: number,

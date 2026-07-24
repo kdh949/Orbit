@@ -442,7 +442,8 @@ GET    /api/v1/presentation-companion/:sessionId/assets/:fileId/content
   Secure, SameSite=Lax cookie다. payload는 `companionId`, `sessionId`,
   `projectId`, `deckId`, `deckVersion`, `pairingGeneration`, `scopes`,
   `expiresAt`, user-agent HMAC을 포함한다. TTL은 4시간과 session expiry 중
-  이른 시점이다.
+  이른 시점이다. 현재 scope는 `view-audience-output`,
+  `write-annotation`, `view-prompter`, `control-presentation`이다.
 - bootstrap과 asset은 매 요청마다 cookie signature와 user-agent,
   Redis 최신 generation, DB active session, exact Deck version을 모두 다시
   확인한다. session close, active session replacement, presenter disconnect는
@@ -510,6 +511,7 @@ presentation:{sessionId}:presenter
 presentation:{sessionId}:audience
 presentation:{sessionId}:companion-authority:{authorityEpochId}
 presentation:{sessionId}:companion:{pairingGeneration}
+presentation:{sessionId}:companion:{pairingGeneration}:scope:{scope}
 ```
 
 추가 event는 `active-activity-changed`, `activity-state-changed`, `activity-results-updated`다. 응답 write는 HTTP transaction에서 수행하고, WebSocket은 commit 후 `revision`, refetch marker, 공개 가능한 aggregate와 승인된 익명 text만 전달한다. audience event의 `userId`는 raw audience ID 대신 `system`을 사용한다.
@@ -526,7 +528,39 @@ Companion server event는 공통 strict envelope
 `companion:<companionId>` 중 하나다. 주요 event는 authority
 claim/change, join/heartbeat/presence, output state, annotation
 command/ack/snapshot/request, volatile laser, WebRTC signal, revoke,
-고정 `presentation:error`다.
+고정 `presentation:error`와 아래 프롬프터·이동 event다.
+
+```text
+presentation:companion:prompter-state
+presentation:companion:navigation-command
+presentation:companion:navigation-ack
+```
+
+- `output-state`는 `canGoPrevious`, `canGoNext`를 포함한다. 이전은 이전
+  슬라이드로 이동하면서 animation step을 0으로 초기화하고, 다음은 남은
+  animation step을 먼저 진행한 뒤 다음 슬라이드로 이동한다.
+- `prompter-state`는 bootstrap/Deck projection과 분리된
+  `view-prompter` scope 전용 self-contained snapshot이다. 현재 슬라이드의
+  `slideId`, `slideIndex`, `prompterRevision`, `trackingStatus`,
+  `progressPercent`, `focusSentenceId`와 `{ sentenceId, text, status }[]`만
+  포함한다. raw transcript, raw audio, 전체 Deck script, timer/STT 설정은
+  포함하지 않는다.
+- prompter row는 최대 256개, row text는 최대 2,048자, 전체 JSON은 UTF-8
+  128KiB 이하다. 비어 있거나 제한을 넘으면 row를 전송하지 않고
+  `availability=empty | too-large`로 표시한다.
+- `navigation-command`는 `control-presentation` scope, active authority,
+  최신 `authorityEpochId`, 예상 `outputRevision`을 모두 확인한다. 한 iPad
+  socket당 초당 6개, burst 6개로 제한하고 client는 한 번에 명령 하나만
+  전송한다. presenter는 `clientOperationId`를 dedupe하고
+  `accepted | at-boundary | stale-output | not-authority | rate-limited`
+  ack를 반환한다.
+- iPad는 승인 ack만으로 다음 명령을 열지 않고 더 높은 `outputRevision`을
+  수신한 뒤 pending을 해제한다. 2초 안에 상태 변화가 없으면 고정 지연
+  안내를 표시하며 데스크톱 발표 상태는 변경하지 않는다.
+- 프롬프터 펼침 여부만 iPad localStorage
+  `orbit.companion.prompter.expanded.v1`에 저장한다. 대본 row와 진행 위치는
+  저장하지 않는다. 수동 스크롤 중에는 자동 따라가기를 멈추고 사용자가
+  `현재 대본으로`를 선택하면 현재 문장으로 복귀한다.
 
 - annotation normalized coordinate와 pressure는 `0..1`, relative time은
   `0..120000ms`, point batch는 64개, stroke는 4,096 points로 제한한다.

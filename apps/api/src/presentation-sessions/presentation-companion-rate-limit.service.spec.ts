@@ -11,6 +11,8 @@ vi.mock("@orbit/config", () => ({
 import {
   companionDrawingBurst,
   companionDrawingRatePerSecond,
+  companionNavigationBurst,
+  companionNavigationRatePerSecond,
   PresentationCompanionCommandRateLimitService,
 } from "./presentation-companion-rate-limit.service";
 
@@ -34,6 +36,30 @@ describe("PresentationCompanionCommandRateLimitService", () => {
       expect.any(Number),
       companionDrawingRatePerSecond,
       companionDrawingBurst,
+      1,
+    );
+  });
+
+  it("uses a separate low-rate bucket for presenter navigation", async () => {
+    const redis = {
+      status: "ready",
+      eval: vi.fn().mockResolvedValue(1),
+      quit: vi.fn(),
+      disconnect: vi.fn(),
+    };
+    const service = new PresentationCompanionCommandRateLimitService(
+      redis as never,
+    );
+
+    await service.consumeNavigation("companion_private_1");
+
+    expect(redis.eval).toHaveBeenCalledWith(
+      expect.stringContaining("command-token-bucket"),
+      1,
+      expect.not.stringContaining("companion_private_1"),
+      expect.any(Number),
+      companionNavigationRatePerSecond,
+      companionNavigationBurst,
       1,
     );
   });

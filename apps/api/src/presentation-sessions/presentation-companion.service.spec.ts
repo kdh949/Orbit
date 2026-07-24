@@ -185,7 +185,12 @@ describe("PresentationCompanionService", () => {
     ).resolves.toMatchObject({
       sessionId: "session_1",
       sessionPurpose: "presentation",
-      scopes: ["view-audience-output", "write-annotation"],
+      scopes: [
+        "view-audience-output",
+        "write-annotation",
+        "view-prompter",
+        "control-presentation",
+      ],
       deck: { deckId: "deck_1", version: 4 },
     });
     await expect(

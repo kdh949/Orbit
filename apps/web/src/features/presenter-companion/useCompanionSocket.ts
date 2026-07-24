@@ -6,11 +6,16 @@ import {
   presentationCompanionErrorEventSchema,
   presentationCompanionJoinedEventSchema,
   presentationCompanionLaserSchema,
+  presentationCompanionNavigationAckEventSchema,
+  presentationCompanionNavigationCommandSchema,
   presentationCompanionOutputStateEventSchema,
+  presentationCompanionPrompterStateEventSchema,
   presentationCompanionRevokedEventSchema,
   presentationCompanionSignalEventSchema,
   presentationCompanionSignalSchema,
   type PresentationCompanionOutputState,
+  type PresentationCompanionNavigationCommand,
+  type PresentationCompanionPrompterState,
   type PresentationCompanionAnnotationAck,
   type PresentationCompanionAnnotationSnapshot,
   type PresentationCompanionAnnotationCommand,
@@ -119,6 +124,11 @@ export function useCompanionSocket(
   >(null);
   const [output, setOutput] =
     useState<PresentationCompanionOutputState | null>(null);
+  const [prompter, setPrompter] =
+    useState<PresentationCompanionPrompterState | null>(null);
+  const [navigationPending, setNavigationPending] =
+    useState<PresentationCompanionNavigationCommand | null>(null);
+  const [navigationError, setNavigationError] = useState("");
   const [annotation, setAnnotation] =
     useState<PresentationCompanionAnnotationSnapshot | null>(null);
   const [lastAnnotationAck, setLastAnnotationAck] =
@@ -130,6 +140,11 @@ export function useCompanionSocket(
     snapshotPending: false,
   });
   const authorityEpochRef = useRef<string | null>(null);
+  const prompterRef =
+    useRef<PresentationCompanionPrompterState | null>(null);
+  const navigationPendingRef =
+    useRef<PresentationCompanionNavigationCommand | null>(null);
+  const navigationTimeoutRef = useRef<number | null>(null);
   const socketRef = useRef<CompanionSocket | null>(null);
   const commandQueueRef = useRef<AnnotationCommandQueue | null>(null);
   const laserSequenceRef = useRef(0);
@@ -199,6 +214,11 @@ export function useCompanionSocket(
     };
     const handleDisconnect = () => {
       queue.pause();
+      clearCompanionNavigationPending({
+        pendingRef: navigationPendingRef,
+        setPending: setNavigationPending,
+        timeoutRef: navigationTimeoutRef,
+      });
       setAnnotationRecovering(true);
       pairingGenerationRef.current = null;
       setPairingGeneration(null);
@@ -236,7 +256,15 @@ export function useCompanionSocket(
         };
         setOutput(null);
         setAnnotation(null);
+        prompterRef.current = null;
+        setPrompter(null);
         setLastAnnotationAck(null);
+        clearCompanionNavigationPending({
+          pendingRef: navigationPendingRef,
+          setPending: setNavigationPending,
+          timeoutRef: navigationTimeoutRef,
+        });
+        setNavigationError("");
         return;
       }
       const currentOutput = cursorRef.current.output;
@@ -278,6 +306,21 @@ export function useCompanionSocket(
       }
       if (outputChanged) {
         setOutput(consumed.cursor.output);
+        const pendingNavigation = navigationPendingRef.current;
+        if (
+          pendingNavigation &&
+          incoming.authorityEpochId ===
+            pendingNavigation.authorityEpochId &&
+          incoming.outputRevision >
+            pendingNavigation.expectedOutputRevision
+        ) {
+          clearCompanionNavigationPending({
+            pendingRef: navigationPendingRef,
+            setPending: setNavigationPending,
+            timeoutRef: navigationTimeoutRef,
+          });
+          setNavigationError("");
+        }
         const nextSurfaceId =
           consumed.cursor.output?.outputMode === "black"
             ? null
@@ -300,6 +343,47 @@ export function useCompanionSocket(
       if (consumed.requestSnapshot) {
         if (incoming.outputMode !== "black") requestSnapshot(incoming);
       }
+    };
+    const handlePrompter = (value: unknown) => {
+      const parsed =
+        presentationCompanionPrompterStateEventSchema.safeParse(value);
+      if (!parsed.success || parsed.data.sessionId !== sessionId) return;
+      const next = consumeCompanionPrompterState({
+        authorityEpochId: authorityEpochRef.current,
+        current: prompterRef.current,
+        incoming: parsed.data.payload,
+      });
+      if (next === prompterRef.current) return;
+      prompterRef.current = next;
+      setPrompter(next);
+    };
+    const handleNavigationAck = (value: unknown) => {
+      const parsed =
+        presentationCompanionNavigationAckEventSchema.safeParse(value);
+      const pending = navigationPendingRef.current;
+      if (
+        !parsed.success ||
+        parsed.data.sessionId !== sessionId ||
+        !pending ||
+        parsed.data.payload.authorityEpochId !==
+          authorityEpochRef.current ||
+        parsed.data.payload.clientOperationId !==
+          pending.clientOperationId
+      ) {
+        return;
+      }
+      if (parsed.data.payload.accepted) {
+        setNavigationError("");
+        return;
+      }
+      clearCompanionNavigationPending({
+        pendingRef: navigationPendingRef,
+        setPending: setNavigationPending,
+        timeoutRef: navigationTimeoutRef,
+      });
+      setNavigationError(
+        getCompanionNavigationError(parsed.data.payload.reason),
+      );
     };
     const handleAnnotationAck = (value: unknown) => {
       const parsed =
@@ -345,6 +429,13 @@ export function useCompanionSocket(
       setPairingGeneration(null);
       setStatus("revoked");
       setError("발표자가 iPad 연결을 종료했습니다.");
+      prompterRef.current = null;
+      setPrompter(null);
+      clearCompanionNavigationPending({
+        pendingRef: navigationPendingRef,
+        setPending: setNavigationPending,
+        timeoutRef: navigationTimeoutRef,
+      });
     };
     const handleSignal = (value: unknown) => {
       const parsed =
@@ -385,6 +476,14 @@ export function useCompanionSocket(
       handleAuthorityChanged,
     );
     socket.on("presentation:companion:output-state", handleOutput);
+    socket.on(
+      "presentation:companion:prompter-state",
+      handlePrompter,
+    );
+    socket.on(
+      "presentation:companion:navigation-ack",
+      handleNavigationAck,
+    );
     socket.on(
       "presentation:companion:annotation-ack",
       handleAnnotationAck,
@@ -452,6 +551,14 @@ export function useCompanionSocket(
       );
       socket.off("presentation:companion:output-state", handleOutput);
       socket.off(
+        "presentation:companion:prompter-state",
+        handlePrompter,
+      );
+      socket.off(
+        "presentation:companion:navigation-ack",
+        handleNavigationAck,
+      );
+      socket.off(
         "presentation:companion:annotation-ack",
         handleAnnotationAck,
       );
@@ -469,6 +576,11 @@ export function useCompanionSocket(
       }
       if (socketRef.current === socket) socketRef.current = null;
       pairingGenerationRef.current = null;
+      prompterRef.current = null;
+      if (navigationTimeoutRef.current !== null) {
+        window.clearTimeout(navigationTimeoutRef.current);
+        navigationTimeoutRef.current = null;
+      }
     };
   }, [createSocket, sessionId]);
 
@@ -519,6 +631,46 @@ export function useCompanionSocket(
     laserSequenceRef.current += 1;
     return true;
   };
+  const sendNavigation = (
+    action: PresentationCompanionNavigationCommand["action"],
+  ): boolean => {
+    const socket = socketRef.current;
+    const currentOutput = cursorRef.current.output;
+    const currentAuthorityEpochId = authorityEpochRef.current;
+    if (
+      !socket ||
+      status !== "connected" ||
+      !currentOutput ||
+      !currentAuthorityEpochId ||
+      navigationPendingRef.current
+    ) {
+      return false;
+    }
+    const command =
+      createCompanionNavigationCommand({
+        action,
+        authorityEpochId: currentAuthorityEpochId,
+        expectedOutputRevision: currentOutput.outputRevision,
+        sessionId,
+      });
+    if (!command) return false;
+    navigationPendingRef.current = command;
+    setNavigationPending(command);
+    setNavigationError("");
+    socket.emit(
+      "presentation:companion:navigation-command",
+      command,
+    );
+    navigationTimeoutRef.current = window.setTimeout(() => {
+      markCompanionNavigationDelayed({
+        clientOperationId: command.clientOperationId,
+        pendingRef: navigationPendingRef,
+        setError: setNavigationError,
+        timeoutRef: navigationTimeoutRef,
+      });
+    }, 2_000);
+    return true;
+  };
 
   const sendSignal = useCallback(
     (signal: CompanionSignalInput): boolean => {
@@ -559,14 +711,54 @@ export function useCompanionSocket(
     authorityEpochId,
     error,
     lastAnnotationAck,
+    navigationError,
+    navigationPending,
     output,
     pairingGeneration,
+    prompter,
     sendAnnotationCommand,
     sendLaser,
+    sendNavigation,
     sendSignal,
     status,
     subscribeSignal,
   };
+}
+
+export function consumeCompanionPrompterState(input: {
+  authorityEpochId: string | null;
+  current: PresentationCompanionPrompterState | null;
+  incoming: PresentationCompanionPrompterState;
+}): PresentationCompanionPrompterState | null {
+  if (
+    input.authorityEpochId &&
+    input.incoming.authorityEpochId !== input.authorityEpochId
+  ) {
+    return input.current;
+  }
+  if (
+    input.current?.authorityEpochId ===
+      input.incoming.authorityEpochId &&
+    input.current.prompterRevision >=
+      input.incoming.prompterRevision
+  ) {
+    return input.current;
+  }
+  return input.incoming;
+}
+
+export function createCompanionNavigationCommand(input: {
+  action: PresentationCompanionNavigationCommand["action"];
+  authorityEpochId: string;
+  expectedOutputRevision: number;
+  sessionId: string;
+}): PresentationCompanionNavigationCommand | null {
+  const parsed =
+    presentationCompanionNavigationCommandSchema.safeParse({
+      ...input,
+      clientOperationId: `nav_${crypto.randomUUID().replace(/-/g, "")}`,
+    });
+  return parsed.success ? parsed.data : null;
 }
 
 export function createCompanionAnnotationCommand(
@@ -584,6 +776,25 @@ export function createCompanionAnnotationCommand(
     ...metadata,
   });
   return parsed.success ? parsed.data : null;
+}
+
+export function markCompanionNavigationDelayed(input: {
+  clientOperationId: string;
+  pendingRef: {
+    current: PresentationCompanionNavigationCommand | null;
+  };
+  setError: (message: string) => void;
+  timeoutRef: { current: number | null };
+}): boolean {
+  if (
+    input.pendingRef.current?.clientOperationId !==
+    input.clientOperationId
+  ) {
+    return false;
+  }
+  input.timeoutRef.current = null;
+  input.setError("발표 제어 응답이 지연되고 있습니다.");
+  return true;
 }
 
 export function consumeCompanionAnnotationSnapshot(input: {
@@ -612,4 +823,43 @@ function getCompanionOutputSurfaceId(
   output: PresentationCompanionOutputState | null,
 ): string | null {
   return output?.outputMode === "black" ? null : output?.surfaceId ?? null;
+}
+
+function clearCompanionNavigationPending(input: {
+  pendingRef: {
+    current: PresentationCompanionNavigationCommand | null;
+  };
+  setPending: (
+    pending: PresentationCompanionNavigationCommand | null,
+  ) => void;
+  timeoutRef: { current: number | null };
+}) {
+  input.pendingRef.current = null;
+  input.setPending(null);
+  if (input.timeoutRef.current !== null) {
+    window.clearTimeout(input.timeoutRef.current);
+    input.timeoutRef.current = null;
+  }
+}
+
+function getCompanionNavigationError(
+  reason:
+    | "accepted"
+    | "at-boundary"
+    | "stale-output"
+    | "not-authority"
+    | "rate-limited",
+): string {
+  switch (reason) {
+    case "accepted":
+      return "";
+    case "at-boundary":
+      return "더 이상 이동할 수 없습니다.";
+    case "stale-output":
+      return "발표 화면이 변경되었습니다. 다시 눌러주세요.";
+    case "not-authority":
+      return "발표 제어 권한을 다시 확인해주세요.";
+    case "rate-limited":
+      return "조작이 너무 빠릅니다. 잠시 후 다시 눌러주세요.";
+  }
 }

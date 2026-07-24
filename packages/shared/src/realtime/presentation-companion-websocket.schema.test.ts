@@ -7,9 +7,14 @@ import {
   presentationCompanionLaserSchema,
   presentationCompanionMaxIceCandidateLength,
   presentationCompanionMaxPointBatch,
+  presentationCompanionMaxPrompterRowLength,
+  presentationCompanionMaxPrompterRows,
   presentationCompanionMaxSdpLength,
+  presentationCompanionNavigationAckSchema,
+  presentationCompanionNavigationCommandSchema,
   presentationCompanionOutputStateSchema,
   presentationCompanionPointSchema,
+  presentationCompanionPrompterStateSchema,
   presentationCompanionSignalSchema
 } from "./websocket.schema";
 
@@ -151,6 +156,15 @@ describe("presentation companion websocket contract", () => {
       }).success
     ).toBe(true);
     expect(
+      presentationCompanionOutputStateSchema.parse({
+        ...output,
+        shareEpochId: "share_1"
+      })
+    ).toMatchObject({
+      canGoPrevious: false,
+      canGoNext: false
+    });
+    expect(
       presentationCompanionOutputStateSchema.safeParse({
         ...output,
         outputMode: "slide",
@@ -187,6 +201,133 @@ describe("presentation companion websocket contract", () => {
     ).toBe(false);
   });
 
+  it("accepts only a bounded current-slide prompter projection", () => {
+    const state = {
+      sessionId: "session_1",
+      authorityEpochId: "epoch_1",
+      prompterRevision: 3,
+      slideId: "slide_1",
+      slideIndex: 0,
+      availability: "ready",
+      trackingStatus: "listening",
+      progressPercent: 25,
+      focusSentenceId: "sentence_2",
+      rows: [
+        {
+          sentenceId: "sentence_1",
+          text: "완료한 문장",
+          status: "covered"
+        },
+        {
+          sentenceId: "sentence_2",
+          text: "현재 문장",
+          status: "current"
+        }
+      ]
+    };
+    expect(presentationCompanionPrompterStateSchema.parse(state)).toEqual(
+      state
+    );
+    expect(
+      presentationCompanionPrompterStateSchema.safeParse({
+        ...state,
+        transcript: "PRIVATE_TRANSCRIPT"
+      }).success
+    ).toBe(false);
+    expect(
+      presentationCompanionPrompterStateSchema.safeParse({
+        ...state,
+        focusSentenceId: "sentence_missing"
+      }).success
+    ).toBe(false);
+    expect(
+      presentationCompanionPrompterStateSchema.safeParse({
+        ...state,
+        rows: Array.from(
+          { length: presentationCompanionMaxPrompterRows + 1 },
+          (_, index) => ({
+            sentenceId: `sentence_${index}`,
+            text: "문장",
+            status: "pending"
+          })
+        )
+      }).success
+    ).toBe(false);
+    expect(
+      presentationCompanionPrompterStateSchema.safeParse({
+        ...state,
+        rows: [
+          {
+            sentenceId: "sentence_1",
+            text: "가".repeat(presentationCompanionMaxPrompterRowLength + 1),
+            status: "current"
+          }
+        ],
+        focusSentenceId: "sentence_1"
+      }).success
+    ).toBe(false);
+  });
+
+  it("requires empty rows when the prompter is unavailable", () => {
+    expect(
+      presentationCompanionPrompterStateSchema.safeParse({
+        sessionId: "session_1",
+        authorityEpochId: "epoch_1",
+        prompterRevision: 1,
+        slideId: "slide_1",
+        slideIndex: 0,
+        availability: "empty",
+        trackingStatus: "waiting",
+        progressPercent: 0,
+        focusSentenceId: null,
+        rows: []
+      }).success
+    ).toBe(true);
+    expect(
+      presentationCompanionPrompterStateSchema.safeParse({
+        sessionId: "session_1",
+        authorityEpochId: "epoch_1",
+        prompterRevision: 1,
+        slideId: "slide_1",
+        slideIndex: 0,
+        availability: "too-large",
+        trackingStatus: "waiting",
+        progressPercent: 0,
+        focusSentenceId: null,
+        rows: [{ sentenceId: "sentence_1", text: "노출", status: "current" }]
+      }).success
+    ).toBe(false);
+  });
+
+  it("keeps navigation commands and acknowledgements strict", () => {
+    const command = {
+      sessionId: "session_1",
+      authorityEpochId: "epoch_1",
+      clientOperationId: "operation_1",
+      expectedOutputRevision: 7,
+      action: "next-step"
+    };
+    expect(presentationCompanionNavigationCommandSchema.parse(command)).toEqual(
+      command
+    );
+    expect(
+      presentationCompanionNavigationCommandSchema.safeParse({
+        ...command,
+        action: "finish"
+      }).success
+    ).toBe(false);
+    expect(
+      presentationCompanionNavigationAckSchema.safeParse({
+        sessionId: "session_1",
+        authorityEpochId: "epoch_1",
+        clientOperationId: "operation_1",
+        accepted: true,
+        reason: "at-boundary",
+        outputRevision: 7
+      }).success
+    ).toBe(false);
+  });
+
   it("parses only a strict common envelope with a pseudonymous companion user", () => {
     const event = {
       type: "presentation:companion:joined",
@@ -196,7 +337,12 @@ describe("presentation companion websocket contract", () => {
       sentAt: "2026-07-23T00:00:00.000Z",
       payload: {
         pairingGeneration: 1,
-        scopes: ["view-audience-output", "write-annotation"]
+        scopes: [
+          "view-audience-output",
+          "write-annotation",
+          "view-prompter",
+          "control-presentation"
+        ]
       }
     };
     expect(presentationCompanionEventSchema.parse(event)).toEqual(event);
