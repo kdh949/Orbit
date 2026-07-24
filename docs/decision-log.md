@@ -918,3 +918,15 @@
 - Rationale: 애플리케이션 코드 승격과 인프라 전환 승인을 분리하면서 현재 운영 경로의 실행 가능성을 매 PR에서 동일하게 검증한다. migration은 실제 PostgreSQL에 적용하고, health gate는 PR에서 배포 스크립트의 probe 계약을 보존한 뒤 실제 수동 배포에서 EC2와 CloudFront endpoint를 다시 확인한다.
 - Affected files: `.github/workflows/ec2-release-gate.yml`, `infra/scripts/check-aws-production-compose.mjs`, `docs/deployment.md`, `docs/runbooks/aws-main-auto-deployment.md`, `docs/decision-log.md`.
 - Follow-up review notes: 이 PR 병합 후 `develop`과 `main` branch protection에 `ec2-release-gate`를 required status check로 등록한다. ECS 전환을 재개하려면 별도 운영 결정에서 현재 EC2 rollback 경로, Change Set, traffic 전환 비율과 live 검증을 다시 승인한다.
+
+## ORBIT main EC2 automatic application deployment
+
+- Context: production 애플리케이션 배포가 수동 `workflow_dispatch`에만 연결되어 있어 검증된 `main` commit을 병합해도 운영자가 별도로 실행해야 했다. 동시에 ECS 전환용 `AWS_ECR_PUBLISH_ROLE_ARN`이 없는 현재 운영 설정에서는 GHCR image가 정상 생성되어도 선택적인 ECR 게시 job이 실패해 기존 EC2 릴리스와 무관한 오류가 발생할 수 있었다.
+- Options considered:
+  - 수동 production 배포만 유지하고 `main` 병합 후 운영자가 매번 workflow를 실행한다.
+  - ECR, ECS, CloudFormation과 ALB traffic 전환을 `main` push에 함께 연결한다.
+  - 기존 EC2 애플리케이션 배포만 `main` push에 연결하고 수동 재실행을 유지하며, ECR 게시에는 역할 변수 존재 조건을 둔다.
+- Final decision: `Deploy AWS Production`은 `main` push와 `workflow_dispatch`에서 실행하며 기존 `production` environment, concurrency, CloudFront·S3·EC2 Compose·RDS 배포 순서를 유지한다. `publish-ecr`는 `main`이면서 `AWS_ECR_PUBLISH_ROLE_ARN` repository variable이 설정된 경우에만 실행한다. ECS/CloudFormation Plan·Apply workflow와 ALB traffic weight는 변경하지 않는다.
+- Rationale: `main` 승격이 현재 운영 아키텍처의 애플리케이션 배포로 이어지게 하면서 선택적인 ECS 준비 단계가 기존 GHCR·EC2 릴리스를 실패시키지 않게 한다. 수동 dispatch는 재실행과 복구 경로로 남기고 인프라 전환 승인은 애플리케이션 릴리스와 분리한다.
+- Affected files: `.github/workflows/build-images.yml`, `.github/workflows/deploy-aws-production.yml`, `infra/scripts/check-aws-production-compose.mjs`, `infra/scripts/assert-cfn-change-set-safe.test.mjs`, `docs/runbooks/aws-main-auto-deployment.md`, `docs/decision-log.md`.
+- Follow-up review notes: 이 변경을 `develop`에 병합한 뒤 별도 승격 PR로 `main`에 반영한다. 해당 `main` push에서 `Build and push images`의 GHCR jobs가 성공하고 ECR role이 없으면 `publish-ecr`가 `skipped`인지, `Deploy AWS Production`이 기존 EC2 instance를 대상으로 성공하는지, CloudFront `/api/health`, `/socket.io/`, `/` 검증이 통과하는지 확인한다. ECS 전환 재개 전에는 `AWS_ECR_PUBLISH_ROLE_ARN`을 설정하지 않는다.
