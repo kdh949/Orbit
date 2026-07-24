@@ -22,7 +22,7 @@ describe("DesignProposalCompareCard", () => {
       /\.design-proposal-compare-card\s*\{[^}]*container-type:\s*inline-size;/s,
     );
     expect(css).toMatch(
-      /@container \(max-width: 280px\)\s*\{[\s\S]*?\.design-proposal-inline-comparison\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);/,
+      /@container \(max-width: 320px\)\s*\{[\s\S]*?\.design-proposal-inline-comparison\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);/,
     );
   });
 
