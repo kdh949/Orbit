@@ -138,7 +138,7 @@ DEMO_USER_ID=<AWS 시연 계정 user ID>
 
 적용 순서는 다음과 같다.
 
-1. 이중 잠금 코드가 포함된 release를 `main`에 먼저 배포하되 두 cache flag는 모두 `false`로 유지한다.
+1. 이중 잠금 코드가 포함된 release를 `main`에 먼저 배포하되 `.env.production.example`, `infra/aws/ec2-production.env.example`, `infra/aws/main-production-bootstrap.yaml`의 두 cache flag는 모두 `false`로 유지한다.
 2. production RDS에서 시연 계정의 user ID, source project의 `accepted` membership, canonical Deck schema와 asset URL 접근성을 읽기 전용으로 확인한다.
 3. 최소권한 production 운영 자격 증명으로 EC2의 `/etc/orbit/production.env`에 필요한 key만 반영한다. 파일 전체와 값은 터미널, GitHub Actions log 또는 PR에 출력하지 않는다.
 4. API container를 재생성하거나 `Deploy AWS Production`을 재실행한다.
