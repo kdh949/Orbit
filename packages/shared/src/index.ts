@@ -60,6 +60,7 @@ export * from "./files/file.schema";
 export * from "./jobs/job.schema";
 export * from "./jobs/ai-deck-generation-stage.schema";
 export * from "./presentation/presentation.schema";
+export * from "./presentation/presenter-companion.schema";
 export * from "./projects/project.schema";
 export * from "./pronunciation";
 export * from "./rehearsals/live-stt.schema";

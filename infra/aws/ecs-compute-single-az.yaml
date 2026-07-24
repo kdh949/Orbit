@@ -1,0 +1,874 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ORBIT single-workload-AZ ECS Fargate compute, ALB canary, and Service Connect services.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PublicSubnetAId:
+    Type: AWS::EC2::Subnet::Id
+  PublicSubnetBId:
+    Type: AWS::EC2::Subnet::Id
+  PrivateAppSubnetAId:
+    Type: AWS::EC2::Subnet::Id
+  AppClientSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+  LegacyEc2SecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Existing EC2 origin security group that receives rollback traffic from the ALB.
+  RdsSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Existing RDS security group that receives PostgreSQL traffic from ECS clients.
+  CloudFrontOriginPrefixListId:
+    Type: String
+    Description: Required regional managed prefix list ID for com.amazonaws.global.cloudfront.origin-facing.
+  OriginDomainName:
+    Type: String
+    Default: origin.tryorbit.site
+  OriginHostedZoneId:
+    Type: String
+    Default: ""
+    Description: Optional Route 53 hosted-zone ID used to create origin.tryorbit.site as an ALB alias.
+  OriginCertificateArn:
+    Type: String
+    Description: ACM certificate ARN in ap-northeast-2 for origin.tryorbit.site.
+  OriginVerificationHeaderName:
+    Type: String
+    Default: X-Orbit-Origin-Verify
+  OriginVerificationSecretArn:
+    Type: String
+    NoEcho: true
+    Description: Secrets Manager ARN whose JSON key value contains the CloudFront origin verification value.
+  LegacyEc2InstanceId:
+    Type: String
+    Description: Existing EC2 instance ID retained as the immediate rollback target.
+  AssetsBucketArn:
+    Type: String
+  PrivateAudioBucketArn:
+    Type: String
+  PrivateAudioAccessPolicyArn:
+    Type: String
+  AppRuntimeSecretArn:
+    Type: String
+    NoEcho: true
+    Description: Secrets Manager ARN containing all sensitive runtime configuration as JSON keys.
+  AppRuntimeSecretKmsKeyArn:
+    Type: String
+    NoEcho: true
+    Description: Customer managed KMS key ARN that encrypts AppRuntimeSecretArn.
+  ApiImageDigest:
+    Type: String
+    Description: Immutable ECR image URI including @sha256 digest.
+  WorkerImageDigest:
+    Type: String
+    Description: Immutable ECR image URI including @sha256 digest.
+  PythonWorkerImageDigest:
+    Type: String
+    Description: Immutable ECR image URI including @sha256 digest.
+  ApiLegacyTrafficWeight:
+    Type: Number
+    Default: 100
+    MinValue: 0
+    MaxValue: 100
+  ApiEcsTrafficWeight:
+    Type: Number
+    Default: 0
+    MinValue: 0
+    MaxValue: 100
+
+  PublicWebOrigin:
+    Type: String
+    Description: Canonical public HTTPS origin, for example https://tryorbit.site.
+
+Conditions:
+  HasOriginHostedZone: !Not [!Equals [!Ref OriginHostedZoneId, ""]]
+
+Resources:
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub ${AWS::StackName}-cluster
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+
+  ServiceConnectNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: orbit.internal
+      Vpc: !Ref VpcId
+      Description: ORBIT ECS Service Connect namespace
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /orbit/ecs/${AWS::StackName}
+      RetentionInDays: 30
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: ReadRuntimeSecret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref AppRuntimeSecretArn
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource:
+                  - !Ref AppRuntimeSecretKmsKeyArn
+
+  ApiAndWorkerTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref PrivateAudioAccessPolicyArn
+      Policies:
+        - PolicyName: AccessGeneralProjectAssets
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Ref AssetsBucketArn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub ${AssetsBucketArn}/*
+
+  PythonWorkerTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ReadAndWriteGeneralProjectAssets
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Ref AssetsBucketArn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub ${AssetsBucketArn}/*
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ORBIT ALB accepts HTTPS only from CloudFront origin-facing infrastructure
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourcePrefixListId: !Ref CloudFrontOriginPrefixListId
+
+  LegacyEc2IngressFromLoadBalancer:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref LegacyEc2SecurityGroupId
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+      Description: Allow the retained ALB rollback target to receive HTTP health checks and traffic.
+
+  RdsIngressFromEcsClients:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref RdsSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: !Ref AppClientSecurityGroupId
+      Description: Allow ECS API and workers to connect to the retained PostgreSQL database.
+
+  ApiTaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ORBIT API Fargate tasks accept only ALB traffic
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+
+  WorkerTaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ORBIT worker Fargate tasks have no inbound listener
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+
+  PythonTaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ORBIT Python worker accepts Service Connect HTTP traffic
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          SourceSecurityGroupId: !Ref AppClientSecurityGroupId
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub ${AWS::StackName}-alb
+      Type: application
+      Scheme: internet-facing
+      IpAddressType: ipv4
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      Subnets:
+        - !Ref PublicSubnetAId
+        - !Ref PublicSubnetBId
+
+  OriginAliasRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: HasOriginHostedZone
+    Properties:
+      HostedZoneId: !Ref OriginHostedZoneId
+      Name: !Ref OriginDomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt LoadBalancer.DNSName
+        HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
+
+  LegacyApiTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${AWS::StackName}-ec2-api
+      VpcId: !Ref VpcId
+      TargetType: instance
+      Protocol: HTTP
+      Port: 80
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /api/health
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: "60"
+        - Key: stickiness.enabled
+          Value: "true"
+        - Key: stickiness.type
+          Value: lb_cookie
+        - Key: stickiness.lb_cookie.duration_seconds
+          Value: "3600"
+      Targets:
+        - Id: !Ref LegacyEc2InstanceId
+          Port: 80
+
+  EcsApiTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${AWS::StackName}-ecs-api
+      VpcId: !Ref VpcId
+      TargetType: ip
+      Protocol: HTTP
+      Port: 3000
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /api/health
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: "60"
+        - Key: stickiness.enabled
+          Value: "true"
+        - Key: stickiness.type
+          Value: lb_cookie
+        - Key: stickiness.lb_cookie.duration_seconds
+          Value: "3600"
+
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref OriginCertificateArn
+      DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig:
+            StatusCode: "403"
+            ContentType: text/plain
+            MessageBody: Forbidden
+
+  OriginVerifiedForwardRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref HttpsListener
+      Priority: 10
+      Conditions:
+        - Field: host-header
+          HostHeaderConfig:
+            Values:
+              - !Ref OriginDomainName
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: !Ref OriginVerificationHeaderName
+            Values:
+              - !Sub "{{resolve:secretsmanager:${OriginVerificationSecretArn}:SecretString:value}}"
+      Actions:
+        - Type: forward
+          ForwardConfig:
+            TargetGroupStickinessConfig:
+              Enabled: true
+              DurationSeconds: 3600
+            TargetGroups:
+              - TargetGroupArn: !Ref LegacyApiTargetGroup
+                Weight: !Ref ApiLegacyTrafficWeight
+              - TargetGroupArn: !Ref EcsApiTargetGroup
+                Weight: !Ref ApiEcsTrafficWeight
+
+  ApiTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${AWS::StackName}-api
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      Cpu: "512"
+      Memory: "1024"
+      RuntimePlatform:
+        CpuArchitecture: ARM64
+        OperatingSystemFamily: LINUX
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ApiAndWorkerTaskRole.Arn
+      ContainerDefinitions:
+        - Name: api
+          Image: !Ref ApiImageDigest
+          Essential: true
+          StopTimeout: 120
+          LinuxParameters:
+            InitProcessEnabled: true
+          PortMappings:
+            - Name: api-http
+              ContainerPort: 3000
+              Protocol: tcp
+              AppProtocol: http
+          Environment:
+            - Name: APP_ENV
+              Value: production
+            - Name: NODE_ENV
+              Value: production
+            - Name: API_PORT
+              Value: "3000"
+            - Name: WEB_PORT
+              Value: "5173"
+            - Name: WORKER_PORT
+              Value: "3001"
+            - Name: PYTHON_WORKER_PORT
+              Value: "8000"
+            - Name: WEB_ORIGIN
+              Value: !Ref PublicWebOrigin
+            - Name: API_BASE_URL
+              Value: !Ref PublicWebOrigin
+            - Name: PYTHON_WORKER_URL
+              Value: http://python-worker:8000
+            - Name: S3_BUCKET
+              Value: !Select [5, !Split [":", !Ref AssetsBucketArn]]
+            - Name: S3_ASSETS_BUCKET
+              Value: !Select [5, !Split [":", !Ref AssetsBucketArn]]
+            - Name: S3_PRIVATE_AUDIO_BUCKET
+              Value: !Select [5, !Split [":", !Ref PrivateAudioBucketArn]]
+            - Name: S3_REGION
+              Value: !Ref AWS::Region
+            - Name: S3_FORCE_PATH_STYLE
+              Value: "false"
+            - Name: STORAGE_DRIVER
+              Value: s3
+            - Name: JOB_QUEUE_DRIVER
+              Value: bullmq
+            - Name: LIVE_STT_PROVIDER
+              Value: sherpa
+            - Name: REPORT_STT_PROVIDER
+              Value: openai
+            - Name: OCR_PROVIDER
+              Value: python
+            - Name: LLM_PROVIDER
+              Value: openai
+            - Name: OPENAI_MODEL
+              Value: gpt-4.1-mini
+            - Name: OPENAI_TRANSCRIPTION_MODEL
+              Value: gpt-4o-transcribe
+            - Name: OPENAI_EMBEDDING_MODEL
+              Value: text-embedding-3-small
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+            - Name: TRANSCRIBE_LANGUAGE_CODE
+              Value: ko-KR
+            - Name: AUTH_COOKIE_SECURE
+              Value: "true"
+            - Name: DEMO_USER_ID
+              Value: user_demo_1
+            - Name: DEMO_WORKSPACE_ID
+              Value: workspace_demo_1
+            - Name: DEMO_PROJECT_ID
+              Value: project_demo_1
+            - Name: DEMO_DECK_ID
+              Value: deck_demo_1
+            - Name: DEMO_SESSION_ID
+              Value: session_demo_1
+            - Name: LOG_PRETTY
+              Value: "false"
+            - Name: ASYNC_JOB_ADMISSION_MODE
+              Value: accept
+            - Name: SLIDE_PRACTICE_ENABLED
+              Value: "true"
+            - Name: SLIDE_QUESTION_GUIDES_ENABLED
+              Value: "true"
+          Secrets:
+            - Name: DATABASE_URL
+              ValueFrom: !Sub "${AppRuntimeSecretArn}:DATABASE_URL::"
+            - Name: REDIS_URL
+              ValueFrom: !Sub "${AppRuntimeSecretArn}:REDIS_URL::"
+            - Name: PRIVATE_EVIDENCE_REDIS_URL
+              ValueFrom: !Sub "${AppRuntimeSecretArn}:PRIVATE_EVIDENCE_REDIS_URL::"
+            - Name: SESSION_SECRET
+              ValueFrom: !Sub "${AppRuntimeSecretArn}:SESSION_SECRET::"
+            - Name: COOKIE_SECRET
+              ValueFrom: !Sub "${AppRuntimeSecretArn}:COOKIE_SECRET::"
+            - Name: OPENAI_API_KEY
+              ValueFrom: !Sub "${AppRuntimeSecretArn}:OPENAI_API_KEY::"
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: api
+              mode: blocking
+          HealthCheck:
+            Command: [CMD-SHELL, "wget -q -O - http://localhost:3000/api/health >/dev/null || exit 1"]
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+
+  WorkerTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${AWS::StackName}-worker
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      Cpu: "1024"
+      Memory: "2048"
+      RuntimePlatform:
+        CpuArchitecture: ARM64
+        OperatingSystemFamily: LINUX
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ApiAndWorkerTaskRole.Arn
+      ContainerDefinitions:
+        - Name: worker
+          Image: !Ref WorkerImageDigest
+          Essential: true
+          StopTimeout: 120
+          LinuxParameters:
+            InitProcessEnabled: true
+          Environment:
+            - Name: APP_ENV
+              Value: production
+            - Name: NODE_ENV
+              Value: production
+            - Name: PYTHON_WORKER_URL
+              Value: http://python-worker:8000
+            - Name: WEB_PORT
+              Value: "5173"
+            - Name: API_PORT
+              Value: "3000"
+            - Name: WORKER_PORT
+              Value: "3001"
+            - Name: PYTHON_WORKER_PORT
+              Value: "8000"
+            - Name: WEB_ORIGIN
+              Value: !Ref PublicWebOrigin
+            - Name: API_BASE_URL
+              Value: !Ref PublicWebOrigin
+            - Name: S3_BUCKET
+              Value: !Select [5, !Split [":", !Ref AssetsBucketArn]]
+            - Name: S3_ASSETS_BUCKET
+              Value: !Select [5, !Split [":", !Ref AssetsBucketArn]]
+            - Name: S3_PRIVATE_AUDIO_BUCKET
+              Value: !Select [5, !Split [":", !Ref PrivateAudioBucketArn]]
+            - Name: S3_REGION
+              Value: !Ref AWS::Region
+            - Name: S3_FORCE_PATH_STYLE
+              Value: "false"
+            - Name: STORAGE_DRIVER
+              Value: s3
+            - Name: JOB_QUEUE_DRIVER
+              Value: bullmq
+            - Name: LIVE_STT_PROVIDER
+              Value: sherpa
+            - Name: REPORT_STT_PROVIDER
+              Value: openai
+            - Name: OCR_PROVIDER
+              Value: python
+            - Name: LLM_PROVIDER
+              Value: openai
+            - Name: OPENAI_MODEL
+              Value: gpt-4.1-mini
+            - Name: OPENAI_TRANSCRIPTION_MODEL
+              Value: gpt-4o-transcribe
+            - Name: OPENAI_EMBEDDING_MODEL
+              Value: text-embedding-3-small
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+            - Name: TRANSCRIBE_LANGUAGE_CODE
+              Value: ko-KR
+            - Name: AUTH_COOKIE_SECURE
+              Value: "true"
+            - Name: DEMO_USER_ID
+              Value: user_demo_1
+            - Name: DEMO_WORKSPACE_ID
+              Value: workspace_demo_1
+            - Name: DEMO_PROJECT_ID
+              Value: project_demo_1
+            - Name: DEMO_DECK_ID
+              Value: deck_demo_1
+            - Name: DEMO_SESSION_ID
+              Value: session_demo_1
+            - Name: LOG_PRETTY
+              Value: "false"
+            - Name: SLIDE_PRACTICE_ENABLED
+              Value: "true"
+            - Name: SLIDE_QUESTION_GUIDES_ENABLED
+              Value: "true"
+          Secrets:
+            - Name: DATABASE_URL
+              ValueFrom: !Sub "${AppRuntimeSecretArn}:DATABASE_URL::"
+            - Name: REDIS_URL
+              ValueFrom: !Sub "${AppRuntimeSecretArn}:REDIS_URL::"
+            - Name: PRIVATE_EVIDENCE_REDIS_URL
+              ValueFrom: !Sub "${AppRuntimeSecretArn}:PRIVATE_EVIDENCE_REDIS_URL::"
+            - Name: SESSION_SECRET
+              ValueFrom: !Sub "${AppRuntimeSecretArn}:SESSION_SECRET::"
+            - Name: COOKIE_SECRET
+              ValueFrom: !Sub "${AppRuntimeSecretArn}:COOKIE_SECRET::"
+            - Name: OPENAI_API_KEY
+              ValueFrom: !Sub "${AppRuntimeSecretArn}:OPENAI_API_KEY::"
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: worker
+              mode: blocking
+
+  PythonWorkerTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${AWS::StackName}-python-worker
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      Cpu: "1024"
+      Memory: "2048"
+      EphemeralStorage:
+        SizeInGiB: 40
+      RuntimePlatform:
+        CpuArchitecture: ARM64
+        OperatingSystemFamily: LINUX
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt PythonWorkerTaskRole.Arn
+      ContainerDefinitions:
+        - Name: python-worker
+          Image: !Ref PythonWorkerImageDigest
+          Essential: true
+          StopTimeout: 120
+          LinuxParameters:
+            InitProcessEnabled: true
+          PortMappings:
+            - Name: python-http
+              ContainerPort: 8000
+              Protocol: tcp
+              AppProtocol: http
+          Environment:
+            - Name: APP_ENV
+              Value: production
+            - Name: NODE_ENV
+              Value: production
+            - Name: WEB_PORT
+              Value: "5173"
+            - Name: API_PORT
+              Value: "3000"
+            - Name: WORKER_PORT
+              Value: "3001"
+            - Name: PYTHON_WORKER_PORT
+              Value: "8000"
+            - Name: PYTHON_WORKER_URL
+              Value: http://python-worker:8000
+            - Name: API_BASE_URL
+              Value: !Ref PublicWebOrigin
+            - Name: WEB_ORIGIN
+              Value: !Ref PublicWebOrigin
+            - Name: S3_BUCKET
+              Value: !Select [5, !Split [":", !Ref AssetsBucketArn]]
+            - Name: S3_REGION
+              Value: !Ref AWS::Region
+            - Name: S3_FORCE_PATH_STYLE
+              Value: "false"
+            - Name: STORAGE_DRIVER
+              Value: s3
+            - Name: JOB_QUEUE_DRIVER
+              Value: bullmq
+            - Name: LIVE_STT_PROVIDER
+              Value: sherpa
+            - Name: REPORT_STT_PROVIDER
+              Value: openai
+            - Name: OCR_PROVIDER
+              Value: python
+            - Name: LLM_PROVIDER
+              Value: openai
+            - Name: OPENAI_MODEL
+              Value: gpt-4.1-mini
+            - Name: OPENAI_TRANSCRIPTION_MODEL
+              Value: gpt-4o-transcribe
+            - Name: OPENAI_EMBEDDING_MODEL
+              Value: text-embedding-3-small
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+            - Name: TRANSCRIBE_LANGUAGE_CODE
+              Value: ko-KR
+            - Name: TEXTRACT_ENABLED
+              Value: "false"
+            - Name: LOG_PRETTY
+              Value: "false"
+          Secrets:
+            - Name: DATABASE_URL
+              ValueFrom: !Sub "${AppRuntimeSecretArn}:DATABASE_URL::"
+            - Name: REDIS_URL
+              ValueFrom: !Sub "${AppRuntimeSecretArn}:REDIS_URL::"
+            - Name: OPENAI_API_KEY
+              ValueFrom: !Sub "${AppRuntimeSecretArn}:OPENAI_API_KEY::"
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: python-worker
+              mode: blocking
+
+  ApiService:
+    Type: AWS::ECS::Service
+    DependsOn: OriginVerifiedForwardRule
+    Properties:
+      Cluster: !Ref Cluster
+      ServiceName: api
+      LaunchType: FARGATE
+      PlatformVersion: LATEST
+      DesiredCount: 1
+      TaskDefinition: !Ref ApiTaskDefinition
+      HealthCheckGracePeriodSeconds: 60
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets: [!Ref PrivateAppSubnetAId]
+          SecurityGroups: [!Ref AppClientSecurityGroupId, !Ref ApiTaskSecurityGroup]
+      LoadBalancers:
+        - ContainerName: api
+          ContainerPort: 3000
+          TargetGroupArn: !Ref EcsApiTargetGroup
+      ServiceConnectConfiguration:
+        Enabled: true
+        Namespace: !GetAtt ServiceConnectNamespace.Arn
+
+  WorkerService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref Cluster
+      ServiceName: worker
+      LaunchType: FARGATE
+      PlatformVersion: LATEST
+      DesiredCount: 1
+      TaskDefinition: !Ref WorkerTaskDefinition
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets: [!Ref PrivateAppSubnetAId]
+          SecurityGroups: [!Ref AppClientSecurityGroupId, !Ref WorkerTaskSecurityGroup]
+      ServiceConnectConfiguration:
+        Enabled: true
+        Namespace: !GetAtt ServiceConnectNamespace.Arn
+
+  PythonWorkerService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref Cluster
+      ServiceName: python-worker
+      LaunchType: FARGATE
+      PlatformVersion: LATEST
+      DesiredCount: 2
+      TaskDefinition: !Ref PythonWorkerTaskDefinition
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets: [!Ref PrivateAppSubnetAId]
+          SecurityGroups: [!Ref AppClientSecurityGroupId, !Ref PythonTaskSecurityGroup]
+      ServiceConnectConfiguration:
+        Enabled: true
+        Namespace: !GetAtt ServiceConnectNamespace.Arn
+        Services:
+          - PortName: python-http
+            DiscoveryName: python-worker
+            ClientAliases:
+              - DnsName: python-worker
+                Port: 8000
+
+  PythonWorkerScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity: 6
+      MinCapacity: 2
+      ResourceId: !Sub service/${Cluster}/${PythonWorkerService.Name}
+      RoleARN: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  PythonWorkerCpuScaling:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-python-cpu
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref PythonWorkerScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 65
+        ScaleOutCooldown: 60
+        ScaleInCooldown: 600
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+
+  PythonWorkerServiceConnectRequestScaling:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-python-service-connect-requests
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref PythonWorkerScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 60
+        ScaleOutCooldown: 60
+        ScaleInCooldown: 600
+        CustomizedMetricSpecification:
+          Namespace: AWS/ECS
+          MetricName: RequestCount
+          Statistic: Sum
+          Dimensions:
+            - Name: DiscoveryName
+              Value: python-worker
+            - Name: ServiceName
+              Value: !GetAtt PythonWorkerService.Name
+            - Name: ClusterName
+              Value: !Ref Cluster
+
+  PythonWorkerServiceConnectConnectionScaling:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-python-service-connect-connections
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref PythonWorkerScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 20
+        ScaleOutCooldown: 60
+        ScaleInCooldown: 600
+        CustomizedMetricSpecification:
+          Namespace: AWS/ECS
+          MetricName: ActiveConnectionCount
+          Statistic: Average
+          Dimensions:
+            - Name: DiscoveryName
+              Value: python-worker
+            - Name: ServiceName
+              Value: !GetAtt PythonWorkerService.Name
+            - Name: ClusterName
+              Value: !Ref Cluster
+
+Outputs:
+  ClusterName:
+    Value: !Ref Cluster
+  ApiServiceName:
+    Value: !GetAtt ApiService.Name
+  WorkerServiceName:
+    Value: !GetAtt WorkerService.Name
+  PythonWorkerServiceName:
+    Value: !GetAtt PythonWorkerService.Name
+  ApiTaskDefinitionArn:
+    Value: !Ref ApiTaskDefinition
+  WorkerTaskDefinitionArn:
+    Value: !Ref WorkerTaskDefinition
+  PythonWorkerTaskDefinitionArn:
+    Value: !Ref PythonWorkerTaskDefinition
+  LoadBalancerDnsName:
+    Value: !GetAtt LoadBalancer.DNSName
+  LoadBalancerArn:
+    Value: !Ref LoadBalancer
+  LegacyApiTargetGroupArn:
+    Value: !Ref LegacyApiTargetGroup
+  EcsApiTargetGroupArn:
+    Value: !Ref EcsApiTargetGroup

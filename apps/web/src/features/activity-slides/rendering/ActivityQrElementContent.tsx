@@ -18,6 +18,7 @@ import {
   type ActivityQrRuntimeInput,
   type ActivityQrRuntimeState
 } from "./activityQrRuntime";
+import { useActivityPublicProjection } from "./activityPublicProjectionContext";
 
 type KonvaComponent = ComponentType<any>;
 const Group = KonvaGroup as unknown as KonvaComponent;
@@ -43,10 +44,28 @@ export function ActivityQrElementContent(props: {
     }),
     [props.activityId, props.deckId, props.projectId]
   );
-  const lookupState = useActivityQrLookup(runtime !== null, lookupInput);
+  const providedProjection = useActivityPublicProjection(props.activityId);
+  const providedRuntime = useMemo<ActivityQrRuntimeState | null>(
+    () =>
+      providedProjection === null
+        ? null
+        : providedProjection.audienceUrl
+          ? {
+              status: "ready",
+              audienceUrl: providedProjection.audienceUrl,
+            }
+          : { status: "not-prepared", audienceUrl: null },
+    [providedProjection],
+  );
+  const hasAuthoritativeRuntime =
+    runtime !== null || providedRuntime !== null;
+  const fallbackRuntime = useActivityQrLookup(
+    hasAuthoritativeRuntime,
+    lookupInput,
+  );
   const audienceUrl = resolveActivityQrElementAudienceUrl({
     activityId: props.activityId,
-    lookupState,
+    lookupState: providedRuntime ?? fallbackRuntime,
     runtime
   });
   const [qrDataUrl, setQrDataUrl] = useState("");

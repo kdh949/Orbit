@@ -336,7 +336,13 @@ export function PresenterRemoteWindow(props: {
         collapsible
         connected={isAudienceSurfaceConnected}
         error={audienceScreenShare.error}
-        onEndPresentation={() => window.close()}
+        onEndPresentation={() => {
+          if (!window.confirm("발표를 종료할까요?")) {
+            return;
+          }
+          sendCommand({ action: "finish" });
+          window.close();
+        }}
         onReturnToSlide={audienceScreenShare.returnToSlide}
         onShowBlack={audienceScreenShare.showBlack}
         onStartMonitor={audienceScreenShare.startMonitor}
@@ -472,19 +478,17 @@ export function PresenterRemoteWindow(props: {
             <RehearsalPanelTopGrid
               hitKeywordIds={hitKeywordIds}
               keywords={panelKeywords}
-              liveSlot={
-                slide?.kind === "activity" ? (
-                  <ActivityPresenterPanel
-                    deckId={deck.deckId}
-                    deckVersion={deck.version}
-                    projectId={deck.projectId}
-                    slide={slide}
-                  />
-                ) : undefined
-              }
               provisionalMissingKeywordIds={new Set()}
             />
           </section>
+          {slide?.kind === "activity" ? (
+            <ActivityPresenterPanel
+              deckId={deck.deckId}
+              deckVersion={deck.version}
+              projectId={deck.projectId}
+              slide={slide}
+            />
+          ) : null}
         </aside>
       </section>
       {state.speech && shouldShowSemanticDebugPanel ? (

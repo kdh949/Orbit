@@ -23,6 +23,21 @@ import {
 } from "./presentation-runs.service";
 import { PresentationCompanionSpikeGateway } from "./presentation-companion-spike.gateway";
 import { PresentationPasscodeCipher } from "./presentation-passcode-cipher";
+import { PresentationCompanionProjectionService } from "./presentation-companion-projection.service";
+import { PresentationCompanionActivityService } from "./presentation-companion-activity.service";
+import { PresentationCompanionService } from "./presentation-companion.service";
+import {
+  ProjectPresentationCompanionController,
+  PublicPresentationCompanionController,
+} from "./presentation-companion.controller";
+import { PresentationCompanionRateLimitService } from "./presentation-companion-request-security";
+import { PresentationCompanionGateway } from "./presentation-companion.gateway";
+import { PresentationCompanionPublisher } from "./presentation-companion.publisher";
+import { PresentationCompanionCommandRateLimitService } from "./presentation-companion-rate-limit.service";
+import {
+  createRedisPresentationCompanionStore,
+  PresentationCompanionStore,
+} from "./presentation-companion.store";
 
 @Module({
   imports: [
@@ -36,6 +51,8 @@ import { PresentationPasscodeCipher } from "./presentation-passcode-cipher";
   ],
   controllers: [
     AudienceSessionsController,
+    ProjectPresentationCompanionController,
+    PublicPresentationCompanionController,
     PresentationSessionsController,
     PresentationRunsController,
     ProjectPresentationRunsController,
@@ -50,6 +67,17 @@ import { PresentationPasscodeCipher } from "./presentation-passcode-cipher";
     },
     PresentationRunsService,
     PresentationCompanionSpikeGateway,
+    PresentationCompanionProjectionService,
+    PresentationCompanionActivityService,
+    PresentationCompanionPublisher,
+    PresentationCompanionCommandRateLimitService,
+    PresentationCompanionRateLimitService,
+    PresentationCompanionService,
+    PresentationCompanionGateway,
+    {
+      provide: PresentationCompanionStore,
+      useFactory: createRedisPresentationCompanionStore,
+    },
     {
       provide: PRESENTATION_ANALYSIS_ENQUEUE_JOB,
       useValue: enqueuePresentationAnalysisJob,
@@ -59,6 +87,11 @@ import { PresentationPasscodeCipher } from "./presentation-passcode-cipher";
     AudienceRateLimitService,
     PresentationSessionsService,
     PresentationRunsService,
+    PresentationCompanionProjectionService,
+    PresentationCompanionPublisher,
+    PresentationCompanionRateLimitService,
+    PresentationCompanionService,
+    PresentationCompanionStore,
   ],
 })
 export class PresentationSessionsModule {}

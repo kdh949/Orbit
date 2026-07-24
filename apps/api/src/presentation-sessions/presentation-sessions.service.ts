@@ -13,10 +13,12 @@ import type {
   CreatePresentationSessionRequest,
   GetCurrentPresentationSessionResponse,
   PresentationSession,
+  PresentationSessionPurpose,
   PresentationSessionWithAudienceUrlResponse,
   UpdatePresentationSessionAccessRequest
 } from "@orbit/shared";
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
   Optional,
@@ -32,8 +34,11 @@ import {
 } from "./presentation-session.repository";
 import { AudienceRateLimitService } from "./audience-rate-limit.service";
 import { PresentationPasscodeCipher } from "./presentation-passcode-cipher";
+import { PresentationCompanionStore } from "./presentation-companion.store";
+import { PresentationCompanionPublisher } from "./presentation-companion.publisher";
 
 const defaultAccessDays = 14;
+const companionSessionHours = 4;
 
 @Injectable()
 export class PresentationSessionsService {
@@ -43,7 +48,10 @@ export class PresentationSessionsService {
     @InjectPinoLogger(PresentationSessionsService.name)
     private readonly logger: PinoLogger,
     @Optional() private readonly audienceRateLimit?: AudienceRateLimitService,
-    @Optional() private readonly passcodeCipher?: PresentationPasscodeCipher
+    @Optional() private readonly passcodeCipher?: PresentationPasscodeCipher,
+    @Optional() private readonly companionStore?: PresentationCompanionStore,
+    @Optional()
+    private readonly companionPublisher?: PresentationCompanionPublisher,
   ) {}
 
   async create(
@@ -55,14 +63,25 @@ export class PresentationSessionsService {
     const startsAt = input.startsAt ? new Date(input.startsAt) : now;
     const expiresAt = input.expiresAt
       ? new Date(input.expiresAt)
-      : new Date(startsAt.getTime() + defaultAccessDays * 24 * 60 * 60 * 1000);
+      : new Date(
+          startsAt.getTime() +
+            (input.audienceAccessEnabled
+              ? defaultAccessDays * 24
+              : companionSessionHours) *
+              60 *
+              60 *
+              1000,
+        );
     assertAccessWindow(startsAt, expiresAt);
     const sessionId = `session_${randomUUID()}`;
-    const passwordHash = input.passcode
+    const passwordHash =
+      input.audienceAccessEnabled && input.accessMode === "passcode"
       ? await argon2.hash(input.passcode, { type: argon2.argon2id })
       : null;
     const encryptedPasscode =
-      input.passcode && this.passcodeCipher
+      input.audienceAccessEnabled &&
+      input.accessMode === "passcode" &&
+      this.passcodeCipher
         ? this.passcodeCipher.encrypt(input.passcode, sessionId)
         : null;
 
@@ -73,28 +92,29 @@ export class PresentationSessionsService {
         input.deckId
       );
 
-      if (
-        input.reuseCurrent &&
-        input.accessMode === "public" &&
-        input.startsAt === undefined &&
-        input.expiresAt === undefined
-      ) {
+      if (input.reuseCurrent) {
         const current = await this.repository.findCurrentForUpdate(
           manager,
           projectId,
-          input.deckId
+          input.deckId,
+          input.sessionPurpose,
         );
         if (
           current &&
           current.deck_version === deck.version &&
           current.presenter_user_id === userId &&
-          current.access_mode === "public"
+          canReuseSession(current, input)
         ) {
           return { closedSessionIds: [], reused: true, row: current };
         }
       }
 
-      const closedSessionIds = await this.repository.closeActive(manager, projectId, now);
+      const closedSessionIds = await this.repository.closeActive(
+        manager,
+        projectId,
+        input.sessionPurpose,
+        now,
+      );
       const row = await this.repository.insert(manager, {
         sessionId,
         projectId,
@@ -102,7 +122,9 @@ export class PresentationSessionsService {
         deckVersion: deck.version,
         userId,
         status: startsAt.getTime() > now.getTime() ? "draft" : "live",
-        accessMode: input.accessMode,
+        sessionPurpose: input.sessionPurpose,
+        audienceAccessEnabled: input.audienceAccessEnabled,
+        accessMode: input.audienceAccessEnabled ? input.accessMode : "public",
         passwordHash,
         passwordDisplayCiphertext: encryptedPasscode?.ciphertext ?? null,
         passwordKeyVersion: encryptedPasscode?.keyVersion ?? null,
@@ -113,6 +135,15 @@ export class PresentationSessionsService {
       return { closedSessionIds, reused: false, row };
     });
 
+    await Promise.all(
+      result.closedSessionIds.map(async (closedSessionId) => {
+        await this.companionPublisher?.revokeCurrent(
+          closedSessionId,
+          "session-ended",
+        );
+        await this.companionStore?.revokeSession(closedSessionId);
+      }),
+    );
     result.closedSessionIds.forEach((closedSessionId) => {
       this.logger.info(
         { event: "presentation_session.closed", projectId, presentationSessionId: closedSessionId },
@@ -126,7 +157,9 @@ export class PresentationSessionsService {
           : "presentation_session.created",
         projectId,
         presentationSessionId: result.row.session_id,
-        deckId: input.deckId
+        deckId: input.deckId,
+        sessionPurpose: input.sessionPurpose,
+        audienceAccessEnabled: result.row.audience_access_enabled,
       },
       result.reused
         ? "presentation session reused"
@@ -135,15 +168,25 @@ export class PresentationSessionsService {
     return this.toResponseWithUrl(result.row);
   }
 
-  async getCurrent(projectId: string, deckId: string): Promise<GetCurrentPresentationSessionResponse> {
-    const row = await this.repository.findCurrent(projectId, deckId);
+  async getCurrent(
+    projectId: string,
+    deckId: string,
+    sessionPurpose: PresentationSessionPurpose = "presentation",
+  ): Promise<GetCurrentPresentationSessionResponse> {
+    const row = await this.repository.findCurrent(
+      projectId,
+      deckId,
+      sessionPurpose,
+    );
     if (!row) {
       return getCurrentPresentationSessionResponseSchema.parse({ session: null, audienceUrl: null });
     }
     const session = this.toSession(row);
     return getCurrentPresentationSessionResponseSchema.parse({
       session,
-      audienceUrl: this.buildAudienceUrl(session.sessionId)
+      audienceUrl: session.audienceAccessEnabled
+        ? this.buildAudienceUrl(session.sessionId)
+        : null,
     });
   }
 
@@ -157,19 +200,44 @@ export class PresentationSessionsService {
     sessionId: string,
     input: UpdatePresentationSessionAccessRequest
   ) {
-    const startsAt = new Date(input.startsAt);
-    const expiresAt = new Date(input.expiresAt);
-    assertAccessWindow(startsAt, expiresAt);
-    const passwordHash = input.passcode
-      ? await argon2.hash(input.passcode, { type: argon2.argon2id })
-      : null;
+    const now = new Date();
+    const passwordHash =
+      input.audienceAccessEnabled && input.accessMode === "passcode"
+        ? await argon2.hash(input.passcode, { type: argon2.argon2id })
+        : null;
     const encryptedPasscode =
-      input.passcode && this.passcodeCipher
+      input.audienceAccessEnabled &&
+      input.accessMode === "passcode" &&
+      this.passcodeCipher
         ? this.passcodeCipher.encrypt(input.passcode, sessionId)
         : null;
-    const now = new Date();
-    const row = await this.repository.transaction((manager) =>
-      this.repository.updateAccess(manager, projectId, sessionId, {
+    const row = await this.repository.transaction(async (manager) => {
+      const current = await this.repository.findById(
+        manager,
+        projectId,
+        sessionId,
+        true,
+      );
+      if (!current || current.status === "ended") return null;
+      if (
+        input.audienceAccessEnabled &&
+        current.session_purpose === "rehearsal"
+      ) {
+        throw new BadRequestException(
+          "Rehearsal sessions cannot enable audience access",
+        );
+      }
+      if (!input.audienceAccessEnabled) {
+        return this.repository.updateAccess(manager, projectId, sessionId, {
+          audienceAccessEnabled: false,
+          now,
+        });
+      }
+      const startsAt = new Date(input.startsAt);
+      const expiresAt = new Date(input.expiresAt);
+      assertAccessWindow(startsAt, expiresAt);
+      return this.repository.updateAccess(manager, projectId, sessionId, {
+        audienceAccessEnabled: true,
         status: startsAt.getTime() > now.getTime() ? "draft" : "live",
         accessMode: input.accessMode,
         passwordHash,
@@ -177,9 +245,9 @@ export class PresentationSessionsService {
         passwordKeyVersion: encryptedPasscode?.keyVersion ?? null,
         startsAt,
         expiresAt,
-        now
-      })
-    );
+        now,
+      });
+    });
     if (!row) throw new NotFoundException("Presentation session not found");
     return presentationSessionResponseSchema.parse({ session: this.toSession(row) });
   }
@@ -189,6 +257,11 @@ export class PresentationSessionsService {
       this.repository.close(manager, projectId, sessionId, new Date())
     );
     if (!row) throw new NotFoundException("Presentation session not found");
+    await this.companionPublisher?.revokeCurrent(
+      sessionId,
+      "session-ended",
+    );
+    await this.companionStore?.revokeSession(sessionId);
     this.logger.info(
       { event: "presentation_session.closed", projectId, presentationSessionId: sessionId },
       "presentation session closed"
@@ -240,7 +313,9 @@ export class PresentationSessionsService {
 
   async getAudiencePublicInfo(sessionId: string, now = new Date()) {
     const row = await this.repository.findAudienceInfo(sessionId);
-    if (!row) throw new NotFoundException("Audience session unavailable");
+    if (!row?.audience_access_enabled) {
+      throw new NotFoundException("Audience session unavailable");
+    }
     const startsAt = new Date(row.starts_at).getTime();
     const expiresAt = new Date(row.expires_at).getTime();
     const availability =
@@ -305,7 +380,9 @@ export class PresentationSessionsService {
     const session = this.toSession(row);
     return presentationSessionWithAudienceUrlResponseSchema.parse({
       session,
-      audienceUrl: this.buildAudienceUrl(session.sessionId)
+      audienceUrl: session.audienceAccessEnabled
+        ? this.buildAudienceUrl(session.sessionId)
+        : null,
     });
   }
 
@@ -321,6 +398,8 @@ export class PresentationSessionsService {
       presenterUserId: row.presenter_user_id,
       createdBy: row.created_by,
       status: row.status,
+      sessionPurpose: row.session_purpose,
+      audienceAccessEnabled: row.audience_access_enabled,
       accessMode: row.access_mode,
       startsAt: toIso(row.starts_at),
       expiresAt: toIso(row.expires_at),
@@ -359,6 +438,25 @@ function assertAccessWindow(startsAt: Date, expiresAt: Date): void {
   if (duration <= 0 || duration > 30 * 24 * 60 * 60 * 1000) {
     throw new RangeError("Presentation access window must be between 1 millisecond and 30 days");
   }
+}
+
+function canReuseSession(
+  row: PresentationSessionRow,
+  input: CreatePresentationSessionRequest,
+): boolean {
+  if (!input.audienceAccessEnabled) {
+    return (
+      input.sessionPurpose === "presentation" ||
+      row.audience_access_enabled === false
+    );
+  }
+  return (
+    row.audience_access_enabled &&
+    input.accessMode === "public" &&
+    row.access_mode === "public" &&
+    input.startsAt === undefined &&
+    input.expiresAt === undefined
+  );
 }
 
 function toIso(value: Date | string): string {

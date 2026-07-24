@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 
 import { createQrDataUrl } from "../../editor/audience-link/audienceLinkUtils";
 import { activityApi } from "../api/activityApi";
+import { useActivityPublicProjection } from "./activityPublicProjectionContext";
 import { createActivityThemeStyle } from "./activityThemeStyle";
 import "./activity-audience-slide.css";
 
@@ -41,8 +42,15 @@ export function ActivityAudienceRuntime(props: {
   theme?: Deck["theme"];
 }) {
   const [projection, setProjection] = useState<AudienceProjection>(emptyProjection);
+  const providedProjection = useActivityPublicProjection(
+    props.activity.activityId,
+  );
+  const usesProvidedProjection = providedProjection !== null;
 
   useEffect(() => {
+    if (usesProvidedProjection) {
+      return;
+    }
     let cancelled = false;
 
     const refresh = async () => {
@@ -80,16 +88,29 @@ export function ActivityAudienceRuntime(props: {
       cancelled = true;
       window.clearInterval(timerId);
     };
-  }, [props.activity.activityId, props.deckId, props.projectId]);
+  }, [
+    props.activity.activityId,
+    props.deckId,
+    props.projectId,
+    usesProvidedProjection,
+  ]);
+
+  const visibleProjection: AudienceProjection = providedProjection
+    ? {
+        audienceUrl: providedProjection.audienceUrl,
+        publicResult: providedProjection.publicResult,
+        status: providedProjection.run?.status ?? "preparing",
+      }
+    : projection;
 
   return (
     <ActivityAudienceSlideRenderer
       activity={props.activity}
-      audienceUrl={projection.audienceUrl}
-      publicResult={projection.publicResult}
+      audienceUrl={visibleProjection.audienceUrl}
+      publicResult={visibleProjection.publicResult}
       scale={props.scale}
       slideStyle={props.slideStyle}
-      status={projection.status}
+      status={visibleProjection.status}
       theme={props.theme}
     />
   );

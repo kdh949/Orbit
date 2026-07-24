@@ -65,14 +65,19 @@ describe("PresentationWorkspace", () => {
   it("keeps the live presentation lifecycle separate from rehearsal persistence", () => {
     const source = fs.readFileSync(presentationWorkspaceSourcePath, "utf8");
 
-    expect(source).toContain("createPresentationRuntime");
+    expect(source).toContain("ensurePresenterCompanionSession");
+    expect(source).toContain("startPresentationRuntime");
+    expect(source).toContain("closePresenterCompanionSession");
     expect(source).toContain("uploadPresentationRecording");
     expect(source).toContain("recordedFileRef.current.size > 0");
     expect(source).toContain('setRuntimePhase("completed")');
     expect(source).toContain("<PresentationCompletionDialog");
     expect(source).toContain('startPresentation("none")');
     expect(source).toContain("runtimeRef.current = null");
+    expect(source).toContain('sessionPurpose: "presentation"');
     expect(source).toContain("마이크 없이 시작");
+    expect(source).toContain('case "finish":');
+    expect(source).toContain("void finishPresentation()");
     expect(source).not.toContain("/rehearsals/runs");
     expect(source).not.toContain("createRehearsalRun");
     expect(source).not.toContain("completeRehearsalAudioUpload");

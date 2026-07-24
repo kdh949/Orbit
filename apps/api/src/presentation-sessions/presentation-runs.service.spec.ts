@@ -84,6 +84,7 @@ function createService(existingRun: PresentationRunEntity | null = null) {
       projectId: "project_1",
       deckId: "deck_1",
       deckVersion: 4,
+      sessionPurpose: "presentation",
     }),
   } as unknown as PresentationSessionsService;
   const decks = {
@@ -129,6 +130,7 @@ function createService(existingRun: PresentationRunEntity | null = null) {
     findAndCount,
     jobs,
     repository,
+    sessions,
     service: new PresentationRunsService(
       repository,
       sessions,
@@ -163,6 +165,28 @@ describe("PresentationRunsService", () => {
     expect(second.run.runId).toBe(first.run.runId);
     expect(fixture.repository.save).toHaveBeenCalledTimes(1);
     expect(fixture.decks.getDeck).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a presentation run for a rehearsal-purpose session", async () => {
+    const fixture = createService();
+    vi.mocked(fixture.sessions.getSessionForPresenter).mockResolvedValue({
+      sessionId: "session_1",
+      projectId: "project_1",
+      deckId: "deck_1",
+      deckVersion: 4,
+      sessionPurpose: "rehearsal",
+    } as never);
+
+    await expect(
+      fixture.service.createRun("project_1", "session_1", {
+        expectedDeckVersion: 4,
+        recordingMode: "none",
+      }),
+    ).rejects.toMatchObject({
+      message:
+        "Presentation runs cannot be created for rehearsal sessions.",
+    });
+    expect(fixture.repository.save).not.toHaveBeenCalled();
   });
 
   it("allows a not-yet-started run to fall back to no-microphone mode", async () => {

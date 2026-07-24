@@ -29,6 +29,9 @@ export function createAudienceScreenShareController(args: {
   getConnected: () => boolean;
   getTargetWindow: () => AudienceStreamBridgeWindow | null;
   identity: PresentationChannelIdentity;
+  onActiveStreamChange?: (
+    active: { shareEpochId: string; stream: MediaStream } | null,
+  ) => void;
   onOutputModeChange: (mode: AudienceOutputMode) => void;
   onStatusChange?: (state: {
     error: string;
@@ -38,6 +41,7 @@ export function createAudienceScreenShareController(args: {
   let active:
     | {
         capture: ScreenShareCapture;
+        shareEpochId: string;
         targetWindow: AudienceStreamBridgeWindow;
         unsubscribeEnded: () => void;
       }
@@ -60,6 +64,7 @@ export function createAudienceScreenShareController(args: {
         identity: args.identity,
         targetWindow: current.targetWindow,
       });
+      args.onActiveStreamChange?.(null);
     }
     setStatus("idle");
     if (options.returnToSlide) args.onOutputModeChange("slide");
@@ -95,8 +100,10 @@ export function createAudienceScreenShareController(args: {
     }
 
     const targetWindow = args.getTargetWindow();
+    const shareEpochId = createShareEpochId();
     const attachResult = attachAudienceStreamToWindow({
       identity: args.identity,
+      shareEpochId,
       stream: capture.stream,
       targetWindow,
     });
@@ -111,9 +118,14 @@ export function createAudienceScreenShareController(args: {
 
     active = {
       capture,
+      shareEpochId,
       targetWindow,
       unsubscribeEnded: () => undefined,
     };
+    args.onActiveStreamChange?.({
+      shareEpochId: active.shareEpochId,
+      stream: capture.stream,
+    });
     active.unsubscribeEnded = capture.subscribeEnded(() => {
       if (active?.capture !== capture) return;
       stopSharing({ returnToSlide: true });
@@ -142,10 +154,12 @@ export function createAudienceScreenShareController(args: {
           identity: args.identity,
           targetWindow: current.targetWindow,
         });
+        args.onActiveStreamChange?.(null);
       }
       if (options.returnToSlide) args.onOutputModeChange("slide");
     },
     getActiveStream: () => active?.capture.stream ?? null,
+    getShareEpochId: () => active?.shareEpochId ?? null,
     handleExternalOutputMode: (mode: AudienceOutputMode) => {
       if (mode !== "screen-share" && active) {
         stopSharing({ returnToSlide: false });
@@ -160,6 +174,7 @@ export function createAudienceScreenShareController(args: {
       const previousTargetWindow = active.targetWindow;
       const result = attachAudienceStreamToWindow({
         identity: args.identity,
+        shareEpochId: active.shareEpochId,
         stream: active.capture.stream,
         targetWindow: nextTargetWindow,
       });
@@ -209,6 +224,10 @@ export function useAudienceScreenShare(args: {
     error: string;
     status: AudienceScreenShareStatus;
   }>({ error: "", status: "idle" });
+  const [activeShare, setActiveShare] = useState<{
+    shareEpochId: string;
+    stream: MediaStream;
+  } | null>(null);
   const latestRef = useRef({ connected, getTargetWindow, onOutputModeChange });
   latestRef.current = { connected, getTargetWindow, onOutputModeChange };
   const controllerKey = `${identity.deckId}\u0000${identity.sessionId}`;
@@ -219,6 +238,7 @@ export function useAudienceScreenShare(args: {
         getConnected: () => latestRef.current.connected,
         getTargetWindow: () => latestRef.current.getTargetWindow(),
         identity,
+        onActiveStreamChange: setActiveShare,
         onOutputModeChange: (mode) =>
           latestRef.current.onOutputModeChange(mode),
         onStatusChange: setViewState,
@@ -254,14 +274,20 @@ export function useAudienceScreenShare(args: {
 
   return {
     ...viewState,
+    activeStream: activeShare?.stream ?? null,
     handlePeerUnavailable: controller.handlePeerUnavailable,
     reattach: controller.reattach,
     returnToSlide: controller.returnToSlide,
+    shareEpochId: activeShare?.shareEpochId ?? null,
     showBlack: controller.showBlack,
     startMonitor: () => controller.start("monitor"),
     startTabOrWindow: () => controller.start("tab-or-window"),
     stopSharing: controller.stopSharing,
   };
+}
+
+function createShareEpochId(): string {
+  return `share_${crypto.randomUUID().replace(/-/g, "")}`;
 }
 
 function getCaptureErrorMessage(cause: unknown) {

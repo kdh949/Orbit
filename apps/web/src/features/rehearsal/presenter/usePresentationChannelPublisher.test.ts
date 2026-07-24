@@ -45,7 +45,7 @@ describe("createPresentationPublisherController", () => {
     );
   });
 
-  it("publishes a full sanitized snapshot when the slide window becomes ready", () => {
+  it("publishes sanitized deck and current annotation snapshots when the slide window becomes ready", () => {
     const posted: unknown[] = [];
     const statuses: PresentationChannelStatus[] = [];
     const channel = {
@@ -70,6 +70,13 @@ describe("createPresentationPublisherController", () => {
         triggerAnimationIds: ["anim_image_zoom_in"],
         type: "presenter-snapshot",
       }),
+      getAnnotationSnapshot: () => ({
+        sessionId: "persisted_session_1",
+        authorityEpochId: "epoch_1",
+        surfaceId: "surface_1",
+        surfaceRevision: 2,
+        strokes: [],
+      }),
       getState: () => null,
       identity,
       onStatusChange: (status) => statuses.push(status),
@@ -77,7 +84,7 @@ describe("createPresentationPublisherController", () => {
 
     controller.handleIncoming(createSlideWindowReadyMessage(identity, 20));
 
-    expect(posted).toHaveLength(1);
+    expect(posted).toHaveLength(2);
     expect(posted[0]).toMatchObject({
       deckId: "deck_p0_animation",
       sessionId: "session-presenter-1",
@@ -85,6 +92,13 @@ describe("createPresentationPublisherController", () => {
       triggerAnimationIds: ["anim_image_zoom_in"],
     });
     expect(JSON.stringify(posted[0])).not.toContain("첫 문장입니다");
+    expect(posted[1]).toMatchObject({
+      annotation: {
+        surfaceId: "surface_1",
+        surfaceRevision: 2,
+      },
+      type: "presenter-annotation-snapshot",
+    });
     expect(statuses).toEqual(["connected"]);
   });
 

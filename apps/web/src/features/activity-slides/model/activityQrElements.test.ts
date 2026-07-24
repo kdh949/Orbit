@@ -37,6 +37,7 @@ describe("activity QR preparation", () => {
 
     expect(getActivityQrActivityIds(deck)).toEqual([activitySlide.activity.activityId]);
     await prepareActivityQrRuns({
+      audienceAccessEnabled: true,
       deck,
       projectId: deck.projectId,
       sessionId: "session_1"
@@ -48,6 +49,20 @@ describe("activity QR preparation", () => {
       "session_1",
       activitySlide.activity.activityId
     );
+  });
+
+  it("does not create activity runs for a companion-only session", async () => {
+    const deck = createDemoDeck();
+    const ensureRun = vi.spyOn(activityApi, "ensureRun");
+
+    await prepareActivityQrRuns({
+      audienceAccessEnabled: false,
+      deck,
+      projectId: deck.projectId,
+      sessionId: "session_companion_only",
+    });
+
+    expect(ensureRun).not.toHaveBeenCalled();
   });
 });
 

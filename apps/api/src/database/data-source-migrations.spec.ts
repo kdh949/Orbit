@@ -28,6 +28,15 @@ describe("database migration registry", () => {
       migrationNames.indexOf("AddCommunityCategoriesAndTags2026072107000"),
     ).toBeLessThan(
       migrationNames.indexOf(
+        "AddPresentationSessionPurposeAndAudienceAccess2026072301000",
+      ),
+    );
+    expect(
+      migrationNames.indexOf(
+        "AddPresentationSessionPurposeAndAudienceAccess2026072301000",
+      ),
+    ).toBeLessThan(
+      migrationNames.indexOf(
         "AddPresentationPasscodeDisplayCiphertext2026072401000",
       ),
     );

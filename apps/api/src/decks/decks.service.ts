@@ -91,6 +91,10 @@ import { InjectPinoLogger, PinoLogger } from "nestjs-pino";
 import { DataSource, EntityManager } from "typeorm";
 import { ZodError } from "zod";
 import { JobsService } from "../jobs/jobs.service";
+import {
+  assertAsyncJobAdmissionOpen,
+  isAsyncJobAdmissionDraining,
+} from "../jobs/async-job-admission";
 import { serializeLogError } from "../logging";
 
 type DeckRow = {
@@ -524,6 +528,7 @@ export class DecksService {
       throw new ConflictException("PPTX OOXML sync job is not retryable.");
     }
 
+    assertAsyncJobAdmissionOpen();
     const job = await this.enqueueOoxmlSync(projectId, {
       deckId: deck.deckId,
       changeId: `retry_${randomUUID()}`,
@@ -676,7 +681,10 @@ export class DecksService {
       ? await this.enqueueOoxmlSync(projectId, syncInput)
       : undefined;
 
-    return putDeckResponseSchema.parse({ ...response, ooxmlSyncJob });
+    return putDeckResponseSchema.parse({
+      ...response,
+      ...(ooxmlSyncJob ? { ooxmlSyncJob } : {}),
+    });
   }
 
   async appendPatch(
@@ -807,12 +815,15 @@ export class DecksService {
         version: response.deck.version,
         changeRecord: response.changeRecord,
         ...(response.snapshot ? { snapshot: response.snapshot } : {}),
-        ooxmlSyncJob,
+        ...(ooxmlSyncJob ? { ooxmlSyncJob } : {}),
         updatedAt: response.updatedAt,
       });
     }
 
-    return appendDeckPatchResponseSchema.parse({ ...response, ooxmlSyncJob });
+    return appendDeckPatchResponseSchema.parse({
+      ...response,
+      ...(ooxmlSyncJob ? { ooxmlSyncJob } : {}),
+    });
   }
 
   async createSemanticCueExtractionJob(
@@ -1258,7 +1269,7 @@ export class DecksService {
 
     return restoreDeckSnapshotResponseSchema.parse({
       ...response,
-      ooxmlSyncJob,
+      ...(ooxmlSyncJob ? { ooxmlSyncJob } : {}),
     });
   }
 
@@ -1670,6 +1681,18 @@ export class DecksService {
     input: PptxOoxmlSyncJobInput,
   ) {
     if (!this.jobsService) {
+      return undefined;
+    }
+    if (isAsyncJobAdmissionDraining()) {
+      this.logger?.info(
+        {
+          event: "pptx_ooxml.sync.skipped_admission_drain",
+          projectId,
+          deckId: input.deckId,
+          targetDeckVersion: input.targetDeckVersion,
+        },
+        "PPTX OOXML sync was skipped while asynchronous job admission is draining.",
+      );
       return undefined;
     }
 

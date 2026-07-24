@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 import { p0AnimationDeck } from "./__fixtures__/animationDeck";
 import { createPresenterSlideshowState } from "./presenterStateStore";
 import {
+  createLivePresentationHostIdentity,
+  createPresenterAnnotationDeltaMessage,
+  createPresenterAnnotationSnapshotMessage,
   createPresenterCommandMessage,
   createPresenterHeartbeatMessage,
+  createPresenterLaserMessage,
   createPresenterRemoteHeartbeatMessage,
   createPresenterRemoteReadyMessage,
   createPresenterRemoteSnapshotMessage,
@@ -28,6 +32,126 @@ const isPresentationChannelMessage = (value: unknown) =>
   parsePresentationChannelMessage(value) !== null;
 
 describe("presentationChannel", () => {
+  it("validates annotation snapshots and deltas at the local channel boundary", () => {
+    const annotation = {
+      sessionId: "persisted_session_1",
+      authorityEpochId: "epoch_1",
+      surfaceId: "surface_1",
+      surfaceRevision: 0,
+      strokes: [],
+    };
+    const snapshot = createPresenterAnnotationSnapshotMessage({
+      annotation,
+      identity,
+      sentAt: 10,
+    });
+    const delta = createPresenterAnnotationDeltaMessage({
+      command: {
+        sessionId: "persisted_session_1",
+        authorityEpochId: "epoch_1",
+        surfaceId: "surface_1",
+        clientOperationId: "op_1",
+        baseRevision: 0,
+        sequence: 0,
+        kind: "clear-surface",
+      },
+      identity,
+      sentAt: 11,
+      surfaceRevision: 1,
+    });
+
+    expect(parsePresentationChannelMessage(snapshot)).toEqual(snapshot);
+    expect(parsePresentationChannelMessage(delta)).toEqual(delta);
+    expect(
+      parsePresentationChannelMessage({
+        ...delta,
+        command: { ...delta.command, baseRevision: -1 },
+      }),
+    ).toBeNull();
+    expect(
+      parsePresentationChannelMessage({
+        ...snapshot,
+        annotation: {
+          ...snapshot.annotation,
+          strokes: [{ strokeId: "malformed" }],
+        },
+      }),
+    ).toBeNull();
+  });
+
+  it("validates ephemeral laser events at the local channel boundary", () => {
+    const move = createPresenterLaserMessage({
+      identity,
+      laser: {
+        sessionId: "persisted_session_1",
+        authorityEpochId: "epoch_1",
+        surfaceId: "surface_1",
+        sequence: 4,
+        kind: "move",
+        x: 0.25,
+        y: 0.75,
+      },
+      sentAt: 12,
+    });
+    const hide = createPresenterLaserMessage({
+      identity,
+      laser: {
+        sessionId: "persisted_session_1",
+        authorityEpochId: "epoch_1",
+        surfaceId: "surface_1",
+        sequence: 5,
+        kind: "hide",
+      },
+      sentAt: 13,
+    });
+
+    expect(parsePresentationChannelMessage(move)).toEqual(move);
+    expect(parsePresentationChannelMessage(hide)).toEqual(hide);
+    expect(
+      parsePresentationChannelMessage({
+        ...move,
+        laser: { ...move.laser, x: 1.1 },
+      }),
+    ).toBeNull();
+    expect(
+      parsePresentationChannelMessage({
+        ...hide,
+        laser: { ...hide.laser, secret: "must-not-pass" },
+      }),
+    ).toBeNull();
+  });
+
+  it("keeps the local window channel separate from the persisted server session", () => {
+    const hostIdentity = createLivePresentationHostIdentity({
+      deckId: p0AnimationDeck.deckId,
+      localWindowSessionId: "local-window-session",
+      persistedSessionId: "persisted-pairing-session",
+    });
+
+    expect(hostIdentity).toEqual({
+      localChannel: {
+        deckId: p0AnimationDeck.deckId,
+        sessionId: "local-window-session",
+      },
+      persistedSessionId: "persisted-pairing-session",
+    });
+    expect(getPresentationChannelName(hostIdentity.localChannel)).not.toContain(
+      hostIdentity.persistedSessionId,
+    );
+  });
+
+  it("does not promote a URL-local session into a server pairing identity", () => {
+    expect(
+      createLivePresentationHostIdentity({
+        deckId: p0AnimationDeck.deckId,
+        localWindowSessionId: "session-from-url",
+      }),
+    ).toMatchObject({
+      localChannel: { sessionId: "session-from-url" },
+      persistedSessionId: null,
+    });
+  });
+
   it("creates deterministic session-scoped channel names", () => {
     expect(getPresentationChannelName(identity)).toBe(
       "orbit:presenter-screen:deck_p0_animation:session-presenter-1",
@@ -343,6 +467,16 @@ describe("presentationChannel", () => {
         command: { action: "timer-finish" },
       }),
     ).toBe(false);
+  });
+
+  it("validates presenter remote finish commands", () => {
+    const message = createPresenterCommandMessage({
+      command: { action: "finish" },
+      identity,
+      sentAt: 90,
+    });
+
+    expect(isPresentationChannelMessage(message)).toBe(true);
   });
 
   it("validates audience output commands and rejects unknown modes", () => {

@@ -366,7 +366,110 @@ ORBIT-14 진행 중에는 위 구현 위치를 기준으로 계약을 변경한�
 - 결과 장표의 dangling `sourceActivityId`는 parse를 허용하고 editor/renderer에서 `source-missing` 복구 상태로 표시한다.
 - semantic 정의 변경은 `update_activity_definition`, `update_activity_result_definition` 전용 operation을 사용한다. 참여 장표의 appearance, style, elements 전체 교체는 `replace_activity_design` 하나로 원자 적용하며 적용 후 전체 Deck을 다시 검증한다.
 
-PresentationSession은 `deckId`, server가 읽은 `deckVersion`, `passcode | public` 접근 방식, `startsAt`, `expiresAt`, active run과 retention 시각을 명시한다. 기본 접근 기간은 server command가 14일로 채우고 schema와 DB는 30일을 초과하는 기간을 거절한다. session 생성 request는 `deckVersion`이나 Activity 정의를 받지 않는다.
+PresentationSession은 `deckId`, server가 읽은 `deckVersion`,
+`sessionPurpose: presentation | rehearsal`, `audienceAccessEnabled`,
+`passcode | public` 접근 방식, `startsAt`, `expiresAt`, active run과 retention
+시각을 명시한다. 기존 row와 하위 호환 payload는
+`sessionPurpose=presentation`, `audienceAccessEnabled=true`로 해석한다. 신규
+session 생성 request는 `audienceAccessEnabled`가 없으면 fail-closed인
+`false`로 정규화하되, 기존 `accessMode`가 있는 하위 호환 payload는 청중 접근
+의 명시적 신호로 보고 `true`로 정규화한다. request는 `deckVersion`이나
+Activity 정의를 받지 않는다.
+
+- `audienceAccessEnabled=false`이면 `audienceUrl=null`이며 passcode hash 없이
+  생성할 수 있다. `accessMode`는 저장되더라도 audience 접근 권한을 만들지
+  않는다.
+- `audienceAccessEnabled=true`이면 `sessionPurpose=presentation`이어야 하고
+  `audienceUrl=/audience/:sessionId`를 반환한다. `passcode` mode는 4자리
+  passcode가 필수이고 `public` mode는 passcode를 허용하지 않는다.
+- `sessionPurpose=rehearsal`은 항상 `audienceAccessEnabled=false`이며 일반
+  audience HTTP 진입, access cookie, audience Socket.IO room,
+  `PresentationRun`, Activity Run을 허용하지 않는다.
+- active session uniqueness, current 조회, replacement close, exact Deck version
+  reuse는 `(projectId, sessionPurpose)` 범위에서 수행한다. 같은 project의
+  presentation/rehearsal session은 동시에 유지할 수 있다.
+- 동일 presenter, purpose, `deckId`, `deckVersion`의 active session만
+  `reuseCurrent` 대상이다. companion-only presentation 요청이 이미 audience가
+  활성화된 같은 presentation session을 만나면 기존 opt-in을 보존한다.
+- audience entry, public info, join, access 검증은 DB의
+  `audience_access_enabled=true`를 매 요청마다 다시 확인한다.
+- 기본 접근 기간은 audience-enabled server command가 14일로 채우며
+  companion-only session은 4시간으로 채운다. schema와 DB는 30일을 초과하는
+  기간을 거절한다.
+- 실전 발표와 리허설 preflight는 각각 `presentation`, `rehearsal` purpose의
+  companion-only session을 exact `deckId`/`deckVersion`으로 ensure한다. 실전
+  `PresentationRun`은 사용자가 실제 발표 시작을 선택할 때만 생성하며 같은
+  session의 재시도는 기존 run을 반환한다. 리허설은 `PresentationRun`을
+  생성하지 않는다.
+- 청중 링크를 활성화하거나 비활성화할 때는 기존 presentation session의
+  `PATCH .../:sessionId/access`를 사용해 companion identity를 보존한다.
+  audience access가 꺼진 상태에서 Activity Run을 자동 생성하지 않으며,
+  presenter UI는 먼저 청중 링크/QR에서 접근을 활성화하도록 안내한다.
+- 실전 발표 종료와 리허설 종료는 자신이 ensure한 persisted session ID만
+  명시적으로 close한다. rehearsal 종료는 presentation session이나 사용자가
+  켠 presentation audience opt-in을 변경하지 않으며, presentation 종료는
+  해당 presentation session의 audience entry도 함께 닫는다.
+
+### iPad presenter companion HTTP 계약
+
+Companion은 일반 audience identity와 분리된 presenter 보조 화면이다. runtime
+flag `IPAD_PRESENTER_COMPANION_ENABLED=false`이면 아래 모든 endpoint는 인증
+상태와 무관하게 고정 404로 닫히고 기존 발표·리허설·audience API에는 영향을
+주지 않는다.
+
+```text
+POST   /api/v1/projects/:projectId/presentation-sessions/:sessionId/companion-pairings
+GET    /api/v1/projects/:projectId/presentation-sessions/:sessionId/companion-status
+DELETE /api/v1/projects/:projectId/presentation-sessions/:sessionId/companion
+POST   /api/v1/presentation-companion/pairings/:code/exchange
+GET    /api/v1/presentation-companion/:sessionId/bootstrap
+GET    /api/v1/presentation-companion/:sessionId/assets/:fileId/content
+```
+
+- presenter endpoint는 project write 권한과 active session의 정확한
+  `projectId`, `deckId`, `deckVersion`을 확인한다. pairing 생성과 disconnect는
+  configured `WEB_ORIGIN`과 정확히 같은 origin에서만 허용한다.
+- pairing 생성은 공개 HTTPS 기본 포트 origin만 허용한다. localhost,
+  `.local`, loopback, link-local, private IP literal, 비기본 port에서는 code를
+  발급하지 않는다. 응답은 `{ pairingUrl, expiresAt }`만 포함하고 raw code를
+  별도 field로 반환하지 않는다.
+- pairing code는 256-bit CSPRNG base64url이며 TTL은 2분이다. Redis key에는
+  `SESSION_SECRET` HMAC digest만 저장하고 Lua GET+DEL로 원자 소비한다.
+- exchange는 exact same-origin `application/json` POST와 trust-proxy 적용 후의
+  client address HMAC rate limit를 통과해야 한다. 성공 시 code는 재사용할 수
+  없고 새 `pairingGeneration`이 이전 companion credential을 즉시 무효화한다.
+- companion credential은 `orbit_presentation_companion` signed HttpOnly,
+  Secure, SameSite=Lax cookie다. payload는 `companionId`, `sessionId`,
+  `projectId`, `deckId`, `deckVersion`, `pairingGeneration`, `scopes`,
+  `expiresAt`, user-agent HMAC을 포함한다. TTL은 4시간과 session expiry 중
+  이른 시점이다.
+- bootstrap과 asset은 매 요청마다 cookie signature와 user-agent,
+  Redis 최신 generation, DB active session, exact Deck version을 모두 다시
+  확인한다. session close, active session replacement, presenter disconnect는
+  generation과 lease를 revoke한다.
+- `CompanionDeckSnapshot`은 Deck alias가 아닌 strict allowlist다. 포함 field는
+  `deckId`, `projectId`, `version`, `canvas`, `theme`와 slide의 audience
+  rendering용 `slideId`, `kind`, `order`, `thumbnailUrl`, `transition`,
+  `style`, `importRenderMode`, `elements`, `animations`, action 원문 없이
+  파생한 `triggerAnimationIds`, 공개 activity projection뿐이다.
+  `speakerNotes`, `keywords`, `semanticCues`, `actions`, `aiNotes`, Deck
+  metadata, transcript, raw audio, script, run/report는 포함하지 않는다.
+- companion의 activity, activity-results, activity-qr 렌더링은 presenter
+  project API를 호출하지 않는다. companion credential로 보호되는
+  `GET /api/v1/presentation-companion/:sessionId/activities/:activityId`가
+  현재 run의 공개 `status`, audience URL, `ActivityPublicResult`만 반환한다.
+  run이 없거나 session의 `audienceAccessEnabled=false`이면 이를 생성하지 않고
+  URL과 결과가 모두 null인 공개 projection을 반환하며, presenter result와
+  moderation 상태는 포함하지 않는다.
+- 내부 render asset URL은 companion asset endpoint로 치환한다. 현재 exact
+  Deck의 allowlisted render field가 실제 참조한 같은 project image만 읽을 수
+  있다. canonical 상대 asset path와 configured `WEB_ORIGIN` 또는
+  `API_BASE_URL`의 absolute URL만 내부 asset으로 인정한다. 같은 pathname을
+  가진 다른 origin은 external URL로 유지하며 asset allowlist에 넣지 않는다.
+  미참조 파일, owner-only purpose, audio, PDF는 404다. 기존 external HTTPS
+  image는 그대로 허용하지만 server-side fetch proxy는 제공하지 않으며
+  `data:`, `blob:`, `javascript:` 및 알 수 없는 scheme은 projection에서
+  제거한다.
 
 `passcode` 접근 방식은 검증용 Argon2id hash와 발표 화면 표시용
 AES-256-GCM ciphertext를 별도로 저장한다. ciphertext는 `sessionId`를 AAD로
@@ -405,9 +508,73 @@ presentation WebSocket room은 다음처럼 project room과 분리한다.
 ```text
 presentation:{sessionId}:presenter
 presentation:{sessionId}:audience
+presentation:{sessionId}:companion-authority:{authorityEpochId}
+presentation:{sessionId}:companion:{pairingGeneration}
 ```
 
 추가 event는 `active-activity-changed`, `activity-state-changed`, `activity-results-updated`다. 응답 write는 HTTP transaction에서 수행하고, WebSocket은 commit 후 `revision`, refetch marker, 공개 가능한 aggregate와 승인된 익명 text만 전달한다. audience event의 `userId`는 raw audience ID 대신 `system`을 사용한다.
+
+Companion room은 일반 audience room과 cookie를 공유하지 않는다. presenter는
+project write 권한을 확인한 뒤 10초 Redis authority lease를 얻은 tab 하나만
+authority room에 들어간다. iPad는 companion cookie의 최신 generation을
+확인한 뒤 해당 generation room 하나에 들어간다. server는 client payload의
+room, role, `userId`를 신뢰하지 않고 인증된 socket state로 덮어쓴다.
+
+Companion server event는 공통 strict envelope
+`{ type, roomId, sessionId, userId, payload, sentAt }`을 사용한다.
+`userId`는 `system`, HMAC pseudonym인 `presenter:<opaque>`,
+`companion:<companionId>` 중 하나다. 주요 event는 authority
+claim/change, join/heartbeat/presence, output state, annotation
+command/ack/snapshot/request, volatile laser, WebRTC signal, revoke,
+고정 `presentation:error`다.
+
+- annotation normalized coordinate와 pressure는 `0..1`, relative time은
+  `0..120000ms`, point batch는 64개, stroke는 4,096 points로 제한한다.
+- surface snapshot은 500 strokes와 총 50,000 points를 넘을 수 없다.
+  color는 제품 palette enum, normalized width는 `0.001..0.05`만 허용한다.
+- Socket.IO message buffer는 위 bounded surface snapshot을 수용하도록 8MiB로
+  제한한다. iPad annotation command queue는 최대 256개이며 한 번에 하나만
+  ack 대기 상태로 전송한다. 1.5초 ack timeout, queue overflow, rejected ack는
+  pending command를 폐기하고 current surface snapshot 재동기화로 전환한다.
+- annotation command JSON은 UTF-8 32KiB 이하이며 socket별 Redis token
+  bucket은 초당 120개, burst 180개다. laser는 초당 60개, burst 60개다.
+- SDP는 32KiB, ICE candidate는 4KiB 이하의 strict union이다. signaling,
+  annotation, laser payload는 로그에 남기지 않는다.
+- `screen-share` output은 capture마다 새 opaque `shareEpochId`를 반드시
+  포함하고, `slide`와 `black` output에는 이를 포함하지 않는다. 같은
+  `shareEpochId`의 signaling은 offer, answer, ICE, end가 하나의
+  `signalId`를 공유하며 다른 epoch 또는 negotiation ID는 폐기한다.
+- `slide`와 `screen-share` output만 `surfaceId`, `surfaceRevision`을
+  포함한다. `black` output에는 drawable surface가 없으며 annotation,
+  snapshot request, laser command를 모두 거부한다.
+- screen-share media는 same-origin audience stream bridge가 현재 capture를
+  desktop authority에 전달하고 WebRTC sender에는 첫 video track만
+  추가한다. audio track은 전송하지 않으며 `RTCPeerConnection`은 TURN
+  server 없이 생성한다. peer 연결이 2초 안에 완료되지 않거나 실패해도
+  desktop capture와 main audience output은 유지하고 iPad의 해당 share
+  surface 쓰기만 비활성화한다.
+- screen-share annotation 좌표는 source video content-local `0..1`이다.
+  iPad 입력 canvas와 main audience overlay는 각 viewport에서 같은
+  `contain` rect를 계산해 letterbox를 제외한다. capture 종료나 새
+  `shareEpochId` 시작 시 이전 share surface state는 폐기하지만 slide
+  surface state는 authority epoch 동안 보존해 slide 복귀 시 복원한다.
+- annotation과 companion signaling은 body `sessionId`, 최신 generation,
+  active `authorityEpochId`를 relay 직전에 다시 확인한다. annotation
+  command는 presenter room 전체가 아니라 authority epoch room 하나에만
+  전달한다.
+- companion socket disconnect는 generation을 유지하고 matching generation의
+  presence만 지운다. session close, replacement, presenter disconnect API는
+  `revoked`를 generation room에 보낸 뒤 Redis adapter를 통해 해당 socket을
+  끊는다.
+- session close와 explicit revoke는 generation을 단조 증가하는 invalidation
+  floor로 올리고 authority, presence와 아직 교환되지 않은 session별 pending
+  pairing key를 단일 Redis 연산으로 즉시 정리한다. generation floor는 기존
+  credential TTL 동안 유지해 같은 번호가 재발급되지 않게 한다. session
+  expiry는 credential/session TTL, authority 10초,
+  presence 15초, pending pairing 2분의 상한 안에서 같은 상태를 정리하며
+  그 전에도 모든 credential 검증은 fail-closed한다. presenter socket만
+  끊기면 authority lease만 만료시키고 companion generation은 credential
+  TTL 안에서 reconnect할 수 있게 유지한다.
 
 구현 위치:
 
@@ -1261,13 +1428,13 @@ PR 4의 personal staging 자동 배포는 완료됐다. #339 종료 전 배포 �
 
 ## PPTX OOXML sync contract
 
-Deck 저장은 OOXML sync와 분리해 먼저 완료한다. OOXML-backed `TemplateBlueprint`가 있는 Deck은 operation 종류와 관계없이 `PUT /api/v1/projects/:projectId/deck`과 `POST /api/v1/projects/:projectId/deck/patches`의 모든 version 전이마다 background sync Job을 enqueue하고 response에 optional `ooxmlSyncJob`을 포함한다.
+Deck 저장은 OOXML sync와 분리해 먼저 완료한다. OOXML-backed `TemplateBlueprint`가 있는 Deck은 operation 종류와 관계없이 `PUT /api/v1/projects/:projectId/deck`과 `POST /api/v1/projects/:projectId/deck/patches`의 모든 version 전이마다 background sync Job을 enqueue하고 response에 optional `ooxmlSyncJob`을 포함한다. 단, `ASYNC_JOB_ADMISSION_MODE=drain` 중에는 Deck 저장과 snapshot restore를 계속 완료하되 Job row와 BullMQ Job을 만들지 않고 `ooxmlSyncJob`을 생략한다. 이 경우 sync state는 `stale`, `retryable: true`로 남아 admission 재개 후 수동 retry할 수 있다.
 
 imported Deck의 full PUT은 저장 version을 `current + 1`로 정규화하고, 변경된 요소를 `add_element`, `delete_element`, `update_element_frame`, `update_element_props` 형태의 synthetic patch로 기록한다. 일반 Deck의 full replacement와 snapshot 동작은 기존 계약을 유지한다.
 
 Deck checkpoint는 일반 Deck patch를 기존처럼 compact한다. OOXML-backed Deck은 patch마다 `decks.deck_json`과 `decks.version`을 즉시 최신 상태로 저장하고, `ooxmlSyncedDeckVersion` 이하 patch만 compact한다. 아직 package에 반영되지 않은 patch는 sync 성공 전까지 보존한다.
 
-OOXML-backed Deck의 snapshot restore는 historical snapshot의 내용을 복원하되 저장 version을 `current + 1`로 만들고 current state에서 복원 내용으로 가는 synthetic patch를 기록한 뒤 sync를 enqueue한다. response의 `restoredSnapshot.version`은 선택한 historical version을 유지하고 `deck.version`은 새 저장 version을 반환한다. 일반 Deck restore의 기존 version rewind 동작은 유지한다.
+OOXML-backed Deck의 snapshot restore는 historical snapshot의 내용을 복원하되 저장 version을 `current + 1`로 만들고 current state에서 복원 내용으로 가는 synthetic patch를 기록한 뒤 sync를 enqueue한다. admission drain 중에는 sync enqueue만 생략한다. response의 `restoredSnapshot.version`은 선택한 historical version을 유지하고 `deck.version`은 새 저장 version을 반환한다. 일반 Deck restore의 기존 version rewind 동작은 유지한다.
 
 Job:
 

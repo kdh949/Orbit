@@ -14,14 +14,26 @@ export type AudienceStreamBridgeResult =
   | { ok: true }
   | { code: AudienceStreamBridgeFailureCode; ok: false };
 
+export type ActiveAudienceStream = {
+  shareEpochId: string;
+  stream: MediaStream;
+};
+
 export type AudienceStreamBridge = {
   attach: (input: {
     identity: PresentationChannelIdentity;
+    shareEpochId: string;
     stream: MediaStream;
   }) => AudienceStreamBridgeResult;
   detach: (input: {
     identity: PresentationChannelIdentity;
   }) => AudienceStreamBridgeResult;
+  observe?: (input: {
+    identity: PresentationChannelIdentity;
+    onChange: (active: ActiveAudienceStream | null) => void;
+  }) =>
+    | { ok: true; unsubscribe: () => void }
+    | { code: AudienceStreamBridgeFailureCode; ok: false };
   version: 1;
 };
 
@@ -34,6 +46,10 @@ export type AudienceStreamBridgeRegistration = {
   detach: () => void;
   unregister: () => void;
 };
+
+export type AudienceStreamBridgeObservation =
+  | { ok: true; unsubscribe: () => void }
+  | { code: AudienceStreamBridgeFailureCode; ok: false };
 
 export function registerAudienceStreamBridge(args: {
   identity: PresentationChannelIdentity;
@@ -48,15 +64,22 @@ export function registerAudienceStreamBridge(args: {
     return { code: "bridge-unavailable", ok: false };
   }
 
-  let activeStream: MediaStream | null = null;
+  let activeStream: ActiveAudienceStream | null = null;
+  const observers = new Set<
+    (active: ActiveAudienceStream | null) => void
+  >();
+  const notifyObservers = () => {
+    for (const observer of observers) observer(activeStream);
+  };
   const bridge: AudienceStreamBridge = {
-    attach: ({ identity, stream }) => {
+    attach: ({ identity, shareEpochId, stream }) => {
       if (!matchesIdentity(identity, args.identity)) {
         return { code: "identity-mismatch", ok: false };
       }
       try {
         args.onAttach(stream);
-        activeStream = stream;
+        activeStream = { shareEpochId, stream };
+        notifyObservers();
         return { ok: true };
       } catch {
         return { code: "attach-failed", ok: false };
@@ -69,8 +92,22 @@ export function registerAudienceStreamBridge(args: {
       if (activeStream) {
         activeStream = null;
         args.onDetach();
+        notifyObservers();
       }
       return { ok: true };
+    },
+    observe: ({ identity, onChange }) => {
+      if (!matchesIdentity(identity, args.identity)) {
+        return { code: "identity-mismatch", ok: false };
+      }
+      observers.add(onChange);
+      onChange(activeStream);
+      return {
+        ok: true,
+        unsubscribe: () => {
+          observers.delete(onChange);
+        },
+      };
     },
     version: 1,
   };
@@ -94,6 +131,7 @@ export function registerAudienceStreamBridge(args: {
     if (!activeStream) return;
     activeStream = null;
     args.onDetach();
+    notifyObservers();
   };
 
   return {
@@ -101,6 +139,7 @@ export function registerAudienceStreamBridge(args: {
     ok: true,
     unregister: () => {
       detach();
+      observers.clear();
       try {
         const host = targetWindow as Record<string, unknown>;
         if (host[audienceStreamBridgeKey] === bridge) {
@@ -115,6 +154,7 @@ export function registerAudienceStreamBridge(args: {
 
 export function attachAudienceStreamToWindow(args: {
   identity: PresentationChannelIdentity;
+  shareEpochId: string;
   stream: MediaStream;
   targetWindow: AudienceStreamBridgeWindow | null;
 }): AudienceStreamBridgeResult {
@@ -124,10 +164,32 @@ export function attachAudienceStreamToWindow(args: {
   try {
     return bridgeResult.bridge.attach({
       identity: args.identity,
+      shareEpochId: args.shareEpochId,
       stream: args.stream,
     });
   } catch {
     return { code: "attach-failed", ok: false };
+  }
+}
+
+export function observeAudienceStreamInWindow(args: {
+  identity: PresentationChannelIdentity;
+  onChange: (active: ActiveAudienceStream | null) => void;
+  targetWindow: AudienceStreamBridgeWindow | null;
+}): AudienceStreamBridgeObservation {
+  const bridgeResult = readAudienceStreamBridge(args.targetWindow);
+  if (!bridgeResult.ok) return bridgeResult;
+  if (!bridgeResult.bridge.observe) {
+    return { code: "bridge-unavailable", ok: false };
+  }
+
+  try {
+    return bridgeResult.bridge.observe({
+      identity: args.identity,
+      onChange: args.onChange,
+    });
+  } catch {
+    return { code: "access-denied", ok: false };
   }
 }
 

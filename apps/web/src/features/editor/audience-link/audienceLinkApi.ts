@@ -32,32 +32,62 @@ export async function createAudienceAccessSession(args: {
   durationDays: number;
   passcode?: string;
   projectId: string;
+  sessionId?: string;
 }): Promise<PresentationSessionWithAudienceUrlResponse> {
   const startsAt = new Date();
   const expiresAt = new Date(
     startsAt.getTime() + args.durationDays * 24 * 60 * 60 * 1000
   );
-  const response = await fetch(
-    `/api/v1/projects/${encodeURIComponent(args.projectId)}/presentation-sessions`,
-    {
-      body: JSON.stringify({
-        accessMode: args.accessMode,
-        deckId: args.deckId,
-        startsAt: startsAt.toISOString(),
-        expiresAt: expiresAt.toISOString(),
-        ...(args.accessMode === "passcode" ? { passcode: args.passcode } : {})
-      }),
-      credentials: "include",
-      headers: { "content-type": "application/json" },
-      method: "POST"
-    }
-  );
+  const input = {
+    audienceAccessEnabled: true as const,
+    accessMode: args.accessMode,
+    expiresAt: expiresAt.toISOString(),
+    startsAt: startsAt.toISOString(),
+    ...(args.accessMode === "passcode" ? { passcode: args.passcode } : {})
+  };
+  const response = args.sessionId
+    ? await fetch(
+      `/api/v1/projects/${encodeURIComponent(
+        args.projectId
+      )}/presentation-sessions/${encodeURIComponent(args.sessionId)}/access`,
+      {
+        body: JSON.stringify(input),
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        method: "PATCH"
+      }
+    )
+    : await fetch(
+      `/api/v1/projects/${encodeURIComponent(args.projectId)}/presentation-sessions`,
+      {
+        body: JSON.stringify({
+          ...input,
+          deckId: args.deckId,
+          sessionPurpose: "presentation"
+        }),
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        method: "POST"
+      }
+    );
 
   if (!response.ok) {
     throw await readResponseError(response, "Audience session create failed");
   }
 
-  return presentationSessionWithAudienceUrlResponseSchema.parse(await response.json());
+  if (args.sessionId) {
+    const { session } = presentationSessionResponseSchema.parse(
+      await response.json()
+    );
+    return presentationSessionWithAudienceUrlResponseSchema.parse({
+      audienceUrl: `/audience/${encodeURIComponent(session.sessionId)}`,
+      session
+    });
+  }
+
+  return presentationSessionWithAudienceUrlResponseSchema.parse(
+    await response.json()
+  );
 }
 
 export async function closeAudienceAccessSession(args: {
@@ -67,17 +97,17 @@ export async function closeAudienceAccessSession(args: {
   const response = await fetch(
     `/api/v1/projects/${encodeURIComponent(
       args.projectId
-    )}/presentation-sessions/${encodeURIComponent(args.sessionId)}/close`,
+    )}/presentation-sessions/${encodeURIComponent(args.sessionId)}/access`,
     {
-      body: JSON.stringify({}),
+      body: JSON.stringify({ audienceAccessEnabled: false }),
       credentials: "include",
       headers: { "content-type": "application/json" },
-      method: "POST"
+      method: "PATCH"
     }
   );
 
   if (!response.ok) {
-    throw await readResponseError(response, "Audience session close failed");
+    throw await readResponseError(response, "Audience access disable failed");
   }
 
   return presentationSessionResponseSchema.parse(await response.json()).session;

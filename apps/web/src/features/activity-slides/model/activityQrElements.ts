@@ -20,10 +20,14 @@ export function getActivityQrActivityIds(deck: Deck) {
  * reusable QR element can be opened as soon as the presentation starts.
  */
 export async function prepareActivityQrRuns(input: {
+  audienceAccessEnabled: boolean;
   deck: Deck;
   projectId: string;
   sessionId: string;
 }) {
+  if (!input.audienceAccessEnabled) {
+    return;
+  }
   await Promise.all(
     getActivityQrActivityIds(input.deck).map((activityId) =>
       activityApi.ensureRun(input.projectId, input.sessionId, activityId)

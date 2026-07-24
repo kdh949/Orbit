@@ -35,7 +35,7 @@ jobs:
         run: |
           bash -n infra/scripts/orbit-deploy-personal-staging-wrapper.sh
           node infra/scripts/check-env.mjs
-          node --test infra/scripts/personal-staging-env.test.mjs infra/scripts/personal-staging-wrapper.test.mjs
+          node --test infra/scripts/personal-staging-env.test.mjs infra/scripts/personal-staging-wrapper.test.mjs infra/scripts/personal-staging-deploy.test.mjs
 
       - name: Validate AWS production Compose contract
         run: node infra/scripts/check-aws-production-compose.mjs

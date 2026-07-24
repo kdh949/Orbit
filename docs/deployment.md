@@ -34,3 +34,5 @@
 - [ ] 청중 API에서 speaker notes/script가 노출되지 않는지 검증
 - [ ] BullMQ와 ElastiCache Redis/Valkey 연결·TLS·network policy 검증
 - [ ] staged BullMQ 처리와 `monolith` rollback 경로 smoke, queue/DB 잔여 상태 검증
+
+단일 workload AZ ECS cutover와 EC2 rollback의 세부 실행 순서는 [ecs-single-az-cutover.md](runbooks/ecs-single-az-cutover.md)를 따른다. AWS 인프라는 `main` push로 자동 실행하지 않으며, change set 생성·검토와 `production` environment 승인 후 실행을 분리한다.

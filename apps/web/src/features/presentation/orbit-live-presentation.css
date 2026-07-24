@@ -272,3 +272,38 @@ html:has(.present-window-shell) #root {
   opacity: 0.7;
   width: 68px;
 }
+
+.audience-annotation-overlay {
+  inset: 50% auto auto 50%;
+  overflow: visible;
+  pointer-events: none;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+}
+
+.audience-annotation-stroke--ink-black {
+  stroke: var(--redesign-color-on-surface);
+}
+
+.audience-annotation-stroke--ink-blue {
+  stroke: var(--redesign-color-info);
+}
+
+.audience-annotation-stroke--ink-red {
+  stroke: var(--redesign-color-error);
+}
+
+.audience-annotation-stroke--ink-green {
+  stroke: var(--redesign-color-success);
+}
+
+.audience-annotation-stroke--ink-yellow {
+  stroke: var(--redesign-color-warning);
+}
+
+.audience-laser-point {
+  fill: var(--redesign-color-error);
+  filter: drop-shadow(0 0 var(--redesign-space-1) var(--redesign-color-error));
+  pointer-events: none;
+}

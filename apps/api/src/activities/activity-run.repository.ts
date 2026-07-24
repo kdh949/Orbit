@@ -1,4 +1,8 @@
-import type { ActivityDefinition, ActivityRuntimeStatus } from "@orbit/shared";
+import type {
+  ActivityDefinition,
+  ActivityRuntimeStatus,
+  PresentationSessionPurpose,
+} from "@orbit/shared";
 import { Injectable } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource, EntityManager } from "typeorm";
@@ -34,6 +38,8 @@ export type ActivitySessionRow = {
   deck_id: string;
   deck_version: number;
   session_status: "draft" | "live" | "ended";
+  session_purpose: PresentationSessionPurpose;
+  audience_access_enabled: boolean;
   starts_at: Date | string;
   expires_at: Date | string;
 };
@@ -83,6 +89,8 @@ export class ActivityRunRepository {
           deck_id,
           deck_version,
           status AS session_status,
+          session_purpose,
+          audience_access_enabled,
           starts_at,
           expires_at
         FROM presentation_sessions

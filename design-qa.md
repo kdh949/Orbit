@@ -97,6 +97,60 @@ P0 또는 P1 시각 문제는 발견되지 않았다.
 - Web TypeScript lint/typecheck passed
 - 전체 구현 검증에서 `pnpm build`, `pnpm lint`, `pnpm test`, `node infra/scripts/check-env.mjs`, `docker compose config --quiet` passed
 
+---
+
+# iPad Presenter Companion 운영 UI design QA (2026-07-24)
+
+- Source visual truth: `prototypes/ipad-presenter-companion/reference/combined-target-v2.png` (시각 참조 전용, 운영 코드에서 import하지 않음).
+- PC implementation: `docs/qa/assets/ipad-presenter-companion/preflight-pc.png`.
+- iPad landscape implementation: `docs/qa/assets/ipad-presenter-companion/ipad-landscape.png`.
+- iPad portrait fallback: `docs/qa/assets/ipad-presenter-companion/ipad-portrait.png`.
+- PC combined comparison: `docs/qa/assets/ipad-presenter-companion/pc-comparison.png`.
+- iPad combined comparison: `docs/qa/assets/ipad-presenter-companion/ipad-comparison.png`.
+- CSS viewport / density: PC 788 × 863, landscape 1024 × 768, portrait 768 × 1024, `deviceScaleFactor: 1`.
+- State: PC는 companion 연결 완료·private pad 입력 대기, iPad는 실제 `CompanionAudienceRenderer`의 빈 slide와 쓰기 가능 toolbar 상태.
+
+## Full-view comparison evidence
+
+- PC는 선택 시안의 3단계 진행 표시, QR/pairing 영역, 준비 상태 3행, 비공개 입력 패드 계층을 유지한다.
+- 사용자 피드백에 따라 첫 상태 행은 추상적인 보안 연결이 아니라 status API의 실제 `iPad 연결` 여부만 설명한다.
+- 시안의 별도 `기기 확인 완료` CTA는 운영 preflight의 기존 `발표 시작`·`리허설 시작`이 담당하므로 companion 패널 안에 복제하지 않았다.
+- iPad는 선택 시안의 왼쪽 세로 rail, 인접 palette, dark shell을 유지하면서 운영의 실제 slide/black/screen-share 출력을 사용한다. 시안의 고정 문구, 샘플 화살표, 궤도선은 복사하지 않았다.
+
+## Focused region comparison evidence
+
+- PC pairing/status 영역과 iPad rail/palette가 핵심 변경 범위이므로 각각 별도의 같은-input comparison에 집중해 확인했다.
+- QR은 캡처 상태에서 아직 생성 전이지만 실제 운영 동작은 기존 HTTPS `pairingUrl`을 `qrcode`로 변환하며 API unit과 E2E가 요청 계약을 검증한다.
+- palette는 계약 색상 5개와 pen/highlighter 굵기 4개를 표시하고 선택 상태를 `aria-pressed`로 노출한다.
+
+## Fidelity and interaction checks
+
+- Fonts and typography: 기존 Pretendard와 `--redesign-type-*` 계층을 사용한다.
+- Spacing and layout rhythm: surface, border, radius, shadow, spacing은 기존 `--redesign-*` 토큰을 사용한다.
+- Colors: primary/success/warning/error와 ink palette를 기존 redesign token에만 매핑했다.
+- Assets: Tabler 아이콘과 런타임 QR만 사용하며 정적 목업 QR이나 수제 SVG를 운영 번들에 추가하지 않았다.
+- Copy and privacy: speaker notes, script, transcript, raw audio, pairing code, credential은 DOM·로그·상태 문구에 추가하지 않았다.
+- Browser interaction: pen → highlighter 전환, highlighter 굵기 4, red 선택, eraser 선택 시 palette 닫힘을 확인했다.
+- Responsive behavior: landscape `flex-direction: column`, portrait `flex-direction: row`, 두 viewport 모두 문서 가로 overflow가 없음을 확인했다.
+- 실제 `/companion/:sessionId` 실패 shell에서 공통 header와 `연결 확인 필요` 상태를 확인했고 browser warning/error log는 비어 있었다.
+
+## Comparison history
+
+1. Pass 1 P1 — landscape rail의 텍스트 너비 때문에 palette가 rail과 8px 겹쳤다.
+2. Fix — rail 폭을 token 조합으로 고정하고 palette를 rail 실측 폭 다음으로 이동해 12px 간격을 확보했다.
+3. Pass 1 P1 — renderer scale이 viewport 전체 폭을 사용해 page padding 40px만큼 slide와 header가 가로 overflow됐다.
+4. Fix — shell inset을 반영하는 `calculateCompanionRendererScale()`을 추가하고 1024 × 768에서 984px, 768 × 1024에서 728px 이내로 제한하는 회귀 테스트를 추가했다.
+5. Pass 1 P2 — portrait palette와 하단 rail 사이 간격이 2px에 불과했다.
+6. Fix — 실제 rail 높이와 token 간격을 반영해 10px 간격으로 보정했다.
+7. Post-fix — PC, landscape, portrait를 다시 캡처했고 남은 actionable P0/P1/P2 차이가 없음을 확인했다.
+
+## Validation
+
+- Presenter companion component tests: 7 files, 19 tests passed.
+- Web unit suite: 315 files, 1,941 tests passed.
+- Presenter companion E2E: 5 tests passed.
+- Web typecheck and production build passed.
+
 final result: passed
 
 ---

@@ -845,3 +845,51 @@
 - Rationale: 시각 변경과 다른 슬라이드 편집으로 녹음·질문 생성을 잃지 않으면서, 실제 발표 텍스트나 대본이 바뀐 경우에는 오래된 입력으로 분석하지 않는다. DB migration이나 raw slide 원문 로그 없이 기존 frozen snapshot과 provenance 계약을 유지한다.
 - Affected files: `packages/shared/src/slide-practice`, `apps/api/src/slide-practice`, `apps/api/src/slide-question-guides`, `apps/web/src/features/editor/practice`, `apps/web/src/features/editor/shell`, `docs/contracts.md`, 관련 테스트.
 - Follow-up review notes: 다른 slide/visual-only edit 뒤 연습 종료와 QnA 생성이 성공하는지, target speaker notes 변경은 upload·Job 생성 전에 한국어 안내로 중단되는지, 로그에 원문 없이 requested/resolved version과 freshness resolution만 남는지 확인한다.
+
+## ORBIT personal staging app image preflight before container replacement
+
+- Context: Doppler webhook의 `environment-only` 배포에서 `IMAGE_TAG`와 `WEB_IMAGE_TAG`가 설정되지 않아 Compose가 `orbit-web:latest`를 선택했다. 해당 이미지가 없었지만 `docker compose up --force-recreate`가 API 재생성을 먼저 시작한 뒤 Web image 오류로 중단되어 nginx `/api/*`가 지속적으로 502를 반환했다.
+- Options considered:
+  - `orbit-web:latest`를 항상 publish해 기존 환경 재배포를 유지한다.
+  - Web만 `environment-only` 재생성 대상에서 제외한다.
+  - 모든 배포 모드가 동일한 backend branch tag와 Web commit SHA tag를 먼저 확정하고, 앱 이미지 네 개가 로컬에 모두 존재할 때만 pull 없는 컨테이너 교체를 시작한다.
+- Final decision: `deploy-personal-server.sh`는 mode 분기 전에 `IMAGE_TAG=develop`과 `WEB_IMAGE_TAG=<server HEAD>`를 확정한다. `environment-only`는 Compose가 해석한 API, Worker, Python worker, Web image reference 네 개를 `docker image inspect`로 모두 확인하고 schema preflight까지 성공한 뒤에만 `--no-build --pull never --force-recreate`를 실행한다. `full`도 pull 또는 build 뒤 같은 image preflight를 통과하고 최종 `up`에서 추가 pull을 금지한다.
+- Rationale: mutable `latest`에 의존하지 않고 검증된 코드 SHA와 Web bundle을 일치시킨다. 누락 이미지가 있으면 실행 중인 앱 컨테이너를 건드리기 전에 실패하므로 환경변수 재배포 한 번이 전체 API 장애로 확대되지 않는다.
+- Affected files: `infra/scripts/deploy-personal-server.sh`, `infra/scripts/personal-staging-deploy.test.mjs`, `package.json`, `docs/runbooks/personal-server-deployment.md`, `docs/decision-log.md`.
+- Follow-up review notes: 누락 Web image fixture에서 `docker compose up`이 호출되지 않는지, 정상 fixture에서는 네 image inspect 뒤 `--pull never --force-recreate`가 실행되는지 확인한다. 병합 후 새 `environment-only` run과 full run 모두 API/root health check를 통과하는지 검증한다.
+
+## ORBIT single-workload-AZ ECS migration foundation
+
+- Context: 기존 production은 하나의 EC2 Compose 경로가 API, Worker, Python Worker와 local Redis를 함께 소유한다. 무중단에 가까운 ECS 전환을 위해서는 기존 CloudFront·EC2·RDS를 즉시 교체하지 않고, Job admission과 Socket.IO presence, 민감 오디오 저장소, digest 기반 배포 및 rollback 경계를 먼저 마련해야 한다.
+- Options considered:
+  - 기존 bootstrap stack에서 EC2를 ECS로 한 번에 교체하고 local Redis 및 assets bucket도 동시에 전환한다.
+  - 별도 ECS 환경을 만든 뒤 DNS를 즉시 ECS 100%로 전환한다.
+  - 기존 리소스를 유지한 채 shared-services, ECS compute, edge WAF를 additive stack으로 만들고 ALB 가중치와 admission drain을 사용해 단계적으로 전환한다.
+- Final decision: production entry CloudFront와 기존 EC2/RDS는 기존 bootstrap stack이 계속 소유한다. 새 stack은 public ALB용 2개 subnet과 단일 workload AZ의 NAT·ECS·Redis를 만들며, 초기 ALB 가중치는 EC2 100/ECS 0으로 고정한다. 신규 비동기 Job은 `ASYNC_JOB_ADMISSION_MODE`로 drain하고, Socket.IO presence는 adapter-wide `fetchSockets()`를 사용한다. private audio는 운영의 기존 storage stack이 소유한 bucket과 IAM policy를 재사용하고 신규 원음은 `raw/`, evidence 파생물은 `evidence/`에 저장한다. prefix 없는 legacy key는 assets bucket에서 계속 읽는다. 기존 SSE-S3를 SSE-KMS로 강화하는 변경은 storage-owning stack의 별도 검토 PR로 분리한다. 이미지와 task definition은 ECR digest로 고정하고, 모든 인프라 변경은 비실행 Change Set 검토와 production environment 승인 후에만 적용한다.
+- Rationale: 기존 서비스와 데이터 경로를 rollback 대상으로 보존하면서 API traffic, Worker ownership, Redis, private storage를 서로 다른 단계로 검증할 수 있다. 운영 bucket의 14일 raw/7일 evidence lifecycle 계약을 그대로 사용해 보존 기간 누락을 막고, 소유권이 다른 stack에서 같은 bucket을 중복 생성하거나 암묵적으로 import하는 위험을 피한다. CloudFormation replacement/delete 방지 검사와 수동 승인 경계가 기존 stateful resource의 우발적 손실을 차단한다.
+- Affected files: `apps/api/src/jobs/async-job-admission.ts`, Deck·slide question guide·realtime·file service와 관련 tests, `apps/worker/src/storage.ts`, `packages/config`, `packages/shared`, `packages/storage`, `infra/aws/*single-az.yaml`, `infra/aws/edge-waf-count-mode.yaml`, AWS infrastructure workflows, environment examples/contracts, `docs/runbooks/ecs-single-az-cutover.md`, `docs/decision-log.md`.
+- Follow-up review notes: AWS account root session에서는 Change Set을 생성하거나 실행하지 않는다. GitHub OIDC plan/apply 역할을 최소 권한으로 분리한 뒤, 실제 적용 전 Change Set에서 기존 `AWS::RDS::DBInstance`, `AWS::S3::Bucket`, `AWS::CloudFront::Distribution`, `AWS::EC2::Instance`의 delete/replace가 없는지 확인한다. storage-owning stack을 저장소의 canonical template로 복구하고 SSE-KMS 전환 영향과 rollback을 별도로 검토한다. candidate smoke test, queue/DB active count 0, raw/evidence 및 legacy audio read, Socket.IO multi-task presence를 확인한 뒤 ECS traffic을 5→25→50→100%로 올린다.
+
+## ORBIT ECS cutover review hardening
+
+- Context: ECS 전환 기반 리뷰에서 CloudFormation의 `Modify` replacement 판정, CloudFront viewer `Host`, 기존 EC2/RDS 보안 그룹, ECS production feature flag, Service Connect namespace가 실제 배포 시 canary와 rollback 경로를 차단할 수 있음이 확인됐다.
+- Options considered:
+  - 기존 bootstrap stack에 ECS/ALB 리소스를 직접 편입하고 보안 그룹 전체 소유권을 옮긴다.
+  - CloudFront viewer `Host`를 ALB에서 public domain wildcard로 허용한다.
+  - 기존 stack 소유권을 유지하고 compute stack이 필요한 cross-stack ingress rule만 추가하며, application origin 사용 시 CloudFront가 origin host를 재생성하게 한다.
+- Final decision: compute stack은 기존 EC2/RDS security group ID를 명시적으로 받아 ALB→EC2 80과 ECS client→RDS 5432 ingress rule만 소유한다. bootstrap stack은 `ApplicationOriginDomainName`이 설정된 경우에만 API/auth/Socket.IO behavior를 `AllViewerExceptHostHeader`로 전환한다. ECS API와 Worker에는 production의 slide practice/QnA flag를 명시하고 Service Connect에는 namespace ARN을 전달한다. protected resource의 `Modify`는 `Replacement: False`가 명시된 경우에만 허용한다. CI의 Guard validator는 unauthenticated GitHub raw installer 대신 AWS가 지원하는 Cargo 경로로 고정 버전 `3.1.2`를 설치한다.
+- Rationale: 기존 stateful resource의 stack 소유권과 direct-EC2 rollback을 유지하면서도 ECS candidate의 DB, legacy target, service discovery, runtime capability를 배포 전에 결정적으로 검증할 수 있다. origin verification header와 CloudFront prefix-list 제한은 그대로 유지한다.
+- Affected files: `infra/scripts/assert-cfn-change-set-safe.mjs`, 관련 test/workflow, `infra/aws/ecs-compute-single-az.yaml`, `infra/aws/main-production-bootstrap.yaml`, `docs/runbooks/ecs-single-az-cutover.md`, `docs/decision-log.md`.
+- Follow-up review notes: 실제 Change Set에서 두 ingress rule이 add-only인지, CloudFront distribution `Modify`가 `Replacement: False`인지, ALB access log의 host가 origin domain인지, ECS runtime config의 두 flag가 `true`인지, Service Connect endpoint가 `python-worker:8000`으로 해석되는지 확인한다.
+
+## ORBIT CloudFormation execution role boundary
+
+- Context: ECS 전환용 Plan/Apply workflow가 서로 다른 GitHub OIDC role을 사용하지만 `create-change-set`에 CloudFormation service role을 지정하지 않았다. 이 상태에서는 CloudFormation이 호출자의 임시 자격 증명을 사용하므로 Apply role이 ECS, EC2, ElastiCache, IAM 등 실제 리소스 생성 권한까지 직접 가져야 한다.
+- Options considered:
+  - Apply OIDC role에 모든 리소스 provisioning 권한을 직접 부여한다.
+  - Plan/Apply role을 하나로 합치고 `AdministratorAccess`를 부여한다.
+  - GitHub OIDC 역할은 Change Set 제어와 특정 역할에 대한 `iam:PassRole`만 담당하고, 실제 provisioning은 별도 CloudFormation execution role로 분리한다.
+- Final decision: repository variable `AWS_CLOUDFORMATION_EXECUTION_ROLE_ARN`을 필수 계약으로 추가하고 Plan workflow의 `create-change-set --role-arn`으로 고정한다. `DescribeChangeSet` 응답에는 execution role ARN이 없으므로 artifact parser에서 존재하지 않는 값을 검사하지 않는다. 대신 Plan role의 `iam:PassRole`을 execution role ARN 하나와 `iam:PassedToService=cloudformation.amazonaws.com`으로 제한하고, Apply role에는 Change Set 생성 권한과 `iam:PassRole`을 부여하지 않는다. `AWS_INFRA_PLAN_ROLE_ARN`, `AWS_INFRA_APPLY_ROLE_ARN`, `AWS_ECR_PUBLISH_ROLE_ARN`은 repository variable로 관리하되 역할은 서로 재사용하지 않는다. Pull request 정적 검증 job에는 OIDC token 권한을 주지 않고, Plan job은 `refs/heads/main` dispatch로 분리한다. Plan role trust는 `aud=sts.amazonaws.com`과 exact main-ref subject만 허용한다. Apply job은 `production` environment 승인을 유지하고 Apply role trust는 해당 environment의 OIDC subject만 허용한다. Apply의 Change Set ARN과 region은 job environment로 전달하고 형식을 검증한 뒤 shell에서만 참조한다.
+- Rationale: GitHub workflow 자격 증명이 직접 가질 수 있는 blast radius를 줄이고, Apply workflow가 임의의 service role을 새로 연결할 권한을 갖지 못하게 한다. production 승인자는 성공한 Plan workflow가 만든 Change Set ARN과 artifact를 함께 검토한다. CloudFormation service role은 stack에 연결된 이후 해당 stack의 후속 작업에도 사용되므로, 실행 역할 자체도 템플릿에 필요한 최소권한과 별도 변경 검토를 유지한다.
+- Affected files: `.github/workflows/aws-infrastructure-plan.yml`, `.github/workflows/aws-infrastructure-apply.yml`, `infra/scripts/assert-cfn-change-set-safe.mjs`, 관련 테스트, `docs/runbooks/ecs-single-az-cutover.md`, `docs/decision-log.md`.
+- Follow-up review notes: AWS에서 역할 네 개의 trust/permissions를 각각 검토하고 GitHub 변수를 등록한 뒤에만 실제 Change Set을 생성한다. 특히 Plan trust의 wildcard subject 부재와 main-ref exact match를 확인한다. `production` required reviewer를 지정하고 self-review 방지 정책을 확인한다. 기존 stack에 이미 service role이 연결되어 있다면 역할을 바꾸기 전 권한과 rollback 영향을 별도 검토한다.

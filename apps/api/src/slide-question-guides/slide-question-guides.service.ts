@@ -22,6 +22,7 @@ import { z } from "zod";
 
 import { DecksService } from "../decks/decks.service";
 import { JobsService } from "../jobs/jobs.service";
+import { assertAsyncJobAdmissionOpen } from "../jobs/async-job-admission";
 import { sha256Canonical } from "../practice-goals/evaluation-plan";
 
 const promptVersion = "slide-question-guide-v2";
@@ -43,6 +44,7 @@ export class SlideQuestionGuidesService {
   ) {}
 
   async create(projectId: string, actorUserId: string, body: unknown) {
+    assertAsyncJobAdmissionOpen();
     this.assertEnabled();
     const request = createSlideQuestionGuideRequestSchema.parse(body);
     const existing = await this.findByClientRequest(projectId, actorUserId, request.clientRequestId);
@@ -89,6 +91,7 @@ export class SlideQuestionGuidesService {
   }
 
   async autoCreate(projectId: string, actorUserId: string, body: unknown) {
+    assertAsyncJobAdmissionOpen();
     this.assertEnabled();
     const request = autoCreateSlideQuestionGuidesRequestSchema.parse(body);
     const { deck } = await this.decksService.getDeck(projectId);

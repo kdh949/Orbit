@@ -1432,6 +1432,64 @@ describe("DecksService", () => {
     });
   });
 
+  it("keeps OOXML-backed Deck mutations durable while admission is draining", async () => {
+    stubOrbitEnv();
+    vi.stubEnv("ASYNC_JOB_ADMISSION_MODE", "drain");
+    const dataSource = new InMemoryDeckDataSource();
+    const deck = createDeck();
+    const jobsService = {
+      create: vi.fn(),
+      update: vi.fn(),
+      getLatestPptxOoxmlSync: vi.fn(async () => null),
+    };
+    const enqueueSyncJob = vi.fn();
+    const service = new DecksService(
+      dataSource as unknown as DataSource,
+      jobsService as never,
+      enqueueSyncJob,
+    );
+
+    const initial = await service.putDeck(deck.projectId, { deck });
+    dataSource.templateBlueprintRows.push({
+      template_id: "template_file_1",
+      project_id: deck.projectId,
+      deck_id: deck.deckId,
+      blueprint_json: {
+        templateId: "template_file_1",
+        sourceFileId: "file_1",
+        currentPackageFileId: "file_current",
+        ooxmlSyncedDeckVersion: 1,
+        slides: [{ slideIndex: 1, sourceSlideIndex: 1, slots: [] }],
+      },
+    });
+
+    const patched = await service.appendPatch(deck.projectId, {
+      patch: createUpdateTitlePatch(deck, "drained patch"),
+    });
+    const replaced = await service.putDeck(deck.projectId, {
+      baseVersion: patched.deck.version,
+      deck: { ...patched.deck, title: "drained replacement" },
+    });
+    const restored = await service.restoreSnapshot(
+      deck.projectId,
+      initial.snapshot.snapshotId,
+    );
+    const state = await service.getOoxmlSyncState(deck.projectId);
+
+    expect(patched.deck.title).toBe("drained patch");
+    expect(replaced.deck.title).toBe("drained replacement");
+    expect(restored.deck.version).toBeGreaterThan(replaced.deck.version);
+    expect(patched).not.toHaveProperty("ooxmlSyncJob");
+    expect(replaced).not.toHaveProperty("ooxmlSyncJob");
+    expect(restored).not.toHaveProperty("ooxmlSyncJob");
+    expect(state.ooxmlSyncState).toMatchObject({
+      status: "stale",
+      retryable: true,
+    });
+    expect(jobsService.create).not.toHaveBeenCalled();
+    expect(enqueueSyncJob).not.toHaveBeenCalled();
+  });
+
   it("normalizes an imported full save, records its OOXML diff, and enqueues sync", async () => {
     stubOrbitEnv();
     const dataSource = new InMemoryDeckDataSource();

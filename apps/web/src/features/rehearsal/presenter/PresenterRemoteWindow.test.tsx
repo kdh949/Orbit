@@ -1,3 +1,4 @@
+import { createActivitySlide } from "@orbit/editor-core";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { p0AnimationDeck } from "./__fixtures__/animationDeck";
@@ -70,6 +71,26 @@ describe("PresenterRemoteWindow", () => {
     expect(html).toContain("audience-output-controls--collapsible");
     expect(html).not.toContain("Partial transcript");
     expect(html).not.toContain("rawAudio");
+  });
+
+  it("renders activity controls beside the keyword progress panel", () => {
+    const activitySlide = createActivitySlide(p0AnimationDeck, "pre-question");
+    const deck = {
+      ...p0AnimationDeck,
+      slides: [activitySlide],
+    };
+    const html = renderToStaticMarkup(
+      <PresenterRemoteWindow
+        deck={deck}
+        identity={identity}
+        initialState={createPresenterSlideshowState(deck)}
+      />,
+    );
+
+    expect(html).not.toContain("rehearsal-panel-live-slot");
+    expect(html).toMatch(
+      /class="rehearsal-panel presenter-remote-progress-panel"[^>]*>[\s\S]*?<\/div><\/section><section class="activity-presenter-panel"/,
+    );
   });
 
   it("마지막 슬라이드에서는 다음 슬라이드 번호 대신 없음을 표시한다", () => {

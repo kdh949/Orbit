@@ -1,0 +1,135 @@
+name: Plan AWS infrastructure
+
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - infra/aws/**
+      - infra/scripts/assert-cfn-change-set-safe.mjs
+      - infra/scripts/assert-cfn-change-set-safe.test.mjs
+      - .github/workflows/aws-infrastructure-apply.yml
+      - .github/workflows/aws-infrastructure-plan.yml
+  workflow_dispatch:
+    inputs:
+      stack_name:
+        description: Existing or new target stack name
+        required: true
+        type: string
+      template_file:
+        description: CloudFormation template path
+        required: true
+        type: choice
+        options:
+          - infra/aws/shared-services-single-az.yaml
+          - infra/aws/ecs-compute-single-az.yaml
+          - infra/aws/edge-waf-count-mode.yaml
+      region:
+        description: Deployment region (use us-east-1 for edge WAF)
+        required: true
+        default: ap-northeast-2
+        type: string
+      parameter_overrides:
+        description: Space-delimited CloudFormation ParameterKey=...,ParameterValue=... entries. Use only identifiers/ARNs, never secret values.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AWS_REGION: ${{ inputs.region || vars.AWS_REGION || 'ap-northeast-2' }}
+      TEMPLATE_FILE: ${{ inputs.template_file || 'infra/aws/shared-services-single-az.yaml' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install static IaC validators
+        run: |
+          set -euo pipefail
+          pipx install cfn-lint
+          cargo install cfn-guard --version 3.1.2 --locked
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: Run static IaC validators
+        run: |
+          set -euo pipefail
+          node --test infra/scripts/assert-cfn-change-set-safe.test.mjs
+          templates=("$TEMPLATE_FILE")
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            # The retained bootstrap stack is outside this additive cutover workflow.
+            templates=(
+              infra/aws/shared-services-single-az.yaml
+              infra/aws/ecs-compute-single-az.yaml
+              infra/aws/edge-waf-count-mode.yaml
+            )
+          fi
+          for template in "${templates[@]}"; do
+            cfn-lint "$template"
+            cfn-guard validate --data "$template" --rules infra/aws/cfn-guard-rules.guard
+          done
+
+  plan:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ inputs.region }}
+      AWS_STACK_NAME: ${{ inputs.stack_name }}
+      AWS_INFRA_PLAN_ROLE_ARN: ${{ vars.AWS_INFRA_PLAN_ROLE_ARN }}
+      AWS_CLOUDFORMATION_EXECUTION_ROLE_ARN: ${{ vars.AWS_CLOUDFORMATION_EXECUTION_ROLE_ARN }}
+      TEMPLATE_FILE: ${{ inputs.template_file }}
+      PARAMETER_OVERRIDES: ${{ inputs.parameter_overrides }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require approved ref and AWS deployment role configuration
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "AWS infrastructure plans must run from refs/heads/main" >&2
+            exit 1
+          fi
+          : "${AWS_INFRA_PLAN_ROLE_ARN:?Repository variable AWS_INFRA_PLAN_ROLE_ARN must be configured}"
+          : "${AWS_CLOUDFORMATION_EXECUTION_ROLE_ARN:?Repository variable AWS_CLOUDFORMATION_EXECUTION_ROLE_ARN must be configured}"
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_INFRA_PLAN_ROLE_ARN }}
+      - name: Validate template
+        run: aws cloudformation validate-template --template-body file://"$TEMPLATE_FILE" --region "$AWS_REGION" >/dev/null
+      - name: Create non-executing change set
+        id: change-set
+        run: |
+          set -euo pipefail
+          name="codex-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          change_set_type=CREATE
+          if aws cloudformation describe-stacks --stack-name "$AWS_STACK_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
+            change_set_type=UPDATE
+          fi
+          aws cloudformation create-change-set \
+            --stack-name "$AWS_STACK_NAME" \
+            --change-set-name "$name" \
+            --change-set-type "$change_set_type" \
+            --template-body "file://$TEMPLATE_FILE" \
+            --parameters $PARAMETER_OVERRIDES \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --role-arn "$AWS_CLOUDFORMATION_EXECUTION_ROLE_ARN" \
+            --region "$AWS_REGION" \
+            --query Id --output text > change-set-id.txt
+          echo "id=$(cat change-set-id.txt)" >> "$GITHUB_OUTPUT"
+      - name: Inspect protected resources
+        run: |
+          set -euo pipefail
+          aws cloudformation wait change-set-create-complete --change-set-name "${{ steps.change-set.outputs.id }}" --region "$AWS_REGION"
+          aws cloudformation describe-change-set --change-set-name "${{ steps.change-set.outputs.id }}" --region "$AWS_REGION" --output json > change-set.json
+          node infra/scripts/assert-cfn-change-set-safe.mjs change-set.json
+      - name: Upload change set evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudformation-change-set-${{ github.run_id }}
+          path: change-set.json
+          retention-days: 7

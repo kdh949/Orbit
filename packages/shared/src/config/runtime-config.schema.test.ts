@@ -4,6 +4,7 @@ import { runtimeConfigResponseSchema } from "./runtime-config.schema";
 
 describe("runtimeConfigResponseSchema", () => {
   const flags = {
+    ipadPresenterCompanionEnabled: true,
     adaptiveRehearsalCoachEnabled: false,
     focusedPracticeEnabled: false,
     challengeQnaEnabled: false,

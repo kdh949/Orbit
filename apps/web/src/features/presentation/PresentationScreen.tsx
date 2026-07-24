@@ -27,6 +27,7 @@ export function PresentationScreen(props: {
   deck: Deck | null;
   currentSlide: Slide | null;
   currentSlideIndex: number;
+  displayToolbar?: ReactNode;
   elapsedTimeInput: string;
   highlightedKeywordOccurrences?: Parameters<typeof RehearsalPanel>[0]["highlightedKeywordOccurrences"];
   infoCards: readonly PresenterInfoCardItem[];
@@ -50,7 +51,7 @@ export function PresentationScreen(props: {
   onTimeModeChange: (value: PresenterTimeMode) => void;
   panelSnapshot: SpeechTrackerSnapshot;
   presentationSession?: {
-    audienceUrl: string;
+    audienceUrl: string | null;
     displayPasscode: string | null;
     sessionId: string;
   };
@@ -111,6 +112,12 @@ export function PresentationScreen(props: {
         title="발표"
         totalElapsedInput={props.elapsedTimeInput}
       />
+
+      {props.displayToolbar ? (
+        <div className="rehearsal-display-toolbar">
+          {props.displayToolbar}
+        </div>
+      ) : null}
 
       <section className="rehearsal-presenter-layout">
         <PresenterStageSection

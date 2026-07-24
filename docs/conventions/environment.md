@@ -43,6 +43,17 @@ PRESENTATION_PASSCODE_ENCRYPTION_PREVIOUS_KEY_VERSION=
 
 `API_TRUST_PROXY_HOPS`는 API 앞에서 신뢰할 reverse proxy hop 수다. 직접 접속하는 local/test는 `0`, ALB 또는 단일 Nginx 뒤의 staging/production은 `1`을 사용한다. 실제 proxy 수보다 크게 설정하면 외부 `X-Forwarded-For`를 신뢰하게 되므로 배포 topology와 정확히 맞춰야 한다.
 
+`IPAD_PRESENTER_COMPANION_ENABLED=true | false`는 발표자 iPad companion의
+pairing API와 Web 진입점을 함께 제어한다. 기본값은 `true`다. `false`이면
+pairing 관련 API는 fail-closed하고 Web은 연결 UI를 표시하지 않으며, 기존 발표,
+리허설, 청중 출력은 계속 동작한다. 브라우저 runtime config에는
+`ipadPresenterCompanionEnabled` boolean만 노출하고 Redis 주소, credential
+수명, signing secret은 노출하지 않는다.
+
+`ASYNC_JOB_ADMISSION_MODE=accept | drain`은 신규 비동기 Job admission을 제어한다. `drain`은 새 Job을 만드는 API를 `503 ASYNC_JOB_ADMISSION_DRAINING`으로 거부한다. 단, Deck 저장·patch·snapshot restore의 자동 `pptx-ooxml-sync`는 저장을 막지 않고 Job row와 BullMQ Job을 생략하며, sync state를 수동 retry 가능한 `stale`로 둔다. 이 값은 작업자 교체와 Redis migration 직전에만 운영 승인 절차로 변경한다.
+
+`S3_BUCKET`은 기존 assets bucket 호환 key다. 신규 배포는 `S3_ASSETS_BUCKET`을 일반 asset bucket으로, `S3_PRIVATE_AUDIO_BUCKET`을 private-audio bucket으로 사용한다. 새 원음은 `raw/`, evidence 파생물은 `evidence/` prefix로 전용 bucket에 저장하고, prefix 없는 기존 audio는 기존 assets bucket에서 읽는다. `S3_PRIVATE_AUDIO_BUCKET`이 비어 있으면 dedicated bucket을 아직 활성화하지 않고 기존 bucket만 사용한다.
+
 ## driver 값
 
 ```txt

@@ -248,6 +248,14 @@ export class ActivityRunsService {
     if (!session || session.session_status === "ended") {
       throw new NotFoundException("Presentation session not found");
     }
+    if (
+      session.session_purpose !== "presentation" ||
+      !session.audience_access_enabled
+    ) {
+      throw new ConflictException(
+        "Audience access must be enabled for activity runs",
+      );
+    }
     const now = Date.now();
     if (new Date(session.expires_at).getTime() <= now) {
       throw new ConflictException("Presentation session has expired");

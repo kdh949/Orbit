@@ -109,6 +109,46 @@ const presenterDeck = {
 };
 
 test.describe("P1 presenter screen and slide window", () => {
+  test("keeps the live presentation route synchronized across slide, screen-share, and black output", async ({
+    page,
+  }) => {
+    await installScreenShareMock(page);
+    const { project } = await createAuthenticatedProject(page, {
+      deck: presenterDeck as Deck,
+      label: "live-presentation-sync",
+    });
+
+    await page.goto(`/presentation/${project.projectId}`);
+    await page.getByRole("button", { name: "마이크 없이 시작" }).click();
+    await expect(page.getByText("발표 · 스크립트와 타이머")).toBeVisible();
+
+    const slideWindowPromise = page.waitForEvent("popup");
+    await page.getByRole("button", { name: "슬라이드 창 열기" }).click();
+    const slideWindow = await slideWindowPromise;
+    await slideWindow.waitForLoadState();
+
+    await expect(
+      slideWindow.locator('[data-slide-id="slide_presenter_1"]'),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "다음 슬라이드" }).click();
+    await expect(
+      slideWindow.locator('[data-slide-id="slide_presenter_2"]'),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "청중 화면 가리기" }).click();
+    await expect(slideWindow.getByLabel("청중 화면 가림")).toBeVisible();
+
+    await page.getByRole("button", { name: "슬라이드로 돌아가기" }).click();
+    await page.getByRole("button", { name: "웹·실습 보여주기" }).click();
+    await expect(
+      slideWindow.getByLabel("공유 중인 웹 또는 실습 화면"),
+    ).toBeVisible();
+
+    const slideWindowUrl = new URL(slideWindow.url());
+    expect(slideWindowUrl.pathname).toBe(`/present/${presenterDeck.deckId}`);
+    expect(slideWindowUrl.searchParams.get("sessionId")).toBeTruthy();
+  });
+
   test("keeps the slide-only window synchronized without exposing presenter notes", async ({
     page,
   }) => {

@@ -3,6 +3,7 @@ import {
   attachAudienceStreamToWindow,
   audienceStreamBridgeKey,
   detachAudienceStreamFromWindow,
+  observeAudienceStreamInWindow,
   registerAudienceStreamBridge,
 } from "./audienceStreamBridge";
 
@@ -23,7 +24,12 @@ describe("audienceStreamBridge", () => {
 
     expect(registration.ok).toBe(true);
     expect(
-      attachAudienceStreamToWindow({ identity, stream, targetWindow }),
+      attachAudienceStreamToWindow({
+        identity,
+        shareEpochId: "share_1",
+        stream,
+        targetWindow,
+      }),
     ).toEqual({ ok: true });
     expect(onAttach).toHaveBeenCalledWith(stream);
     expect(
@@ -44,6 +50,7 @@ describe("audienceStreamBridge", () => {
     expect(
       attachAudienceStreamToWindow({
         identity: { ...identity, sessionId: "session_other" },
+        shareEpochId: "share_1",
         stream,
         targetWindow,
       }),
@@ -52,17 +59,28 @@ describe("audienceStreamBridge", () => {
 
   it("returns typed failures for closed and unprepared windows", () => {
     expect(
-      attachAudienceStreamToWindow({ identity, stream, targetWindow: null }),
+      attachAudienceStreamToWindow({
+        identity,
+        shareEpochId: "share_1",
+        stream,
+        targetWindow: null,
+      }),
     ).toEqual({ code: "window-closed", ok: false });
     expect(
       attachAudienceStreamToWindow({
         identity,
+        shareEpochId: "share_1",
         stream,
         targetWindow: { closed: true },
       }),
     ).toEqual({ code: "window-closed", ok: false });
     expect(
-      attachAudienceStreamToWindow({ identity, stream, targetWindow: {} }),
+      attachAudienceStreamToWindow({
+        identity,
+        shareEpochId: "share_1",
+        stream,
+        targetWindow: {},
+      }),
     ).toEqual({ code: "bridge-unavailable", ok: false });
   });
 
@@ -92,7 +110,12 @@ describe("audienceStreamBridge", () => {
       onDetach,
       targetWindow,
     });
-    attachAudienceStreamToWindow({ identity, stream, targetWindow });
+    attachAudienceStreamToWindow({
+      identity,
+      shareEpochId: "share_1",
+      stream,
+      targetWindow,
+    });
 
     if (registration.ok) {
       registration.unregister();
@@ -100,6 +123,40 @@ describe("audienceStreamBridge", () => {
     }
 
     expect(onDetach).toHaveBeenCalledTimes(1);
+  });
+
+  it("notifies same-origin observers with the active share epoch", () => {
+    const targetWindow = {};
+    const onChange = vi.fn();
+    registerAudienceStreamBridge({
+      identity,
+      onAttach: vi.fn(),
+      onDetach: vi.fn(),
+      targetWindow,
+    });
+
+    const observation = observeAudienceStreamInWindow({
+      identity,
+      onChange,
+      targetWindow,
+    });
+    expect(observation.ok).toBe(true);
+    expect(onChange).toHaveBeenLastCalledWith(null);
+
+    attachAudienceStreamToWindow({
+      identity,
+      shareEpochId: "share_1",
+      stream,
+      targetWindow,
+    });
+    expect(onChange).toHaveBeenLastCalledWith({
+      shareEpochId: "share_1",
+      stream,
+    });
+
+    detachAudienceStreamFromWindow({ identity, targetWindow });
+    expect(onChange).toHaveBeenLastCalledWith(null);
+    if (observation.ok) observation.unsubscribe();
   });
 
   it("does not overwrite an existing receiver bridge", () => {

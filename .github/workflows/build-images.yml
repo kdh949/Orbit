@@ -31,6 +31,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
   packages: write
 
 concurrency:
@@ -172,3 +173,47 @@ jobs:
             ghcr.io/na-man-mu-303-team2/orbit-web:${{ github.ref_name }}
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
+
+  publish-ecr:
+    # ECS tasks consume an immutable repository digest. This job copies the
+    # already-built main manifest list to the production ECR repositories; it
+    # does not deploy or change CloudFormation.
+    if: github.ref_name == 'main'
+    needs: merge
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [api, worker, python-worker]
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-2' }}
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_ECR_PUBLISH_ROLE_ARN }}
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Copy immutable manifest list and record digest
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          set -euo pipefail
+          source="ghcr.io/na-man-mu-303-team2/orbit-${{ matrix.service }}:${{ github.sha }}"
+          repository="orbit/${{ matrix.service }}"
+          target="${ECR_REGISTRY}/${repository}:${{ github.sha }}"
+          docker buildx imagetools create -t "$target" "$source"
+          digest="$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="${{ github.sha }}" --query 'imageDetails[0].imageDigest' --output text)"
+          test "$digest" != "None"
+          printf '%s\n' "${ECR_REGISTRY}/${repository}@${digest}" > image-digest.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ecr-digest-${{ matrix.service }}
+          path: image-digest.txt
+          retention-days: 7
