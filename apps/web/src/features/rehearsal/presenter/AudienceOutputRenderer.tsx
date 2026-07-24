@@ -8,12 +8,16 @@ import {
 import type { ScreenShareEndedReason } from "./presentationChannel";
 import type { PresenterSlideshowState } from "./presenterStateStore";
 import { SlideshowRenderer } from "./SlideshowRenderer";
+import type { SurfaceSize } from "../../presenter-companion/surfaceGeometry";
 
 export const audienceStreamWaitTimeoutMs = 5000;
 
 export function AudienceOutputRenderer(props: {
   deck: Deck;
   onScreenShareFailure?: (reason: ScreenShareEndedReason) => void;
+  onScreenShareContentSizeChange?: (
+    size: SurfaceSize | null,
+  ) => void;
   scale: number;
   state: PresenterSlideshowState;
   stream?: MediaStream | null;
@@ -22,6 +26,7 @@ export function AudienceOutputRenderer(props: {
   const {
     deck,
     onScreenShareFailure,
+    onScreenShareContentSizeChange,
     scale,
     state,
     stream = null,
@@ -53,6 +58,7 @@ export function AudienceOutputRenderer(props: {
         onPlaybackFailed={(reason) =>
           screenShareFailureRef.current?.(reason)
         }
+        onContentSizeChange={onScreenShareContentSizeChange}
         stream={stream}
       />
     ) : (
@@ -108,21 +114,41 @@ export function AudienceOutputRenderer(props: {
 }
 
 export function AudienceScreenShareVideo(props: {
+  onContentSizeChange?: (size: SurfaceSize | null) => void;
   onPlaybackFailed?: (reason: "playback-failed") => void;
   stream: MediaStream;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playbackFailureRef = useRef(props.onPlaybackFailed);
   playbackFailureRef.current = props.onPlaybackFailed;
+  const contentSizeChangeRef = useRef(props.onContentSizeChange);
+  contentSizeChangeRef.current = props.onContentSizeChange;
   const [playbackFailed, setPlaybackFailed] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    return attachAudienceVideoStream(video, props.stream, (reason) => {
+    const publishContentSize = () => {
+      if (video.videoWidth <= 0 || video.videoHeight <= 0) return;
+      contentSizeChangeRef.current?.({
+        height: video.videoHeight,
+        width: video.videoWidth,
+      });
+    };
+    contentSizeChangeRef.current?.(null);
+    video.addEventListener("loadedmetadata", publishContentSize);
+    video.addEventListener("resize", publishContentSize);
+    const detach = attachAudienceVideoStream(video, props.stream, (reason) => {
       setPlaybackFailed(true);
       playbackFailureRef.current?.(reason);
     });
+    publishContentSize();
+    return () => {
+      video.removeEventListener("loadedmetadata", publishContentSize);
+      video.removeEventListener("resize", publishContentSize);
+      detach();
+      contentSizeChangeRef.current?.(null);
+    };
   }, [props.stream]);
 
   return (

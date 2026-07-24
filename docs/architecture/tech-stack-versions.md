@@ -45,6 +45,7 @@
 | ORM | TypeORM | `^0.3.25` | `apps/api/package.json` |
 | PostgreSQL driver | pg | `^8.16.2` | `apps/api/package.json` |
 | Realtime server | Socket.IO | `^4.8.1` | `apps/api/package.json` |
+| Realtime scaling adapter | Socket.IO Redis adapter | `^8.3.0` | `apps/api/package.json` |
 | Password hashing | Argon2 | `^0.44.0` | `apps/api/package.json` |
 | Session cache client | ioredis | `^5.11.1` | `apps/api/package.json` |
 | Cookie parsing/signing | cookie-parser | `^1.4.7` | `apps/api/package.json` |

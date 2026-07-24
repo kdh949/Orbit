@@ -342,13 +342,15 @@ pnpm env:sync:stg:apply
 `environment-only` mode는 다음 순서로 동작한다.
 
 1. GitHub dispatch의 `develop` SHA와 서버 HEAD가 같은지 확인한다.
-2. 필수값 누락·공백과 `APP_ENV=staging`을 확인한다.
-3. `docker compose config --quiet`로 최종 Compose interpolation을 확인한다.
-4. 기존 이미지의 API/Worker Zod schema와 Python worker Pydantic schema를 임시 컨테이너에서 실행한다.
-5. 모든 preflight가 성공한 경우에만 API, Worker, Python worker, Web을 `--no-build --force-recreate`로 재생성한다.
-6. API와 root health check가 통과해야 workflow가 성공한다.
+2. backend `IMAGE_TAG`는 `develop`, Web `WEB_IMAGE_TAG`는 검증된 서버 HEAD로 배포 모드 분기 전에 고정한다.
+3. 필수값 누락·공백과 `APP_ENV=staging`을 확인한다.
+4. `docker compose config --quiet`로 최종 Compose interpolation을 확인한다.
+5. Compose가 해석한 API, Worker, Python worker, Web 이미지 네 개가 로컬에 모두 존재하는지 확인한다.
+6. 기존 이미지의 API/Worker Zod schema와 Python worker Pydantic schema를 임시 컨테이너에서 실행한다.
+7. 모든 preflight가 성공한 경우에만 API, Worker, Python worker, Web을 `--no-build --pull never --force-recreate`로 재생성한다.
+8. API와 root health check가 통과해야 workflow가 성공한다.
 
-1~4단계가 실패하면 실행 중인 컨테이너는 교체하지 않는다. 필수 secret 삭제·공백, 잘못된 enum·URL·숫자 범위는 오류 key와 이유를 GitHub Actions log에서 확인할 수 있다. 선택값 삭제는 runtime default가 허용하는 경우 해당 기본값으로 재적용된다.
+1~6단계가 실패하면 실행 중인 컨테이너는 교체하지 않는다. 이미지가 하나라도 없으면 누락된 image reference만 출력하고 `docker compose up`을 실행하지 않는다. 필수 secret 삭제·공백, 잘못된 enum·URL·숫자 범위는 오류 key와 이유를 GitHub Actions log에서 확인할 수 있다. 선택값 삭제는 runtime default가 허용하는 경우 해당 기본값으로 재적용된다.
 
 Doppler webhook은 동일 이벤트를 한 번 넘게 전달할 수 있다. workflow concurrency는 실행 중인 배포를 취소하지 않고 직렬화하며, 서버 script도 같은 `flock`을 사용한다. 따라서 중복 이벤트가 서비스 교체 중인 실행을 강제 중단하지는 않지만, 유효한 이벤트가 반복 전달되면 순서대로 재생성될 수 있다.
 

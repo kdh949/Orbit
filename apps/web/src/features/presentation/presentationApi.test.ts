@@ -3,11 +3,13 @@ import { createDemoDeck } from "@orbit/editor-core";
 
 import { activityApi } from "../activity-slides/api/activityApi";
 import {
+  closePresenterCompanionSession,
   completePresentationWithoutAudio,
-  createPresentationRuntime,
+  ensurePresenterCompanionSession,
   fetchOrCreatePresentationDeck,
   getPresentationReport,
   getPresentationSessionRun,
+  startPresentationRuntime,
   uploadPresentationRecording,
 } from "./presentationApi";
 
@@ -40,13 +42,42 @@ describe("presentationApi", () => {
     expect(String(fetcher.mock.calls[0]?.[0])).not.toContain("rehearsal");
   });
 
-  it("creates one audience session and one isolated presentation run with the session deck version", async () => {
+  it("ensures a companion-only presentation session during preflight", async () => {
     const createSession = vi
       .spyOn(activityApi, "createSession")
       .mockResolvedValue({
-        audienceUrl: "/audience/session_live",
-        session: presentationSession(),
+        audienceUrl: null,
+        session: {
+          ...presentationSession(),
+          audienceAccessEnabled: false,
+        },
       });
+
+    await expect(
+      ensurePresenterCompanionSession({
+        deckId: "deck_1",
+        projectId: "project_1",
+        sessionPurpose: "presentation",
+      }),
+    ).resolves.toEqual({
+      audienceAccessEnabled: false,
+      audienceUrl: null,
+      deckId: "deck_1",
+      deckVersion: 4,
+      sessionId: "session_live",
+      sessionPurpose: "presentation",
+    });
+
+    expect(createSession).toHaveBeenCalledOnce();
+    expect(createSession).toHaveBeenCalledWith("project_1", {
+      audienceAccessEnabled: false,
+      deckId: "deck_1",
+      reuseCurrent: true,
+      sessionPurpose: "presentation",
+    });
+  });
+
+  it("starts one isolated presentation run with the preflight session deck version", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(
@@ -55,26 +86,26 @@ describe("presentationApi", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      createPresentationRuntime({
-        deckId: "deck_1",
-        deckVersion: 3,
+      startPresentationRuntime({
         projectId: "project_1",
         recordingMode: "microphone",
+        session: {
+          audienceAccessEnabled: false,
+          audienceUrl: null,
+          deckId: "deck_1",
+          deckVersion: 4,
+          sessionId: "session_live",
+          sessionPurpose: "presentation",
+        },
       }),
     ).resolves.toEqual({
-      audienceUrl: "/audience/session_live",
+      audienceUrl: null,
       recordingMode: "microphone",
       runId: "presentation_run_1",
       sessionId: "session_live",
       status: "created",
     });
 
-    expect(createSession).toHaveBeenCalledOnce();
-    expect(createSession).toHaveBeenCalledWith("project_1", {
-      accessMode: "public",
-      deckId: "deck_1",
-      reuseCurrent: true,
-    });
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
       "/api/v1/projects/project_1/presentation-sessions/session_live/runs",
@@ -84,6 +115,34 @@ describe("presentationApi", () => {
       recordingMode: "microphone",
     });
     expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain("rehearsal");
+  });
+
+  it("closes the persisted session independently from a presentation run", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        session: {
+          ...presentationSession(),
+          closedAt: now,
+          endedAt: now,
+          status: "ended",
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await closePresenterCompanionSession({
+      projectId: "project_1",
+      sessionId: "session_live",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/projects/project_1/presentation-sessions/session_live/close",
+      expect.objectContaining({
+        body: "{}",
+        credentials: "include",
+        method: "POST",
+      }),
+    );
   });
 
   it("uploads microphone audio and completes the matching run", async () => {
@@ -450,6 +509,8 @@ function presentationSession() {
     presenterUserId: "user_1",
     createdBy: "user_1",
     status: "live" as const,
+    sessionPurpose: "presentation" as const,
+    audienceAccessEnabled: true,
     accessMode: "public" as const,
     startsAt: now,
     expiresAt: "2026-07-31T00:00:00.000Z",

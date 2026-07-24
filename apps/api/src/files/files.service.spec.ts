@@ -182,6 +182,90 @@ describe("FilesService", () => {
     );
   });
 
+  it("opens only image content with a companion-renderable purpose", async () => {
+    const getObjectStream = vi.fn(async () => ({
+      body: Readable.from(Uint8Array.from([1, 2, 3])),
+      contentLength: 3,
+      contentType: "image/svg+xml",
+    }));
+    const { repository } = createAssetRepository([
+      {
+        fileId: "file_companion_svg",
+        projectId: demoProject.projectId,
+        storageKey:
+          "projects/project_demo_created/assets/file_companion_svg.svg",
+        originalName: "diagram.svg",
+        mimeType: "image/svg+xml",
+        size: 3,
+        url: "/api/v1/projects/project_demo_created/assets/file_companion_svg/content",
+        purpose: "design-asset",
+        status: "uploaded",
+        createdAt: new Date("2026-07-20T01:00:00.000Z"),
+        uploadedAt: new Date("2026-07-20T01:00:00.000Z"),
+      } as ProjectAssetEntity,
+    ]);
+    const service = new FilesService(
+      repository,
+      {
+        getAccessibleProject: vi.fn(async () => demoProject),
+      } as unknown as ProjectsService,
+      createStorage({ getObjectStream }),
+    );
+
+    await expect(
+      service.openCompanionRenderableAssetContent(
+        demoProject.projectId,
+        "file_companion_svg",
+      ),
+    ).resolves.toMatchObject({
+      status: "ok",
+      contentType: "image/svg+xml",
+    });
+    expect(getObjectStream).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["presentation-audio", "audio/webm"],
+    ["report-result", "image/png"],
+    ["design-asset", "application/pdf"],
+  ] as const)(
+    "hides %s %s content from the companion asset boundary",
+    async (purpose, mimeType) => {
+      const { repository } = createAssetRepository([
+        {
+          fileId: "file_companion_blocked",
+          projectId: demoProject.projectId,
+          storageKey:
+            "projects/project_demo_created/assets/file_companion_blocked",
+          originalName: "blocked",
+          mimeType,
+          size: 3,
+          url: "/blocked",
+          purpose,
+          status: "uploaded",
+          createdAt: new Date("2026-07-20T01:00:00.000Z"),
+          uploadedAt: new Date("2026-07-20T01:00:00.000Z"),
+        } as ProjectAssetEntity,
+      ]);
+      const storage = createStorage();
+      const service = new FilesService(
+        repository,
+        {
+          getAccessibleProject: vi.fn(async () => demoProject),
+        } as unknown as ProjectsService,
+        storage,
+      );
+
+      await expect(
+        service.openCompanionRenderableAssetContent(
+          demoProject.projectId,
+          "file_companion_blocked",
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(storage.getObjectStream).not.toHaveBeenCalled();
+    },
+  );
+
   it("returns not-modified without opening storage when the validator matches", async () => {
     const getObjectStream = vi.fn(async () => ({
       body: Readable.from(Uint8Array.from([1, 2, 3])),
@@ -287,14 +371,43 @@ describe("FilesService", () => {
 
     expect(storage.createUploadUrl).toHaveBeenCalledWith(
       expect.objectContaining({
-        key: `rehearsals/2026-07-16/${demoProject.projectId}/run_123/audio.ogg`,
+        key: `raw/rehearsals/2026-07-16/${demoProject.projectId}/run_123/audio.ogg`,
         contentType: "audio/ogg",
       }),
     );
     expect(assets[0]).toMatchObject({
       purpose: "rehearsal-audio",
-      storageKey: `rehearsals/2026-07-16/${demoProject.projectId}/run_123/audio.ogg`,
+      storageKey: `raw/rehearsals/2026-07-16/${demoProject.projectId}/run_123/audio.ogg`,
     });
+  });
+
+  it("creates generic private-audio uploads under the raw lifecycle prefix", async () => {
+    const { assets, service, storage } = createService({
+      getAccessibleProject: vi.fn(async () => demoProject),
+    });
+
+    await service.createUploadUrl(demoProject.projectId, {
+      originalName: "focused-attempt.webm",
+      mimeType: "audio/webm",
+      size: 1024,
+      purpose: "focused-practice-audio",
+    });
+
+    expect(storage.createUploadUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: expect.stringMatching(
+          new RegExp(
+            `^raw/projects/${demoProject.projectId}/assets/file_.+-focused-attempt\\.webm$`,
+          ),
+        ),
+        purpose: "focused-practice-audio",
+      }),
+    );
+    expect(assets[0].storageKey).toMatch(
+      new RegExp(
+        `^raw/projects/${demoProject.projectId}/assets/file_.+-focused-attempt\\.webm$`,
+      ),
+    );
   });
 
   it("hides private audio from generic complete, get, list, and content boundaries", async () => {
@@ -435,7 +548,7 @@ describe("FilesService", () => {
 
     expect(result).toMatchObject({
       storageKey:
-        "rehearsals/2026-07-18/project_demo_created/run_123/volume-10000-12000.wav",
+        "evidence/rehearsals/2026-07-18/project_demo_created/run_123/volume-10000-12000.wav",
       contentType: "audio/wav",
       created: true,
     });

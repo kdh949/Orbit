@@ -50,14 +50,44 @@ describe("audienceLinkApi", () => {
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(JSON.parse(String(request.body))).toEqual({
       accessMode: "passcode",
+      audienceAccessEnabled: true,
       deckId: "deck_1",
       expiresAt: "2026-07-31T00:00:00.000Z",
       passcode: "2468",
+      sessionPurpose: "presentation",
       startsAt: now
     });
   });
 
-  it("omits passcodes for public sessions and closes through the new endpoint", async () => {
+  it("enables audience access on an existing companion session without replacing it", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(now));
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      session: { ...sessionFixture(), audienceAccessEnabled: true }
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(createAudienceAccessSession({
+      accessMode: "public",
+      deckId: "deck_1",
+      durationDays: 1,
+      projectId: "project_1",
+      sessionId: "session_1"
+    })).resolves.toMatchObject({
+      audienceUrl: "/audience/session_1",
+      session: { sessionId: "session_1" }
+    });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "/api/v1/projects/project_1/presentation-sessions/session_1/access"
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: "PATCH" });
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).not.toHaveProperty(
+      "deckId"
+    );
+  });
+
+  it("omits passcodes for public sessions and disables only audience access", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(now));
     const fetchMock = vi
@@ -68,10 +98,7 @@ describe("audienceLinkApi", () => {
       }))
       .mockResolvedValueOnce(jsonResponse({ session: {
         ...sessionFixture(),
-        closedAt: now,
-        endedAt: now,
-        rawResponsesDeleteAfter: "2026-10-15T00:00:00.000Z",
-        status: "ended"
+        audienceAccessEnabled: false
       } }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -90,9 +117,12 @@ describe("audienceLinkApi", () => {
       "passcode"
     );
     expect(fetchMock.mock.calls[1]?.[0]).toBe(
-      "/api/v1/projects/project_1/presentation-sessions/session_1/close"
+      "/api/v1/projects/project_1/presentation-sessions/session_1/access"
     );
-    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ method: "POST" });
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ method: "PATCH" });
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      audienceAccessEnabled: false
+    });
   });
 });
 
@@ -105,6 +135,8 @@ function sessionFixture() {
     presenterUserId: "user_1",
     createdBy: "user_1",
     status: "live" as const,
+    sessionPurpose: "presentation" as const,
+    audienceAccessEnabled: true,
     accessMode: "passcode" as const,
     startsAt: now,
     expiresAt: "2026-07-31T00:00:00.000Z",

@@ -2,9 +2,11 @@ import {
   WebsocketEvent,
   WebsocketEventType,
   PresentationActivityEvent,
+  PresentationCompanionEvent,
   demoIds,
   nowIso,
   presentationActivityEventSchema,
+  presentationCompanionEventSchema,
   websocketEventSchema
 } from "@orbit/shared";
 
@@ -18,6 +20,30 @@ export function presentationPresenterRoomId(sessionId: string): string {
 
 export function presentationAudienceRoomId(sessionId: string): string {
   return `presentation:${sessionId}:audience`;
+}
+
+export function presentationCompanionAuthorityRoomId(
+  sessionId: string,
+  authorityEpochId: string
+): string {
+  return `presentation:${roomSegment(sessionId)}:companion-authority:${roomSegment(
+    authorityEpochId
+  )}`;
+}
+
+export function presentationCompanionRoomId(
+  sessionId: string,
+  pairingGeneration: number
+): string {
+  if (
+    !Number.isSafeInteger(pairingGeneration) ||
+    pairingGeneration <= 0
+  ) {
+    throw new Error("Companion generation must be a positive integer");
+  }
+  return `presentation:${roomSegment(
+    sessionId
+  )}:companion:${pairingGeneration}`;
 }
 
 export function parsePresentationActivityEvent(
@@ -41,4 +67,24 @@ export function createRealtimeEvent(input: {
     payload: input.payload ?? {},
     sentAt: nowIso()
   });
+}
+
+export function createPresentationCompanionEvent(input: {
+  type: PresentationCompanionEvent["type"];
+  roomId: string;
+  sessionId: string;
+  userId: string;
+  payload: unknown;
+}): PresentationCompanionEvent {
+  return presentationCompanionEventSchema.parse({
+    ...input,
+    sentAt: nowIso()
+  });
+}
+
+function roomSegment(value: string): string {
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(value)) {
+    throw new Error("Realtime room segment is invalid");
+  }
+  return value;
 }

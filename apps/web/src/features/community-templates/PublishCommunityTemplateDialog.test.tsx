@@ -54,6 +54,10 @@ describe("PublishCommunityTemplateDialog", () => {
 
     expect(html).toContain("프로젝트 공유하기");
     expect(html).toContain("공개할 프로젝트");
+    expect(html).toContain(
+      'aria-labelledby="community-template-publish-source-heading"',
+    );
+    expect(html).not.toContain("<legend");
     expect(html).toContain(source.title);
     expect(html).toContain("템플릿 이름");
     expect(html).toContain("대표 주제");

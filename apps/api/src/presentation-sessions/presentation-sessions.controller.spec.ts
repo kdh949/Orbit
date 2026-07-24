@@ -32,9 +32,13 @@ describe("PresentationSessionsController", () => {
   it("allows an owner or editor to reconnect to a deck-scoped current session", async () => {
     const { controller, presentationSessionsService, request } = createController();
 
-    await controller.getCurrent("project_1", "deck_1", request);
+    await controller.getCurrent("project_1", "deck_1", undefined, request);
 
-    expect(presentationSessionsService.getCurrent).toHaveBeenCalledWith("project_1", "deck_1");
+    expect(presentationSessionsService.getCurrent).toHaveBeenCalledWith(
+      "project_1",
+      "deck_1",
+      "presentation",
+    );
   });
 
   it("does not allow a viewer to create a presentation session", async () => {
@@ -43,7 +47,11 @@ describe("PresentationSessionsController", () => {
     await expect(
       controller.create(
         "project_1",
-        { deckId: "deck_1", accessMode: "public" },
+        {
+          deckId: "deck_1",
+          audienceAccessEnabled: true,
+          accessMode: "public",
+        },
         request
       )
     ).rejects.toBeInstanceOf(ForbiddenException);
@@ -55,14 +63,23 @@ describe("PresentationSessionsController", () => {
 
     await controller.create(
       "project_1",
-      { deckId: "deck_1", accessMode: "public" },
+      {
+        deckId: "deck_1",
+        audienceAccessEnabled: true,
+        accessMode: "public",
+      },
       request
     );
 
     expect(presentationSessionsService.create).toHaveBeenCalledWith(
       "project_1",
       "user_1",
-      { deckId: "deck_1", accessMode: "public" }
+      {
+        deckId: "deck_1",
+        sessionPurpose: "presentation",
+        audienceAccessEnabled: true,
+        accessMode: "public",
+      },
     );
   });
 });

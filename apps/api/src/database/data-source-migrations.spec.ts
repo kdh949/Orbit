@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { databaseOptions } from "./data-source";
 
 describe("database migration registry", () => {
-  it("registers the latest community migrations in order", () => {
+  it("registers the latest migrations in order", () => {
     const migrations = databaseOptions.migrations;
     expect(Array.isArray(migrations)).toBe(true);
     const migrationNames = Array.isArray(migrations)
@@ -24,6 +24,15 @@ describe("database migration registry", () => {
     ).toBeLessThan(
       migrationNames.indexOf("AddCommunityCategoriesAndTags2026072107000"),
     );
-    expect(latest).toBe("AddCommunityCategoriesAndTags2026072107000");
+    expect(
+      migrationNames.indexOf("AddCommunityCategoriesAndTags2026072107000"),
+    ).toBeLessThan(
+      migrationNames.indexOf(
+        "AddPresentationSessionPurposeAndAudienceAccess2026072301000",
+      ),
+    );
+    expect(latest).toBe(
+      "AddPresentationSessionPurposeAndAudienceAccess2026072301000",
+    );
   });
 });

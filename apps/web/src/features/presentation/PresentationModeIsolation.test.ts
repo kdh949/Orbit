@@ -18,7 +18,12 @@ describe("presentation mode isolation", () => {
   });
 
   it("keeps activity slides, exit protection, and reports on one presentation session", () => {
-    expect(presentationWorkspaceSource).toContain("presentationSession={runtimeRef.current ?? undefined}");
+    expect(presentationWorkspaceSource).toContain(
+      "presentationSession={presenterSessionRef.current ?? undefined}",
+    );
+    expect(presentationWorkspaceSource).toContain(
+      "await ensurePresentationSession()",
+    );
     expect(presentationWorkspaceSource).toContain('window.addEventListener("beforeunload"');
     expect(presentationWorkspaceSource).toContain("completePresentationWithoutAudio");
     expect(presentationWorkspaceSource).toContain("uploadPresentationRecording");

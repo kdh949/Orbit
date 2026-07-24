@@ -49,7 +49,9 @@ describe("ActivityPresenterPanel", () => {
     });
     expect(activityApi.createSession).toHaveBeenCalledWith("project_demo", {
       accessMode: "public",
-      deckId: "deck_demo"
+      audienceAccessEnabled: true,
+      deckId: "deck_demo",
+      sessionPurpose: "presentation",
     });
     expect(activityApi.updateRunStatus).toHaveBeenCalledWith(
       "project_demo",
@@ -118,6 +120,34 @@ describe("ActivityPresenterPanel", () => {
       "session_live",
       slide.activity.activityId
     );
+  });
+
+  it("requires explicit audience enablement for a companion-only presentation session", async () => {
+    const slide = createActivitySlide(createDemoDeck(), "poll");
+    vi.spyOn(activityApi, "getCurrentSession").mockResolvedValue({
+      audienceUrl: null,
+      session: {
+        ...presentationSession(),
+        audienceAccessEnabled: false
+      }
+    });
+    const createSession = vi.spyOn(activityApi, "createSession");
+    const ensureRun = vi.spyOn(activityApi, "ensureRun");
+
+    await expect(loadActivityPresenterRuntime({
+      activityId: slide.activity.activityId,
+      autoStart: true,
+      deckId: "deck_demo",
+      deckVersion: 1,
+      presentationSession: {
+        audienceUrl: null,
+        sessionId: "session_1"
+      },
+      projectId: "project_demo"
+    })).resolves.toBeNull();
+
+    expect(createSession).not.toHaveBeenCalled();
+    expect(ensureRun).not.toHaveBeenCalled();
   });
 
   it("replaces a stale session when the current Deck adds the requested Activity", async () => {
@@ -372,6 +402,8 @@ function presentationSession() {
     presenterUserId: "user_1",
     createdBy: "user_1",
     status: "live" as const,
+    sessionPurpose: "presentation" as const,
+    audienceAccessEnabled: true,
     accessMode: "public" as const,
     startsAt: "2026-07-18T00:00:00.000Z",
     expiresAt: "2026-07-19T00:00:00.000Z",

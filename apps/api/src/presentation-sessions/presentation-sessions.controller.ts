@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Query, Req, UnauthorizedExce
 import {
   createPresentationSessionRequestSchema,
   deckIdSchema,
+  presentationSessionPurposeSchema,
   updatePresentationSessionAccessRequestSchema
 } from "@orbit/shared";
 import type { Request } from "express";
@@ -28,12 +29,20 @@ export class PresentationSessionsController {
   async getCurrent(
     @Param("projectId") projectId: string,
     @Query("deckId") rawDeckId: string,
+    @Query("sessionPurpose") rawSessionPurpose: string | undefined,
     @Req() request: SignedCookieRequest
   ) {
     const deckId = deckIdSchema.parse(rawDeckId);
+    const sessionPurpose = presentationSessionPurposeSchema
+      .default("presentation")
+      .parse(rawSessionPurpose);
     const user = await this.getCurrentUser(request);
     await this.projectsService.assertCanWriteProject(projectId, user.userId);
-    return this.presentationSessionsService.getCurrent(projectId, deckId);
+    return this.presentationSessionsService.getCurrent(
+      projectId,
+      deckId,
+      sessionPurpose,
+    );
   }
 
   @Get()

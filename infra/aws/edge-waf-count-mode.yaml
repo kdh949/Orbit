@@ -1,0 +1,131 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  ORBIT CloudFront WAF edge stack. Deploy this template only in us-east-1.
+  Rules start in Count mode and require a separately reviewed switch to Block.
+
+Parameters:
+  CloudFrontDistributionArn:
+    Type: String
+    Description: ARN of the existing production CloudFront distribution.
+  LoginRegisterRateLimit:
+    Type: Number
+    Default: 100
+    MinValue: 10
+  WafLogDestinationArn:
+    Type: String
+    Default: ""
+    Description: Optional Kinesis Data Firehose ARN for WAF logs. Keep empty until the redaction pipeline is ready.
+  OriginVerificationHeaderName:
+    Type: String
+    Default: x-orbit-origin-verify
+
+Conditions:
+  HasWafLogDestination: !Not [!Equals [!Ref WafLogDestinationArn, ""]]
+
+Resources:
+  WebAcl:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub ${AWS::StackName}-count
+      Scope: CLOUDFRONT
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        CloudWatchMetricsEnabled: true
+        MetricName: orbit-edge-waf
+        SampledRequestsEnabled: true
+      Rules:
+        - Name: AWSManagedCommonRuleSetCount
+          Priority: 10
+          OverrideAction:
+            Count: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: managed-common-count
+            SampledRequestsEnabled: true
+        - Name: AWSManagedKnownBadInputsCount
+          Priority: 20
+          OverrideAction:
+            Count: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: managed-known-bad-inputs-count
+            SampledRequestsEnabled: true
+        - Name: AWSManagedIpReputationCount
+          Priority: 30
+          OverrideAction:
+            Count: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesAmazonIpReputationList
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: managed-ip-reputation-count
+            SampledRequestsEnabled: true
+        - Name: LoginRegisterRateCount
+          Priority: 40
+          Action:
+            Count: {}
+          Statement:
+            RateBasedStatement:
+              AggregateKeyType: IP
+              Limit: !Ref LoginRegisterRateLimit
+              ScopeDownStatement:
+                OrStatement:
+                  Statements:
+                    - ByteMatchStatement:
+                        FieldToMatch:
+                          UriPath: {}
+                        PositionalConstraint: EXACTLY
+                        SearchString: /api/v1/auth/login
+                        TextTransformations:
+                          - Priority: 0
+                            Type: NONE
+                    - ByteMatchStatement:
+                        FieldToMatch:
+                          UriPath: {}
+                        PositionalConstraint: EXACTLY
+                        SearchString: /api/v1/auth/register
+                        TextTransformations:
+                          - Priority: 0
+                            Type: NONE
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: auth-rate-count
+            SampledRequestsEnabled: true
+
+  WebAclAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Properties:
+      ResourceArn: !Ref CloudFrontDistributionArn
+      WebACLArn: !GetAtt WebAcl.Arn
+
+  LoggingConfiguration:
+    Type: AWS::WAFv2::LoggingConfiguration
+    Condition: HasWafLogDestination
+    Properties:
+      ResourceArn: !GetAtt WebAcl.Arn
+      LogDestinationConfigs:
+        - !Ref WafLogDestinationArn
+      RedactedFields:
+        - SingleHeader:
+            Name: cookie
+        - SingleHeader:
+            Name: authorization
+        - SingleHeader:
+            Name: !Ref OriginVerificationHeaderName
+
+Outputs:
+  WebAclArn:
+    Value: !GetAtt WebAcl.Arn
+  WebAclId:
+    Value: !GetAtt WebAcl.Id

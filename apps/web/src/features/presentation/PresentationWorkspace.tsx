@@ -16,9 +16,12 @@ import { PresentationCompletionDialog } from "./PresentationCompletionDialog";
 import { PresentationMicCheckModal } from "./PresentationMicCheckModal";
 import {
   completePresentationWithoutAudio,
-  createPresentationRuntime,
+  closePresenterCompanionSession,
+  ensurePresenterCompanionSession,
   fetchOrCreatePresentationDeck,
+  startPresentationRuntime,
   uploadPresentationRecording,
+  type PresenterCompanionSessionIdentity,
   type PresentationRuntimeIdentity,
 } from "./presentationApi";
 import {
@@ -29,10 +32,10 @@ import { usePresentationSpeech } from "./usePresentationSpeech";
 import { getPresentationHighlightedKeywordOccurrences } from "./presentationKeywordOccurrences";
 import { getPresentationFailureCopy } from "./presentationFailureCopy";
 import {
+  shouldClosePresenterSessionOnPreflightExit,
   shouldWarnBeforePresentationUnload,
   type PresentationRuntimePhase,
 } from "./presentationLifecycle";
-import { activityApi } from "../activity-slides/api/activityApi";
 import { prepareActivityQrRuns } from "../activity-slides/model/activityQrElements";
 import {
   getRehearsalMicrophoneAudioConstraints,
@@ -46,6 +49,38 @@ import {
 } from "../rehearsal/panel/rehearsalTiming";
 import { createSlideshowAnimationPlan } from "../rehearsal/presenter/slideshowStepModel";
 import { usePresenterKeyboard } from "../rehearsal/presenter/usePresenterKeyboard";
+import { AudienceOutputControls } from "../rehearsal/presenter/AudienceOutputControls";
+import {
+  DisplayControls,
+  type RequestDisplayScreensResult,
+  type RequestSlideWindowFullscreenResult,
+  type SlideDisplayOptions,
+} from "../rehearsal/presenter/DisplayControls";
+import {
+  createDisplayManager,
+  type DisplayManagerErrorCode,
+  type DisplayScreenDescriptor,
+  type SlideWindowRef,
+} from "../rehearsal/presenter/displayManager";
+import {
+  createAudiencePresenterState,
+  createSlideWindowDeckSnapshot,
+  type PresenterRemoteCommand,
+} from "../rehearsal/presenter/presentationChannel";
+import type {
+  AudienceOutputMode,
+  PresenterSlideshowState,
+} from "../rehearsal/presenter/presenterStateStore";
+import {
+  PresentWindowReceiver,
+  requestPresentWindowFullscreen,
+} from "../rehearsal/presenter/PresentWindow";
+import { PresenterRemoteWindow } from "../rehearsal/presenter/PresenterRemoteWindow";
+import type { AudienceStreamBridgeWindow } from "../rehearsal/presenter/audienceStreamBridge";
+import { useLivePresentationOutput } from "./useLivePresentationOutput";
+import { PresenterCompanionSetup } from "../presenter-companion/PresenterCompanionSetup";
+import { PresenterCompanionStatus } from "../presenter-companion/PresenterCompanionStatus";
+import { usePresenterCompanionFeatureFlag } from "../presenter-companion/usePresenterCompanionFeatureFlag";
 import {
   getTriggerAnimationIdsForSlide,
   getKeywordOccurrenceTriggerIdsForSlide,
@@ -74,6 +109,7 @@ import {
   matchKeywordOccurrenceTriggers,
 } from "../rehearsal/speech/keywordOccurrenceRuntime";
 import type { SpeechTrackerSnapshot } from "../rehearsal/speech/speechTrackingEvents";
+import { createIdleSemanticDebugState } from "../rehearsal/speech/semanticSpeechDebug";
 import {
   PresenterStatusShell,
   type PresenterInfoCardItem,
@@ -90,6 +126,8 @@ export function PresentationWorkspace(props: {
   initialDeck?: Deck;
   initialSlideIndex?: number;
   initialStepIndex?: number;
+  localWindowSessionId?: string;
+  presenterWindow?: boolean;
   projectId?: string;
 }) {
   const [deck, setDeck] = useState<Deck | null>(props.initialDeck ?? null);
@@ -103,6 +141,12 @@ export function PresentationWorkspace(props: {
   const [presenterStepIndex, setPresenterStepIndex] = useState(
     props.initialStepIndex ?? 0,
   );
+  const [audienceOutputMode, setAudienceOutputMode] =
+    useState<AudienceOutputMode>("slide");
+  const [displayRole, setDisplayRole] = useState<
+    "presenter" | "slide-receiver" | "slide-surface"
+  >("presenter");
+  const [slideReceiverMessage, setSlideReceiverMessage] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [slideElapsedSeconds, setSlideElapsedSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -121,7 +165,7 @@ export function PresentationWorkspace(props: {
   >(null);
   const [hasManualTimerDuration, setHasManualTimerDuration] = useState(false);
   const requiresPresentationRuntime = Boolean(
-    props.projectId && !props.initialDeck,
+    props.projectId && !props.initialDeck && !props.presenterWindow,
   );
   const [runtimePhase, setRuntimePhase] = useState<PresentationRuntimePhase>(
     requiresPresentationRuntime ? "preflight" : "active",
@@ -133,6 +177,17 @@ export function PresentationWorkspace(props: {
   const [requestedRecordingMode, setRequestedRecordingMode] =
     useState<PresentationRecordingMode>("microphone");
   const runtimeRef = useRef<PresentationRuntimeIdentity | null>(null);
+  const presenterSessionRef =
+    useRef<PresenterCompanionSessionIdentity | null>(null);
+  const [presenterSession, setPresenterSession] =
+    useState<PresenterCompanionSessionIdentity | null>(null);
+  const presenterSessionPromiseRef =
+    useRef<Promise<PresenterCompanionSessionIdentity> | null>(null);
+  const presenterSessionPromiseKeyRef = useRef<string | null>(null);
+  const closePresenterSessionPromiseRef = useRef<Promise<void> | null>(null);
+  const slideWindowRef = useRef<SlideWindowRef | null>(null);
+  const reattachAudienceStreamRef = useRef<() => boolean>(() => false);
+  const stopAudienceStreamRef = useRef<() => void>(() => undefined);
   const streamRef = useRef<MediaStream | null>(null);
   const recordingRef = useRef<PresentationRecordingSession | null>(null);
   const recordedFileRef = useRef<File | null>(null);
@@ -170,6 +225,7 @@ export function PresentationWorkspace(props: {
     );
   const [autoAdvanceNowMs, setAutoAdvanceNowMs] = useState(0);
   const speech = usePresentationSpeech(props.projectId);
+  const presenterCompanionEnabled = usePresenterCompanionFeatureFlag();
 
   useEffect(() => {
     if (props.initialDeck) {
@@ -219,6 +275,43 @@ export function PresentationWorkspace(props: {
       setTimerDurationInput(formatClock(nextSeconds));
     }
   }, [deck, editingTimeField, hasManualTimerDuration]);
+
+  useEffect(() => {
+    if (!requiresPresentationRuntime || !deck || !props.projectId) {
+      return;
+    }
+
+    let isCancelled = false;
+    setRuntimePhase("starting");
+    setRuntimeError("");
+    setRuntimeFailureOperation(null);
+    void ensurePresentationSession()
+      .then(() => {
+        if (!isCancelled) {
+          setRuntimePhase("preflight");
+        }
+      })
+      .catch((cause) => {
+        if (!isCancelled) {
+          setRuntimeError(
+            cause instanceof Error
+              ? cause.message
+              : "실전 발표 세션을 준비하지 못했습니다.",
+          );
+          setRuntimeFailureOperation("start");
+          setRuntimePhase("failed");
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    deck?.deckId,
+    deck?.version,
+    props.projectId,
+    requiresPresentationRuntime,
+  ]);
 
   useEffect(() => {
     if (!isTimerRunning) {
@@ -416,6 +509,59 @@ export function PresentationWorkspace(props: {
       slideId: currentSlide?.slideId ?? "presentation-empty",
     });
   }, [currentSlide?.slideId, sentences, speech.state.snapshot]);
+  const presentationOutputState = useMemo<PresenterSlideshowState | null>(
+    () =>
+      currentSlide
+        ? {
+            audienceOutputMode,
+            highlights: [],
+            slideId: currentSlide.slideId,
+            slideIndex: currentSlideIndex,
+            speech: {
+              coveredSentenceIds: panelSnapshot.coveredSentenceIds,
+              coveredSentenceMatchKinds:
+                panelSnapshot.coveredSentenceMatchKinds,
+              matchableSentenceCount: panelSnapshot.matchableSentenceCount,
+              semanticDebug: createIdleSemanticDebugState(),
+              semanticMatchingEnabled: false,
+              snapshot: speech.state.snapshot ?? null,
+            },
+            stepIndex: presenterStepIndex,
+            timing: {
+              canStartLiveStt: runtimePhase === "active",
+              currentSlideElapsedSeconds: slideElapsedSeconds,
+              currentSlideTargetSeconds,
+              displayedSeconds: displayedTimeSeconds,
+              elapsedSeconds,
+              isLiveSttActive:
+                speech.state.status === "listening" ||
+                speech.state.status === "starting",
+              isPaused: speech.state.status === "paused",
+              isRunning: isTimerRunning,
+              liveStatus: speech.state.status,
+              mode: timeMode === "timer" ? "timer" : "stopwatch",
+              timerDurationSeconds,
+            },
+          }
+        : null,
+    [
+      audienceOutputMode,
+      currentSlide,
+      currentSlideIndex,
+      currentSlideTargetSeconds,
+      displayedTimeSeconds,
+      elapsedSeconds,
+      isTimerRunning,
+      panelSnapshot,
+      presenterStepIndex,
+      runtimePhase,
+      slideElapsedSeconds,
+      speech.state.snapshot,
+      speech.state.status,
+      timeMode,
+      timerDurationSeconds,
+    ],
+  );
   const checklistKeywords = currentSlide?.keywords ?? [];
   const highlightedKeywordOccurrences = useMemo(
     () => getPresentationHighlightedKeywordOccurrences(currentSlide),
@@ -834,6 +980,86 @@ export function PresentationWorkspace(props: {
     [],
   );
 
+  function ensurePresentationSession() {
+    const sessionKey = deck ? `${deck.deckId}:${deck.version}` : null;
+    if (
+      presenterSessionRef.current &&
+      deck &&
+      presenterSessionRef.current.deckId === deck.deckId &&
+      presenterSessionRef.current.deckVersion === deck.version
+    ) {
+      return Promise.resolve(presenterSessionRef.current);
+    }
+    if (
+      presenterSessionPromiseRef.current &&
+      presenterSessionPromiseKeyRef.current === sessionKey
+    ) {
+      return presenterSessionPromiseRef.current;
+    }
+    if (!deck || !props.projectId) {
+      return Promise.reject(new Error("발표 자료가 준비되지 않았습니다."));
+    }
+    presenterSessionRef.current = null;
+    presenterSessionPromiseKeyRef.current = sessionKey;
+
+    const promise = ensurePresenterCompanionSession({
+      deckId: deck.deckId,
+      projectId: props.projectId,
+      sessionPurpose: "presentation",
+    })
+      .then((session) => {
+        if (presenterSessionPromiseKeyRef.current === sessionKey) {
+          presenterSessionRef.current = session;
+          setPresenterSession(session);
+        }
+        return session;
+      })
+      .finally(() => {
+        if (presenterSessionPromiseKeyRef.current === sessionKey) {
+          presenterSessionPromiseRef.current = null;
+          presenterSessionPromiseKeyRef.current = null;
+        }
+      });
+    presenterSessionPromiseRef.current = promise;
+    return promise;
+  }
+
+  function closePresentationSession() {
+    if (closePresenterSessionPromiseRef.current) {
+      return closePresenterSessionPromiseRef.current;
+    }
+    const session = presenterSessionRef.current;
+    if (!session || !props.projectId) {
+      return Promise.resolve();
+    }
+    const promise = closePresenterCompanionSession({
+      projectId: props.projectId,
+      sessionId: session.sessionId,
+    })
+      .then(() => {
+        if (presenterSessionRef.current?.sessionId === session.sessionId) {
+          presenterSessionRef.current = null;
+          setPresenterSession(null);
+        }
+      })
+      .finally(() => {
+        closePresenterSessionPromiseRef.current = null;
+      });
+    closePresenterSessionPromiseRef.current = promise;
+    return promise;
+  }
+
+  async function leavePresentation() {
+    if (
+      shouldClosePresenterSessionOnPreflightExit(
+        presenterSessionRef.current?.audienceAccessEnabled ?? null,
+      )
+    ) {
+      await closePresentationSession().catch(() => undefined);
+    }
+    navigateToProject(deck?.projectId ?? props.projectId);
+  }
+
   function startPresentation(recordingMode: PresentationRecordingMode) {
     if (startPromiseRef.current) {
       return startPromiseRef.current;
@@ -848,13 +1074,13 @@ export function PresentationWorkspace(props: {
       setRuntimeFailureOperation(null);
       setRequestedRecordingMode(recordingMode);
 
+      const presenterSession = await ensurePresentationSession();
       const runtime =
         runtimeRef.current ??
-        (await createPresentationRuntime({
-          deckId: deck.deckId,
-          deckVersion: deck.version,
+        (await startPresentationRuntime({
           projectId: props.projectId,
           recordingMode,
+          session: presenterSession,
         }));
       runtimeRef.current = runtime;
 
@@ -868,6 +1094,7 @@ export function PresentationWorkspace(props: {
       }
 
       await prepareActivityQrRuns({
+        audienceAccessEnabled: runtime.audienceUrl !== null,
         deck,
         projectId: props.projectId,
         sessionId: runtime.sessionId,
@@ -959,7 +1186,7 @@ export function PresentationWorkspace(props: {
           sessionId: runtime.sessionId,
         });
       }
-      await activityApi.closeSession(props.projectId, runtime.sessionId);
+      await closePresentationSession();
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
       setRuntimePhase("completed");
@@ -1101,6 +1328,260 @@ export function PresentationWorkspace(props: {
     setTimerDurationSeconds(boundedSeconds);
   }
 
+  function handlePresenterRemoteCommand(command: PresenterRemoteCommand) {
+    switch (command.action) {
+      case "finish":
+        void finishPresentation();
+        return;
+      case "next-step":
+        handleNextPresenterStep();
+        return;
+      case "prev":
+        goPrevious();
+        return;
+      case "goto":
+        handleAnimationFlowNavigation({
+          kind: "slide",
+          stepIndex: command.stepIndex ?? 0,
+          targetSlideIndex: command.slideIndex,
+        });
+        return;
+      case "set-audience-output":
+        setAudienceOutputMode(command.mode);
+        return;
+      case "timer-pause":
+        if (isTimerRunning) void handleTimePrimaryAction();
+        return;
+      case "timer-reset":
+        resetPresentationTimerState({
+          setElapsedSeconds,
+          setIsTimerRunning,
+          setSlideElapsedSeconds,
+        });
+        return;
+      case "timer-start":
+        if (!isTimerRunning) void handleTimePrimaryAction();
+        return;
+    }
+  }
+
+  const displayManager = useMemo(() => createDisplayManager(), []);
+  const livePresentationOutput = useLivePresentationOutput({
+    audienceWindowConnected: Boolean(
+      slideWindowRef.current && !slideWindowRef.current.closed,
+    ),
+    companionEnabled: presenterCompanionEnabled,
+    deck,
+    displayRole,
+    enabled:
+      !props.presenterWindow &&
+      (displayRole === "presenter" ||
+        displayRole === "slide-receiver" ||
+        displayRole === "slide-surface"),
+    getAudienceWindow: () =>
+      slideWindowRef.current as unknown as AudienceStreamBridgeWindow | null,
+    localWindowSessionId: props.localWindowSessionId,
+    onCommand: handlePresenterRemoteCommand,
+    onOutputModeChange: setAudienceOutputMode,
+    onPeerReady: (peer) => {
+      if (peer === "slide-window") {
+        reattachAudienceStreamRef.current();
+      }
+    },
+    onScreenShareEnded: () => stopAudienceStreamRef.current(),
+    outputMode: audienceOutputMode,
+    persistedSessionId: presenterSession?.sessionId,
+    state: presentationOutputState,
+    triggerAnimationIds,
+  });
+  const presentationChannel = livePresentationOutput.localChannel;
+  const slideReceiverIdentity =
+    livePresentationOutput.hostIdentity.localChannel;
+  const audienceScreenShare = livePresentationOutput.screenShare;
+  reattachAudienceStreamRef.current = audienceScreenShare.reattach;
+  stopAudienceStreamRef.current = () =>
+    audienceScreenShare.stopSharing({ returnToSlide: true });
+  const slideReceiverSnapshot = useMemo(
+    () =>
+      deck && presentationOutputState
+        ? {
+            deck: createSlideWindowDeckSnapshot(deck),
+            state: createAudiencePresenterState(presentationOutputState),
+            triggerAnimationIds,
+          }
+        : null,
+    [deck, presentationOutputState, triggerAnimationIds],
+  );
+
+  const resetSlideDisplayToBeginning = () => {
+    setCurrentSlideIndex(0);
+    setPresenterStepIndex(0);
+  };
+  const closeSlideWindow = (windowRef: SlideWindowRef | null) => {
+    if (windowRef && !windowRef.closed) {
+      windowRef.close?.();
+    }
+  };
+  const closeExistingSlideWindow = () => {
+    closeSlideWindow(slideWindowRef.current);
+    slideWindowRef.current = null;
+  };
+  const publishSlideWindowSnapshot = (deferUntilNextRender: boolean) => {
+    if (deferUntilNextRender && typeof window !== "undefined") {
+      window.setTimeout(() => presentationChannel.publishSnapshot(), 0);
+      return;
+    }
+    presentationChannel.publishSnapshot();
+  };
+  const requestDisplayScreens =
+    async (): Promise<RequestDisplayScreensResult> => {
+      const result = await displayManager.listExternalScreens();
+      return result.ok
+        ? { ok: true, screens: result.value }
+        : { code: result.code, ok: false };
+    };
+  const requestSlideWindowFullscreen =
+    async (): Promise<RequestSlideWindowFullscreenResult> => {
+      if (!slideWindowRef.current || slideWindowRef.current.closed) {
+        return { code: "fullscreen-blocked", ok: false };
+      }
+      const result = displayManager.delegateSlideWindowFullscreen(
+        slideWindowRef.current,
+      );
+      return result.ok ? { ok: true } : { code: result.code, ok: false };
+    };
+  const buildPresenterRemoteWindowPath = () => {
+    const projectId = deck?.projectId ?? props.projectId ?? "";
+    const params = new URLSearchParams({
+      presenterSessionId: presentationChannel.sessionId,
+      presenterWindow: "1",
+      slideIndex: String(currentSlideIndex),
+      stepIndex: String(presenterStepIndex),
+    });
+    return `/presentation/${encodeURIComponent(projectId)}?${params.toString()}`;
+  };
+  const openSurfaceSwapDisplay = async (
+    options: SlideDisplayOptions,
+    targetScreen: DisplayScreenDescriptor,
+    placementCode?: DisplayManagerErrorCode,
+  ) => {
+    if (options.startFromBeginning) {
+      resetSlideDisplayToBeginning();
+    }
+    const presenterScreen = displayManager.getCurrentScreen();
+    const fullscreenResult = await displayManager.requestFullscreenOnScreen(
+      typeof document === "undefined" ? null : document.documentElement,
+      targetScreen.screenIndex,
+    );
+    if (!fullscreenResult.ok) {
+      return {
+        autoPlaced: false,
+        displayOpened: false,
+        fullscreenStarted: false,
+        placementCode: fullscreenResult.code,
+        placementTargetLabel: targetScreen.label,
+      };
+    }
+    closeExistingSlideWindow();
+    const remoteWindowResult = displayManager.openPresenterRemoteWindow(
+      buildPresenterRemoteWindowPath(),
+      {
+        screen: presenterScreen,
+        target: `orbit-presentation-presenter-${presentationChannel.sessionId}-${Date.now()}`,
+      },
+    );
+    setSlideReceiverMessage(
+      remoteWindowResult.ok
+        ? ""
+        : "팝업이 차단되었습니다. 이 화면의 제어 버튼으로 발표를 계속할 수 있습니다.",
+    );
+    setDisplayRole("slide-surface");
+    publishSlideWindowSnapshot(options.startFromBeginning);
+    return {
+      autoPlaced: true,
+      displayOpened: true,
+      fullscreenStarted: true,
+      placementCode: remoteWindowResult.ok
+        ? placementCode
+        : remoteWindowResult.code,
+      placementTargetLabel: targetScreen.label,
+    };
+  };
+  const openSlideDisplay = async (options: SlideDisplayOptions) => {
+    audienceScreenShare.returnToSlide();
+    if (!deck || !currentSlide) {
+      return {
+        displayMode: options.displayMode,
+        displayOpened: false,
+        fullscreenStarted: false,
+      };
+    }
+    if (options.startFromBeginning) {
+      resetSlideDisplayToBeginning();
+    }
+    if (options.displayMode === "current-window") {
+      const fullscreenStarted = options.fullscreen
+        ? await requestPresentWindowFullscreen(
+            typeof document === "undefined"
+              ? null
+              : document.documentElement,
+          )
+        : false;
+      setDisplayRole("slide-receiver");
+      return {
+        displayMode: "current-window" as const,
+        displayOpened: true,
+        fullscreenStarted,
+      };
+    }
+    const targetScreen = options.autoPlace
+      ? (options.targetScreen ?? null)
+      : null;
+    if (
+      options.presenterView &&
+      options.fullscreen &&
+      options.autoPlace &&
+      targetScreen
+    ) {
+      const surfaceSwapResult = await openSurfaceSwapDisplay(
+        options,
+        targetScreen,
+      );
+      if (surfaceSwapResult.fullscreenStarted) {
+        return {
+          ...surfaceSwapResult,
+          displayMode: "slide-window" as const,
+        };
+      }
+    }
+    const previousSlideWindow = slideWindowRef.current;
+    const openResult = displayManager.openSlideWindow(slideReceiverIdentity, {
+      screen: targetScreen,
+      target: `orbit-presentation-slide-${presentationChannel.sessionId}-${Date.now()}`,
+    });
+    if (!openResult.ok) {
+      return {
+        displayMode: "slide-window" as const,
+        displayOpened: false,
+        fullscreenStarted: false,
+        placementCode: openResult.code,
+        placementTargetLabel: targetScreen?.label,
+      };
+    }
+    if (previousSlideWindow !== openResult.value) {
+      closeSlideWindow(previousSlideWindow);
+    }
+    slideWindowRef.current = openResult.value;
+    publishSlideWindowSnapshot(options.startFromBeginning);
+    return {
+      autoPlaced: Boolean(targetScreen),
+      displayMode: "slide-window" as const,
+      displayOpened: true,
+      fullscreenStarted: false,
+      placementTargetLabel: targetScreen?.label,
+    };
+  };
+
   if (phase === "failed") {
     const failureCopy = getPresentationFailureCopy("load", error);
 
@@ -1133,6 +1614,61 @@ export function PresentationWorkspace(props: {
       <PresenterStatusShell title="발표 화면을 준비하는 중입니다.">
         최신 슬라이드와 발표 메모를 불러오고 있습니다.
       </PresenterStatusShell>
+    );
+  }
+
+  if (props.presenterWindow && deck && presentationOutputState) {
+    return (
+      <PresenterRemoteWindow
+        deck={deck}
+        identity={slideReceiverIdentity}
+        initialState={presentationOutputState}
+      />
+    );
+  }
+
+  if (
+    (displayRole === "slide-receiver" || displayRole === "slide-surface") &&
+    slideReceiverSnapshot
+  ) {
+    return (
+      <PresentWindowReceiver
+        controlOverlayMode={
+          displayRole === "slide-receiver" ? "always" : "fallback"
+        }
+        fullscreenMessage={slideReceiverMessage}
+        identity={slideReceiverIdentity}
+        initialSnapshot={slideReceiverSnapshot}
+        onExit={() => {
+          if (typeof document !== "undefined" && document.fullscreenElement) {
+            void document.exitFullscreen();
+          }
+          setDisplayRole("presenter");
+          setSlideReceiverMessage("");
+        }}
+        onNextStep={handleNextPresenterStep}
+        onPreviousSlide={goPrevious}
+        onReconnectPresenter={(snapshot) => {
+          const projectId = deck?.projectId ?? props.projectId ?? "";
+          const params = new URLSearchParams({
+            presenterSessionId: presentationChannel.sessionId,
+            presenterWindow: "1",
+            slideIndex: String(snapshot.state.slideIndex),
+            stepIndex: String(snapshot.state.stepIndex),
+          });
+          const presenterWindow = window.open(
+            `/presentation/${encodeURIComponent(projectId)}?${params.toString()}`,
+            `orbit-presentation-presenter-${presentationChannel.sessionId}`,
+            "popup=yes,width=1512,height=900",
+          );
+          presenterWindow?.focus();
+          setSlideReceiverMessage(
+            presenterWindow
+              ? ""
+              : "팝업이 차단되었습니다. 브라우저 팝업을 허용한 뒤 다시 시도해주세요.",
+          );
+        }}
+      />
     );
   }
 
@@ -1175,9 +1711,7 @@ export function PresentationWorkspace(props: {
                 </OrbitButton>
               ) : null}
               <OrbitButton
-                onClick={() =>
-                  navigateToProject(deck?.projectId ?? props.projectId)
-                }
+                onClick={() => void leavePresentation()}
                 size="prominent"
                 variant="secondary"
               >
@@ -1211,6 +1745,33 @@ export function PresentationWorkspace(props: {
         currentSlide={currentSlide}
         currentSlideIndex={currentSlideIndex}
         deck={deck}
+        displayToolbar={
+          <>
+            <DisplayControls
+              channelStatus={presentationChannel.status}
+              onOpenSlideDisplay={openSlideDisplay}
+              onRequestDisplayScreens={requestDisplayScreens}
+              onRequestSlideWindowFullscreen={requestSlideWindowFullscreen}
+            />
+            <AudienceOutputControls
+              connected={presentationChannel.status === "connected"}
+              error={audienceScreenShare.error}
+              onReturnToSlide={audienceScreenShare.returnToSlide}
+              onShowBlack={audienceScreenShare.showBlack}
+              onStartMonitor={audienceScreenShare.startMonitor}
+              onStartTabOrWindow={audienceScreenShare.startTabOrWindow}
+              outputMode={audienceOutputMode}
+              status={audienceScreenShare.status}
+            />
+            {presenterCompanionEnabled && presenterSession ? (
+              <PresenterCompanionStatus
+                projectId={deck?.projectId ?? props.projectId ?? ""}
+                sessionId={presenterSession.sessionId}
+                sessionPurpose={presenterSession.sessionPurpose}
+              />
+            ) : null}
+          </>
+        }
         elapsedTimeInput={elapsedTimeInput}
         highlightedKeywordOccurrences={highlightedKeywordOccurrences}
         infoCards={infoCards}
@@ -1252,7 +1813,7 @@ export function PresentationWorkspace(props: {
           });
         }}
         panelSnapshot={panelSnapshot}
-        presentationSession={runtimeRef.current ?? undefined}
+        presentationSession={presenterSessionRef.current ?? undefined}
         presenterScale={presenterScale}
         presenterStageRef={presenterStageRef}
         presenterStepIndex={presenterStepIndex}
@@ -1283,7 +1844,17 @@ export function PresentationWorkspace(props: {
       />
       {runtimePhase === "preflight" ? (
         <PresentationMicCheckModal
-          onClose={() => navigateToProject(deck?.projectId ?? props.projectId)}
+          companionSetup={
+            presenterCompanionEnabled && presenterSession && deck ? (
+              <PresenterCompanionSetup
+                projectId={deck.projectId}
+                sessionId={presenterSession.sessionId}
+                sessionPurpose={presenterSession.sessionPurpose}
+                variant="preflight"
+              />
+            ) : undefined
+          }
+          onClose={() => void leavePresentation()}
           onStart={() => void startPresentation("microphone")}
           onStartWithoutMicrophone={() => void startPresentation("none")}
         />

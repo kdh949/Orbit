@@ -250,6 +250,28 @@ export type PresenterTimingProgressItem = {
   tone?: "default" | "warning" | "danger";
 };
 
+export function getPresenterTimingProgress(
+  elapsedSeconds: number,
+  targetSeconds: number,
+  toleranceSeconds = 5,
+): { percent: number; tone: "default" | "warning" | "danger" } {
+  if (targetSeconds <= 0) {
+    return { percent: 0, tone: "default" };
+  }
+
+  const percent = Math.min(
+    100,
+    Math.max(0, (elapsedSeconds / targetSeconds) * 100),
+  );
+  if (elapsedSeconds > targetSeconds + toleranceSeconds) {
+    return { percent, tone: "danger" };
+  }
+  if (elapsedSeconds >= Math.max(0, targetSeconds - toleranceSeconds)) {
+    return { percent, tone: "warning" };
+  }
+  return { percent, tone: "default" };
+}
+
 export function PresenterTimerCard(props: {
   ariaLabel: string;
   currentTimeLabel: string;

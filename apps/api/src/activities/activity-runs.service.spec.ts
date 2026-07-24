@@ -61,6 +61,8 @@ const session = {
   deck_id: "deck_1",
   deck_version: 7,
   session_status: "live" as const,
+  session_purpose: "presentation" as const,
+  audience_access_enabled: true,
   starts_at: "2026-01-01T00:00:00.000Z",
   expires_at: "2027-07-31T00:00:00.000Z"
 };
@@ -171,6 +173,23 @@ describe("ActivityRunsService", () => {
         definition
       })
     );
+  });
+
+  it("rejects activity run creation for a rehearsal session", async () => {
+    const { repository, service } = createService({
+      lockSession: vi.fn().mockResolvedValue({
+        ...session,
+        session_purpose: "rehearsal",
+        audience_access_enabled: false,
+      }),
+    });
+
+    await expect(
+      service.ensureCurrentRun("project_1", "session_1", "activity_1"),
+    ).rejects.toMatchObject({
+      message: "Audience access must be enabled for activity runs",
+    });
+    expect(repository.insert).not.toHaveBeenCalled();
   });
 
   it("synchronizes a changed definition before the first response", async () => {

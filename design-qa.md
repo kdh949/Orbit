@@ -36,6 +36,128 @@ final result: passed
 
 ---
 
+# 버전 기록 현재 상태 표시 design QA (2026-07-24)
+
+- Source visual truth: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-audit\01-duplicate-current-version.png`
+- Implementation screenshot: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-design-qa\implementation-final-v2.png`
+- Focused comparison: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-design-qa\focused-list-final-v4.png`
+- Viewport: source와 implementation 모두 1477 × 874 CSS px, 동일 픽셀 크기로 별도 density 정규화 없음
+- State: 버전 5 기록이 두 개 존재하고 `버전 5 · 이전 버전 복원` 항목을 선택한 상태
+
+## Full-view comparison evidence
+
+- 기존 페이지 구조, 목록 폭, 미리보기, 선택 강조, 상태 색상은 유지했다.
+- 현재 상태는 최신 동일 버전 기록 하나만 대표하며 다른 기록은 삭제하지 않는다.
+
+## Focused region comparison evidence
+
+- 수정 전 두 개였던 `현재 버전` 배지가 수정 후 하나의 `현재 상태` 배지로 정리됐다.
+- 같은 버전의 과거 기록은 실제 사유에 따라 `복원 지점`, `자동 저장`, `편집 저장`으로 구분된다.
+- 현재 항목을 선택하면 우측 복원 동작이 `현재 상태`로 비활성화된다.
+
+## Required fidelity surfaces
+
+- Fonts and typography: 기존 Pretendard 계층, 크기, 굵기, 줄바꿈을 유지했다.
+- Spacing and layout rhythm: 목록 행 높이, 배지 padding, 정렬, radius를 변경하지 않았다.
+- Colors and visual tokens: 기존 primary, warning, neutral 상태 토큰만 사용했다.
+- Image quality and asset fidelity: 미리보기와 기존 Tabler 아이콘을 그대로 유지했으며 새 자산은 없다.
+- Copy and content: `현재 버전`을 `현재 상태`로 명확히 하고 저장 사유 배지를 실제 기록 유형과 일치시켰다.
+
+## Comparison history
+
+1. P1 — 동일한 버전 번호의 두 기록이 모두 `현재 버전`으로 표시됐다.
+2. Fix — 정렬된 기록에서 현재 버전을 대표하는 최신 snapshot ID 하나만 선택하도록 변경했다.
+3. P2 — 중복 표시 제거 후 `편집 내용 저장` 기록이 `자동 저장` 배지로 노출됐다.
+4. Fix — snapshot reason별 상태 문구를 추가해 `편집 저장`, `전체 교체`, `자동 저장`, `복원 지점`을 구분했다.
+5. Post-fix — focused comparison에서 현재 상태 배지 한 개와 각 과거 기록의 올바른 상태 문구를 확인했다.
+
+## Validation
+
+- 현재 항목 선택과 비활성 복원 동작 확인
+- 390px viewport에서 document 가로 overflow 없음
+- 브라우저 console error 없음
+- `DeckVersionHistoryPage.test.ts`: 3 tests passed
+- Web typecheck와 `git diff --check` 통과
+
+final result: passed
+
+---
+
+# iPad Presenter Companion 운영 UI design QA (2026-07-24)
+
+- Source visual truth: `prototypes/ipad-presenter-companion/reference/combined-target-v2.png` (시각 참조 전용, 운영 코드에서 import하지 않음).
+- PC implementation: `docs/qa/assets/ipad-presenter-companion/preflight-pc.png`.
+- iPad landscape implementation: `docs/qa/assets/ipad-presenter-companion/ipad-landscape.png`.
+- iPad portrait fallback: `docs/qa/assets/ipad-presenter-companion/ipad-portrait.png`.
+- PC combined comparison: `docs/qa/assets/ipad-presenter-companion/pc-comparison.png`.
+- iPad combined comparison: `docs/qa/assets/ipad-presenter-companion/ipad-comparison.png`.
+- CSS viewport / density: PC 788 × 863, landscape 1024 × 768, portrait 768 × 1024, `deviceScaleFactor: 1`.
+- State: PC는 companion 연결 완료·private pad 입력 대기, iPad는 실제 `CompanionAudienceRenderer`의 빈 slide와 쓰기 가능 toolbar 상태.
+
+## Full-view comparison evidence
+
+- PC는 선택 시안의 3단계 진행 표시, QR/pairing 영역, 준비 상태 3행, 비공개 입력 패드 계층을 유지한다.
+- 사용자 피드백에 따라 첫 상태 행은 추상적인 보안 연결이 아니라 status API의 실제 `iPad 연결` 여부만 설명한다.
+- 시안의 별도 `기기 확인 완료` CTA는 운영 preflight의 기존 `발표 시작`·`리허설 시작`이 담당하므로 companion 패널 안에 복제하지 않았다.
+- iPad는 선택 시안의 왼쪽 세로 rail, 인접 palette, dark shell을 유지하면서 운영의 실제 slide/black/screen-share 출력을 사용한다. 시안의 고정 문구, 샘플 화살표, 궤도선은 복사하지 않았다.
+
+## Focused region comparison evidence
+
+- PC pairing/status 영역과 iPad rail/palette가 핵심 변경 범위이므로 각각 별도의 같은-input comparison에 집중해 확인했다.
+- QR은 캡처 상태에서 아직 생성 전이지만 실제 운영 동작은 기존 HTTPS `pairingUrl`을 `qrcode`로 변환하며 API unit과 E2E가 요청 계약을 검증한다.
+- palette는 계약 색상 5개와 pen/highlighter 굵기 4개를 표시하고 선택 상태를 `aria-pressed`로 노출한다.
+
+## Fidelity and interaction checks
+
+- Fonts and typography: 기존 Pretendard와 `--redesign-type-*` 계층을 사용한다.
+- Spacing and layout rhythm: surface, border, radius, shadow, spacing은 기존 `--redesign-*` 토큰을 사용한다.
+- Colors: primary/success/warning/error와 ink palette를 기존 redesign token에만 매핑했다.
+- Assets: Tabler 아이콘과 런타임 QR만 사용하며 정적 목업 QR이나 수제 SVG를 운영 번들에 추가하지 않았다.
+- Copy and privacy: speaker notes, script, transcript, raw audio, pairing code, credential은 DOM·로그·상태 문구에 추가하지 않았다.
+- Browser interaction: pen → highlighter 전환, highlighter 굵기 4, red 선택, eraser 선택 시 palette 닫힘을 확인했다.
+- Responsive behavior: landscape `flex-direction: column`, portrait `flex-direction: row`, 두 viewport 모두 문서 가로 overflow가 없음을 확인했다.
+- 실제 `/companion/:sessionId` 실패 shell에서 공통 header와 `연결 확인 필요` 상태를 확인했고 browser warning/error log는 비어 있었다.
+
+## Comparison history
+
+1. Pass 1 P1 — landscape rail의 텍스트 너비 때문에 palette가 rail과 8px 겹쳤다.
+2. Fix — rail 폭을 token 조합으로 고정하고 palette를 rail 실측 폭 다음으로 이동해 12px 간격을 확보했다.
+3. Pass 1 P1 — renderer scale이 viewport 전체 폭을 사용해 page padding 40px만큼 slide와 header가 가로 overflow됐다.
+4. Fix — shell inset을 반영하는 `calculateCompanionRendererScale()`을 추가하고 1024 × 768에서 984px, 768 × 1024에서 728px 이내로 제한하는 회귀 테스트를 추가했다.
+5. Pass 1 P2 — portrait palette와 하단 rail 사이 간격이 2px에 불과했다.
+6. Fix — 실제 rail 높이와 token 간격을 반영해 10px 간격으로 보정했다.
+7. Post-fix — PC, landscape, portrait를 다시 캡처했고 남은 actionable P0/P1/P2 차이가 없음을 확인했다.
+
+## Validation
+
+- Presenter companion component tests: 7 files, 19 tests passed.
+- Web unit suite: 315 files, 1,941 tests passed.
+- Presenter companion E2E: 5 tests passed.
+- Web typecheck and production build passed.
+
+final result: passed
+
+---
+
+# Presenter slide controller design QA (2026-07-23)
+
+- Reference: `C:\Users\Runner\AppData\Local\Temp\codex-clipboard-717a61a0-1b0d-49d5-925f-cbbd87a925a5.png`
+- Implementation: `.tmp/presenter-current.png`
+- Combined comparison: `.tmp/presenter-design-compare.png`
+- Viewport: 1421 × 874
+
+## Verification
+
+- The previous, current, and next slide previews remain fully visible in the initial viewport.
+- The controller row has a bounded responsive height and no longer clips its preview content.
+- The current slide remains visually emphasized while adjacent previews remain subordinate.
+- Presenter tests: 25 passed.
+- Web TypeScript check and `git diff --check`: passed.
+
+final result: passed
+
+---
+
 # PPTX 백그라운드 처리 카드 및 작업 트레이 design QA (2026-07-22)
 
 - Source visual truth: `/Users/donghyunkim/Documents/Orbit-pptx-import-fidelity-speaker-notes/prototypes/orbit-pptx-background-processing/design-qa-final.png`.
@@ -819,5 +941,31 @@ final result: passed
 - `pnpm --filter @orbit/shared build`가 통과했다.
 - `pnpm --filter @orbit/web build`가 기존 chunk-size 경고만 남기고 통과했다.
 - Chrome 확장 캡처는 CDP 5초 제한으로 실패해 마지막 인증 캡처와 이후 실제 DOM 실측을 함께 판정 근거로 사용했다.
+
+final result: passed
+
+---
+
+# 버전 기록 중복 복원 지점 QA (2026-07-24)
+
+- Source visual truth: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-duplicate-restore-audit\01-repeated-restore-points.png`
+- Implementation screenshot: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-duplicate-restore-audit\05-deduplicated-final.png`
+- Full-view comparison: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-duplicate-restore-audit\04-before-after-comparison.png`
+- Route: `http://localhost:5173/project/project_a0facb38-58a5-4994-9748-5b02718029e3/history`
+- Viewport and pixels: source/implementation 모두 `1477 × 874`, CSS viewport `1477 × 874`, density `1`; 추가 정규화 없음.
+- State: 같은 프로젝트의 버전 기록 목록. 선택 항목은 서로 다르지만 검증 대상인 목록의 중복 복원 지점과 기록 수는 동일한 데이터셋에서 비교함.
+
+## Findings
+
+- 수정 전에는 같은 덱 상태의 `snapshot-restore` 항목이 반복 노출되어 저장 기록이 12건으로 보였다.
+- 수정 후에는 동일한 덱 상태의 복원 지점이 최신 한 건으로 축약되어 9건으로 보이며, 서로 다른 버전 4·5·6 복원 지점은 유지된다.
+- 폰트/타이포그래피, 간격/레이아웃, 색상 토큰, 슬라이드 이미지 품질, 문구에는 변경이나 회귀가 없다.
+- 목록 행과 배지의 크기가 비교 화면에서 충분히 식별되므로 별도의 focused-region 비교는 필요하지 않았다.
+
+## Comparison history
+
+- P1: 동일 상태 복원 지점이 반복 누적되어 의미 있는 이력 탐색을 방해함.
+- Fix: API가 동일한 덱 상태의 복원 백업을 재사용하고, 기존 중복은 목록 응답에서 최신 한 건만 남기도록 처리함.
+- Post-fix evidence: 저장 기록이 12건에서 9건으로 정리되었고 서로 다른 복원 상태는 보존됨.
 
 final result: passed

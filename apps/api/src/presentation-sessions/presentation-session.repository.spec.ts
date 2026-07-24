@@ -23,12 +23,14 @@ describe("PresentationSessionRepository", () => {
     await repository.findCurrentForUpdate(
       { query } as never,
       "project_1",
-      "deck_1"
+      "deck_1",
+      "presentation",
     );
 
     const sql = String(query.mock.calls[0]?.[0]);
     expect(sql).toContain("status IN ('draft', 'live')");
     expect(sql).toContain("expires_at > now()");
+    expect(sql).toContain("session_purpose = $3");
     expect(sql).toContain("FOR UPDATE");
   });
 
@@ -43,10 +45,18 @@ describe("PresentationSessionRepository", () => {
     await repository.closeActive(
       { query } as never,
       "project_1",
+      "presentation",
       new Date("2026-07-17T01:00:00.000Z")
     );
 
     const closeSql = String(query.mock.calls[2]?.[0]);
+    expect(String(query.mock.calls[0]?.[0])).toContain(
+      "session_purpose = $2",
+    );
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      "project_1",
+      "presentation",
+    ]);
     expect(closeSql).toContain("raw_responses_delete_after = $2::timestamptz");
     expect(closeSql).toContain("updated_at = $2::timestamptz");
   });
@@ -109,7 +119,35 @@ describe("PresentationSessionRepository", () => {
     expect(sql).toContain("status = 'draft'");
     expect(sql).toContain("started_at = COALESCE(started_at, starts_at)");
     expect(sql).toContain("expires_at > $2");
+    expect(sql).toContain("audience_access_enabled = true");
     expect(query.mock.calls[0]?.[1]).toEqual(["session_scheduled", now]);
+  });
+
+  it("finds an unexpired companion session without requiring audience access", async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        session_id: "session_companion",
+        audience_access_enabled: false,
+        status: "live",
+      },
+    ]);
+    const repository = new PresentationSessionRepository({
+      query,
+    } as unknown as DataSource);
+    const now = new Date("2026-07-17T01:00:00.000Z");
+
+    await expect(
+      repository.findActiveCompanionSession("session_companion", now),
+    ).resolves.toMatchObject({
+      audience_access_enabled: false,
+      status: "live",
+    });
+
+    const sql = String(query.mock.calls[0]?.[0]);
+    expect(sql).toContain("status IN ('draft', 'live')");
+    expect(sql).toContain("expires_at > $2");
+    expect(sql).not.toContain("audience_access_enabled = true");
+    expect(query.mock.calls[0]?.[1]).toEqual(["session_companion", now]);
   });
 
   it("sets the natural-expiry retention deadline when creating and updating sessions", async () => {
@@ -127,6 +165,8 @@ describe("PresentationSessionRepository", () => {
       deckVersion: 1,
       userId: "user_1",
       status: "draft",
+      sessionPurpose: "presentation",
+      audienceAccessEnabled: true,
       accessMode: "public",
       passwordHash: null,
       startsAt: new Date("2026-07-17T01:00:00.000Z"),
@@ -134,6 +174,7 @@ describe("PresentationSessionRepository", () => {
       now,
     });
     await repository.updateAccess(manager, "project_1", "session_1", {
+      audienceAccessEnabled: true,
       status: "draft",
       accessMode: "public",
       passwordHash: null,
@@ -148,5 +189,25 @@ describe("PresentationSessionRepository", () => {
     expect(String(query.mock.calls[1]?.[0])).toContain(
       "$7::timestamptz + interval '90 days'",
     );
+  });
+
+  it("disables audience access without changing the session window", async () => {
+    const query = vi.fn().mockResolvedValue([{ session_id: "session_1" }]);
+    const repository = new PresentationSessionRepository({} as DataSource);
+
+    await repository.updateAccess(
+      { query } as never,
+      "project_1",
+      "session_1",
+      {
+        audienceAccessEnabled: false,
+        now: new Date("2026-07-17T00:00:00.000Z"),
+      },
+    );
+
+    const sql = String(query.mock.calls[0]?.[0]);
+    expect(sql).toContain("audience_access_enabled = false");
+    expect(sql).toContain("session_password_hash = NULL");
+    expect(sql).not.toContain("starts_at =");
   });
 });

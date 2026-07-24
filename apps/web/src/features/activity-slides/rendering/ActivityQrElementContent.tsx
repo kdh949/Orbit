@@ -10,6 +10,7 @@ import {
   type ActivityQrRuntimeState,
   type ActivityQrRuntimeInput
 } from "./activityQrRuntime";
+import { useActivityPublicProjection } from "./activityPublicProjectionContext";
 
 type KonvaComponent = ComponentType<any>;
 const Group = KonvaGroup as unknown as KonvaComponent;
@@ -30,9 +31,25 @@ export function ActivityQrElementContent(props: {
     }),
     [props.activityId, props.deckId, props.projectId]
   );
+  const providedProjection = useActivityPublicProjection(props.activityId);
+  const providedRuntime = useMemo<ActivityQrRuntimeState | null>(
+    () =>
+      providedProjection === null
+        ? null
+        : providedProjection.audienceUrl
+          ? {
+              status: "ready",
+              audienceUrl: providedProjection.audienceUrl,
+            }
+          : { status: "not-prepared", audienceUrl: null },
+    [providedProjection],
+  );
   const runtime = useSyncExternalStore(
-    (listener) => subscribeActivityQrRuntime(input, listener),
-    () => getActivityQrRuntimeState(input),
+    (listener) =>
+      providedRuntime
+        ? () => undefined
+        : subscribeActivityQrRuntime(input, listener),
+    () => providedRuntime ?? getActivityQrRuntimeState(input),
     () => ({ status: "loading", audienceUrl: null } satisfies ActivityQrRuntimeState)
   );
   const [qrDataUrl, setQrDataUrl] = useState("");

@@ -486,6 +486,7 @@ async function attachStreamWhenReady(
     if (targetWindow.closed) return;
     const result = attachAudienceStreamToWindow({
       identity: companionSpikeIdentity(spikeId),
+      shareEpochId: `share_spike_${spikeId}`,
       stream,
       targetWindow: targetWindow as unknown as AudienceStreamBridgeWindow,
     });

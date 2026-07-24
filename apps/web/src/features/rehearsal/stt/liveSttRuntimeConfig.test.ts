@@ -14,6 +14,7 @@ describe("fetchLiveSttRuntimeConfig", () => {
           challengeQnaEnabled: false,
           slidePracticeEnabled: false,
           slideQuestionGuidesEnabled: false,
+          ipadPresenterCompanionEnabled: true,
         })
       )
     );
@@ -25,6 +26,7 @@ describe("fetchLiveSttRuntimeConfig", () => {
       challengeQnaEnabled: false,
       slidePracticeEnabled: false,
       slideQuestionGuidesEnabled: false,
+      ipadPresenterCompanionEnabled: true,
     });
     expect(fetcher).toHaveBeenCalledWith("/api/v1/runtime-config", {
       credentials: "include",
@@ -42,6 +44,7 @@ describe("fetchLiveSttRuntimeConfig", () => {
           challengeQnaEnabled: false,
           slidePracticeEnabled: false,
           slideQuestionGuidesEnabled: false,
+          ipadPresenterCompanionEnabled: true,
         })
       )
     );

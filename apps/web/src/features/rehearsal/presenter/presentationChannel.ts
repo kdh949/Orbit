@@ -1,4 +1,12 @@
-import type { Deck } from "@orbit/shared";
+import {
+  presentationCompanionAnnotationCommandSchema,
+  presentationCompanionAnnotationSnapshotSchema,
+  presentationCompanionLaserSchema,
+  type Deck,
+  type PresentationCompanionAnnotationCommand,
+  type PresentationCompanionAnnotationSnapshot,
+  type PresentationCompanionLaser,
+} from "@orbit/shared";
 import type {
   AudienceOutputMode,
   PresenterSlideshowState,
@@ -10,6 +18,25 @@ export type PresentationChannelIdentity = {
   deckId: string;
   sessionId: string;
 };
+
+export type LivePresentationHostIdentity = {
+  localChannel: PresentationChannelIdentity;
+  persistedSessionId: string | null;
+};
+
+export function createLivePresentationHostIdentity(input: {
+  deckId: string;
+  localWindowSessionId: string;
+  persistedSessionId?: string | null;
+}): LivePresentationHostIdentity {
+  return {
+    localChannel: {
+      deckId: input.deckId,
+      sessionId: input.localWindowSessionId,
+    },
+    persistedSessionId: input.persistedSessionId ?? null,
+  };
+}
 
 export type SlideWindowDeckSnapshot = Deck;
 
@@ -79,6 +106,7 @@ export type PresenterRemoteHeartbeatMessage = {
 };
 
 export type PresenterRemoteCommand =
+  | { action: "finish" }
   | { action: "goto"; slideIndex: number; stepIndex?: number }
   | { action: "next-step" }
   | { action: "prev" }
@@ -109,6 +137,31 @@ export type ScreenShareEndedMessage = {
   type: "screen-share-ended";
 };
 
+export type PresenterAnnotationSnapshotMessage = {
+  annotation: PresentationCompanionAnnotationSnapshot;
+  deckId: string;
+  sentAt: number;
+  sessionId: string;
+  type: "presenter-annotation-snapshot";
+};
+
+export type PresenterAnnotationDeltaMessage = {
+  command: PresentationCompanionAnnotationCommand;
+  deckId: string;
+  sentAt: number;
+  sessionId: string;
+  surfaceRevision: number;
+  type: "presenter-annotation-delta";
+};
+
+export type PresenterLaserMessage = {
+  deckId: string;
+  laser: PresentationCompanionLaser;
+  sentAt: number;
+  sessionId: string;
+  type: "presenter-laser";
+};
+
 export type PresentationChannelMessage =
   | PresenterSnapshotMessage
   | PresenterStateMessage
@@ -120,7 +173,10 @@ export type PresentationChannelMessage =
   | PresenterRemoteReadyMessage
   | PresenterRemoteHeartbeatMessage
   | PresenterCommandMessage
-  | ScreenShareEndedMessage;
+  | ScreenShareEndedMessage
+  | PresenterAnnotationSnapshotMessage
+  | PresenterAnnotationDeltaMessage
+  | PresenterLaserMessage;
 
 export function createPresentationSessionId() {
   if (
@@ -262,6 +318,40 @@ export function parsePresentationChannelMessage(
       return isScreenShareEndedReason(value.reason)
         ? (value as unknown as ScreenShareEndedMessage)
         : null;
+    case "presenter-annotation-snapshot": {
+      const annotation =
+        presentationCompanionAnnotationSnapshotSchema.safeParse(
+          value.annotation,
+        );
+      return annotation.success
+        ? ({
+            ...value,
+            annotation: annotation.data,
+          } as PresenterAnnotationSnapshotMessage)
+        : null;
+    }
+    case "presenter-annotation-delta": {
+      const command =
+        presentationCompanionAnnotationCommandSchema.safeParse(
+          value.command,
+        );
+      return command.success &&
+        Number.isSafeInteger(value.surfaceRevision) &&
+        Number(value.surfaceRevision) >= 0
+        ? ({
+            ...value,
+            command: command.data,
+          } as PresenterAnnotationDeltaMessage)
+        : null;
+    }
+    case "presenter-laser": {
+      const laser = presentationCompanionLaserSchema.safeParse(
+        value.laser,
+      );
+      return laser.success
+        ? ({ ...value, laser: laser.data } as PresenterLaserMessage)
+        : null;
+    }
     default:
       return null;
   }
@@ -437,6 +527,55 @@ export function createScreenShareEndedMessage(args: {
     sentAt: args.sentAt ?? Date.now(),
     sessionId: args.identity.sessionId,
     type: "screen-share-ended",
+  };
+}
+
+export function createPresenterAnnotationSnapshotMessage(args: {
+  annotation: PresentationCompanionAnnotationSnapshot;
+  identity: PresentationChannelIdentity;
+  sentAt?: number;
+}): PresenterAnnotationSnapshotMessage {
+  return {
+    annotation:
+      presentationCompanionAnnotationSnapshotSchema.parse(
+        args.annotation,
+      ),
+    deckId: args.identity.deckId,
+    sentAt: args.sentAt ?? Date.now(),
+    sessionId: args.identity.sessionId,
+    type: "presenter-annotation-snapshot",
+  };
+}
+
+export function createPresenterAnnotationDeltaMessage(args: {
+  command: PresentationCompanionAnnotationCommand;
+  identity: PresentationChannelIdentity;
+  sentAt?: number;
+  surfaceRevision: number;
+}): PresenterAnnotationDeltaMessage {
+  return {
+    command: presentationCompanionAnnotationCommandSchema.parse(
+      args.command,
+    ),
+    deckId: args.identity.deckId,
+    sentAt: args.sentAt ?? Date.now(),
+    sessionId: args.identity.sessionId,
+    surfaceRevision: args.surfaceRevision,
+    type: "presenter-annotation-delta",
+  };
+}
+
+export function createPresenterLaserMessage(args: {
+  identity: PresentationChannelIdentity;
+  laser: PresentationCompanionLaser;
+  sentAt?: number;
+}): PresenterLaserMessage {
+  return {
+    deckId: args.identity.deckId,
+    laser: presentationCompanionLaserSchema.parse(args.laser),
+    sentAt: args.sentAt ?? Date.now(),
+    sessionId: args.identity.sessionId,
+    type: "presenter-laser",
   };
 }
 
@@ -622,6 +761,7 @@ function isPresenterRemoteCommand(
   }
 
   if (
+    value.action === "finish" ||
     value.action === "next-step" ||
     value.action === "prev" ||
     value.action === "timer-pause" ||

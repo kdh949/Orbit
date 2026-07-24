@@ -12,6 +12,10 @@ import { rehearsalReportSchema } from "../rehearsals/rehearsal.schema";
 import { slideTranscriptSnapshotsSchema } from "../rehearsals/slide-transcript-snapshot.schema";
 
 export const presentationAccessModeSchema = z.enum(["passcode", "public"]);
+export const presentationSessionPurposeSchema = z.enum([
+  "presentation",
+  "rehearsal",
+]);
 
 export const presentationSessionSchema = z
   .object({
@@ -22,6 +26,8 @@ export const presentationSessionSchema = z
     presenterUserId: z.string().min(1),
     createdBy: z.string().min(1),
     status: z.enum(["draft", "live", "ended"]),
+    sessionPurpose: presentationSessionPurposeSchema.default("presentation"),
+    audienceAccessEnabled: z.boolean().default(true),
     accessMode: presentationAccessModeSchema,
     startsAt: isoDateTimeSchema,
     expiresAt: isoDateTimeSchema,
@@ -53,56 +59,90 @@ export const presentationSessionSchema = z
         message: "presentation access cannot exceed 30 days",
       });
     }
+    if (
+      session.sessionPurpose === "rehearsal" &&
+      session.audienceAccessEnabled
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["audienceAccessEnabled"],
+        message: "rehearsal sessions cannot enable audience access",
+      });
+    }
   });
 
-export const createPresentationSessionRequestSchema = z
+const presentationSessionWindowFields = {
+  startsAt: isoDateTimeSchema.optional(),
+  expiresAt: isoDateTimeSchema.optional(),
+};
+
+const disabledPresentationSessionRequestSchema = z
   .object({
     deckId: deckIdSchema,
-    startsAt: isoDateTimeSchema.optional(),
-    expiresAt: isoDateTimeSchema.optional(),
-    accessMode: presentationAccessModeSchema.default("passcode"),
-    passcode: z
-      .string()
-      .regex(/^\d{4}$/)
-      .optional(),
+    ...presentationSessionWindowFields,
+    sessionPurpose: presentationSessionPurposeSchema.default("presentation"),
+    audienceAccessEnabled: z.literal(false),
     reuseCurrent: z.boolean().optional(),
   })
-  .strict()
-  .superRefine((request, ctx) => {
-    if (request.accessMode === "passcode" && request.passcode === undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["passcode"],
-        message: "passcode is required for passcode access",
-      });
-    }
-    if (request.accessMode === "public" && request.passcode !== undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["passcode"],
-        message: "public access must not include a passcode",
-      });
-    }
-  });
+  .strict();
 
-export const updatePresentationSessionAccessRequestSchema = z
+const passcodePresentationSessionRequestSchema = z
   .object({
-    startsAt: isoDateTimeSchema,
-    expiresAt: isoDateTimeSchema,
-    accessMode: presentationAccessModeSchema,
-    passcode: z
-      .string()
-      .regex(/^\d{4}$/)
-      .optional(),
+    deckId: deckIdSchema,
+    ...presentationSessionWindowFields,
+    sessionPurpose: z.literal("presentation").default("presentation"),
+    audienceAccessEnabled: z.literal(true),
+    accessMode: z.literal("passcode"),
+    passcode: z.string().regex(/^\d{4}$/),
+    reuseCurrent: z.boolean().optional(),
   })
-  .strict()
-  .superRefine((request, ctx) => {
-    const startsAt = new Date(request.startsAt).getTime();
-    const expiresAt = new Date(request.expiresAt).getTime();
-    if (
-      expiresAt <= startsAt ||
-      expiresAt - startsAt > 30 * 24 * 60 * 60 * 1000
-    ) {
+  .strict();
+
+const publicPresentationSessionRequestSchema = z
+  .object({
+    deckId: deckIdSchema,
+    ...presentationSessionWindowFields,
+    sessionPurpose: z.literal("presentation").default("presentation"),
+    audienceAccessEnabled: z.literal(true),
+    accessMode: z.literal("public"),
+    reuseCurrent: z.boolean().optional(),
+  })
+  .strict();
+
+export const createPresentationSessionRequestSchema = z.preprocess(
+  withAudienceAccessCompatibilityDefault,
+  z.union([
+    disabledPresentationSessionRequestSchema,
+    passcodePresentationSessionRequestSchema,
+    publicPresentationSessionRequestSchema,
+  ]),
+);
+
+const updatePresentationSessionAccessEnabledSchema = z.union([
+  z
+    .object({
+      audienceAccessEnabled: z.literal(true),
+      startsAt: isoDateTimeSchema,
+      expiresAt: isoDateTimeSchema,
+      accessMode: z.literal("passcode"),
+      passcode: z.string().regex(/^\d{4}$/),
+    })
+    .strict(),
+  z
+    .object({
+      audienceAccessEnabled: z.literal(true),
+      startsAt: isoDateTimeSchema,
+      expiresAt: isoDateTimeSchema,
+      accessMode: z.literal("public"),
+    })
+    .strict(),
+]).superRefine((request, ctx) => {
+  const startsAt = new Date(request.startsAt).getTime();
+  const expiresAt = new Date(request.expiresAt).getTime();
+  if (
+    expiresAt <= startsAt ||
+    expiresAt - startsAt > 30 * 24 * 60 * 60 * 1000
+  ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["expiresAt"],
@@ -110,21 +150,12 @@ export const updatePresentationSessionAccessRequestSchema = z
           "presentation access must be later than startsAt and no longer than 30 days",
       });
     }
-    if (request.accessMode === "passcode" && request.passcode === undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["passcode"],
-        message: "passcode is required for passcode access",
-      });
-    }
-    if (request.accessMode === "public" && request.passcode !== undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["passcode"],
-        message: "public access must not include a passcode",
-      });
-    }
-  });
+});
+
+export const updatePresentationSessionAccessRequestSchema = z.union([
+  z.object({ audienceAccessEnabled: z.literal(false) }).strict(),
+  updatePresentationSessionAccessEnabledSchema,
+]);
 
 export const presentationSessionResponseSchema = z
   .object({ session: presentationSessionSchema })
@@ -133,9 +164,10 @@ export const presentationSessionResponseSchema = z
 export const presentationSessionWithAudienceUrlResponseSchema = z
   .object({
     session: presentationSessionSchema,
-    audienceUrl: z.string().min(1),
+    audienceUrl: z.string().min(1).nullable(),
   })
-  .strict();
+  .strict()
+  .superRefine(assertAudienceUrlMatchesSession);
 
 export const presentationRunStatusSchema = z.enum([
   "created",
@@ -298,15 +330,53 @@ export const getCurrentPresentationSessionResponseSchema = z
     audienceUrl: z.string().min(1).nullable(),
   })
   .strict()
-  .superRefine((response, ctx) => {
-    if ((response.session === null) !== (response.audienceUrl === null)) {
+  .superRefine(assertAudienceUrlMatchesSession);
+
+function withAudienceAccessCompatibilityDefault(value: unknown): unknown {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value) ||
+    "audienceAccessEnabled" in value
+  ) {
+    return value;
+  }
+  return {
+    ...value,
+    audienceAccessEnabled: "accessMode" in value,
+  };
+}
+
+function assertAudienceUrlMatchesSession(
+  response: {
+    session: {
+      audienceAccessEnabled: boolean;
+    } | null;
+    audienceUrl: string | null;
+  },
+  ctx: z.RefinementCtx,
+): void {
+  if (response.session === null) {
+    if (response.audienceUrl !== null) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["audienceUrl"],
-        message: "session and audienceUrl must be present or absent together",
+        message: "audienceUrl must be null without a session",
       });
     }
-  });
+    return;
+  }
+  if (
+    response.session.audienceAccessEnabled !==
+    (response.audienceUrl !== null)
+  ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["audienceUrl"],
+        message: "audienceUrl must match audienceAccessEnabled",
+      });
+    }
+}
 
 export const listPresentationSessionsResponseSchema = z
   .object({ sessions: z.array(presentationSessionSchema) })
@@ -450,6 +520,9 @@ export type PresentationAnalysisJobPayload = z.infer<
 >;
 export type PresentationAccessMode = z.infer<
   typeof presentationAccessModeSchema
+>;
+export type PresentationSessionPurpose = z.infer<
+  typeof presentationSessionPurposeSchema
 >;
 export type CreatePresentationSessionRequest = z.infer<
   typeof createPresentationSessionRequestSchema

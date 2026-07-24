@@ -30,7 +30,7 @@
     "py:test": "cd services/python-worker && uv run pytest",
     "test": "turbo run test",
     "test:activity-slides:e2e": "node infra/scripts/run-playwright-test.mjs activity-slides.spec.ts",
-    "test:env-contract": "node --test infra/scripts/personal-staging-env.test.mjs infra/scripts/personal-staging-wrapper.test.mjs",
+    "test:env-contract": "node --test infra/scripts/personal-staging-env.test.mjs infra/scripts/personal-staging-wrapper.test.mjs infra/scripts/personal-staging-deploy.test.mjs",
     "test:nli-browser": "node infra/scripts/run-semantic-cue-nli-browser-benchmark.mjs",
     "test:smoke": "node infra/scripts/run-playwright-test.mjs",
     "typecheck": "turbo run typecheck"

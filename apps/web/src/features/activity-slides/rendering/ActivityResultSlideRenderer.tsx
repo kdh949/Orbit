@@ -19,6 +19,7 @@ import {
 import { useEffect, useState } from "react";
 
 import { activityApi } from "../api/activityApi";
+import { useActivityPublicProjection } from "./activityPublicProjectionContext";
 import { createActivityThemeStyle } from "./activityThemeStyle";
 import "./activity-result-slide.css";
 
@@ -33,7 +34,7 @@ export type ActivityResultRenderState =
 type RuntimeProjection = {
   presenterResult: ActivityPresenterResult | null;
   publicResult: ActivityPublicResult | null;
-  run: ActivityRun | null;
+  run: Pick<ActivityRun, "status"> | null;
   waiting: boolean;
 };
 
@@ -52,8 +53,15 @@ export function ActivityResultRuntime(props: {
 }) {
   const source = findSource(props.deck, props.slide.activityResult.sourceActivityId);
   const [projection, setProjection] = useState<RuntimeProjection>(waitingProjection);
+  const providedProjection = useActivityPublicProjection(
+    props.slide.activityResult.sourceActivityId,
+  );
+  const usesProvidedProjection = providedProjection !== null;
 
   useEffect(() => {
+    if (usesProvidedProjection) {
+      return;
+    }
     let cancelled = false;
     if (!source) {
       setProjection({ ...waitingProjection, waiting: false });
@@ -120,19 +128,34 @@ export function ActivityResultRuntime(props: {
       cancelled = true;
       window.clearInterval(timerId);
     };
-  }, [props.deck.deckId, props.deck.projectId, props.role, source?.activity.activityId]);
+  }, [
+    props.deck.deckId,
+    props.deck.projectId,
+    props.role,
+    source?.activity.activityId,
+    usesProvidedProjection,
+  ]);
+
+  const visibleProjection = providedProjection
+    ? {
+        presenterResult: null,
+        publicResult: providedProjection.publicResult,
+        run: providedProjection.run,
+        waiting: false,
+      }
+    : projection;
 
   return (
     <ActivityResultSlideRenderer
-      presenterResult={projection.presenterResult}
-      publicResult={projection.publicResult}
+      presenterResult={visibleProjection.presenterResult}
+      publicResult={visibleProjection.publicResult}
       role={props.role}
-      run={projection.run}
+      run={visibleProjection.run}
       scale={props.scale}
       slide={props.slide}
       source={source}
       theme={props.deck.theme}
-      waiting={projection.waiting}
+      waiting={visibleProjection.waiting}
     />
   );
 }
@@ -141,7 +164,7 @@ export function ActivityResultSlideRenderer(props: {
   presenterResult: ActivityPresenterResult | null;
   publicResult: ActivityPublicResult | null;
   role: "audience" | "presenter";
-  run: ActivityRun | null;
+  run: Pick<ActivityRun, "status"> | null;
   scale?: number;
   slide: ActivityResultsSlide;
   source: ActivitySlide | null;
@@ -200,7 +223,7 @@ export function getActivityResultRenderState(input: {
   presenterResult: ActivityPresenterResult | null;
   publicResult: ActivityPublicResult | null;
   role: "audience" | "presenter";
-  run: ActivityRun | null;
+  run: Pick<ActivityRun, "status"> | null;
   source: ActivitySlide | null;
   waiting?: boolean;
 }): ActivityResultRenderState {

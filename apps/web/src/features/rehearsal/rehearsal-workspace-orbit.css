@@ -388,21 +388,22 @@ main.rehearsal-presenter-shell {
   background: var(--redesign-color-surface-container-low);
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timer-card {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timer-card {
   overflow: hidden;
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timer-card:not(:has(.rehearsal-side-detail-grid)) {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timer-card:not(:has(.rehearsal-side-detail-grid)) {
   gap: 0;
   grid-template-rows: auto;
 }
 
 .rehearsal-presenter-shell .rehearsal-side-audio-gauge,
+.presenter-remote-shell .rehearsal-side-audio-gauge,
 .rehearsal-presenter-shell .rehearsal-panel-script {
   display: none;
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timer-hero {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timer-hero {
   background: var(--redesign-color-surface-container-lowest);
   border-bottom: 0;
   color: var(--redesign-color-on-surface);
@@ -410,18 +411,18 @@ main.rehearsal-presenter-shell {
   padding: 0;
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timer-header {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timer-header {
   background: var(--redesign-color-primary);
   color: var(--redesign-color-light-surface);
   padding: var(--redesign-space-4);
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timer-title {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timer-title {
   color: color-mix(in srgb, var(--redesign-color-light-surface) 82%, transparent);
   font-size: var(--redesign-type-body-sm-size);
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timer-time {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timer-time {
   color: var(--redesign-color-light-surface);
   cursor: default;
   font-family: var(--redesign-font-family);
@@ -429,7 +430,7 @@ main.rehearsal-presenter-shell {
   font-weight: 700;
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timer-actions button {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timer-actions button {
   background: color-mix(in srgb, var(--redesign-color-light-surface) 18%, transparent);
   border-color: color-mix(in srgb, var(--redesign-color-light-surface) 36%, transparent);
   color: var(--redesign-color-light-surface);
@@ -437,52 +438,52 @@ main.rehearsal-presenter-shell {
   width: 44px;
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timer-actions button:first-child {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timer-actions button:first-child {
   background: var(--redesign-color-on-surface);
   border-color: var(--redesign-color-on-surface);
   color: var(--redesign-color-surface-container-lowest);
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timer-actions button:hover:not(:disabled) {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timer-actions button:hover:not(:disabled) {
   background: color-mix(in srgb, var(--redesign-color-light-surface) 28%, transparent);
   border-color: var(--redesign-color-light-surface);
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timer-actions button:first-child:hover:not(:disabled) {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timer-actions button:first-child:hover:not(:disabled) {
   background: color-mix(in srgb, var(--redesign-color-on-surface) 82%, var(--redesign-color-primary-fixed-dim));
   color: var(--redesign-color-surface-container-lowest);
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timing-progress-list {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timing-progress-list {
   background: var(--redesign-color-surface-container-lowest);
   display: grid;
   gap: var(--redesign-space-3);
   padding: var(--redesign-space-3) var(--redesign-space-4);
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timer-hero .rehearsal-side-timing-progress {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timer-hero .rehearsal-side-timing-progress {
   color: var(--redesign-color-on-surface);
   display: grid;
   gap: var(--redesign-space-1);
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timing-progress-meta {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timing-progress-meta {
   align-items: center;
   display: flex;
   justify-content: space-between;
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timing-progress-meta strong,
-.rehearsal-presenter-shell .rehearsal-side-timing-progress-meta span {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timing-progress-meta strong,
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timing-progress-meta span {
   color: inherit;
   font-size: var(--redesign-type-label-sm-size);
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timing-progress-meta span {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timing-progress-meta span {
   opacity: 0.72;
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timing-progress-track {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timing-progress-track {
   background: var(--redesign-color-outline-variant);
   border-radius: var(--redesign-radius-full);
   display: block;
@@ -490,7 +491,7 @@ main.rehearsal-presenter-shell {
   overflow: hidden;
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timing-progress-track > span {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timing-progress-track > span {
   background: var(--redesign-color-on-surface);
   border-radius: inherit;
   display: block;
@@ -499,15 +500,15 @@ main.rehearsal-presenter-shell {
   transition: background-color var(--redesign-duration-normal) var(--redesign-ease-standard), width var(--redesign-duration-normal) var(--redesign-ease-standard);
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timing-progress-warning .rehearsal-side-timing-progress-track > span {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timing-progress-warning .rehearsal-side-timing-progress-track > span {
   background: var(--redesign-color-warning-progress);
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timing-progress-danger .rehearsal-side-timing-progress-track > span {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timing-progress-danger .rehearsal-side-timing-progress-track > span {
   background: var(--redesign-color-error);
 }
 
-.rehearsal-presenter-shell .rehearsal-side-timer-meta {
+:is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timer-meta {
   color: color-mix(in srgb, var(--redesign-color-on-surface) 66%, transparent);
 }
 

@@ -19,4 +19,18 @@ describe("PresentationMicCheckModal", () => {
     expect(html).toContain('role="dialog"');
     expect(html).not.toContain("리허설 시작");
   });
+
+  it("includes the optional private companion device check in preflight", () => {
+    const html = renderToStaticMarkup(
+      <PresentationMicCheckModal
+        companionSetup={<div>비공개 iPad 입력 테스트</div>}
+        onClose={vi.fn()}
+        onStart={vi.fn()}
+        onStartWithoutMicrophone={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain("비공개 iPad 입력 테스트");
+    expect(html).toContain("rehearsal-mic-modal-with-companion");
+  });
 });

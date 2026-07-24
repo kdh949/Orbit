@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { shouldWarnBeforePresentationUnload } from "./presentationLifecycle";
+import {
+  shouldClosePresenterSessionOnPreflightExit,
+  shouldWarnBeforePresentationUnload,
+} from "./presentationLifecycle";
 
 describe("presentationLifecycle", () => {
   it("warns only while a live presentation can lose in-progress data", () => {
@@ -10,5 +13,11 @@ describe("presentationLifecycle", () => {
     expect(shouldWarnBeforePresentationUnload("finishing")).toBe(true);
     expect(shouldWarnBeforePresentationUnload("completed")).toBe(false);
     expect(shouldWarnBeforePresentationUnload("failed")).toBe(false);
+  });
+
+  it("closes only companion-only sessions when preflight exits", () => {
+    expect(shouldClosePresenterSessionOnPreflightExit(false)).toBe(true);
+    expect(shouldClosePresenterSessionOnPreflightExit(true)).toBe(false);
+    expect(shouldClosePresenterSessionOnPreflightExit(null)).toBe(false);
   });
 });

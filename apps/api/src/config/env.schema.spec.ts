@@ -54,6 +54,22 @@ const validEnv = {
 };
 
 describe("ORBIT env validation", () => {
+  it("defaults asynchronous job admission to accept and rejects unknown modes", () => {
+    expect(loadOrbitConfig(validEnv, { service: "api" }).ASYNC_JOB_ADMISSION_MODE).toBe("accept");
+    expect(
+      loadOrbitConfig(
+        { ...validEnv, ASYNC_JOB_ADMISSION_MODE: "drain" },
+        { service: "api" },
+      ).ASYNC_JOB_ADMISSION_MODE,
+    ).toBe("drain");
+    expect(() =>
+      loadOrbitConfig(
+        { ...validEnv, ASYNC_JOB_ADMISSION_MODE: "paused" },
+        { service: "api" },
+      ),
+    ).toThrow(/ASYNC_JOB_ADMISSION_MODE/);
+  });
+
   it("uses staged BullMQ execution by default and validates staged selectors", () => {
     const defaults = loadOrbitConfig(validEnv, { service: "api" });
     expect(defaults.AI_DECK_EXECUTION_MODE).toBe("bullmq");

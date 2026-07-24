@@ -74,6 +74,11 @@ export class PresentationRunsService {
       projectId,
       sessionId,
     );
+    if (session.sessionPurpose !== "presentation") {
+      throw new BadRequestException(
+        "Presentation runs cannot be created for rehearsal sessions.",
+      );
+    }
     if (session.deckVersion !== request.expectedDeckVersion) {
       throw new ConflictException({
         code: "PRESENTATION_DECK_VERSION_MISMATCH",
