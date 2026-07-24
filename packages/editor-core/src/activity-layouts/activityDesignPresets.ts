@@ -446,6 +446,17 @@ function createEditorialElements(
         fill: "transparent"
       }
     ),
+    element.shape(
+      "ellipse",
+      { x: 143, y: 931, width: 108, height: 108 },
+      { fill: "#E4F26D" },
+      "decoration"
+    ),
+    element.image(
+      { x: 171, y: 959, width: 52, height: 52 },
+      "/activity-presets/icons/message.svg",
+      "참여 안내"
+    ),
     element.text(
       { x: 278, y: 969, width: 822, height: 46 },
       "실시간 설문 · 의견제출 · 만족도 조사에 참여해 주세요!",
@@ -463,6 +474,11 @@ function createEditorialElements(
       { x: 1225, y: 952, width: 1, height: 76 },
       { fill: "#899839" },
       "decoration"
+    ),
+    element.image(
+      { x: 1325, y: 959, width: 54, height: 54 },
+      "/activity-presets/icons/clock.svg",
+      "발표 중 참여 가능"
     ),
     element.text(
       { x: 1405, y: 976, width: 377, height: 33 },

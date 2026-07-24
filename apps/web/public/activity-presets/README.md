@@ -11,6 +11,8 @@
 
 위 요소는 Deck text, shape, repository brand asset 또는 runtime element로 다시 구성한다.
 
+`icons/message.svg`, `icons/clock.svg`는 `@tabler/icons@3.44.0`의 outline SVG 원본을 그대로 사용한다. `message-preview.png`, `clock-preview.png`는 자산 검수용 PNG preview다.
+
 ## 생성 프롬프트
 
 ### `spotlight-background.png`

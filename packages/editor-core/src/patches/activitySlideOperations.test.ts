@@ -104,6 +104,21 @@ describe("Activity slide operations", () => {
         expect(brandImage.props.alt).toBe("ORBIT");
       }
     }
+
+    const deck = createDemoDeck();
+    const editorial = createActivitySlide(deck, "poll", {
+      preset: "editorial"
+    });
+    expect(
+      editorial.elements
+        .filter((element) => element.type === "image")
+        .map((element) => element.props.src)
+    ).toEqual(
+      expect.arrayContaining([
+        "/activity-presets/icons/message.svg",
+        "/activity-presets/icons/clock.svg"
+      ])
+    );
   });
 
   it("reapplies an Activity preset without changing its semantic definition", () => {
