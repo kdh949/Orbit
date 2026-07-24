@@ -55,3 +55,9 @@
 조건이 맞으면 기존 `ai-deck-generation` Job을 그대로 사용하되 Worker에는 보내지 않는다. Style 확정 시 source 덱을 target project에 새 `deck_${jobId}`로 복제하고, 미리보기 화면은 750ms 간격으로 한 장씩 공개한 뒤 마지막 장을 600ms 유지하고 편집기로 이동한다. source 덱이 없거나 schema가 유효하지 않으면 `DEMO_DECK_CACHE_UNAVAILABLE`로 명시적으로 실패하며 일반 AI 생성으로 자동 전환하지 않는다.
 
 초기 운영에서는 asset을 복사하지 않고 source 덱의 URL을 유지한다. 따라서 이 기능은 인증된 미리보기와 편집기 시연에만 사용하고 source project와 asset을 보존한다.
+
+production에서는 기본적으로 캐시를 거부한다. 예외적으로 운영 시연에 사용할 때는
+`DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION=true`를 두 번째 잠금으로 명시하고
+`DEMO_FIXTURE_ENV_ALLOWLIST`에 `production`을 exact 값으로 포함한다. 이 승인은
+source project, 시연 사용자 멤버십과 asset 접근을 production에서 검증한 뒤에만
+적용하며, 시연 종료 또는 문제 발생 시 두 cache flag를 모두 `false`로 되돌린다.
