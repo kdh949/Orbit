@@ -906,3 +906,15 @@
 - Rationale: 동일 release commit의 workflow 재실행 가능성을 유지하고, viewer IP 기반 rate limit이 proxy 주소로 합쳐지는 문제와 ECS task의 영구 unhealthy 상태를 방지한다. 발표를 시작하지 않은 사용자의 preflight 취소가 이미 공유된 audience session을 종료하지 않게 한다.
 - Affected files: `.github/workflows/build-images.yml`, `.github/workflows/aws-infrastructure-plan.yml`, `infra/aws/ecs-compute-single-az.yaml`, `infra/scripts/assert-cfn-change-set-safe.test.mjs`, `apps/web/src/features/presentation/*`, `docs/conventions/environment.md`, `docs/runbooks/ecs-single-az-cutover.md`, `docs/decision-log.md`.
 - Follow-up review notes: main SHA workflow를 재실행해 기존 digest artifact가 다시 생성되는지, candidate CloudFront 경로에서 서로 다른 viewer IP가 rate-limit key로 분리되는지, ECS target과 container가 `/health`로 healthy가 되는지, audience URL을 활성화한 뒤 presentation preflight 취소가 session을 ended로 바꾸지 않는지 확인한다.
+
+## ORBIT EC2 production release compatibility gate
+
+- Context: production은 현재 CloudFront, S3 Static Web, 단일 EC2의 Docker Compose, RDS 경로로 운영되고 있으나 `develop`에는 ECS 전환 준비 코드와 인프라 template도 포함되어 있다. 코드 승격과 아키텍처 전환을 같은 릴리스로 해석하면 `main` 병합만으로 ECS Apply나 traffic 전환이 승인된 것처럼 오해할 수 있고, migration 또는 EC2 Compose 호환성 회귀가 배포 직전에 발견될 수 있다.
+- Options considered:
+  - `develop`의 최신 코드를 병합할 때 ECS Change Set과 traffic 전환도 함께 수행한다.
+  - 운영자가 매 릴리스마다 EC2 호환성을 수동으로 확인한다.
+  - ECS 전환은 별도 재승인 전까지 중지하고 모든 `develop`·`main` PR에 동일한 EC2 릴리스 gate를 적용한다.
+- Final decision: 현재 production 코드 릴리스는 기존 EC2 Compose 경로만 사용하며 ECS Change Set 생성·실행, ALB traffic 전환, ECS service 활성화는 포함하지 않는다. 모든 `develop`·`main` 대상 PR에서 `ec2-release-gate`를 실행해 production Compose 렌더링, 환경변수 계약, 깨끗한 PostgreSQL 전체 migration과 재실행, EC2 deploy wrapper 및 CloudFront health-check 경로를 검사한다. 실제 production 배포는 계속 수동 `workflow_dispatch`와 `production` environment 승인 경계를 사용한다.
+- Rationale: 애플리케이션 코드 승격과 인프라 전환 승인을 분리하면서 현재 운영 경로의 실행 가능성을 매 PR에서 동일하게 검증한다. migration은 실제 PostgreSQL에 적용하고, health gate는 PR에서 배포 스크립트의 probe 계약을 보존한 뒤 실제 수동 배포에서 EC2와 CloudFront endpoint를 다시 확인한다.
+- Affected files: `.github/workflows/ec2-release-gate.yml`, `infra/scripts/check-aws-production-compose.mjs`, `docs/deployment.md`, `docs/runbooks/aws-main-auto-deployment.md`, `docs/decision-log.md`.
+- Follow-up review notes: 이 PR 병합 후 `develop`과 `main` branch protection에 `ec2-release-gate`를 required status check로 등록한다. ECS 전환을 재개하려면 별도 운영 결정에서 현재 EC2 rollback 경로, Change Set, traffic 전환 비율과 live 검증을 다시 승인한다.
