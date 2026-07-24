@@ -60,6 +60,7 @@ describe("presentationApi", () => {
         sessionPurpose: "presentation",
       }),
     ).resolves.toEqual({
+      audienceAccessEnabled: false,
       audienceUrl: null,
       deckId: "deck_1",
       deckVersion: 4,
@@ -101,6 +102,7 @@ describe("presentationApi", () => {
         projectId: "project_1",
         recordingMode: "microphone",
         session: {
+          audienceAccessEnabled: false,
           audienceUrl: null,
           deckId: "deck_1",
           deckVersion: 4,

@@ -68,6 +68,7 @@ describe("PresentationWorkspace", () => {
     expect(source).toContain("ensurePresenterCompanionSession");
     expect(source).toContain("startPresentationRuntime");
     expect(source).toContain("closePresenterCompanionSession");
+    expect(source).toContain("shouldClosePresenterSessionOnPreflightExit");
     expect(source).toContain("uploadPresentationRecording");
     expect(source).toContain("recordedFileRef.current.size > 0");
     expect(source).toContain('setRuntimePhase("completed")');
