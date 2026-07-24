@@ -662,18 +662,12 @@ export function useCompanionSocket(
       command,
     );
     navigationTimeoutRef.current = window.setTimeout(() => {
-      if (
-        navigationPendingRef.current?.clientOperationId !==
-        command.clientOperationId
-      ) {
-        return;
-      }
-      clearCompanionNavigationPending({
+      markCompanionNavigationDelayed({
+        clientOperationId: command.clientOperationId,
         pendingRef: navigationPendingRef,
-        setPending: setNavigationPending,
+        setError: setNavigationError,
         timeoutRef: navigationTimeoutRef,
       });
-      setNavigationError("발표 제어 응답이 지연되고 있습니다.");
     }, 2_000);
     return true;
   };
@@ -782,6 +776,25 @@ export function createCompanionAnnotationCommand(
     ...metadata,
   });
   return parsed.success ? parsed.data : null;
+}
+
+export function markCompanionNavigationDelayed(input: {
+  clientOperationId: string;
+  pendingRef: {
+    current: PresentationCompanionNavigationCommand | null;
+  };
+  setError: (message: string) => void;
+  timeoutRef: { current: number | null };
+}): boolean {
+  if (
+    input.pendingRef.current?.clientOperationId !==
+    input.clientOperationId
+  ) {
+    return false;
+  }
+  input.timeoutRef.current = null;
+  input.setError("발표 제어 응답이 지연되고 있습니다.");
+  return true;
 }
 
 export function consumeCompanionAnnotationSnapshot(input: {

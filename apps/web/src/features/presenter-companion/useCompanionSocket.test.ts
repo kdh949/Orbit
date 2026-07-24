@@ -6,6 +6,7 @@ import {
   consumeCompanionPrompterState,
   createCompanionAnnotationCommand,
   createCompanionNavigationCommand,
+  markCompanionNavigationDelayed,
   type CompanionOutputCursor,
 } from "./useCompanionSocket";
 
@@ -163,6 +164,62 @@ describe("createCompanionNavigationCommand", () => {
       expectedOutputRevision: 7,
       sessionId: "session_1",
     });
+  });
+});
+
+describe("markCompanionNavigationDelayed", () => {
+  it("keeps the command pending until a higher output revision arrives", () => {
+    const pending = createCompanionNavigationCommand({
+      action: "next-step",
+      authorityEpochId: "epoch_1",
+      expectedOutputRevision: 7,
+      sessionId: "session_1",
+    });
+    const pendingRef = { current: pending };
+    const timeoutRef = { current: 42 };
+    let error = "";
+
+    expect(
+      markCompanionNavigationDelayed({
+        clientOperationId: pending?.clientOperationId ?? "",
+        pendingRef,
+        setError: (message) => {
+          error = message;
+        },
+        timeoutRef,
+      }),
+    ).toBe(true);
+
+    expect(pendingRef.current).toBe(pending);
+    expect(timeoutRef.current).toBeNull();
+    expect(error).toBe("발표 제어 응답이 지연되고 있습니다.");
+  });
+
+  it("ignores a stale timeout from an earlier command", () => {
+    const pending = createCompanionNavigationCommand({
+      action: "previous-slide",
+      authorityEpochId: "epoch_1",
+      expectedOutputRevision: 8,
+      sessionId: "session_1",
+    });
+    const pendingRef = { current: pending };
+    const timeoutRef = { current: 43 };
+    let error = "";
+
+    expect(
+      markCompanionNavigationDelayed({
+        clientOperationId: "nav_stale",
+        pendingRef,
+        setError: (message) => {
+          error = message;
+        },
+        timeoutRef,
+      }),
+    ).toBe(false);
+
+    expect(pendingRef.current).toBe(pending);
+    expect(timeoutRef.current).toBe(43);
+    expect(error).toBe("");
   });
 });
 
