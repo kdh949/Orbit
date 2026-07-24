@@ -27,6 +27,14 @@ function runChangeSet(resourceChange) {
   }
 }
 
+function sectionBetween(source, startMarker, endMarker) {
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker, start + startMarker.length);
+  assert.notEqual(start, -1, `missing section marker: ${startMarker}`);
+  assert.notEqual(end, -1, `missing section marker: ${endMarker}`);
+  return source.slice(start, end);
+}
+
 test("rejects protected resource removal", () => {
   const result = runChangeSet({
     Action: "Remove",
@@ -107,6 +115,7 @@ test("workflows enforce the CloudFormation execution role boundary", () => {
     planWorkflow,
     /- \.github\/workflows\/aws-infrastructure-apply\.yml/,
   );
+  assert.match(planWorkflow, /- \.github\/workflows\/build-images\.yml/);
   assert.match(
     applyWorkflow,
     /AWS_INFRA_APPLY_ROLE_ARN: \$\{\{ vars\.AWS_INFRA_APPLY_ROLE_ARN \}\}/,
@@ -132,4 +141,47 @@ test("workflows enforce the CloudFormation execution role boundary", () => {
     /"\$\{\{ inputs\.(?:change_set_arn|region) \}\}"/,
     "workflow inputs must not be interpolated directly into shell commands",
   );
+});
+
+test("release workflows preserve immutable images and ECS runtime health", () => {
+  const buildWorkflow = readFileSync(
+    ".github/workflows/build-images.yml",
+    "utf8",
+  );
+  const ecsTemplate = readFileSync(
+    "infra/aws/ecs-compute-single-az.yaml",
+    "utf8",
+  );
+  const publishEcr = buildWorkflow.slice(buildWorkflow.indexOf("  publish-ecr:"));
+  const firstDescribe = publishEcr.indexOf(
+    'digest="$(aws ecr describe-images',
+  );
+  const copyImage = publishEcr.indexOf(
+    'docker buildx imagetools create -t "$target" "$source"',
+  );
+
+  assert.ok(firstDescribe >= 0 && firstDescribe < copyImage);
+  assert.match(
+    publishEcr,
+    /if \[ -z "\$digest" \] \|\| \[ "\$digest" = "None" \]; then/,
+  );
+
+  const ecsTargetGroup = sectionBetween(
+    ecsTemplate,
+    "  EcsApiTargetGroup:",
+    "  HttpsListener:",
+  );
+  assert.match(ecsTargetGroup, /HealthCheckPath: \/health/);
+
+  const apiTask = sectionBetween(
+    ecsTemplate,
+    "  ApiTaskDefinition:",
+    "  WorkerTaskDefinition:",
+  );
+  assert.match(
+    apiTask,
+    /- Name: API_TRUST_PROXY_HOPS\s+Value: "2"/,
+  );
+  assert.match(apiTask, /http:\/\/localhost:3000\/health/);
+  assert.doesNotMatch(apiTask, /http:\/\/localhost:3000\/api\/health/);
 });
