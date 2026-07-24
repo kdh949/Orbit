@@ -24,7 +24,9 @@ export function PresentationPasscodeElementContent(props: {
   const runtime = useActivityElementRuntime();
   const labelStyle = props.elementProps.labelTextStyle;
   const codeStyle = props.elementProps.codeTextStyle;
-  const labelHeight = Math.min(52, props.frame.height * 0.3);
+  const labelHeight = props.elementProps.label
+    ? Math.min(52, props.frame.height * 0.3)
+    : 0;
 
   return (
     <Group listening={false}>
@@ -36,18 +38,20 @@ export function PresentationPasscodeElementContent(props: {
         strokeWidth={props.elementProps.strokeWidth}
         width={props.frame.width}
       />
-      <Text
-        align={labelStyle.align ?? "center"}
-        fill={labelStyle.color ?? "#62675F"}
-        fontFamily={labelStyle.fontFamily}
-        fontSize={labelStyle.fontSize ?? 22}
-        fontStyle={getKonvaFontStyle(labelStyle.fontWeight ?? "medium")}
-        height={labelHeight}
-        padding={8}
-        text={props.elementProps.label}
-        verticalAlign="middle"
-        width={props.frame.width}
-      />
+      {props.elementProps.label ? (
+        <Text
+          align={labelStyle.align ?? "center"}
+          fill={labelStyle.color ?? "#62675F"}
+          fontFamily={labelStyle.fontFamily}
+          fontSize={labelStyle.fontSize ?? 22}
+          fontStyle={getKonvaFontStyle(labelStyle.fontWeight ?? "medium")}
+          height={labelHeight}
+          padding={8}
+          text={props.elementProps.label}
+          verticalAlign="middle"
+          width={props.frame.width}
+        />
+      ) : null}
       <Text
         align={codeStyle.align ?? "center"}
         fill={codeStyle.color ?? "#171917"}

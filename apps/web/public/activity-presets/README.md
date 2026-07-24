@@ -27,4 +27,4 @@
 
 ## 브랜드 자산
 
-`/brand/orbit-logo.png`는 생성 이미지가 아니라 저장소의 `apps/web/src/features/mockups/assets/orbit-logo-selected.png`를 그대로 복제한 public runtime asset이다.
+`/brand/orbit-logo.png`는 생성 이미지가 아니라 저장소의 투명 `apps/web/src/assets/orbit-logo.png`를 그대로 복제한 public runtime asset이다.

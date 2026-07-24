@@ -72,6 +72,40 @@ describe("Activity slide operations", () => {
     }
   });
 
+  it("uses clean raster plates and the repository logo for reference-led presets", () => {
+    for (const preset of ["spotlight", "split", "editorial"] as const) {
+      const deck = createDemoDeck();
+      const slide = createActivitySlide(deck, "poll", { preset });
+
+      expect(slide.style.backgroundImage).toEqual({
+        src: `/activity-presets/${preset}-background.png`,
+        alt: `${preset === "spotlight" ? "Spotlight" : preset === "split" ? "Split" : "Editorial"} 참여 장표 배경`,
+        fit: "stretch",
+        opacity: 1
+      });
+      expect(
+        slide.elements
+          .filter((element) => element.type === "presentation-passcode")
+          .every((element) => element.props.label === "")
+      ).toBe(true);
+    }
+
+    for (const preset of ["spotlight", "editorial"] as const) {
+      const deck = createDemoDeck();
+      const slide = createActivitySlide(deck, "poll", { preset });
+      const brandImage = slide.elements.find(
+        (element) =>
+          element.type === "image" &&
+          element.props.src === "/brand/orbit-logo.png"
+      );
+
+      expect(brandImage?.type).toBe("image");
+      if (brandImage?.type === "image") {
+        expect(brandImage.props.alt).toBe("ORBIT");
+      }
+    }
+  });
+
   it("reapplies an Activity preset without changing its semantic definition", () => {
     const deck = deckWithSatisfaction();
     const source = deck.slides.find((slide) => slide.kind === "activity");
