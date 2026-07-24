@@ -29,6 +29,32 @@ export type LivePresentationDisplayRole =
   | "slide-receiver"
   | "slide-surface";
 
+/**
+ * Picks the window whose audience stream bridge holds the active share.
+ *
+ * A presenter window bridges through the child audience window it opened. Once
+ * this window becomes the audience surface there is no child window: the
+ * presenter remote window attaches its capture to `window.opener`, which is
+ * this window, and `PresentWindowReceiver` registers the bridge here.
+ */
+export function resolveAudienceStreamObservationTarget(input: {
+  audienceWindowConnected: boolean;
+  displayRole: LivePresentationDisplayRole;
+  getAudienceWindow: () => AudienceStreamBridgeWindow | null;
+  getSelfWindow: () => AudienceStreamBridgeWindow | null;
+}): AudienceStreamBridgeWindow | null {
+  if (input.displayRole === "presenter") {
+    return input.audienceWindowConnected ? input.getAudienceWindow() : null;
+  }
+  return input.getSelfWindow();
+}
+
+function readSelfBridgeWindow(): AudienceStreamBridgeWindow | null {
+  return typeof window === "undefined"
+    ? null
+    : (window as unknown as AudienceStreamBridgeWindow);
+}
+
 export function useLivePresentationOutput(input: {
   activityElementRuntime?: ActivityElementRuntime | null;
   audienceWindowConnected: boolean;
@@ -105,19 +131,25 @@ export function useLivePresentationOutput(input: {
     outputMode: input.outputMode,
   });
   useEffect(() => {
-    if (
-      input.displayRole !== "presenter" ||
-      !input.audienceWindowConnected
-    ) {
+    const targetWindow = resolveAudienceStreamObservationTarget({
+      audienceWindowConnected: input.audienceWindowConnected,
+      displayRole: input.displayRole,
+      getAudienceWindow: () => getAudienceWindowRef.current(),
+      getSelfWindow: readSelfBridgeWindow,
+    });
+    if (!targetWindow) {
       setBridgedShare(null);
       return;
     }
     const observation = observeAudienceStreamInWindow({
       identity: hostIdentity.localChannel,
       onChange: setBridgedShare,
-      targetWindow: getAudienceWindowRef.current(),
+      targetWindow,
     });
-    if (!observation.ok) return;
+    if (!observation.ok) {
+      setBridgedShare(null);
+      return;
+    }
     return () => {
       observation.unsubscribe();
       setBridgedShare(null);
@@ -137,10 +169,10 @@ export function useLivePresentationOutput(input: {
         }
       : null);
   const companionAuthority = usePresenterCompanionAuthority({
-    enabled:
-      Boolean(input.companionEnabled) &&
-      (input.enabled ?? true) &&
-      input.displayRole === "presenter",
+    // Authority follows the window that owns the deck state, not the display
+    // role: swapping this window into the audience surface must not drop the
+    // companion lease.
+    enabled: Boolean(input.companionEnabled) && (input.enabled ?? true),
     sessionId: input.persistedSessionId,
     canGoNext: input.canGoNext,
     canGoPrevious: input.canGoPrevious,

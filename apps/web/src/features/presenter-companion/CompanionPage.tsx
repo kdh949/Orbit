@@ -149,7 +149,9 @@ function ConnectedCompanionShell(props: {
         }
         statusLabel={
           companion.annotationRecovering
-            ? "다시 동기화 중"
+            ? companion.authorityEpochId
+              ? "다시 동기화 중"
+              : "발표자 화면 대기 중"
             : companion.status === "connected"
               ? "연결됨"
               : "연결 확인 중"
