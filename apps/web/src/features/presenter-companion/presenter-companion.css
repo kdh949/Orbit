@@ -34,6 +34,26 @@
   margin-right: auto;
 }
 
+.presenter-companion-close {
+  align-items: center;
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  border-radius: var(--redesign-radius-full);
+  color: var(--redesign-color-on-surface-variant);
+  cursor: pointer;
+  display: inline-flex;
+  height: var(--redesign-size-control-sm);
+  justify-content: center;
+  padding: 0;
+  width: var(--redesign-size-control-sm);
+}
+
+.presenter-companion-close:hover {
+  background: var(--redesign-color-surface-container-low);
+  color: var(--redesign-color-on-surface);
+}
+
 .presenter-companion-heading strong {
   font-size: var(--redesign-type-headline-md-size);
 }
