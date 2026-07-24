@@ -26,6 +26,8 @@ import type { ElementPresentationState } from "./ReadOnlySlideCanvas";
 
 import { ImageElementContent } from "./ImageElementContent";
 import { ActivityQrElementContent } from "../../activity-slides/rendering/ActivityQrElementContent";
+import { ActivityCopyElementContent } from "../../activity-slides/rendering/ActivityCopyElementContent";
+import { PresentationPasscodeElementContent } from "../../activity-slides/rendering/PresentationPasscodeElementContent";
 import { getTableLayout } from "./tableLayout";
 import {
   buildCustomShapePathDataFromNodes,
@@ -197,6 +199,26 @@ export function ElementNodeContent(props: {
         deckId={deck.deckId}
         frame={frame}
         projectId={deck.projectId}
+      />
+    );
+  }
+
+  if (element.type === "activity-copy") {
+    return (
+      <ActivityCopyElementContent
+        deck={deck}
+        elementProps={element.props}
+        frame={frame}
+        slide={slide}
+      />
+    );
+  }
+
+  if (element.type === "presentation-passcode") {
+    return (
+      <PresentationPasscodeElementContent
+        elementProps={element.props}
+        frame={frame}
       />
     );
   }

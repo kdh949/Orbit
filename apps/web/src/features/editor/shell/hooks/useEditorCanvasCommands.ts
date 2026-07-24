@@ -59,7 +59,12 @@ import {
   getElementLayerOrderUpdates,
   type ElementLayerOrderAction,
 } from "../utils/elementLayerOrder";
-import { canEditSlideCanvas } from "../utils/slideEditingPolicy";
+import {
+  canEditSlideCanvas,
+  canInsertCustomShape,
+  canInsertDataElements,
+  canInsertElementTypeOnSlide
+} from "../utils/slideEditingPolicy";
 import type { PatchProducer } from "./useEditorPersistenceState";
 
 export type ElementFrameChange = {
@@ -93,6 +98,28 @@ export type TableContextActionStates = Record<
   TableContextAction | "cellText",
   TableActionState
 >;
+
+export function getActivityRuntimeElementFrame(
+  canvas: Deck["canvas"],
+  kind: "qr" | "passcode",
+) {
+  if (kind === "qr") {
+    const size = Math.min(canvas.width, canvas.height) * 0.2;
+    return {
+      height: size,
+      width: size,
+      x: canvas.width * 0.28 - size / 2,
+      y: canvas.height * 0.65 - size / 2,
+    };
+  }
+
+  return {
+    height: 240,
+    width: 480,
+    x: canvas.width * 0.62,
+    y: canvas.height * 0.65 - 120,
+  };
+}
 
 const tableDisabledReasonLabels = {
   "cell-out-of-bounds": "선택한 셀을 찾을 수 없습니다.",
@@ -464,17 +491,30 @@ export function useEditorCanvasCommands(args: {
     args.setInsertTool("select");
   }
 
-  function addActivityQrElement(activityId: string) {
+  function addActivityQrElement(
+    activityId: string,
+    placement: "center" | "runtime-palette" = "center"
+  ) {
     if (!canEditSlideCanvas(args.currentSlide) || !activityId.trim()) return false;
     const elementId = createElementId(args.deck);
     const size = Math.min(args.deck.canvas.width, args.deck.canvas.height) * 0.2;
+    const runtimeFrame = getActivityRuntimeElementFrame(
+      args.deck.canvas,
+      "qr",
+    );
     args.commitPatch((currentDeck) =>
       createAddElementPatch(currentDeck, args.currentSlide!.slideId, {
         elementId,
         type: "activity-qr",
         role: "media",
-        x: (args.deck.canvas.width - size) / 2,
-        y: (args.deck.canvas.height - size) / 2,
+        x:
+          placement === "runtime-palette"
+            ? runtimeFrame.x
+            : (args.deck.canvas.width - size) / 2,
+        y:
+          placement === "runtime-palette"
+            ? runtimeFrame.y
+            : (args.deck.canvas.height - size) / 2,
         width: size,
         height: size,
         rotation: 0,
@@ -491,8 +531,97 @@ export function useEditorCanvasCommands(args: {
     return true;
   }
 
+  function addActivityRuntimeElement(
+    kind: "title" | "description" | "qr" | "passcode"
+  ) {
+    const slide = args.currentSlide;
+    if (
+      slide?.kind !== "activity" ||
+      slide.activityAppearance.mode !== "editable"
+    ) {
+      return false;
+    }
+    if (kind === "qr") {
+      return addActivityQrElement(slide.activity.activityId, "runtime-palette");
+    }
+
+    const elementId = createElementId(args.deck);
+    const zIndex = getNextElementZIndex(slide.elements);
+    const passcodeFrame = getActivityRuntimeElementFrame(
+      args.deck.canvas,
+      "passcode",
+    );
+    const common = {
+      elementId,
+      rotation: 0,
+      opacity: 1,
+      zIndex,
+      locked: false,
+      visible: true
+    };
+    const element: DeckElement =
+      kind === "passcode"
+        ? {
+            ...common,
+            type: "presentation-passcode",
+            role: "highlight",
+            ...passcodeFrame,
+            props: {
+              label: "입장 코드",
+              unavailableText: "발표 시작 후 표시",
+              publicAccessText: "비밀번호 없이 바로 참여",
+              legacyUnavailableText: "입장 코드를 다시 설정해 주세요",
+              labelTextStyle: { fontSize: 22 },
+              codeTextStyle: {
+                fontSize: 64,
+                fontWeight: "bold",
+                letterSpacing: 12,
+                align: "center",
+                verticalAlign: "middle"
+              },
+              fill: "#FFFFFF",
+              stroke: "#C9CEC5",
+              strokeWidth: 2,
+              borderRadius: 24
+            }
+          }
+        : {
+            ...common,
+            type: "activity-copy",
+            role: kind === "title" ? "title" : "subtitle",
+            x: 360,
+            y: kind === "title" ? 240 : 430,
+            width: 1200,
+            height: kind === "title" ? 180 : 100,
+            props: {
+              activityId: slide.activity.activityId,
+              field: kind,
+              fallbackText:
+                kind === "title"
+                  ? "질문을 입력해 주세요"
+                  : "참여 안내를 입력해 주세요",
+              textStyle: {
+                fontSize: kind === "title" ? 72 : 30,
+                fontWeight: kind === "title" ? "bold" : "normal",
+                align: "center",
+                verticalAlign: "middle",
+                autoFit: "shrink-text"
+              }
+            }
+          };
+
+    const committed = args.commitPatch((currentDeck) =>
+      createAddElementPatch(currentDeck, slide.slideId, element)
+    );
+    if (!committed) return false;
+    args.setSelectedElementIds([elementId]);
+    args.setEditingElementId(null);
+    args.setInsertTool("select");
+    return true;
+  }
+
   function addChartElement(type: ChartInsertType = "bar") {
-    if (!canEditSlideCanvas(args.currentSlide)) return;
+    if (!canInsertDataElements(args.currentSlide)) return;
     const elementId = createElementId(args.deck);
     const redesignPalette = resolveRedesignPalette();
     const primaryColor =
@@ -639,6 +768,7 @@ export function useEditorCanvasCommands(args: {
   function insertShapeElement(shapeType: ShapeInsertType) {
     if (!canEditSlideCanvas(args.currentSlide)) return;
     if (shapeType === "customShape") {
+      if (!canInsertCustomShape(args.currentSlide)) return;
       args.setEditingElementId(null);
       args.setCustomShapeEditElementId(null);
       args.setSelectedElementIds([]);
@@ -1000,6 +1130,14 @@ export function useEditorCanvasCommands(args: {
     if (!canEditSlideCanvas(args.currentSlide) || !copiedElementRef.current) return;
     args.setElementContextMenu(null);
     const { elements, pasteCount, rootElementId } = copiedElementRef.current;
+    if (
+      elements.some(
+        (element) =>
+          !canInsertElementTypeOnSlide(args.currentSlide, element.type)
+      )
+    ) {
+      return;
+    }
     const nextPasteCount = pasteCount + 1;
     cloneElements(elements, rootElementId, nextPasteCount);
     copiedElementRef.current = { elements, pasteCount: nextPasteCount, rootElementId };
@@ -1083,7 +1221,7 @@ export function useEditorCanvasCommands(args: {
   }
 
   function createCustomShape(nodes: CustomShapeNode[], closed: boolean) {
-    if (!canEditSlideCanvas(args.currentSlide) || nodes.length < 2) {
+    if (!canInsertCustomShape(args.currentSlide) || nodes.length < 2) {
       args.setInsertTool("select");
       return;
     }
@@ -1426,6 +1564,7 @@ export function useEditorCanvasCommands(args: {
       addChartElement,
       addActivityResultsSlide,
       addActivityQrElement,
+      addActivityRuntimeElement,
       addIconElement,
       addSlide,
       addActivitySlide,

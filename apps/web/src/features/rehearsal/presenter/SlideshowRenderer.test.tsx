@@ -111,6 +111,93 @@ describe("SlideshowRenderer", () => {
     expect(html).not.toContain('data-testid="read-only-slide-stage"');
   });
 
+  it("renders editable activity slides from their concrete canvas elements", () => {
+    const baseDeck = createDemoDeck();
+    const activitySlide = createActivitySlide(baseDeck, "poll", {
+      preset: "spotlight"
+    });
+    const deck = {
+      ...baseDeck,
+      slides: [...baseDeck.slides, activitySlide]
+    };
+    const html = renderToStaticMarkup(
+      <SlideshowRenderer
+        deck={deck}
+        slideId={activitySlide.slideId}
+        stepIndex={0}
+      />
+    );
+
+    expect(html).toContain('data-testid="read-only-slide-stage"');
+    expect(html).toContain(activitySlide.activity.title);
+    expect(html).toContain("입장 코드");
+    expect(html).toContain("••••");
+    expect(html).not.toContain("청중 참여 장표");
+  });
+
+  it("injects presenter-only runtime values into editable activity elements", () => {
+    const baseDeck = createDemoDeck();
+    const activitySlide = createActivitySlide(baseDeck, "poll", {
+      preset: "spotlight"
+    });
+    const deck = {
+      ...baseDeck,
+      slides: [...baseDeck.slides, activitySlide]
+    };
+    const html = renderToStaticMarkup(
+      <SlideshowRenderer
+        activityElementRuntime={{
+          audienceUrl: "https://orbit.example/audience/session_live",
+          passcodeState: { status: "private", displayPasscode: "4821" }
+        }}
+        deck={deck}
+        slideId={activitySlide.slideId}
+        stepIndex={0}
+      />
+    );
+
+    expect(html).toContain("4821");
+    expect(html).not.toContain("••••");
+  });
+
+  it.each([
+    [
+      { status: "public" as const },
+      "비밀번호 없이 바로 참여",
+    ],
+    [
+      { status: "not-prepared" as const },
+      "발표 시작 후 표시",
+    ],
+    [
+      { status: "legacy-unavailable" as const },
+      "입장 코드를 다시 설정해 주세요",
+    ],
+  ])("renders the %s passcode runtime state", (passcodeState, expectedText) => {
+    const baseDeck = createDemoDeck();
+    const activitySlide = createActivitySlide(baseDeck, "poll", {
+      preset: "spotlight",
+    });
+    const deck = {
+      ...baseDeck,
+      slides: [...baseDeck.slides, activitySlide],
+    };
+    const html = renderToStaticMarkup(
+      <SlideshowRenderer
+        activityElementRuntime={{
+          audienceUrl: null,
+          passcodeState,
+        }}
+        deck={deck}
+        slideId={activitySlide.slideId}
+        stepIndex={0}
+      />,
+    );
+
+    expect(html).toContain(expectedText);
+    expect(html).not.toContain("••••");
+  });
+
   it("falls back to thumbnailUrl when a slide has no renderable elements", () => {
     const thumbnailDeck = {
       ...p0AnimationDeck,

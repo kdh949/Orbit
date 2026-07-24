@@ -96,6 +96,49 @@ describe("companionDeckSnapshotSchema", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("preserves editable Activity appearance in an audience snapshot", () => {
+    const activitySnapshot = companionDeckSnapshotSchema.parse({
+      ...safeSnapshot,
+      slides: [
+        {
+          slideId: "slide_activity_1",
+          kind: "activity",
+          order: 1,
+          style: {},
+          elements: [],
+          animations: [],
+          triggerAnimationIds: [],
+          activityAppearance: { mode: "editable" },
+          activity: {
+            activityId: "activity_1",
+            template: "poll",
+            title: "실시간 투표",
+            description: "의견을 선택해 주세요.",
+            questions: [
+              {
+                questionId: "question_1",
+                type: "single-choice",
+                prompt: "가장 기대되는 기능은?",
+                required: true,
+                options: [
+                  { optionId: "option_1", label: "편집" },
+                  { optionId: "option_2", label: "발표" },
+                ],
+              },
+            ],
+            allowDisplayName: false,
+            hideResultsUntilReveal: true,
+          },
+        },
+      ],
+    });
+
+    expect(activitySnapshot.slides[0]).toMatchObject({
+      kind: "activity",
+      activityAppearance: { mode: "editable" },
+    });
+  });
 });
 
 describe("presentation companion HTTP schemas", () => {

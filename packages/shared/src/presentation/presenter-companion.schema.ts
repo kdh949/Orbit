@@ -9,6 +9,7 @@ import { activityPublicResultSchema } from "../activity/activity-results.schema"
 import { activityRuntimeStatusSchema } from "../activity/activity-runtime.schema";
 import { animationSchema } from "../deck/animation.schema";
 import {
+  activityAppearanceSchema,
   deckCanvasSchema,
   slideImportRenderModeSchema,
   slideKindSchema,
@@ -61,6 +62,7 @@ export const companionActivitySlideSchema = z
     ...companionSlideBaseFields,
     kind: z.literal("activity"),
     activity: activityDefinitionSchema,
+    activityAppearance: activityAppearanceSchema,
   })
   .strict();
 
@@ -136,7 +138,27 @@ export const presentationCompanionStatusSchema = z
   })
   .strict();
 
-export const presentationCompanionBootstrapSchema = z
+export type PresentationCompanionBootstrap = {
+  sessionId: string;
+  sessionPurpose: z.infer<typeof presentationSessionPurposeSchema>;
+  expiresAt: string;
+  scopes: z.infer<typeof companionAccessScopesSchema>;
+  deck: CompanionDeckSnapshot;
+};
+
+type PresentationCompanionBootstrapInput = {
+  sessionId: string;
+  sessionPurpose: z.input<typeof presentationSessionPurposeSchema>;
+  expiresAt: string;
+  scopes: z.input<typeof companionAccessScopesSchema>;
+  deck: z.input<typeof companionDeckSnapshotSchema>;
+};
+
+export const presentationCompanionBootstrapSchema: z.ZodType<
+  PresentationCompanionBootstrap,
+  z.ZodTypeDef,
+  PresentationCompanionBootstrapInput
+> = z
   .object({
     sessionId: z.string().min(1),
     sessionPurpose: presentationSessionPurposeSchema,
@@ -157,9 +179,6 @@ export type PresentationCompanionExchangeResponse = z.infer<
 >;
 export type PresentationCompanionStatus = z.infer<
   typeof presentationCompanionStatusSchema
->;
-export type PresentationCompanionBootstrap = z.infer<
-  typeof presentationCompanionBootstrapSchema
 >;
 
 export const presentationCompanionActivityProjectionSchema = z

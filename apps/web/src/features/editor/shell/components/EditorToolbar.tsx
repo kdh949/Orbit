@@ -20,6 +20,7 @@ type EditorToolbarProps = {
   canZoomIn: boolean;
   canZoomOut: boolean;
   canMutate: boolean;
+  canInsertDataElements: boolean;
   canUseCurrentSlide: boolean;
   compactSelectionTrigger?: ReactNode;
   chartMenuButtonRef: RefObject<HTMLButtonElement | null>;
@@ -101,9 +102,14 @@ export function EditorToolbar(props: EditorToolbarProps) {
               aria-haspopup="menu"
               aria-label="차트"
               className={`tool-button ${props.isChartMenuOpen ? "active" : ""}`}
-              disabled={!props.canUseCurrentSlide}
+              disabled={!props.canUseCurrentSlide || !props.canInsertDataElements}
               ref={props.chartMenuButtonRef}
-              title={editDisabledTitle ?? "차트 또는 표 추가"}
+              title={
+                editDisabledTitle ??
+                (props.canInsertDataElements
+                  ? "차트 또는 표 추가"
+                  : "참여 장표에는 차트와 표를 추가할 수 없습니다.")
+              }
               type="button"
               onClick={props.onToggleChartMenu}
             >

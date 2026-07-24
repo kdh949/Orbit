@@ -6,6 +6,7 @@ import type {
 } from "@orbit/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PresenterSlideshowState } from "./presenterStateStore";
+import type { ActivityElementRuntime } from "../../activity-slides/rendering/ActivityElementRuntimeContext";
 import {
   createPresentationSessionId,
   createPresenterAnnotationDeltaMessage,
@@ -59,6 +60,7 @@ export type PresentationPublisherController = {
 };
 
 export function usePresentationChannelPublisher(args: {
+  activityElementRuntime?: ActivityElementRuntime | null;
   channelFactory?: PresentationChannelFactory;
   deck: Deck | null;
   enabled?: boolean;
@@ -98,12 +100,22 @@ export function usePresentationChannelPublisher(args: {
   const latestPeerReadyHandlerRef = useRef<typeof onPeerReady>(onPeerReady);
   const latestScreenShareEndedHandlerRef =
     useRef<typeof onScreenShareEnded>(onScreenShareEnded);
-  const latestRef = useRef({ deck, state, triggerAnimationIds });
+  const latestRef = useRef({
+    activityElementRuntime: args.activityElementRuntime ?? null,
+    deck,
+    state,
+    triggerAnimationIds,
+  });
   const latestAnnotationSnapshotRef = useRef(getAnnotationSnapshot);
   latestCommandHandlerRef.current = onCommand;
   latestPeerReadyHandlerRef.current = onPeerReady;
   latestScreenShareEndedHandlerRef.current = onScreenShareEnded;
-  latestRef.current = { deck, state, triggerAnimationIds };
+  latestRef.current = {
+    activityElementRuntime: args.activityElementRuntime ?? null,
+    deck,
+    state,
+    triggerAnimationIds,
+  };
   latestAnnotationSnapshotRef.current = getAnnotationSnapshot;
 
   const identity = useMemo<PresentationChannelIdentity | null>(
@@ -139,6 +151,7 @@ export function usePresentationChannelPublisher(args: {
         }
 
         return createPresenterSnapshotMessage({
+          activityElementRuntime: latest.activityElementRuntime,
           deck: latest.deck,
           identity,
           state: latest.state,
@@ -154,6 +167,7 @@ export function usePresentationChannelPublisher(args: {
         }
 
         return createPresenterStateMessage({
+          activityElementRuntime: latest.activityElementRuntime,
           identity,
           state: latest.state,
           triggerAnimationIds: latest.triggerAnimationIds,
@@ -179,6 +193,7 @@ export function usePresentationChannelPublisher(args: {
           return null;
         }
         return createPresenterRemoteSnapshotMessage({
+          activityElementRuntime: latest.activityElementRuntime,
           deck: latest.deck,
           identity,
           state: latest.state,
@@ -191,6 +206,7 @@ export function usePresentationChannelPublisher(args: {
           return null;
         }
         return createPresenterRemoteStateMessage({
+          activityElementRuntime: latest.activityElementRuntime,
           identity,
           state: latest.state,
           triggerAnimationIds: latest.triggerAnimationIds,
@@ -272,7 +288,13 @@ export function usePresentationChannelPublisher(args: {
 
     controllerRef.current?.publishState();
     presenterRemoteControllerRef.current?.publishState();
-  }, [deck, enabled, state, triggerAnimationIds]);
+  }, [
+    args.activityElementRuntime,
+    deck,
+    enabled,
+    state,
+    triggerAnimationIds,
+  ]);
 
   return {
     publishAnnotationDelta: (input: {

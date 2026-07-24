@@ -1,4 +1,4 @@
-import { createDemoDeck } from "@orbit/editor-core";
+import { createActivitySlide, createDemoDeck } from "@orbit/editor-core";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -53,6 +53,18 @@ describe("motionEditingPolicy", () => {
     );
     expect(getAnimationMutationDisabledReason(deck, slide)).toContain(
       "위치 정보"
+    );
+  });
+
+  it("blocks motion editing on editable Activity slides", () => {
+    const deck = createDemoDeck();
+    const slide = createActivitySlide(deck, "poll", { preset: "spotlight" });
+
+    expect(getTransitionMutationDisabledReason(deck, slide)).toContain(
+      "참여 및 결과 장표"
+    );
+    expect(getAnimationMutationDisabledReason(deck, slide)).toContain(
+      "참여 및 결과 장표"
     );
   });
 });

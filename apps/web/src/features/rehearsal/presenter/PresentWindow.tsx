@@ -31,6 +31,7 @@ import {
   type SlideWindowFullscreenRequestMessage,
 } from "./displayManager";
 import type { PresenterSlideshowState } from "./presenterStateStore";
+import type { ActivityElementRuntime } from "../../activity-slides/rendering/ActivityElementRuntimeContext";
 import {
   createSlideWindowHeartbeatMessage,
   createSlideWindowReadyMessage,
@@ -44,6 +45,7 @@ import {
 } from "./presentationChannel";
 
 export type PresentWindowSnapshot = {
+  activityElementRuntime?: ActivityElementRuntime | null;
   annotation?: PresentationCompanionAnnotationSnapshot | null;
   deck: Deck;
   state: PresenterSlideshowState;
@@ -388,6 +390,7 @@ export function PresentWindowContent(props: {
         }}
       >
         <AudienceOutputRenderer
+          activityElementRuntime={snapshot.activityElementRuntime}
           deck={snapshot.deck}
           onScreenShareContentSizeChange={setScreenShareContentSize}
           onScreenShareFailure={onScreenShareFailure}
@@ -492,6 +495,7 @@ export function applyPresentWindowMessage(
 ): PresentWindowSnapshot | null {
   if (message.type === "presenter-snapshot") {
     return {
+      activityElementRuntime: message.activityElementRuntime,
       deck: message.deck,
       state: message.state,
       triggerAnimationIds: message.triggerAnimationIds,
@@ -501,6 +505,7 @@ export function applyPresentWindowMessage(
   if (message.type === "presenter-state" && current) {
     return {
       ...current,
+      activityElementRuntime: message.activityElementRuntime,
       state: message.state,
       triggerAnimationIds: message.triggerAnimationIds,
     };

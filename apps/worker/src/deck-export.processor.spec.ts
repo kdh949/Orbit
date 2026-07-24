@@ -628,6 +628,7 @@ function createActivityDeck(sourceType: "ai" | "import"): Deck {
       {
         ...base,
         kind: "activity",
+        activityAppearance: { mode: "system" },
         title: "참여",
         speakerNotes: "speaker secret",
         activity: {

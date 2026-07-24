@@ -73,6 +73,7 @@ import { AddCommunityTemplateEngagement2026072105000 } from "./migrations/202607
 import { AddCommunityTemplateGovernance2026072106000 } from "./migrations/2026072106000-AddCommunityTemplateGovernance";
 import { AddCommunityCategoriesAndTags2026072107000 } from "./migrations/2026072107000-AddCommunityCategoriesAndTags";
 import { AddPresentationSessionPurposeAndAudienceAccess2026072301000 } from "./migrations/2026072301000-AddPresentationSessionPurposeAndAudienceAccess";
+import { AddPresentationPasscodeDisplayCiphertext2026072401000 } from "./migrations/2026072401000-AddPresentationPasscodeDisplayCiphertext";
 
 loadDotenv({ path: "../../.env.local" });
 loadDotenv({ path: ".env.local" });
@@ -158,6 +159,7 @@ export const databaseOptions: DataSourceOptions = {
     AddCommunityTemplateGovernance2026072106000,
     AddCommunityCategoriesAndTags2026072107000,
     AddPresentationSessionPurposeAndAudienceAccess2026072301000,
+    AddPresentationPasscodeDisplayCiphertext2026072401000,
   ],
   migrationsTableName: "typeorm_migrations",
   synchronize: false,

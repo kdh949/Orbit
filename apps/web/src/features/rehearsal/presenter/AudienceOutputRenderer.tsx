@@ -9,10 +9,12 @@ import type { ScreenShareEndedReason } from "./presentationChannel";
 import type { PresenterSlideshowState } from "./presenterStateStore";
 import { SlideshowRenderer } from "./SlideshowRenderer";
 import type { SurfaceSize } from "../../presenter-companion/surfaceGeometry";
+import type { ActivityElementRuntime } from "../../activity-slides/rendering/ActivityElementRuntimeContext";
 
 export const audienceStreamWaitTimeoutMs = 5000;
 
 export function AudienceOutputRenderer(props: {
+  activityElementRuntime?: ActivityElementRuntime | null;
   deck: Deck;
   onScreenShareFailure?: (reason: ScreenShareEndedReason) => void;
   onScreenShareContentSizeChange?: (
@@ -76,7 +78,10 @@ export function AudienceOutputRenderer(props: {
     deck.slides.find((candidate) => candidate.slideId === state.slideId) ??
     deck.slides[state.slideIndex];
 
-  if (slide?.kind === "activity") {
+  if (
+    slide?.kind === "activity" &&
+    slide.activityAppearance.mode === "system"
+  ) {
     return (
       <ActivityAudienceRuntime
         activity={slide.activity}
@@ -102,6 +107,7 @@ export function AudienceOutputRenderer(props: {
 
   return (
     <SlideshowRenderer
+      activityElementRuntime={props.activityElementRuntime ?? undefined}
       deck={deck}
       highlights={state.highlights}
       renderMode="slide-window"

@@ -169,6 +169,8 @@ describe("PresentationSessionRepository", () => {
       audienceAccessEnabled: true,
       accessMode: "public",
       passwordHash: null,
+      passwordDisplayCiphertext: null,
+      passwordKeyVersion: null,
       startsAt: new Date("2026-07-17T01:00:00.000Z"),
       expiresAt,
       now,
@@ -178,16 +180,18 @@ describe("PresentationSessionRepository", () => {
       status: "draft",
       accessMode: "public",
       passwordHash: null,
+      passwordDisplayCiphertext: null,
+      passwordKeyVersion: null,
       startsAt: new Date("2026-07-17T02:00:00.000Z"),
       expiresAt,
       now,
     });
 
     expect(String(query.mock.calls[0]?.[0])).toContain(
-      "$6::timestamptz + interval '90 days'",
+      "$8::timestamptz + interval '90 days'",
     );
     expect(String(query.mock.calls[1]?.[0])).toContain(
-      "$7::timestamptz + interval '90 days'",
+      "$9::timestamptz + interval '90 days'",
     );
   });
 

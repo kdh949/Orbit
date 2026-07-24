@@ -1,4 +1,4 @@
-import { createDemoDeck } from "@orbit/editor-core";
+import { createActivitySlide, createDemoDeck } from "@orbit/editor-core";
 import { deckSchema } from "@orbit/shared";
 import { describe, expect, it } from "vitest";
 
@@ -10,6 +10,38 @@ import {
 const privateMarker = "PRIVATE_PRESENTER_MARKER_7f31";
 
 describe("presentation companion projection", () => {
+  it("preserves editable Activity appearance and concrete elements", () => {
+    const source = createDemoDeck();
+    const activitySlide = createActivitySlide(source, "poll", {
+      preset: "spotlight",
+    });
+    const deck = deckSchema.parse({
+      ...source,
+      slides: [...source.slides, activitySlide],
+    });
+
+    const projection = createPresentationCompanionProjection({
+      deck,
+      sessionId: "session_companion_1",
+    });
+    const projectedActivity = projection.deck.slides.find(
+      (slide) => slide.kind === "activity",
+    );
+
+    expect(projectedActivity).toMatchObject({
+      kind: "activity",
+      activityAppearance: { mode: "editable" },
+      style: {
+        backgroundImage: {
+          src: "/activity-presets/spotlight-background.png",
+        },
+      },
+    });
+    expect(projectedActivity?.elements).toHaveLength(
+      activitySlide.elements.length,
+    );
+  });
+
   it("serializes only audience fields and rewrites referenced render assets", () => {
     const source = createDemoDeck();
     const firstSlide = source.slides[0];
