@@ -233,6 +233,10 @@ describe("presentationChannel", () => {
 
   it("creates presenter snapshot messages without presenter-only content", () => {
     const message = createPresenterSnapshotMessage({
+      activityElementRuntime: {
+        audienceUrl: "https://orbit.example/audience/session_live",
+        passcodeState: { status: "private", displayPasscode: "4821" },
+      },
       deck: p0AnimationDeck,
       identity,
       sentAt: 10,
@@ -246,6 +250,9 @@ describe("presentationChannel", () => {
     const serialized = JSON.stringify(message);
 
     expect(message).toMatchObject({
+      activityElementRuntime: {
+        passcodeState: { status: "private", displayPasscode: "4821" },
+      },
       deckId: "deck_p0_animation",
       sessionId: "session-presenter-1",
       sentAt: 10,

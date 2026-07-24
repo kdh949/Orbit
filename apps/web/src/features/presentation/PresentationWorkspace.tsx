@@ -1366,7 +1366,25 @@ export function PresentationWorkspace(props: {
   }
 
   const displayManager = useMemo(() => createDisplayManager(), []);
+  const presentationScreenSession = useMemo(
+    () =>
+      createPresentationScreenSession(
+        runtimeRef.current,
+        presenterSession,
+      ),
+    [presenterSession, runtimePhase],
+  );
+  const activityElementRuntime = useMemo(
+    () => ({
+      audienceUrl: presentationScreenSession?.audienceUrl ?? null,
+      passcodeState:
+        presentationScreenSession?.passcodeState ??
+        ({ status: "not-prepared" } as const),
+    }),
+    [presentationScreenSession],
+  );
   const livePresentationOutput = useLivePresentationOutput({
+    activityElementRuntime,
     audienceWindowConnected: Boolean(
       slideWindowRef.current && !slideWindowRef.current.closed,
     ),
@@ -1405,12 +1423,19 @@ export function PresentationWorkspace(props: {
     () =>
       deck && presentationOutputState
         ? {
+            activityElementRuntime,
             deck: createSlideWindowDeckSnapshot(deck),
             state: createAudiencePresenterState(presentationOutputState),
             triggerAnimationIds,
           }
         : null,
-    [deck, presentationOutputState, triggerAnimationIds],
+    [
+      activityElementRuntime.audienceUrl,
+      activityElementRuntime.passcodeState,
+      deck,
+      presentationOutputState,
+      triggerAnimationIds,
+    ],
   );
 
   const resetSlideDisplayToBeginning = () => {
@@ -1814,10 +1839,7 @@ export function PresentationWorkspace(props: {
         }}
         panelSnapshot={panelSnapshot}
         presentationSession={
-          createPresentationScreenSession(
-            runtimeRef.current,
-            presenterSession,
-          )
+          presentationScreenSession
         }
         presenterScale={presenterScale}
         presenterStageRef={presenterStageRef}
