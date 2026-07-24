@@ -53,6 +53,28 @@ const validEnv = {
   DEMO_SESSION_ID: "session_demo_1"
 };
 
+const productionValidEnv = {
+  ...validEnv,
+  APP_ENV: "production",
+  WEB_ORIGIN: "https://app.example.com",
+  API_BASE_URL: "https://api.example.com",
+  PYTHON_WORKER_URL: "http://python-worker.internal:8000",
+  DATABASE_URL: "postgres://orbit:orbit@prod-rds.example.com:5432/orbit",
+  REDIS_URL: "rediss://prod-redis.example.com:6379",
+  PRIVATE_EVIDENCE_REDIS_URL:
+    "rediss://prod-private-evidence-redis.example.com:6379",
+  SESSION_SECRET: "production-session-secret",
+  COOKIE_SECRET: "production-cookie-secret",
+  STORAGE_DRIVER: "s3",
+  S3_ENDPOINT: "",
+  S3_PUBLIC_ENDPOINT: "https://assets.example.com",
+  S3_BUCKET: "orbit-production",
+  S3_ACCESS_KEY_ID: "",
+  S3_SECRET_ACCESS_KEY: "",
+  S3_FORCE_PATH_STYLE: "false",
+  OPENAI_API_KEY: "test-production-openai-key-placeholder"
+};
+
 describe("ORBIT env validation", () => {
   it("defaults asynchronous job admission to accept and rejects unknown modes", () => {
     expect(loadOrbitConfig(validEnv, { service: "api" }).ASYNC_JOB_ADMISSION_MODE).toBe("accept");
@@ -162,15 +184,44 @@ describe("ORBIT env validation", () => {
     expect(() =>
       loadOrbitConfig(
         {
-          ...validEnv,
-          APP_ENV: "production",
+          ...productionValidEnv,
           DEMO_AI_DECK_CACHE_ENABLED: "true",
+          DEMO_AI_DECK_SOURCE_PROJECT_ID: "project-source",
+          DEMO_AI_DECK_TRIGGER_TOPIC: "Orbit demo",
+          DEMO_FIXTURE_ENV_ALLOWLIST: "production",
+        },
+        { service: "api" },
+      ),
+    ).toThrow("DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION");
+    expect(() =>
+      loadOrbitConfig(
+        {
+          ...productionValidEnv,
+          DEMO_AI_DECK_CACHE_ENABLED: "true",
+          DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION: "true",
           DEMO_AI_DECK_SOURCE_PROJECT_ID: "project-source",
           DEMO_AI_DECK_TRIGGER_TOPIC: "Orbit demo",
         },
         { service: "api" },
       ),
-    ).toThrow("DEMO_AI_DECK_CACHE_ENABLED");
+    ).toThrow("DEMO_FIXTURE_ENV_ALLOWLIST");
+    expect(
+      loadOrbitConfig(
+        {
+          ...productionValidEnv,
+          DEMO_AI_DECK_CACHE_ENABLED: "true",
+          DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION: "true",
+          DEMO_AI_DECK_SOURCE_PROJECT_ID: "project-source",
+          DEMO_AI_DECK_TRIGGER_TOPIC: "Orbit demo",
+          DEMO_FIXTURE_ENV_ALLOWLIST: "production",
+        },
+        { service: "api" },
+      ),
+    ).toMatchObject({
+      DEMO_AI_DECK_CACHE_ENABLED: true,
+      DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION: true,
+      DEMO_FIXTURE_ENV_ALLOWLIST: ["production"],
+    });
     expect(() =>
       loadOrbitConfig(
         { ...validEnv, DEMO_AI_DECK_CACHE_ENABLED: "true" },

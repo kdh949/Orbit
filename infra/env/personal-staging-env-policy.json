@@ -121,6 +121,10 @@
       "source": "repo-default",
       "delivery": "compose"
     },
+    "DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
     "DEMO_AI_DECK_SOURCE_PROJECT_ID": {
       "source": "doppler-optional",
       "delivery": "compose"
