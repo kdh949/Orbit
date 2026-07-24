@@ -315,7 +315,7 @@ Resources:
       Protocol: HTTP
       Port: 3000
       HealthCheckProtocol: HTTP
-      HealthCheckPath: /api/health
+      HealthCheckPath: /health
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 3
       HealthCheckIntervalSeconds: 30
@@ -404,6 +404,8 @@ Resources:
               Value: production
             - Name: API_PORT
               Value: "3000"
+            - Name: API_TRUST_PROXY_HOPS
+              Value: "2"
             - Name: WEB_PORT
               Value: "5173"
             - Name: WORKER_PORT
@@ -489,7 +491,7 @@ Resources:
               awslogs-stream-prefix: api
               mode: blocking
           HealthCheck:
-            Command: [CMD-SHELL, "wget -q -O - http://localhost:3000/api/health >/dev/null || exit 1"]
+            Command: [CMD-SHELL, "wget -q -O - http://localhost:3000/health >/dev/null || exit 1"]
             Interval: 30
             Timeout: 5
             Retries: 3

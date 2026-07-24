@@ -9,6 +9,7 @@ on:
       - infra/scripts/assert-cfn-change-set-safe.test.mjs
       - .github/workflows/aws-infrastructure-apply.yml
       - .github/workflows/aws-infrastructure-plan.yml
+      - .github/workflows/build-images.yml
   workflow_dispatch:
     inputs:
       stack_name:

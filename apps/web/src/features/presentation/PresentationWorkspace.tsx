@@ -32,6 +32,7 @@ import { usePresentationSpeech } from "./usePresentationSpeech";
 import { getPresentationHighlightedKeywordOccurrences } from "./presentationKeywordOccurrences";
 import { getPresentationFailureCopy } from "./presentationFailureCopy";
 import {
+  shouldClosePresenterSessionOnPreflightExit,
   shouldWarnBeforePresentationUnload,
   type PresentationRuntimePhase,
 } from "./presentationLifecycle";
@@ -1049,7 +1050,13 @@ export function PresentationWorkspace(props: {
   }
 
   async function leavePresentation() {
-    await closePresentationSession().catch(() => undefined);
+    if (
+      shouldClosePresenterSessionOnPreflightExit(
+        presenterSessionRef.current?.audienceAccessEnabled ?? null,
+      )
+    ) {
+      await closePresentationSession().catch(() => undefined);
+    }
     navigateToProject(deck?.projectId ?? props.projectId);
   }
 
