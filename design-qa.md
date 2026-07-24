@@ -943,3 +943,29 @@ final result: passed
 - Chrome 확장 캡처는 CDP 5초 제한으로 실패해 마지막 인증 캡처와 이후 실제 DOM 실측을 함께 판정 근거로 사용했다.
 
 final result: passed
+
+---
+
+# 버전 기록 중복 복원 지점 QA (2026-07-24)
+
+- Source visual truth: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-duplicate-restore-audit\01-repeated-restore-points.png`
+- Implementation screenshot: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-duplicate-restore-audit\05-deduplicated-final.png`
+- Full-view comparison: `C:\Users\Runner\.codex\visualizations\2026\07\24\019f92e7-a0be-73e1-9966-84ff37770dd9\version-history-duplicate-restore-audit\04-before-after-comparison.png`
+- Route: `http://localhost:5173/project/project_a0facb38-58a5-4994-9748-5b02718029e3/history`
+- Viewport and pixels: source/implementation 모두 `1477 × 874`, CSS viewport `1477 × 874`, density `1`; 추가 정규화 없음.
+- State: 같은 프로젝트의 버전 기록 목록. 선택 항목은 서로 다르지만 검증 대상인 목록의 중복 복원 지점과 기록 수는 동일한 데이터셋에서 비교함.
+
+## Findings
+
+- 수정 전에는 같은 덱 상태의 `snapshot-restore` 항목이 반복 노출되어 저장 기록이 12건으로 보였다.
+- 수정 후에는 동일한 덱 상태의 복원 지점이 최신 한 건으로 축약되어 9건으로 보이며, 서로 다른 버전 4·5·6 복원 지점은 유지된다.
+- 폰트/타이포그래피, 간격/레이아웃, 색상 토큰, 슬라이드 이미지 품질, 문구에는 변경이나 회귀가 없다.
+- 목록 행과 배지의 크기가 비교 화면에서 충분히 식별되므로 별도의 focused-region 비교는 필요하지 않았다.
+
+## Comparison history
+
+- P1: 동일 상태 복원 지점이 반복 누적되어 의미 있는 이력 탐색을 방해함.
+- Fix: API가 동일한 덱 상태의 복원 백업을 재사용하고, 기존 중복은 목록 응답에서 최신 한 건만 남기도록 처리함.
+- Post-fix evidence: 저장 기록이 12건에서 9건으로 정리되었고 서로 다른 복원 상태는 보존됨.
+
+final result: passed

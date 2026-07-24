@@ -275,6 +275,30 @@ class InMemoryDeckDataSource {
 
     if (
       query.startsWith("SELECT snapshot_id, project_id, deck_id") &&
+      query.includes(
+        "WHERE project_id = $1 AND deck_id = $2 AND version = $3 AND reason = $4",
+      )
+    ) {
+      const [projectId, deckId, version, reason] = params as [
+        string,
+        string,
+        number,
+        DeckSnapshotReason,
+      ];
+      return this.snapshotRows
+        .filter(
+          (snapshot) =>
+            snapshot.project_id === projectId &&
+            snapshot.deck_id === deckId &&
+            snapshot.version === version &&
+            snapshot.reason === reason,
+        )
+        .sort(compareSnapshotRows)
+        .map(cloneSnapshotRow) as T;
+    }
+
+    if (
+      query.startsWith("SELECT snapshot_id, project_id, deck_id") &&
       query.includes("WHERE project_id = $1 AND deck_id = $2 AND version = $3")
     ) {
       const [projectId, deckId, version] = params as [string, string, number];
@@ -2420,6 +2444,55 @@ describe("DecksService", () => {
         query.includes("WHERE project_id = $1 AND deck_id = $2 FOR UPDATE"),
       ),
     ).toBe(true);
+  });
+
+  it("reuses an equivalent restore point and hides legacy duplicates", async () => {
+    const { dataSource, service } = createService();
+    const deck = createDeck();
+    const putResponse = await service.putDeck(deck.projectId, { deck });
+    await service.appendPatch(deck.projectId, {
+      patch: createUpdateTitlePatch(deck, "Version 2"),
+    });
+
+    await service.restoreSnapshot(
+      deck.projectId,
+      putResponse.snapshot.snapshotId,
+    );
+    const versionTwoRestorePoint = dataSource.snapshotRows.find(
+      (snapshot) =>
+        snapshot.reason === "snapshot-restore" && snapshot.version === 2,
+    );
+    if (!versionTwoRestorePoint) {
+      throw new Error("Expected a restore point for version 2");
+    }
+
+    await service.restoreSnapshot(
+      deck.projectId,
+      versionTwoRestorePoint.snapshot_id,
+    );
+    const snapshotCountBeforeRepeatedRestore = dataSource.snapshotRows.length;
+    await service.restoreSnapshot(
+      deck.projectId,
+      putResponse.snapshot.snapshotId,
+    );
+
+    expect(dataSource.snapshotRows).toHaveLength(
+      snapshotCountBeforeRepeatedRestore,
+    );
+
+    dataSource.snapshotRows.push({
+      ...cloneSnapshotRow(versionTwoRestorePoint),
+      snapshot_id: "snapshot_restore_duplicate_1",
+      created_at: "2026-07-24T17:07:00.000Z",
+    });
+    const snapshots = await service.listSnapshots(deck.projectId);
+
+    expect(
+      snapshots.snapshots.filter(
+        (snapshot) =>
+          snapshot.reason === "snapshot-restore" && snapshot.version === 2,
+      ),
+    ).toHaveLength(1);
   });
 
   it("restores an OOXML-backed snapshot as the next version and enqueues sync", async () => {
