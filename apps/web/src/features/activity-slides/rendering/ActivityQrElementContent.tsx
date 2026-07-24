@@ -1,16 +1,32 @@
 import { Group as KonvaGroup, Rect as KonvaRect, Text as KonvaText } from "react-konva";
 import type { ComponentType } from "react";
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore
+} from "react";
 
 import { createQrDataUrl } from "../../editor/audience-link/audienceLinkUtils";
 import { ImageElementContent } from "../../slides/rendering/ImageElementContent";
-import { canonicalActivityUrl } from "./ActivityAudienceSlideRenderer";
 import { useActivityElementRuntime } from "./ActivityElementRuntimeContext";
+import { resolveActivityQrElementAudienceUrl } from "./activityQrElementRuntime";
+import {
+  getActivityQrRuntimeState,
+  subscribeActivityQrRuntime,
+  type ActivityQrRuntimeInput,
+  type ActivityQrRuntimeState
+} from "./activityQrRuntime";
 
 type KonvaComponent = ComponentType<any>;
 const Group = KonvaGroup as unknown as KonvaComponent;
 const Rect = KonvaRect as unknown as KonvaComponent;
 const Text = KonvaText as unknown as KonvaComponent;
+const inactiveRuntimeState: ActivityQrRuntimeState = {
+  status: "not-prepared",
+  audienceUrl: null
+};
 
 export function ActivityQrElementContent(props: {
   activityId: string;
@@ -19,9 +35,20 @@ export function ActivityQrElementContent(props: {
   projectId: string;
 }) {
   const runtime = useActivityElementRuntime();
-  const audienceUrl = runtime?.audienceUrl
-    ? canonicalActivityUrl(runtime.audienceUrl, props.activityId)
-    : null;
+  const lookupInput = useMemo<ActivityQrRuntimeInput>(
+    () => ({
+      activityId: props.activityId,
+      deckId: props.deckId,
+      projectId: props.projectId
+    }),
+    [props.activityId, props.deckId, props.projectId]
+  );
+  const lookupState = useActivityQrLookup(runtime !== null, lookupInput);
+  const audienceUrl = resolveActivityQrElementAudienceUrl({
+    activityId: props.activityId,
+    lookupState,
+    runtime
+  });
   const [qrDataUrl, setQrDataUrl] = useState("");
 
   useEffect(() => {
@@ -61,6 +88,32 @@ export function ActivityQrElementContent(props: {
   }
 
   return <QrPlaceholder frame={props.frame} />;
+}
+
+function useActivityQrLookup(
+  hasInjectedRuntime: boolean,
+  input: ActivityQrRuntimeInput
+) {
+  const subscribe = useCallback(
+    (listener: () => void) =>
+      hasInjectedRuntime
+        ? () => undefined
+        : subscribeActivityQrRuntime(input, listener),
+    [hasInjectedRuntime, input]
+  );
+  const getSnapshot = useCallback(
+    () =>
+      hasInjectedRuntime
+        ? inactiveRuntimeState
+        : getActivityQrRuntimeState(input),
+    [hasInjectedRuntime, input]
+  );
+
+  return useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    () => inactiveRuntimeState
+  );
 }
 
 function QrPlaceholder(props: {
