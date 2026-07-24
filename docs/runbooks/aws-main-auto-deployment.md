@@ -4,7 +4,26 @@
 
 이 문서는 `main` 브랜치 push를 ORBIT AWS production 배포로 연결하는 절차를 다룬다.
 
-`main`에 PR이 merge되면 GitHub 이벤트는 `push` to `main`으로 발생하므로, production 배포 workflow는 `push: main`과 수동 `workflow_dispatch`만 사용한다. `pull_request.closed` 트리거는 중복 배포를 피하기 위해 사용하지 않는다.
+현재 production 배포 workflow는 운영자 승인 없는 자동 배포를 막기 위해 수동
+`workflow_dispatch`만 사용한다. `main` 병합은 배포 가능한 코드 상태를 만들지만,
+병합 자체가 production 배포를 실행하지 않는다.
+
+`develop` 또는 `main` 대상 PR은 병합 전에 `ec2-release-gate`를 통과해야 한다.
+GitHub branch protection의 required status check에는 정확히
+`ec2-release-gate`를 등록한다. 이 검사는 다음 순서로 기존 EC2 릴리스 호환성을
+검증한다.
+
+1. `docker-compose.aws.yml`을 production 예시 환경으로 렌더링한다.
+2. 환경변수 계약과 EC2 service/healthcheck 구성을 검사한다.
+3. 깨끗한 PostgreSQL에 전체 TypeORM migration을 적용한다.
+4. 같은 migration 명령을 다시 실행해 pending migration이 없는 상태에서도
+   실패하지 않는지 확인한다.
+5. EC2 deploy wrapper가 Compose 검증, migration, direct API와 nginx proxy
+   health check를 계속 수행하는지 확인한다.
+
+이 gate는 AWS 계정이나 production instance를 변경하지 않는 배포 전 검사다.
+실제 배포는 아래 수동 workflow에서 EC2 내부와 CloudFront endpoint의 health를
+다시 확인한다.
 
 현재 production 구성은 비용을 줄이기 위해 ECS/ECR/ElastiCache 없이 다음 형태로 시작한다.
 
