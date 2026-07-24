@@ -161,6 +161,7 @@ describe("presentationApi", () => {
         projectId: "project_1",
         recordingMode: "none",
         session: {
+          audienceAccessEnabled: false,
           audienceUrl: null,
           deckId: "deck_1",
           deckVersion: 4,
