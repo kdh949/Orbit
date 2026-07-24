@@ -60,9 +60,32 @@ const validEnv = {
   DEMO_DECK_ID: "deck_demo_1",
   DEMO_SESSION_ID: "session_demo_1",
   DEMO_AI_DECK_CACHE_ENABLED: "false",
+  DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION: "false",
   DEMO_AI_DECK_SOURCE_PROJECT_ID: "",
   DEMO_AI_DECK_TRIGGER_TOPIC: "",
   DEMO_FIXTURE_ENV_ALLOWLIST: ""
+};
+
+const productionValidEnv = {
+  ...validEnv,
+  APP_ENV: "production",
+  WEB_ORIGIN: "https://app.example.com",
+  API_BASE_URL: "https://api.example.com",
+  PYTHON_WORKER_URL: "http://python-worker.internal:8000",
+  DATABASE_URL: "postgres://orbit:orbit@prod-rds.example.com:5432/orbit",
+  REDIS_URL: "rediss://prod-redis.example.com:6379",
+  PRIVATE_EVIDENCE_REDIS_URL:
+    "rediss://prod-private-evidence-redis.example.com:6379",
+  SESSION_SECRET: "production-session-secret",
+  COOKIE_SECRET: "production-cookie-secret",
+  STORAGE_DRIVER: "s3",
+  S3_ENDPOINT: "",
+  S3_PUBLIC_ENDPOINT: "https://assets.example.com",
+  S3_BUCKET: "orbit-production",
+  S3_ACCESS_KEY_ID: "",
+  S3_SECRET_ACCESS_KEY: "",
+  S3_FORCE_PATH_STYLE: "false",
+  OPENAI_API_KEY: "test-production-openai-key-placeholder"
 };
 
 describe("GenerateDeckService", () => {
@@ -254,10 +277,12 @@ describe("GenerateDeckService", () => {
 
   it("keeps a matching demo cache job queued and skips worker enqueue", async () => {
     Object.assign(process.env, {
+      ...productionValidEnv,
       DEMO_AI_DECK_CACHE_ENABLED: "true",
+      DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION: "true",
       DEMO_AI_DECK_SOURCE_PROJECT_ID: "project-source",
       DEMO_AI_DECK_TRIGGER_TOPIC: "Orbit demo",
-      DEMO_FIXTURE_ENV_ALLOWLIST: "local,staging",
+      DEMO_FIXTURE_ENV_ALLOWLIST: "production",
     });
     const job = queuedJob("job-demo-cache");
     const jobsService = {

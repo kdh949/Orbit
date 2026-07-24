@@ -227,6 +227,18 @@ assertTemplateValue(
   privateRedisUrl,
   true,
 );
+assertTemplateValue(
+  productionEnvFile,
+  "DEMO_AI_DECK_CACHE_ENABLED",
+  "false",
+  false,
+);
+assertTemplateValue(
+  productionEnvFile,
+  "DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION",
+  "false",
+  false,
+);
 
 for (const flag of editorPracticeFlags) {
   assertTemplateValue(productionEnvFile, flag, "true", false);
