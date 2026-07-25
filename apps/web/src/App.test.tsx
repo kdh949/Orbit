@@ -154,6 +154,13 @@ describe("App shell routing", () => {
     expect(deckRenderPayloadStorageKey).toBe("orbit.deckRenderPayload.v1");
   });
 
+  it("routes the dev-only Semantic Cue Lab outside the navigation shell", () => {
+    const route = getRoute("/dev/semantic-cue-lab");
+
+    expect(route).toEqual({ name: "semantic-cue-lab" });
+    expect(shouldRenderAppFrame(route)).toBe(false);
+  });
+
   it("does not expose the old upload workspace route", () => {
     expect(getRoute("/upload")).toEqual({ name: "home" });
   });

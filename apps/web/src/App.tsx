@@ -61,6 +61,10 @@ import { RehearsalProjectOverviewPage } from "./features/rehearsal/RehearsalProj
 import { PresentationWorkspace } from "./features/presentation/PresentationWorkspace";
 import { AudienceSessionPage } from "./pages/audience/AudienceSessionPage";
 import { PresentWindow } from "./features/rehearsal/presenter/PresentWindow";
+import {
+  SemanticCueLabRoute,
+  isSemanticCueLabRouteEnabled
+} from "./features/rehearsal/semantic-cue-lab/SemanticCueLabRoute";
 import { ReadOnlySlideCanvas } from "./features/slides/rendering";
 
 type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -215,6 +219,7 @@ export type Route =
   | { name: "report-mockup" }
   | { name: "report-list" }
   | { name: "report-project-overview"; projectId: string }
+  | { name: "semantic-cue-lab" }
   | { name: "deck-render" };
 
 export const deckRenderPayloadStorageKey = "orbit.deckRenderPayload.v1";
@@ -455,6 +460,9 @@ export function getRoute(
     return { name: "report-project-overview", projectId: decodeURIComponent(reportProjectMatch[1]) };
   }
   if (normalized === "/report_mockup") return { name: "report-mockup" };
+  if (normalized === "/dev/semantic-cue-lab" && isSemanticCueLabRouteEnabled()) {
+    return { name: "semantic-cue-lab" };
+  }
   if (normalized === "/__deck-render" && isDeckRenderRouteEnabled()) {
     return { name: "deck-render" };
   }
@@ -576,6 +584,7 @@ export function shouldRenderAppFrame(route: Route) {
     route.name !== "report-project-overview" &&
     route.name !== "report-mockup" &&
     route.name !== "audience-session" &&
+    route.name !== "semantic-cue-lab" &&
     route.name !== "deck-render"
   );
 }
@@ -651,6 +660,9 @@ function renderRoute(route: Route, user?: AuthUser) {
         runId={reportMockupRunId}
       />
     );
+  }
+  if (route.name === "semantic-cue-lab") {
+    return <SemanticCueLabRoute />;
   }
   if (route.name === "deck-render") {
     return <DeckRenderPage />;
