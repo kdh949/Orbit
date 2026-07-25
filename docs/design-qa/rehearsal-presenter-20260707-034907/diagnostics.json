@@ -1,0 +1,262 @@
+{
+  "baseUrl": "http://127.0.0.1:5173/rehearsal/project_demo_1",
+  "capturedAt": "2026-07-06T18:50:23.796Z",
+  "results": [
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "consoleMessages": [
+        "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "index": 1,
+          "slug": "1440-1g-preflight-empty",
+          "name": "1440px 1g preflight, no previous summary",
+          "file": "01-1440-1g-preflight-empty.png",
+          "notes": "Fresh entry with fallback demo deck loaded and no previous local summary.",
+          "diagnostics": {
+            "viewport": {
+              "width": 1440,
+              "height": 1000,
+              "scrollWidth": 1440,
+              "scrollHeight": 1000
+            },
+            "hasHorizontalOverflow": false,
+            "tinyControls": [
+              {
+                "tag": "button",
+                "text": "음성 없이 연습하기",
+                "width": 119,
+                "height": 20
+              }
+            ],
+            "visibleText": "Live STT / Report AI / Speaker notes 이번 목표는 10:00입니다. 슬라이드와 음성 트리거를 확인하고 시작하세요. 리허설을 시작할까요? 시작하면 마이크를 확인하고 바로 준비 완료 상태로 이어집니다. 마이크 권한 확인 시작 시 권한 확인 음성 인식 준비 한국어 · Live STT 슬라이드 2장 로드됨 음성 트리거 6개 \"다음 슬라이드\" \"강조\" 리허설 시작 음성 없이 연습하기"
+          }
+        },
+        {
+          "index": 2,
+          "slug": "1440-2a-running-quiet",
+          "name": "1440px 2a running, quiet practice",
+          "file": "02-1440-2a-running-quiet.png",
+          "notes": "Running presenter mode without microphone/STT, after timer has advanced.",
+          "diagnostics": {
+            "viewport": {
+              "width": 1440,
+              "height": 1000,
+              "scrollWidth": 1440,
+              "scrollHeight": 1000
+            },
+            "hasHorizontalOverflow": false,
+            "tinyControls": [
+              {
+                "tag": "input",
+                "text": "",
+                "width": 13,
+                "height": 13
+              },
+              {
+                "tag": "input",
+                "text": "",
+                "width": 13,
+                "height": 13
+              },
+              {
+                "tag": "button",
+                "text": "자동 전환 기준 낮추기",
+                "width": 28,
+                "height": 28
+              },
+              {
+                "tag": "button",
+                "text": "자동 전환 기준 높이기",
+                "width": 28,
+                "height": 28
+              }
+            ],
+            "visibleText": "Live STT / Report AI / Speaker notes 리허설 마치기 리허설 · 자동 따라가기 슬라이드 창 열기 대기 단일 화면 리허설 진행 중 현재 01 / 02 1 / 2 다음 슬라이드 Data Contract \"slideId\"를 말하면 바로 이어집니다 발표 시간 현재 00:01 예상 05:00 현재 슬라이드 슬라이드 1 / 2 Opening 조언 0 WPM 말 속도 정상 / 슬라이드 정상 키워드 0/2 대기 ORBIT 대기 Deck Schema Live STT idle 자동 전환 활성 리허설 자동 전환 실전 자동 전환 전환 기준 70% ORBIT 데모 흐름을 소개합니다"
+          }
+        },
+        {
+          "index": 3,
+          "slug": "1440-1h-completion-quiet",
+          "name": "1440px 1h completion, quiet practice",
+          "file": "03-1440-1h-completion-quiet.png",
+          "notes": "Completion after quiet practice; should show measured timer data and no fake STT metrics.",
+          "diagnostics": {
+            "viewport": {
+              "width": 1440,
+              "height": 1000,
+              "scrollWidth": 1440,
+              "scrollHeight": 1000
+            },
+            "hasHorizontalOverflow": false,
+            "tinyControls": [],
+            "visibleText": "리허설 완료 수고했어요, 잘 마쳤어요 목표보다 4:59 빨랐어요 발표 시간 00:01 목표 05:00 · 4:59 여유 대본 커버리지 측정 안 됨 놓친 항목 - 음성 추적 데이터가 없습니다. 로컬 요약이 준비됐어요. 서버 리포트 없이 바로 다시 연습할 수 있어요 다시 연습 확인"
+          }
+        },
+        {
+          "index": 4,
+          "slug": "1440-1g-preflight-previous-summary",
+          "name": "1440px 1g preflight, previous summary present",
+          "file": "04-1440-1g-preflight-previous-summary.png",
+          "notes": "Preflight after saving a local practice summary from the previous completion.",
+          "diagnostics": {
+            "viewport": {
+              "width": 1440,
+              "height": 1000,
+              "scrollWidth": 1440,
+              "scrollHeight": 1000
+            },
+            "hasHorizontalOverflow": false,
+            "tinyControls": [
+              {
+                "tag": "button",
+                "text": "음성 없이 연습하기",
+                "width": 119,
+                "height": 20
+              }
+            ],
+            "visibleText": "Live STT / Report AI / Speaker notes 지난 리허설은 0:01였습니다. 이번엔 10:00 목표로 가볼까요? 리허설을 시작할까요? 시작하면 마이크를 확인하고 바로 준비 완료 상태로 이어집니다. 마이크 권한 확인 시작 시 권한 확인 음성 인식 준비 한국어 · Live STT 슬라이드 2장 로드됨 음성 트리거 6개 \"다음 슬라이드\" \"강조\" 리허설 시작 음성 없이 연습하기"
+          }
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "consoleMessages": [
+        "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "error: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "index": 5,
+          "slug": "390-1g-preflight-empty",
+          "name": "390px 1g preflight, no previous summary",
+          "file": "05-390-1g-preflight-empty.png",
+          "notes": "Fresh entry with fallback demo deck loaded and no previous local summary.",
+          "diagnostics": {
+            "viewport": {
+              "width": 390,
+              "height": 844,
+              "scrollWidth": 390,
+              "scrollHeight": 844
+            },
+            "hasHorizontalOverflow": false,
+            "tinyControls": [
+              {
+                "tag": "button",
+                "text": "음성 없이 연습하기",
+                "width": 119,
+                "height": 20
+              }
+            ],
+            "visibleText": "Live STT / Report AI / Speaker notes 이번 목표는 10:00입니다. 슬라이드와 음성 트리거를 확인하고 시작하세요. 리허설을 시작할까요? 시작하면 마이크를 확인하고 바로 준비 완료 상태로 이어집니다. 마이크 권한 확인 시작 시 권한 확인 음성 인식 준비 한국어 · Live STT 슬라이드 2장 로드됨 음성 트리거 6개 \"다음 슬라이드\" \"강조\" 리허설 시작 음성 없이 연습하기"
+          }
+        },
+        {
+          "index": 6,
+          "slug": "390-2a-running-quiet",
+          "name": "390px 2a running, quiet practice",
+          "file": "06-390-2a-running-quiet.png",
+          "notes": "Running presenter mode without microphone/STT, after timer has advanced.",
+          "diagnostics": {
+            "viewport": {
+              "width": 390,
+              "height": 844,
+              "scrollWidth": 390,
+              "scrollHeight": 1652
+            },
+            "hasHorizontalOverflow": false,
+            "tinyControls": [
+              {
+                "tag": "input",
+                "text": "",
+                "width": 13,
+                "height": 13
+              },
+              {
+                "tag": "input",
+                "text": "",
+                "width": 13,
+                "height": 13
+              },
+              {
+                "tag": "button",
+                "text": "자동 전환 기준 낮추기",
+                "width": 28,
+                "height": 28
+              },
+              {
+                "tag": "button",
+                "text": "자동 전환 기준 높이기",
+                "width": 28,
+                "height": 28
+              }
+            ],
+            "visibleText": "Live STT / Report AI / Speaker notes 리허설 마치기 리허설 · 자동 따라가기 슬라이드 창 열기 대기 단일 화면 리허설 진행 중 현재 01 / 02 1 / 2 다음 슬라이드 Data Contract \"slideId\"를 말하면 바로 이어집니다 발표 시간 현재 00:01 예상 05:00 현재 슬라이드 슬라이드 1 / 2 Opening 조언 0 WPM 말 속도 정상 / 슬라이드 정상 키워드 0/2 대기 ORBIT 대기 Deck Schema Live STT idle 자동 전환 활성 리허설 자동 전환 실전 자동 전환 전환 기준 70% ORBIT 데모 흐름을 소개합니다"
+          }
+        },
+        {
+          "index": 7,
+          "slug": "390-1h-completion-quiet",
+          "name": "390px 1h completion, quiet practice",
+          "file": "07-390-1h-completion-quiet.png",
+          "notes": "Completion after quiet practice; should show measured timer data and no fake STT metrics.",
+          "diagnostics": {
+            "viewport": {
+              "width": 390,
+              "height": 844,
+              "scrollWidth": 390,
+              "scrollHeight": 844
+            },
+            "hasHorizontalOverflow": false,
+            "tinyControls": [],
+            "visibleText": "리허설 완료 수고했어요, 잘 마쳤어요 목표보다 4:59 빨랐어요 발표 시간 00:01 목표 05:00 · 4:59 여유 대본 커버리지 측정 안 됨 놓친 항목 - 음성 추적 데이터가 없습니다. 로컬 요약이 준비됐어요. 서버 리포트 없이 바로 다시 연습할 수 있어요 다시 연습 확인"
+          }
+        },
+        {
+          "index": 8,
+          "slug": "390-1g-preflight-previous-summary",
+          "name": "390px 1g preflight, previous summary present",
+          "file": "08-390-1g-preflight-previous-summary.png",
+          "notes": "Preflight after saving a local practice summary from the previous completion.",
+          "diagnostics": {
+            "viewport": {
+              "width": 390,
+              "height": 844,
+              "scrollWidth": 390,
+              "scrollHeight": 844
+            },
+            "hasHorizontalOverflow": false,
+            "tinyControls": [
+              {
+                "tag": "button",
+                "text": "음성 없이 연습하기",
+                "width": 119,
+                "height": 20
+              }
+            ],
+            "visibleText": "Live STT / Report AI / Speaker notes 지난 리허설은 0:01였습니다. 이번엔 10:00 목표로 가볼까요? 리허설을 시작할까요? 시작하면 마이크를 확인하고 바로 준비 완료 상태로 이어집니다. 마이크 권한 확인 시작 시 권한 확인 음성 인식 준비 한국어 · Live STT 슬라이드 2장 로드됨 음성 트리거 6개 \"다음 슬라이드\" \"강조\" 리허설 시작 음성 없이 연습하기"
+          }
+        }
+      ]
+    }
+  ]
+}

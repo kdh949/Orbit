@@ -32,6 +32,9 @@ const validEnv = {
   OPENAI_MODEL: "gpt-4.1-mini",
   OPENAI_TRANSCRIPTION_MODEL: "gpt-4o-transcribe",
   OPENAI_EMBEDDING_MODEL: "text-embedding-3-small",
+  OPENAI_REALTIME_TRANSCRIPTION_MODEL: "gpt-realtime-whisper",
+  OPENAI_REALTIME_TRANSCRIPTION_DELAY: "minimal",
+  OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS: "600",
   AWS_REGION: "ap-northeast-2",
   AWS_ACCESS_KEY_ID: "",
   AWS_SECRET_ACCESS_KEY: "",
@@ -52,13 +55,52 @@ describe("ORBIT env validation", () => {
       {
         ...validEnv,
         OPENAI_MODEL: "gpt-4.1",
-        OPENAI_EMBEDDING_MODEL: "text-embedding-3-large"
+        OPENAI_EMBEDDING_MODEL: "text-embedding-3-large",
+        OPENAI_REALTIME_TRANSCRIPTION_MODEL: "gpt-realtime-whisper-2",
+        OPENAI_REALTIME_TRANSCRIPTION_DELAY: "low",
+        OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS: "900"
       },
       { service: "api" }
     );
 
     expect(config.OPENAI_MODEL).toBe("gpt-4.1");
     expect(config.OPENAI_EMBEDDING_MODEL).toBe("text-embedding-3-large");
+    expect(config.OPENAI_REALTIME_TRANSCRIPTION_MODEL).toBe(
+      "gpt-realtime-whisper-2"
+    );
+    expect(config.OPENAI_REALTIME_TRANSCRIPTION_DELAY).toBe("low");
+    expect(config.OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS).toBe(900);
+  });
+
+  it("loads realtime transcription defaults when optional env values are omitted", () => {
+    const env = { ...validEnv } as Partial<typeof validEnv>;
+    delete env.OPENAI_REALTIME_TRANSCRIPTION_MODEL;
+    delete env.OPENAI_REALTIME_TRANSCRIPTION_DELAY;
+    delete env.OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS;
+
+    const config = loadOrbitConfig(env as NodeJS.ProcessEnv, { service: "api" });
+
+    expect(config.OPENAI_REALTIME_TRANSCRIPTION_MODEL).toBe(
+      "gpt-realtime-whisper"
+    );
+    expect(config.OPENAI_REALTIME_TRANSCRIPTION_DELAY).toBe("minimal");
+    expect(config.OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS).toBe(600);
+  });
+
+  it("validates realtime transcription delay and client secret ttl", () => {
+    expect(() =>
+      loadOrbitConfig(
+        { ...validEnv, OPENAI_REALTIME_TRANSCRIPTION_DELAY: "instant" },
+        { service: "api" }
+      )
+    ).toThrow(/OPENAI_REALTIME_TRANSCRIPTION_DELAY/);
+
+    expect(() =>
+      loadOrbitConfig(
+        { ...validEnv, OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS: "9" },
+        { service: "api" }
+      )
+    ).toThrow(/OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS/);
   });
 
   it("fails with a readable error when a required value is missing", () => {

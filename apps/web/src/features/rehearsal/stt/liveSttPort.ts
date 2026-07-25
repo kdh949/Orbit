@@ -1,6 +1,10 @@
 import type { LiveSttPartialTranscriptEvent } from "@orbit/shared";
 
-export type LiveSttEngineId = "sherpa" | "web-speech" | "moonshine";
+export type LiveSttEngineId =
+  | "openai-realtime"
+  | "sherpa"
+  | "web-speech"
+  | "moonshine";
 
 export type LiveSttCapabilities = {
   onDevice: boolean;

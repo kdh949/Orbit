@@ -17,6 +17,7 @@ export const presenterDeckSettingsStorageKeyPrefix = "orbit:presenter:deck:";
 export const presenterDeckSettingsStorageKeyVersion = ":v1";
 
 const liveSttEngineIds: readonly LiveSttEngineId[] = [
+  "openai-realtime",
   "sherpa",
   "web-speech",
   "moonshine"

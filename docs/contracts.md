@@ -998,13 +998,24 @@ Implementation locations:
 
 발표/리허설 중 사용자의 발화를 실시간으로 인식해 화면 제어에 사용한다.
 
-- provider env: `LIVE_STT_PROVIDER=sherpa`
+- device-local provider env: `LIVE_STT_PROVIDER=sherpa`
+- 기본 browser engine: `openai-realtime`
+- OpenAI model env: `OPENAI_REALTIME_TRANSCRIPTION_MODEL=gpt-realtime-whisper`
 - 실행 위치: web 또는 device-local runtime
 - 목적: 애니메이션 cue, 강조 표시, 키워드 누락 체크, 다음 슬라이드 전환 제안/실행
 - 입력: 마이크 스트림
 - 출력: partial transcript, keyword detection, cue event, slide advance signal
 - 원칙: raw audio를 서버 리포트용 storage에 업로드하지 않는다.
-- 구현 위치: `packages/shared/src/rehearsals/live-stt.schema.ts`, `apps/web/src/features/rehearsal`
+- OpenAI Realtime 경로는 raw OpenAI API key를 브라우저에 노출하지 않고, API가 project read 권한을 확인한 뒤 ephemeral client secret만 반환한다.
+- 구현 위치: `packages/shared/src/rehearsals/live-stt.schema.ts`, `packages/shared/src/rehearsals/realtime-transcription.schema.ts`, `apps/api/src/realtime-transcription`, `apps/web/src/features/rehearsal`
+
+OpenAI Realtime client secret API:
+
+- `POST /api/v1/projects/:projectId/realtime-transcription/client-secret`
+  - 인증: signed session cookie 필수
+  - 권한: `projectId`에 대한 read 권한 필요
+  - response: `{ "clientSecret": "ek_...", "expiresAt": 1790000000, "model": "gpt-realtime-whisper", "delay": "minimal" }`
+  - 서버 로그에는 OpenAI API key, client secret, raw audio, transcript 원문을 남기지 않는다.
 
 ### Report STT/AI
 

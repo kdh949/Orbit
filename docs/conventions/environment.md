@@ -63,11 +63,16 @@ OpenAI 모델은 코드 상수가 아니라 env로 결정한다.
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_TRANSCRIPTION_MODEL=whisper-1
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+OPENAI_REALTIME_TRANSCRIPTION_MODEL=gpt-realtime-whisper
+OPENAI_REALTIME_TRANSCRIPTION_DELAY=minimal
+OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS=600
 AI_SLIDE_IMAGE_REVIEW_MODE=auto
 ORBIT_PPTX_OOXML_VECTOR_IMPORT=true
 ```
 
 리허설 리포트의 시간 기반 지표를 계산해야 하는 local/staging report STT는 `OPENAI_TRANSCRIPTION_MODEL=whisper-1`을 사용한다. `whisper-1`의 `verbose_json` 응답은 duration과 segment timestamp를 제공하므로 WPM, 구간별 속도, 긴 침묵 계산에 사용할 수 있다. production 모델은 전사 정확도와 시간 지표 요구를 함께 검토한 뒤 별도로 고정한다.
+
+브라우저 리허설 Live STT의 기본 엔진은 `openai-realtime`이며 API가 프로젝트 권한 확인 후 OpenAI Realtime transcription client secret을 발급한다. `OPENAI_REALTIME_TRANSCRIPTION_MODEL` 기본값은 `gpt-realtime-whisper`이고, `OPENAI_REALTIME_TRANSCRIPTION_DELAY`는 `minimal | low | medium | high | xhigh`, `OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS`는 10초부터 7200초까지 허용한다.
 
 `AI_SLIDE_IMAGE_REVIEW_MODE=auto | off`는 텍스트 겹침 후보가 있는 슬라이드 PNG preview 검증을 제어한다. `auto`는 기존 `OPENAI_API_KEY`와 `OPENAI_MODEL`을 쓰고, `off`는 이미지 호출 없이 rule-based warning만 남긴다.
 
@@ -77,7 +82,7 @@ ORBIT_PPTX_OOXML_VECTOR_IMPORT=true
 
 STT/AI provider는 목적별로 분리한다.
 
-- `LIVE_STT_PROVIDER=sherpa`: 발표/리허설 중 실시간 발화 인식, 애니메이션 cue, 강조, 키워드 누락 체크, 슬라이드 전환 제어에 쓰는 온디바이스 STT다.
+- `LIVE_STT_PROVIDER=sherpa`: device-local runtime provider 계약이다. 브라우저 리허설 엔진 선택은 presenter settings의 `sttEngine`으로 관리하며 기본값은 `openai-realtime`이다.
 - `REPORT_STT_PROVIDER=openai | whisperx`: 리허설 종료 후 녹음 파일을 전사하고 코칭 리포트를 만들기 위한 서버 리포트 STT다. `whisperx`는 hosted API provider이며 live-control STT로 선택할 수 없다.
 - `LLM_PROVIDER=openai`: 전사 결과, 발표자료, 키워드, 청중 반응 등을 종합해 리포트와 코칭 문장을 생성하는 AI provider다.
 

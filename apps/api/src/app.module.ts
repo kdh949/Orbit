@@ -18,6 +18,7 @@ import { ProjectsModule } from "./projects/projects.module";
 import { PresentationSessionsModule } from "./presentation-sessions/presentation-sessions.module";
 import { ReferencesModule } from "./references/references.module";
 import { RealtimeGateway } from "./realtime/realtime.gateway";
+import { RealtimeTranscriptionModule } from "./realtime-transcription/realtime-transcription.module";
 import { RehearsalsModule } from "./rehearsals/rehearsals.module";
 
 @Module({
@@ -38,6 +39,7 @@ import { RehearsalsModule } from "./rehearsals/rehearsals.module";
     JobsModule,
     PresentationSessionsModule,
     ReferencesModule,
+    RealtimeTranscriptionModule,
     RehearsalsModule
   ],
   providers: [RealtimeGateway]

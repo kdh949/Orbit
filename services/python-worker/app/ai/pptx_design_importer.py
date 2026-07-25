@@ -4,7 +4,7 @@ import base64
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
@@ -1880,7 +1880,8 @@ def text_shape_summaries(
 ) -> list[dict[str, Any]]:
     summaries: list[dict[str, Any]] = []
     for element in text_elements:
-        props = element.get("props") if isinstance(element.get("props"), dict) else {}
+        raw_props = element.get("props")
+        props = cast(dict[str, Any], raw_props) if isinstance(raw_props, dict) else {}
         source = slot_sources.get(str(element.get("elementId", "")), {})
         summaries.append(
             {

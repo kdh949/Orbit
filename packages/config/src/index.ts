@@ -6,6 +6,8 @@ import {
   llmProviderSchema,
   nodeEnvSchema,
   ocrProviderSchema,
+  openAiModelDefaults,
+  openAiRealtimeTranscriptionDelaySchema,
   openAiRehearsalAudioMaxBytes,
   reportSttProviderSchema,
   storageDriverSchema
@@ -69,6 +71,16 @@ const requiredString = (name: string) =>
       .min(1, `${name} is required`)
   );
 
+const defaultedString = (defaultValue: string) =>
+  z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return value ?? defaultValue;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length === 0 ? defaultValue : trimmed;
+  }, z.string().min(1));
+
 const optionalString = z.preprocess((value) => {
   if (typeof value !== "string") {
     return value;
@@ -125,6 +137,27 @@ const optionalPositiveInteger = (name: string, defaultValue: number) =>
       .number({ invalid_type_error: `${name}은 양의 정수여야 합니다.` })
       .int(`${name}은 양의 정수여야 합니다.`)
       .positive(`${name}은 양의 정수여야 합니다.`)
+  );
+
+const optionalIntegerInRange = (
+  name: string,
+  defaultValue: number,
+  min: number,
+  max: number
+) =>
+  z.preprocess(
+    (value) => {
+      if (value === undefined || value === null || value === "") {
+        return defaultValue;
+      }
+
+      return Number(value);
+    },
+    z
+      .number({ invalid_type_error: `${name}은 정수여야 합니다.` })
+      .int(`${name}은 정수여야 합니다.`)
+      .min(min, `${name}은 ${min} 이상이어야 합니다.`)
+      .max(max, `${name}은 ${max} 이하여야 합니다.`)
   );
 
 const remoteEnvValues = ["staging", "production"] as const;
@@ -185,6 +218,19 @@ export const orbitEnvSchema = z.object({
   OPENAI_MODEL: requiredString("OPENAI_MODEL"),
   OPENAI_TRANSCRIPTION_MODEL: requiredString("OPENAI_TRANSCRIPTION_MODEL"),
   OPENAI_EMBEDDING_MODEL: requiredString("OPENAI_EMBEDDING_MODEL"),
+  OPENAI_REALTIME_TRANSCRIPTION_MODEL: defaultedString(
+    openAiModelDefaults.realtimeTranscriptionModel
+  ),
+  OPENAI_REALTIME_TRANSCRIPTION_DELAY:
+    openAiRealtimeTranscriptionDelaySchema.default(
+      openAiModelDefaults.realtimeTranscriptionDelay
+    ),
+  OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS: optionalIntegerInRange(
+    "OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS",
+    openAiModelDefaults.realtimeClientSecretTtlSeconds,
+    10,
+    7200
+  ),
   WHISPERX_API_URL: optionalUrl("WHISPERX_API_URL"),
   WHISPERX_API_KEY: optionalString,
   WHISPERX_MODEL: optionalString,

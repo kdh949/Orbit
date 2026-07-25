@@ -97,24 +97,54 @@ describe("RehearsalWorkspace", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders the current deck preview and notes", () => {
+  it("renders the pre-rehearsal preflight screen before recording starts", () => {
     const deck = createDemoDeck();
     const html = renderToStaticMarkup(
       <RehearsalWorkspace initialDeck={deck} />,
     );
 
     expect(html).toContain("리허설");
-    expect(html).toContain(deck.slides[0]?.title);
+    expect(html).toContain("리허설을 시작할까요?");
+    expect(html).toContain("마이크 권한 확인");
+    expect(html).toContain(`슬라이드 ${deck.slides.length}장 로드됨`);
+    expect(html).toContain("음성 트리거");
+    expect(html).toContain("리허설 시작");
+    expect(html).toContain("음성 없이 연습하기");
+    expect(html).toContain("이번 목표는");
+    expect(html).not.toContain("지난번보다");
     expect(html).toContain("Live STT");
-    expect(html).toContain("Live STT 시작");
-    expect(html).toContain("Live STT 종료");
-    expect(html).not.toContain("Live STT 시작을 눌러 테스트하세요");
+    expect(html).not.toContain(deck.slides[0]?.title);
     expect(html).not.toContain("Partial transcript");
-    expect(html).toContain("Mic input");
-    expect(html).toContain("입력 대기");
-    expect(html).toContain("-100 dB RMS");
     expect(html).toContain("Report AI");
     expect(html).toContain("Speaker notes");
+  });
+
+  it("uses the stored previous rehearsal summary on the preflight screen", () => {
+    const deck = createDemoDeck();
+    const key = `orbit.rehearsal.lastSummary:${deck.projectId}:${deck.deckId}`;
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (requestedKey: string) =>
+          requestedKey === key
+            ? JSON.stringify({
+                completedAt: createdAt,
+                coveragePercent: 75,
+                deckId: deck.deckId,
+                durationSeconds: 270,
+                missedKeywordCount: 1,
+                projectId: deck.projectId,
+                targetSeconds: 300,
+              })
+            : null,
+      },
+    });
+
+    const html = renderToStaticMarkup(
+      <RehearsalWorkspace initialDeck={deck} />,
+    );
+
+    expect(html).toContain("지난 리허설은 4:30였습니다.");
+    expect(html).not.toContain("지난번보다 30초");
   });
 
   it("builds the presenter window rehearsal URL with the shared session id", () => {
@@ -318,7 +348,7 @@ describe("RehearsalWorkspace", () => {
 
   it("renders slide receiver mode without the presenter toolbar or notes", () => {
     const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
-    const start = source.indexOf('displayRole === "slide-receiver"');
+    const start = source.indexOf('if (\n    (displayRole === "slide-receiver"');
     const end = source.indexOf("if (isSingleScreenOpen");
     const slideReceiverRenderBody = source.slice(start, end);
 
@@ -451,12 +481,17 @@ describe("RehearsalWorkspace", () => {
       "shouldUseSherpaCompatibility && legacyAdapter",
     );
     expect(createDefaultLiveSttPortBody).toContain(
-      "return createLiveSttPort(engineId)",
+      "return createLiveSttPort(engineId,",
     );
+    expect(createDefaultLiveSttPortBody).toContain("projectId");
     expect(getOrCreateLiveSttPortBody).toContain("props.liveSttPort");
     expect(getOrCreateLiveSttPortBody).toContain(
       "cachedPort?.engineId === presenterSettings.sttEngine",
     );
+    expect(getOrCreateLiveSttPortBody).toContain(
+      'cachedPort.engineId !== "openai-realtime"',
+    );
+    expect(getOrCreateLiveSttPortBody).toContain("activeProjectId");
     expect(getOrCreateLiveSttPortBody).toContain("cachedPort?.dispose()");
     expect(getOrCreateLiveSttPortBody).toContain(
       "engineId: presenterSettings.sttEngine",
@@ -1696,6 +1731,24 @@ describe("RehearsalWorkspace", () => {
       deck: fallbackDeck,
       snapshotReason: "deck-replaced",
     });
+  });
+
+  it("uses the fallback demo deck when rehearsal deck fetch is unauthorized", async () => {
+    const fallbackDeck = createDemoDeck();
+    const fetcher = vi.fn(
+      async () => new Response("unauthorized", { status: 401 }),
+    );
+
+    const deck = await fetchOrCreateRehearsalDeck({
+      fallbackDeck,
+      fetcher,
+    });
+
+    expect(deck.deckId).toBe(fallbackDeck.deckId);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher).toHaveBeenCalledWith(
+      `/api/v1/projects/${fallbackDeck.projectId}/deck`,
+    );
   });
 });
 

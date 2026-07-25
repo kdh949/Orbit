@@ -1,17 +1,32 @@
 import { describe, expect, it } from "vitest";
 import { createLiveSttPort, defaultLiveSttEngineId } from "./liveSttEngineRegistry";
 import { MoonshineLiveSttPort } from "./moonshineLiveSttPort";
+import { OpenAiRealtimeLiveSttPort } from "./openAiRealtimeLiveSttPort";
 import { RerankingLiveSttPort } from "./rerankingLiveSttPort";
 import { SherpaLiveSttPort } from "./sherpaLiveSttPort";
 
 describe("liveSttEngineRegistry", () => {
-  it("기본 엔진은 온디바이스 Web Speech이다", () => {
-    const port = createLiveSttPort();
+  it("기본 엔진은 OpenAI Realtime이다", () => {
+    const port = createLiveSttPort(undefined, {
+      projectId: "project_real_1"
+    });
 
-    expect(defaultLiveSttEngineId).toBe("web-speech");
-    expect(port).toBeInstanceOf(RerankingLiveSttPort);
-    expect(port.engineId).toBe("web-speech");
-    expect(port.capabilities.onDevice).toBe(true);
+    expect(defaultLiveSttEngineId).toBe("openai-realtime");
+    expect(port).toBeInstanceOf(OpenAiRealtimeLiveSttPort);
+    expect(port.engineId).toBe("openai-realtime");
+    expect(port.capabilities.onDevice).toBe(false);
+    expect((port as OpenAiRealtimeLiveSttPort).projectId).toBe("project_real_1");
+  });
+
+  it("OpenAI Realtime 엔진을 프로젝트 범위로 생성한다", () => {
+    const port = createLiveSttPort("openai-realtime", {
+      projectId: "project_custom_1"
+    });
+
+    expect(port).toBeInstanceOf(OpenAiRealtimeLiveSttPort);
+    expect((port as OpenAiRealtimeLiveSttPort).projectId).toBe(
+      "project_custom_1"
+    );
   });
 
   it("Web Speech 엔진을 재순위 데코레이터로 생성한다", () => {
