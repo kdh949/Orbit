@@ -36,6 +36,37 @@ final result: passed
 
 ---
 
+# iPad Presenter Companion preflight design QA (2026-07-24)
+
+## Source of truth
+
+- User-annotated production preflight at `1934 × 1324`.
+- ORBIT redesign tokens and the existing microphone preflight primitives.
+- Requested intentional changes: make companion setup optional and collapsible,
+  remove the private input pad, and remove handwriting readiness.
+
+## Comparison
+
+- Rendered the production `PresenterCompanionSetup` inside the production
+  microphone-modal styles at `1934 × 1324`.
+- Collapsed state matches the surrounding modal density and exposes a clear
+  `선택` badge, non-blocking copy, summary state, and disclosure control.
+- Expanded state keeps only the QR pairing action, iPad connection status, and
+  presentation output readiness.
+- Confirmed the removed private input pad and handwriting row are absent.
+- Confirmed the disclosure exposes an accessible expanded state when opened.
+- Confirmed the compact layout has no horizontal overflow at `500 × 900`.
+
+## Findings
+
+- P0: none.
+- P1: none.
+- P2: none.
+
+final result: passed
+
+---
+
 # iPad Presenter Companion 운영 UI design QA (2026-07-24)
 
 - Source visual truth: `prototypes/ipad-presenter-companion/reference/combined-target-v2.png` (시각 참조 전용, 운영 코드에서 import하지 않음).
