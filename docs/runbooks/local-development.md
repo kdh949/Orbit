@@ -20,6 +20,37 @@ cp -n .env.example .env.local
 pnpm dev:local
 ```
 
+`pnpm dev:local`은 PostgreSQL, Redis, private evidence Redis, MinIO만 Docker
+Compose로 실행한다. Web, API, Worker와 공통 TypeScript 패키지는 Turborepo watch
+모드로 실행하고 Python worker는 Uvicorn reload 모드로 실행한다. 일반적인 Web,
+API, Worker, 공통 패키지, Python 코드 변경에는 Docker 이미지 재빌드가 필요하지
+않다.
+
+`.env.local`은 로컬 실행의 기준이며 자동으로 수정되지 않는다. 실행 전에 연결
+주소가 localhost 기반인지 검증하고 staging, production 또는 placeholder 주소가
+있으면 값은 출력하지 않은 채 중단한다. 이 경우 `.env.example`과 해당 key를
+비교해 로컬 주소로 교정한다. 별도의 테스트용 환경 파일을 사용하려면 경로만
+지정한다.
+
+```bash
+ORBIT_LOCAL_ENV_FILE=/absolute/path/to/test.env pnpm dev:local
+```
+
+`Ctrl-C`는 Web, API, Worker, 공통 패키지 watcher와 Python worker를 종료한다.
+인프라 컨테이너는 다음 실행을 빠르게 시작할 수 있도록 유지된다. 인프라까지
+종료하려면 다음 명령을 실행한다.
+
+```bash
+pnpm compose:down
+```
+
+Dockerfile, OS package 또는 컨테이너 이미지 의존성을 변경한 경우에만 전체 이미지를
+다시 빌드한다.
+
+```bash
+docker compose up --build
+```
+
 ## DB migration
 
 ```bash
