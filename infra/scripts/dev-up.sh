@@ -4,8 +4,34 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PYTHON_WORKER_DIR="$ROOT_DIR/services/python-worker"
+LOCAL_ENV_FILE="$ROOT_DIR/.env.local"
 
 cd "$ROOT_DIR"
+
+load_local_environment() {
+  if [[ ! -f "$LOCAL_ENV_FILE" ]]; then
+    echo "[dev-up] missing .env.local; copy .env.example to .env.local first" >&2
+    return 1
+  fi
+
+  echo "[dev-up] loading .env.local"
+  set -a
+  # shellcheck disable=SC1090
+  source "$LOCAL_ENV_FILE"
+  set +a
+}
+
+wait_for_dev_process() {
+  while kill -0 "$NODE_DEV_PID" 2>/dev/null && kill -0 "$PYTHON_DEV_PID" 2>/dev/null; do
+    sleep 1
+  done
+
+  if ! kill -0 "$NODE_DEV_PID" 2>/dev/null; then
+    wait "$NODE_DEV_PID"
+  else
+    wait "$PYTHON_DEV_PID"
+  fi
+}
 
 cleanup() {
   local exit_code=$?
@@ -27,6 +53,8 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
+load_local_environment
+
 echo "[dev-up] starting local infra containers"
 docker compose up -d postgres redis minio minio-init
 
@@ -47,4 +75,4 @@ echo "[dev-up] syncing python worker dependencies"
 ) &
 PYTHON_DEV_PID=$!
 
-wait -n "$NODE_DEV_PID" "$PYTHON_DEV_PID"
+wait_for_dev_process
