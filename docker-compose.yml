@@ -1,4 +1,4 @@
-name: orbit
+name: ${COMPOSE_PROJECT_NAME:-orbit}
 
 services:
   postgres:
@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: orbit
       POSTGRES_PASSWORD: orbit
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - postgres18-data:/var/lib/postgresql
     healthcheck:
@@ -20,7 +20,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${REDIS_HOST_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -33,7 +33,7 @@ services:
     image: redis:7-alpine
     command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory-policy", "allkeys-lru"]
     ports:
-      - "127.0.0.1:6380:6379"
+      - "127.0.0.1:${PRIVATE_EVIDENCE_REDIS_HOST_PORT:-6380}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -47,8 +47,8 @@ services:
       MINIO_ROOT_USER: orbit
       MINIO_ROOT_PASSWORD: orbit-password
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_HOST_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_HOST_PORT:-9001}:9001"
     volumes:
       - minio-data:/data
     healthcheck:
@@ -88,6 +88,7 @@ services:
       REDIS_URL: redis://redis:6379
       PRIVATE_EVIDENCE_REDIS_URL: redis://private-evidence-redis:6379
       S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
       PYTHON_WORKER_URL: http://python-worker:8000
       ADAPTIVE_REHEARSAL_COACH_ENABLED: "${ADAPTIVE_REHEARSAL_COACH_ENABLED:-true}"
       FOCUSED_PRACTICE_ENABLED: "${FOCUSED_PRACTICE_ENABLED:-true}"
@@ -124,6 +125,7 @@ services:
       REDIS_URL: redis://redis:6379
       PRIVATE_EVIDENCE_REDIS_URL: redis://private-evidence-redis:6379
       S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
       PYTHON_WORKER_URL: http://python-worker:8000
       ADAPTIVE_REHEARSAL_COACH_ENABLED: ${ADAPTIVE_REHEARSAL_COACH_ENABLED:-false}
       FOCUSED_PRACTICE_ENABLED: ${FOCUSED_PRACTICE_ENABLED:-false}
@@ -154,6 +156,7 @@ services:
       OPENAI_TRANSCRIPTION_MODEL: ${OPENAI_TRANSCRIPTION_MODEL:-whisper-1}
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
       PYTHON_WORKER_URL: http://python-worker:8000
     ports:
       - "${PYTHON_WORKER_PORT:-8000}:8000"
@@ -180,7 +183,7 @@ services:
       APP_ENV: ${APP_ENV:-local}
       API_BASE_URL: http://api:3000
     ports:
-      - "${WEB_PORT:-5173}:5173"
+      - "${WEB_HOST_PORT:-${WEB_PORT:-5173}}:${WEB_PORT:-5173}"
     depends_on:
       api:
         condition: service_healthy

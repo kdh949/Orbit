@@ -10,6 +10,22 @@ cp .env.example .env.local
 docker compose up --build
 ```
 
+일반 로컬 실행은 기본 Compose project 이름 `orbit`을 사용한다. Codex worktree에서는 서로 다른 브랜치의 PostgreSQL, Redis, MinIO volume이 섞이지 않도록 경로 기반 project 이름을 사용하는 wrapper를 실행한다.
+
+```bash
+infra/scripts/docker-compose-worktree.sh up --build -d
+infra/scripts/docker-compose-worktree.sh down --remove-orphans
+```
+
+현재 worktree에 할당될 project 이름은 다음 명령으로 확인한다.
+
+```bash
+infra/scripts/docker-compose-worktree.sh --print-project-name
+infra/scripts/docker-compose-worktree.sh --print-port-env
+```
+
+wrapper는 경로 hash로 `20000`–`59999` 범위의 port block도 할당한다. 따라서 named volume과 Web, API, Python worker, PostgreSQL, Redis, MinIO의 host port가 worktree별로 분리된다. 명시적으로 전달한 port 환경변수는 자동 할당보다 우선한다.
+
 로컬 개발용으로 인프라, migration, Web/API/Worker, Python worker를 한 번에 올리려면:
 
 ```bash
