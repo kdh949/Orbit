@@ -644,7 +644,7 @@ describe("editor shell", () => {
 
     expect(html).toContain(deck.title);
     expect(html).toContain("editor-professional redesign-dark");
-    expect(html).toContain("차트");
+    expect(html).toContain("삽입");
     expect(html).toContain("Data Contract");
     expect(html).toContain("발표 메모");
     expect(html).not.toContain("발표할 때 참고할 내용을 슬라이드별로 정리하세요.");

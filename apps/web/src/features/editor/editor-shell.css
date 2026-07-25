@@ -2439,7 +2439,7 @@
 .element-context-menu-popover {
   position: fixed;
   z-index: 43;
-  min-width: 180px;
+  min-width: 260px;
   padding: var(--redesign-space-2);
   border: 1px solid var(--redesign-color-outline-variant);
   border-radius: var(--redesign-radius-xl);
@@ -2461,6 +2461,39 @@
   font-size: var(--redesign-type-body-sm-size);
   font-weight: 800;
   padding: 0 var(--redesign-space-2);
+}
+
+.element-context-menu-item small {
+  display: block;
+  margin-left: auto;
+  max-width: 180px;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: right;
+}
+.element-context-menu-separator { height: 1px; margin: var(--redesign-space-1) var(--redesign-space-2); background: var(--redesign-color-outline-variant); }
+.element-context-submenu-root { position: relative; }
+.element-context-submenu-chevron { margin-left: auto; }
+.element-context-submenu {
+  position: absolute;
+  top: calc(var(--redesign-space-2) * -1);
+  left: calc(100% + var(--redesign-space-1));
+  z-index: 1;
+  display: none;
+  min-width: 220px;
+  padding: var(--redesign-space-2);
+  border: 1px solid var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius-xl);
+  background: var(--redesign-color-surface-container-lowest);
+  box-shadow: var(--redesign-shadow-overlay);
+}
+.element-context-submenu-root:hover > .element-context-submenu,
+.element-context-submenu-root:focus-within > .element-context-submenu { display: grid; }
+
+@media (max-width: 720px) {
+  .element-context-submenu { right: calc(100% + var(--redesign-space-1)); left: auto; }
 }
 
 .element-context-menu-item:hover:not(:disabled) {

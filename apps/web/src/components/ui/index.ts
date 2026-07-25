@@ -1,7 +1,10 @@
 export {
   DropdownMenu,
   DropdownMenuAccount,
-  DropdownMenuItem
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSubmenu
 } from "./DropdownMenu";
 export { OrbitButton, OrbitButtonLink } from "./Button";
 export type { OrbitButtonSize, OrbitButtonVariant } from "./Button";

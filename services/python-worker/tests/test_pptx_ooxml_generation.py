@@ -341,7 +341,7 @@ def test_sync_pptx_ooxml_round_trips_text_and_target_image(
     )
 
 
-def test_sync_pptx_ooxml_round_trips_image_crop_and_rejects_unsafe_capability(
+def test_sync_pptx_ooxml_round_trips_image_frame_and_crop_and_rejects_unsafe_capability(
     tmp_path: Path,
 ) -> None:
     pptx_path = sample_round_trip_pptx(tmp_path)
@@ -363,8 +363,21 @@ def test_sync_pptx_ooxml_round_trips_image_crop_and_rejects_unsafe_capability(
         "elementId": target["elementId"],
         "props": {"crop": crop},
     }
+    frame_operation = {
+        "type": "update_element_frame",
+        "slideId": template_slide_id(generated),
+        "elementId": target["elementId"],
+        "frame": {
+            "x": 240,
+            "y": 180,
+            "width": 360,
+            "height": 210,
+            "rotation": 15,
+        },
+    }
 
     assert source["ooxmlEditCapabilities"]["crop"] == "picture"
+    assert source["ooxmlEditCapabilities"]["frame"] is True
 
     synced = sync_pptx_ooxml(
         pptx_path,
@@ -372,12 +385,12 @@ def test_sync_pptx_ooxml_round_trips_image_crop_and_rejects_unsafe_capability(
         deck_canvas=generated.canvas,
         synced_deck_version=2,
         render=False,
-        operations=[operation],
+        operations=[frame_operation, operation],
     )
     synced_bytes = current_package_bytes(synced.assets)
 
     assert synced.warnings == []
-    assert len(synced.applied_operations) == 1
+    assert len(synced.applied_operations) == 2
     assert synced.unsupported_operations == []
     assert picture_crop_rect(synced_bytes, source["shapeId"]) == {
         "l": "20000",
@@ -395,6 +408,11 @@ def test_sync_pptx_ooxml_round_trips_image_crop_and_rejects_unsafe_capability(
         if element["type"] == "image" and element["props"].get("crop") == crop
     )
     assert reimported_target["props"]["crop"] == crop
+    assert reimported_target["x"] == pytest.approx(240, abs=0.01)
+    assert reimported_target["y"] == pytest.approx(180, abs=0.01)
+    assert reimported_target["width"] == pytest.approx(360, abs=0.01)
+    assert reimported_target["height"] == pytest.approx(210, abs=0.01)
+    assert reimported_target["rotation"] == pytest.approx(15, abs=0.01)
 
     unsafe_blueprint = copy.deepcopy(generated.template_blueprint)
     unsafe_source = source_for_element(

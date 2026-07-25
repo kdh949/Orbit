@@ -10,6 +10,15 @@ import {
   IconMinus as Minus,
   IconPencil as PenLine,
   IconPhotoPlus as ImagePlus,
+  IconScissors as Scissors,
+  IconCopy as Copy,
+  IconClipboard as Clipboard,
+  IconCrop as Crop,
+  IconLayersIntersect as Layers,
+  IconAlignBoxCenterMiddle as Align,
+  IconSparkles as Sparkles,
+  IconTextCaption as TextCaption,
+  IconChevronRight as ChevronRight,
   IconRowInsertBottom as RowInsertBottom,
   IconRowInsertTop as RowInsertTop,
   IconRectangle as Rectangle,
@@ -19,7 +28,12 @@ import {
   IconTrash as Trash,
   IconTriangle as Triangle
 } from "@tabler/icons-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode
+} from "react";
 import { createPortal } from "react-dom";
 
 import type {
@@ -40,18 +54,30 @@ export type ShapeInsertType =
   | "star"
   | "customShape";
 
+export type ImageContextMenuAction =
+  | "cut" | "copy" | "paste" | "crop" | "replace"
+  | "bring-to-front" | "bring-forward" | "send-backward" | "send-to-back"
+  | "align-left" | "align-center-x" | "align-right"
+  | "align-top" | "align-center-y" | "align-bottom"
+  | "add-animation" | "open-alt-text" | "delete";
+
 export function EditorContextMenus(props: {
   chartMenuPosition: ShapeMenuPosition | null;
   elementContextMenu: ElementContextMenuState | null;
   isChartMenuOpen: boolean;
   isImageUploadPending: boolean;
   isShapeMenuOpen: boolean;
+  imageActionDisabledReasons?: Partial<Record<ImageContextMenuAction, string>>;
   onCloseChartMenu: () => void;
   onCloseElementContextMenu: () => void;
   onCloseShapeMenu: () => void;
   onCreateGroup: () => void;
   onInsertChart: (type: ChartInsertType) => void;
   onInsertShape: (shape: ShapeInsertType) => void;
+  onImageAction?: (
+    action: ImageContextMenuAction,
+    target: { elementId: string; slideId: string },
+  ) => void;
   onReplaceImage: (target: {
     elementId: string;
     slideId: string;
@@ -61,6 +87,7 @@ export function EditorContextMenus(props: {
   shapeMenuPosition: ShapeMenuPosition | null;
 }) {
   const elementMenuRef = useRef<HTMLDivElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!props.elementContextMenu) return;
@@ -75,6 +102,8 @@ export function EditorContextMenus(props: {
 
   useEffect(() => {
     if (!props.elementContextMenu || typeof window === "undefined") return;
+    returnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const frame = window.requestAnimationFrame(() => {
       const menu = elementMenuRef.current;
       const firstEnabledItem = menu?.querySelector<HTMLButtonElement>(
@@ -82,7 +111,10 @@ export function EditorContextMenus(props: {
       );
       (firstEnabledItem ?? menu)?.focus();
     });
-    return () => window.cancelAnimationFrame(frame);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
+    };
   }, [props.elementContextMenu]);
 
   if (typeof document === "undefined") return null;
@@ -99,6 +131,66 @@ export function EditorContextMenus(props: {
       slideId: elementContextMenu.slideId
     });
     props.onCloseElementContextMenu();
+  }
+
+  function requestImageAction(action: ImageContextMenuAction) {
+    if (!elementContextMenu || elementContextMenu.type !== "image") return;
+    if (action === "replace" && !props.onImageAction) {
+      props.onReplaceImage({
+        elementId: elementContextMenu.elementId,
+        slideId: elementContextMenu.slideId,
+        type: "replace"
+      });
+    } else {
+      props.onImageAction?.(action, {
+        elementId: elementContextMenu.elementId,
+        slideId: elementContextMenu.slideId
+      });
+    }
+    props.onCloseElementContextMenu();
+  }
+
+  function handleElementMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key === "ArrowRight") {
+      const trigger = (event.target as HTMLElement).closest<HTMLButtonElement>(
+        '[aria-haspopup="menu"]'
+      );
+      const firstChild = trigger?.parentElement?.querySelector<HTMLButtonElement>(
+        '.element-context-submenu [role="menuitem"]:not(:disabled)'
+      );
+      if (firstChild) {
+        event.preventDefault();
+        firstChild.focus();
+      }
+      return;
+    }
+    if (event.key === "ArrowLeft") {
+      const submenu = (event.target as HTMLElement).closest<HTMLElement>(
+        ".element-context-submenu"
+      );
+      const trigger = submenu?.parentElement?.querySelector<HTMLButtonElement>(
+        ':scope > [aria-haspopup="menu"]'
+      );
+      if (trigger) {
+        event.preventDefault();
+        trigger.focus();
+      }
+      return;
+    }
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    const items = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"]:not(:disabled)'
+      )
+    ).filter((item) => !item.closest(".element-context-submenu"));
+    if (items.length === 0) return;
+    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+    const direction = event.key === "ArrowDown" ? 1 : -1;
+    const nextIndex = currentIndex < 0
+      ? 0
+      : (currentIndex + direction + items.length) % items.length;
+    event.preventDefault();
+    items[nextIndex]?.focus();
   }
 
   return (
@@ -161,9 +253,18 @@ export function EditorContextMenus(props: {
                 role="menu"
                 tabIndex={-1}
                 style={{
-                  left: elementContextMenu.left,
-                  top: elementContextMenu.top
+                  left: clampContextCoordinate(
+                    elementContextMenu.left,
+                    typeof window === "undefined" ? undefined : window.innerWidth,
+                    300
+                  ),
+                  top: clampContextCoordinate(
+                    elementContextMenu.top,
+                    typeof window === "undefined" ? undefined : window.innerHeight,
+                    620
+                  )
                 }}
+                onKeyDown={handleElementMenuKeyDown}
                 onMouseDown={(event) => event.stopPropagation()}
               >
                 {elementContextMenu.type === "table-cell" ? (
@@ -172,22 +273,11 @@ export function EditorContextMenus(props: {
                     onAction={requestTableAction}
                   />
                 ) : elementContextMenu.type === "image" ? (
-                  <button
-                    className="element-context-menu-item"
-                    disabled={props.isImageUploadPending}
-                    role="menuitem"
-                    type="button"
-                    onClick={() =>
-                      props.onReplaceImage({
-                        elementId: elementContextMenu.elementId,
-                        slideId: elementContextMenu.slideId,
-                        type: "replace"
-                      })
-                    }
-                  >
-                    <ImagePlus size={16} />
-                    <span>{props.isImageUploadPending ? "업로드 중..." : "이미지 바꾸기"}</span>
-                  </button>
+                  <ImageContextMenuItems
+                    disabledReasons={props.imageActionDisabledReasons ?? {}}
+                    imageUploadPending={props.isImageUploadPending}
+                    onAction={requestImageAction}
+                  />
                 ) : elementContextMenu.type === "group" ? (
                   <button
                     className="element-context-menu-item"
@@ -214,6 +304,69 @@ export function EditorContextMenus(props: {
         : null}
     </>
   );
+}
+
+function ImageContextMenuItems(props: {
+  disabledReasons: Partial<Record<ImageContextMenuAction, string>>;
+  imageUploadPending: boolean;
+  onAction: (action: ImageContextMenuAction) => void;
+}) {
+  return <>
+    <ImageContextMenuItem action="cut" icon={<Scissors size={16} />} label="잘라내기" {...props} />
+    <ImageContextMenuItem action="copy" icon={<Copy size={16} />} label="복사" {...props} />
+    <ImageContextMenuItem action="paste" icon={<Clipboard size={16} />} label="붙여넣기" {...props} />
+    <div className="element-context-menu-separator" role="separator" />
+    <ImageContextMenuItem action="crop" icon={<Crop size={16} />} label="자르기" {...props} />
+    <ImageContextMenuItem action="replace" disabledReason={props.imageUploadPending ? "이미지를 업로드하는 중입니다." : props.disabledReasons.replace} icon={<ImagePlus size={16} />} label={props.imageUploadPending ? "업로드 중..." : "이미지 바꾸기"} onAction={props.onAction} />
+    <div className="element-context-menu-separator" role="separator" />
+    <ImageContextSubmenu icon={<Layers size={16} />} label="레이어">
+      <ImageContextMenuItem action="bring-to-front" icon={<Layers size={16} />} label="맨 앞으로" {...props} />
+      <ImageContextMenuItem action="bring-forward" icon={<Layers size={16} />} label="앞으로" {...props} />
+      <ImageContextMenuItem action="send-backward" icon={<Layers size={16} />} label="뒤로" {...props} />
+      <ImageContextMenuItem action="send-to-back" icon={<Layers size={16} />} label="맨 뒤로" {...props} />
+    </ImageContextSubmenu>
+    <ImageContextSubmenu icon={<Align size={16} />} label="정렬">
+      <ImageContextMenuItem action="align-left" icon={<Align size={16} />} label="왼쪽" {...props} />
+      <ImageContextMenuItem action="align-center-x" icon={<Align size={16} />} label="가로 가운데" {...props} />
+      <ImageContextMenuItem action="align-right" icon={<Align size={16} />} label="오른쪽" {...props} />
+      <ImageContextMenuItem action="align-top" icon={<Align size={16} />} label="위쪽" {...props} />
+      <ImageContextMenuItem action="align-center-y" icon={<Align size={16} />} label="세로 가운데" {...props} />
+      <ImageContextMenuItem action="align-bottom" icon={<Align size={16} />} label="아래쪽" {...props} />
+    </ImageContextSubmenu>
+    <div className="element-context-menu-separator" role="separator" />
+    <ImageContextMenuItem action="add-animation" icon={<Sparkles size={16} />} label="애니메이션 추가" {...props} />
+    <ImageContextMenuItem action="open-alt-text" icon={<TextCaption size={16} />} label="대체 텍스트 열기" {...props} />
+    <ImageContextMenuItem action="delete" icon={<Trash size={16} />} label="삭제" {...props} />
+  </>;
+}
+
+function ImageContextSubmenu(props: { children: ReactNode; icon: ReactNode; label: string }) {
+  return <div className="element-context-submenu-root">
+    <button aria-haspopup="menu" className="element-context-menu-item" role="menuitem" type="button">
+      {props.icon}<span>{props.label}</span><ChevronRight aria-hidden="true" className="element-context-submenu-chevron" size={16} />
+    </button>
+    <div aria-label={props.label} className="element-context-submenu" role="menu">{props.children}</div>
+  </div>;
+}
+
+function ImageContextMenuItem(props: {
+  action: ImageContextMenuAction;
+  disabledReason?: string;
+  disabledReasons?: Partial<Record<ImageContextMenuAction, string>>;
+  icon: ReactNode;
+  label: string;
+  onAction: (action: ImageContextMenuAction) => void;
+}) {
+  const disabledReason = props.disabledReason ?? props.disabledReasons?.[props.action];
+  return <button className="element-context-menu-item" disabled={Boolean(disabledReason)} role="menuitem" title={disabledReason} type="button" onClick={() => props.onAction(props.action)}>
+    {props.icon}<span>{props.label}</span>
+    {disabledReason ? <small>{disabledReason}</small> : null}
+  </button>;
+}
+
+function clampContextCoordinate(coordinate: number, viewportSize: number | undefined, menuSize: number) {
+  if (!viewportSize || !Number.isFinite(viewportSize)) return coordinate;
+  return Math.max(8, Math.min(coordinate, viewportSize - menuSize - 8));
 }
 
 function TableContextMenuItems(props: {

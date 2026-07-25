@@ -28,6 +28,7 @@ import {
 } from "./contentEditableRange";
 import { resolveTextBodyInset } from "../../../slides/rendering/richTextLayout";
 import { getCssFontWeight, getTextElementLayout } from "./textLayout";
+import type { TextSelectionRect } from "./TextContextToolbar";
 
 type TextElement = Extract<DeckElement, { type: "text" }>;
 
@@ -49,6 +50,8 @@ type InlineTextEditorOverlayProps = {
   onDraftPropsChange?: (props: TextElementProps) => void;
   onFinishEditing: (options?: { clearSelection?: boolean }) => void;
   onRangeChange?: (range: ContentEditableLogicalRange | null) => void;
+  onSelectionRectChange?: (rect: TextSelectionRect | null) => void;
+  onCompositionChange?: (composing: boolean) => void;
 };
 
 export const InlineTextEditorOverlay = forwardRef<
@@ -73,6 +76,8 @@ const InlineTextEditorSurface = forwardRef<
     onDraftPropsChange,
     onFinishEditing,
     onRangeChange,
+    onSelectionRectChange,
+    onCompositionChange,
   } = props;
   const rootRef = useRef<HTMLDivElement | null>(null);
   const pendingRangeRestoreRef = useRef(false);
@@ -82,12 +87,16 @@ const InlineTextEditorSurface = forwardRef<
     onDraftPropsChange,
     onFinishEditing,
     onRangeChange,
+    onSelectionRectChange,
+    onCompositionChange,
   });
   callbacksRef.current = {
     onCommitProps,
     onDraftPropsChange,
     onFinishEditing,
     onRangeChange,
+    onSelectionRectChange,
+    onCompositionChange,
   };
   const initialProps = useMemo(
     () => normalizeRichTextProps(element.props),
@@ -123,6 +132,19 @@ const InlineTextEditorSurface = forwardRef<
     const range = saveContentEditableRange(root, domRange);
     rangeRef.current = range;
     callbacksRef.current.onRangeChange?.(range);
+    if (domRange.collapsed) {
+      callbacksRef.current.onSelectionRectChange?.(null);
+      return;
+    }
+    const rect = domRange.getBoundingClientRect();
+    callbacksRef.current.onSelectionRectChange?.({
+      bottom: rect.bottom,
+      height: rect.height,
+      left: rect.left,
+      right: rect.right,
+      top: rect.top,
+      width: rect.width,
+    });
   }
 
   function restoreRange() {
@@ -255,9 +277,11 @@ const InlineTextEditorSurface = forwardRef<
       onBlur={(event) => handleCompositeBlur(event.relatedTarget)}
       onCompositionEnd={() => {
         session.handleCompositionEnd();
+        callbacksRef.current.onCompositionChange?.(false);
       }}
       onCompositionStart={() => {
         session.handleCompositionStart();
+        callbacksRef.current.onCompositionChange?.(true);
       }}
       onFocus={() => {
         if (!pendingRangeRestoreRef.current) return;

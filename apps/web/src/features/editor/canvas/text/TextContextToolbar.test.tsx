@@ -63,6 +63,36 @@ describe("getTextContextToolbarPlacement", () => {
     expect(placement.side).toBe("below");
     expect(placement.top).toBe(60);
   });
+
+  it("anchors to the active DOM selection instead of the whole element", () => {
+    const placement = getTextContextToolbarPlacement({
+      element: {
+        height: 160,
+        rotation: 0,
+        width: 480,
+        x: 100,
+        y: 100,
+      },
+      selectionRect: {
+        bottom: 248,
+        height: 24,
+        left: 410,
+        right: 510,
+        top: 224,
+        width: 100,
+      },
+      stageRect: { left: 0, top: 0 },
+      stageScale: 1,
+      toolbarSize: { height: 44, width: 240 },
+      viewportSize: { height: 600, width: 900 },
+    });
+
+    expect(placement).toEqual({
+      left: 340,
+      side: "above",
+      top: 172,
+    });
+  });
 });
 
 describe("getTextContextToolbarFontOptions", () => {

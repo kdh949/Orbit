@@ -157,7 +157,13 @@ describe("SelectionQuickBar", () => {
         canvas={deck.canvas}
         customShapeEditActive={false}
         element={element}
-        imageCropActionState={{ enabled: true, reason: null, visible: true }}
+        imageCropActionState={{
+          canResizeFrame: true,
+          enabled: true,
+          reason: null,
+          resizeDisabledReason: null,
+          visible: true
+        }}
         selectedKeywordLabel={null}
         slide={slide}
         theme={deck.theme}
@@ -183,7 +189,13 @@ describe("SelectionQuickBar", () => {
         canvas={deck.canvas}
         customShapeEditActive={false}
         element={element}
-        imageCropActionState={{ enabled: false, reason, visible: true }}
+        imageCropActionState={{
+          canResizeFrame: false,
+          enabled: false,
+          reason,
+          resizeDisabledReason: null,
+          visible: true
+        }}
         selectedKeywordLabel={null}
         slide={slide}
         theme={deck.theme}

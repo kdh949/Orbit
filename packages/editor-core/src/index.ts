@@ -67,6 +67,8 @@ export {
   normalizeElementFrameDraft
 } from "./patches/elementFrame";
 export type { ElementFrameDraft } from "./patches/elementFrame";
+export { createImageCropPatch } from "./patches/imageCropOperations";
+export type { ImageCropPatchDraft } from "./patches/imageCropOperations";
 export {
   applyRichTextCharacterStyle,
   applyRichTextParagraphStyle,

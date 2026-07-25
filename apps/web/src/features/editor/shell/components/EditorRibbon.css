@@ -1,0 +1,133 @@
+.orbit-shell.editor-professional .editor-ribbon {
+  display: grid;
+  grid-template-rows: 30px 42px;
+  gap: 0;
+  width: min(calc(100% - 32px), 920px);
+  min-height: 74px;
+  padding: 0;
+  overflow: visible;
+  border: 1px solid var(--redesign-color-outline);
+  border-radius: var(--redesign-radius-lg);
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-surface-container-low) 96%,
+    transparent
+  );
+  box-shadow: var(--redesign-shadow-raised);
+  backdrop-filter: blur(14px);
+}
+
+.editor-ribbon-tabs {
+  display: flex;
+  align-items: end;
+  min-width: 0;
+  padding: 0 var(--redesign-space-2);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--redesign-color-outline-variant);
+  scrollbar-width: none;
+}
+
+.editor-ribbon-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.editor-ribbon-tabs button {
+  flex: 0 0 auto;
+  height: 29px;
+  padding: 0 var(--redesign-space-3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 800;
+}
+
+.editor-ribbon-tabs button:hover,
+.editor-ribbon-tabs button.active {
+  border-bottom-color: var(--redesign-color-primary);
+  background: var(--redesign-color-primary-subtle);
+  color: var(--redesign-color-primary);
+}
+
+.editor-ribbon-tabs button.contextual {
+  margin-left: var(--redesign-space-1);
+  color: var(--redesign-color-primary-emphasis);
+}
+
+.editor-ribbon-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--redesign-space-1) var(--redesign-space-2);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.editor-ribbon-control {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: var(--redesign-space-1);
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0 var(--redesign-space-1);
+  border: 1px solid transparent;
+  border-radius: var(--redesign-radius-md);
+  background: transparent;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.editor-ribbon-control:hover:not(:disabled),
+.editor-ribbon-control.active {
+  border-color: var(--redesign-color-outline-variant);
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-on-surface);
+}
+
+.editor-ribbon-control:focus-visible,
+.editor-ribbon-tabs button:focus-visible {
+  outline: none;
+  box-shadow: var(--redesign-focus-ring);
+}
+
+.editor-ribbon-separator {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 24px;
+  margin: 0 var(--redesign-space-1);
+  background: var(--redesign-color-outline-variant);
+}
+
+@media (min-width: 861px) {
+  .orbit-shell.editor-professional .stage-top-controls > .editor-ribbon {
+    width: min(calc(100% - 32px), 920px);
+    min-height: 74px;
+    margin-top: var(--redesign-space-2);
+    padding: 0;
+  }
+
+  .orbit-shell.editor-professional .stage-pane > .canvas-scroll {
+    padding-top: var(--redesign-space-28);
+  }
+
+  .orbit-shell.editor-professional .stage-top-controls > .selection-quickbar {
+    margin-top: var(--redesign-space-24);
+  }
+}
+
+@media (max-width: 860px) {
+  .orbit-shell.editor-professional .editor-ribbon {
+    width: 100%;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+}

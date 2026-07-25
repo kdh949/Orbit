@@ -33,8 +33,10 @@ describe("getImageCropActionState", () => {
     const image = getDemoImage();
 
     expect(getImageCropActionState(deck, image)).toEqual({
+      canResizeFrame: true,
       enabled: true,
       reason: null,
+      resizeDisabledReason: null,
       visible: true
     });
     expect(
@@ -42,7 +44,13 @@ describe("getImageCropActionState", () => {
         ...image,
         ooxmlOrigin: "authored"
       })
-    ).toEqual({ enabled: true, reason: null, visible: true });
+    ).toEqual({
+      canResizeFrame: true,
+      enabled: true,
+      reason: null,
+      resizeDisabledReason: null,
+      visible: true
+    });
   });
 
   it.each(["picture", "picture-fill"] as const)(
@@ -54,23 +62,45 @@ describe("getImageCropActionState", () => {
         ooxmlEditCapabilities: {
           crop,
           richText: "none" as const,
-          tableCellText: false
+          tableCellText: false,
+          frame: true
         }
       };
 
       expect(getImageCropActionState(createImportedDeck(image), image)).toEqual({
+        canResizeFrame: true,
         enabled: true,
         reason: null,
+        resizeDisabledReason: null,
         visible: true
       });
     }
   );
+
+  it("keeps pan and zoom enabled while disabling frame handles", () => {
+    const image = {
+      ...getDemoImage(),
+      ooxmlOrigin: "imported" as const,
+      ooxmlEditCapabilities: {
+        crop: "picture" as const,
+        richText: "none" as const,
+        tableCellText: false,
+        frame: false
+      }
+    };
+
+    const state = getImageCropActionState(createImportedDeck(image), image);
+    expect(state.enabled).toBe(true);
+    expect(state.canResizeFrame).toBe(false);
+    expect(state.resizeDisabledReason).toContain("크기 변경");
+  });
 
   it("disables imported images without a writable crop locator", () => {
     const image = { ...getDemoImage(), ooxmlOrigin: "imported" as const };
     const state = getImageCropActionState(createImportedDeck(image), image);
 
     expect(state.enabled).toBe(false);
+    expect(state.canResizeFrame).toBe(false);
     expect(state.visible).toBe(true);
     expect(state.reason).toContain("안전하게 자르기를 저장");
   });
@@ -78,8 +108,10 @@ describe("getImageCropActionState", () => {
   it("stays hidden for non-image selections", () => {
     const deck = createDemoDeck();
     expect(getImageCropActionState(deck, deck.slides[0]!.elements[0]!)).toEqual({
+      canResizeFrame: false,
       enabled: false,
       reason: null,
+      resizeDisabledReason: null,
       visible: false
     });
   });

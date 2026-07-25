@@ -27,12 +27,14 @@ import { useCanvasKeyboardShortcuts } from "./hooks/useCanvasKeyboardShortcuts";
 import { useCanvasStageInteractions } from "./hooks/useCanvasStageInteractions";
 import { useSyncCustomShapeEditDraft } from "./hooks/useSyncCustomShapeEditDraft";
 import { ImageCropOverlay } from "./image/ImageCropOverlay";
+import type { ImageCropDraft } from "./image/imageCropResize";
 import { InlineDataEditorOverlay } from "./data/InlineDataEditorOverlay";
 import {
   InlineTextEditorOverlay,
   type InlineTextEditorController,
 } from "./text/InlineTextEditorOverlay";
 import { TextContextToolbar } from "./text/TextContextToolbar";
+import type { TextSelectionRect } from "./text/TextContextToolbar";
 import {
   type CanvasSnapGuide,
   commitCustomShapeEditGeometry,
@@ -276,6 +278,8 @@ export function EditableCanvas(props: {
   disableInteractions?: boolean;
   editingElementId: string | null;
   imageCropElementId?: string | null;
+  imageCropCanResizeFrame?: boolean;
+  imageCropResizeDisabledReason?: string | null;
   insertTool: InsertTool;
   elementStates?: Record<string, ElementPresentationState> | null;
   selectedElementIds: string[];
@@ -300,6 +304,11 @@ export function EditableCanvas(props: {
       height: number;
       rotation: number;
     },
+  ) => void;
+  onCommitImageCrop?: (
+    slideId: string,
+    elementId: string,
+    draft: ImageCropDraft,
   ) => void;
   onCreateElement: (
     draft:
@@ -338,6 +347,8 @@ export function EditableCanvas(props: {
     disableInteractions = false,
     editingElementId,
     imageCropElementId = null,
+    imageCropCanResizeFrame = true,
+    imageCropResizeDisabledReason = null,
     elementStates,
     insertTool,
     selectedElementIds,
@@ -350,6 +361,7 @@ export function EditableCanvas(props: {
     onClearSelection,
     onCommitElementProps,
     onCommitElementFrame,
+    onCommitImageCrop = () => {},
     onCreateElement,
     onCreateCustomShape,
     onCommitCustomShapeGeometry,
@@ -403,6 +415,9 @@ export function EditableCanvas(props: {
     end: number;
     start: number;
   } | null>(null);
+  const [activeTextSelectionRect, setActiveTextSelectionRect] =
+    useState<TextSelectionRect | null>(null);
+  const [isTextComposing, setIsTextComposing] = useState(false);
   const [editingTextDraft, setEditingTextDraft] = useState<{
     elementId: string;
     props: TextElementProps;
@@ -501,6 +516,8 @@ export function EditableCanvas(props: {
   useEffect(() => {
     pendingTextBlurActionRef.current = null;
     setActiveTextRange(null);
+    setActiveTextSelectionRect(null);
+    setIsTextComposing(false);
     setEditingTextDraft(null);
   }, [editingElementId]);
 
@@ -830,6 +847,7 @@ export function EditableCanvas(props: {
       </Stage>
       {imageCropElement ? (
         <ImageCropOverlay
+          canResizeFrame={imageCropCanResizeFrame}
           frame={{
             x: imageCropElement.x,
             y: imageCropElement.y,
@@ -838,21 +856,19 @@ export function EditableCanvas(props: {
             rotation: imageCropElement.rotation,
           }}
           imageProps={imageCropElement.props}
+          resizeDisabledReason={imageCropResizeDisabledReason}
           stageScale={stageScale}
-          onApply={(crop) => {
-            onCommitElementProps(imageCropElement.elementId, { crop });
+          onApply={(draft) => {
+            onCommitImageCrop(slide.slideId, imageCropElement.elementId, draft);
             onFinishImageCrop();
           }}
           onCancel={onFinishImageCrop}
-          onReset={() => {
-            onCommitElementProps(imageCropElement.elementId, { crop: null });
-            onFinishImageCrop();
-          }}
         />
       ) : null}
       {textToolbarElement &&
       !imageCropElement &&
       insertTool === "select" &&
+      !isTextComposing &&
       !customShapeEditElementId ? (
         <TextContextToolbar
           deck={deck}
@@ -868,6 +884,7 @@ export function EditableCanvas(props: {
               : null
           }
           readOnly={disableInteractions}
+          selectionRect={activeTextSelectionRect}
           slide={slide}
           stageElement={containerElement}
           stageScale={stageScale}
@@ -897,11 +914,14 @@ export function EditableCanvas(props: {
               setEditingTextDraft({ elementId: editingElementId, props })
             }
             onFinishEditing={handleInlineTextEditingFinish}
-            onRangeChange={(range) =>
+            onRangeChange={(range) => {
               setActiveTextRange(
                 range ? { elementId: editingElementId, ...range } : null,
-              )
-            }
+              );
+              if (!range) setActiveTextSelectionRect(null);
+            }}
+            onSelectionRectChange={setActiveTextSelectionRect}
+            onCompositionChange={setIsTextComposing}
           />
           <InlineDataEditorOverlay
             element={

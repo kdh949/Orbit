@@ -12,17 +12,26 @@ import {
   panImageCrop,
   zoomImageCrop
 } from "../../../slides/rendering/imageElementLayout";
+import {
+  resizeImageCropDraft,
+  type ImageCropDraft,
+  type ImageCropFrame,
+  type ImageCropHandle,
+} from "./imageCropResize";
 import "./image-crop.css";
 
-type ImageCropAction = "apply" | "reset" | "cancel";
+type ImageCropAction = "apply" | "cancel";
 
-type ImageCropFrame = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation: number;
-};
+const cropHandles: ImageCropHandle[] = [
+  "top-left",
+  "top",
+  "top-right",
+  "right",
+  "bottom-right",
+  "bottom",
+  "bottom-left",
+  "left",
+];
 
 export function getImageCropLocalPointer(args: {
   clientX: number;
@@ -49,19 +58,19 @@ export function getImageCropLocalPointer(args: {
 export function completeImageCropDraft(args: {
   action: ImageCropAction;
   completed: boolean;
-  crop: ImageCrop;
-  onApply: (crop: ImageCrop) => void;
+  draft: ImageCropDraft;
+  onApply: (draft: ImageCropDraft) => void;
   onCancel: () => void;
-  onReset: () => void;
 }) {
   if (args.completed) {
     return true;
   }
 
   if (args.action === "apply") {
-    args.onApply(normalizeImageCrop(args.crop));
-  } else if (args.action === "reset") {
-    args.onReset();
+    args.onApply({
+      frame: args.draft.frame,
+      crop: normalizeImageCrop(args.draft.crop),
+    });
   } else {
     args.onCancel();
   }
@@ -86,14 +95,24 @@ export function getImageCropOverlayFrameStyle(
 }
 
 export function ImageCropOverlay(props: {
+  canResizeFrame: boolean;
   frame: ImageCropFrame;
   imageProps: ImageElementProps;
+  resizeDisabledReason?: string | null;
   stageScale: number;
-  onApply: (crop: ImageCrop) => void;
+  onApply: (draft: ImageCropDraft) => void;
   onCancel: () => void;
-  onReset: () => void;
 }) {
-  const { frame, imageProps, stageScale, onApply, onCancel, onReset } = props;
+  const {
+    canResizeFrame,
+    frame,
+    imageProps,
+    resizeDisabledReason,
+    stageScale,
+    onApply,
+    onCancel,
+  } = props;
+  const [draftFrame, setDraftFrame] = useState<ImageCropFrame>(() => frame);
   const [draftCrop, setDraftCrop] = useState<ImageCrop>(() =>
     normalizeImageCrop(imageProps.crop)
   );
@@ -104,8 +123,10 @@ export function ImageCropOverlay(props: {
   } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const activePointerRef = useRef<{
+    handle?: ImageCropHandle;
     localX: number;
     localY: number;
+    mode: "pan" | "resize";
     pointerId: number;
   } | null>(null);
   const completedRef = useRef(false);
@@ -118,26 +139,34 @@ export function ImageCropOverlay(props: {
   const imageReady = loadedImage?.src === imageSource;
   const imageSize = imageReady
     ? loadedImage
-    : { height: frame.height, width: frame.width };
+    : { height: draftFrame.height, width: draftFrame.width };
+
+  const getResetCrop = useCallback(
+    () =>
+      imageReady
+        ? getInitialImageCrop({
+            imageProps,
+            frameHeight: frame.height,
+            frameWidth: frame.width,
+            imageHeight: imageSize.height,
+            imageWidth: imageSize.width,
+          })
+        : normalizeImageCrop(imageProps.crop),
+    [frame.height, frame.width, imageProps, imageReady, imageSize.height, imageSize.width],
+  );
 
   useEffect(() => {
     completedRef.current = false;
+    setDraftFrame(frame);
     if (!imageReady) {
       setDraftCrop(normalizeImageCrop(imageProps.crop));
       return;
     }
     setDraftCrop(
-      getInitialImageCrop({
-        imageProps,
-        frameHeight: frame.height,
-        frameWidth: frame.width,
-        imageHeight: imageSize.height,
-        imageWidth: imageSize.width
-      })
+      getResetCrop()
     );
   }, [
-    frame.height,
-    frame.width,
+    frame,
     imageProps.crop?.bottom,
     imageProps.crop?.left,
     imageProps.crop?.right,
@@ -147,8 +176,7 @@ export function ImageCropOverlay(props: {
     imageProps.focusY,
     imageProps.src,
     imageReady,
-    imageSize.height,
-    imageSize.width
+    getResetCrop,
   ]);
 
   const finish = useCallback(
@@ -156,13 +184,12 @@ export function ImageCropOverlay(props: {
       completedRef.current = completeImageCropDraft({
         action,
         completed: completedRef.current,
-        crop: draftCrop,
+        draft: { frame: draftFrame, crop: draftCrop },
         onApply,
-        onCancel,
-        onReset
+        onCancel
       });
     },
-    [draftCrop, onApply, onCancel, onReset]
+    [draftCrop, draftFrame, onApply, onCancel]
   );
 
   finishRef.current = finish;
@@ -174,7 +201,7 @@ export function ImageCropOverlay(props: {
       if (event.key === "Tab") {
         const buttons = Array.from(
           overlayRef.current?.querySelectorAll<HTMLButtonElement>(
-            "button:not(:disabled)"
+            ".image-crop-toolbar button:not(:disabled)"
           ) ?? []
         );
         if (buttons.length === 0) return;
@@ -212,15 +239,15 @@ export function ImageCropOverlay(props: {
         fit: imageProps.fit,
         focusX: imageProps.focusX,
         focusY: imageProps.focusY,
-        frameHeight: frame.height,
-        frameWidth: frame.width,
+        frameHeight: draftFrame.height,
+        frameWidth: draftFrame.width,
         imageHeight: imageSize.height,
         imageWidth: imageSize.width
       }),
     [
       draftCrop,
-      frame.height,
-      frame.width,
+      draftFrame.height,
+      draftFrame.width,
       imageProps.fit,
       imageProps.focusX,
       imageProps.focusY,
@@ -229,13 +256,13 @@ export function ImageCropOverlay(props: {
     ]
   );
   const previewLayout = getImageElementCssLayout({
-    frameHeight: frame.height,
-    frameWidth: frame.width,
+    frameHeight: draftFrame.height,
+    frameWidth: draftFrame.width,
     imageHeight: imageSize.height,
     imageWidth: imageSize.width,
     layout
   });
-  const frameStyle = getImageCropOverlayFrameStyle(frame, safeStageScale);
+  const frameStyle = getImageCropOverlayFrameStyle(draftFrame, safeStageScale);
 
   function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.button !== 0 || !imageReady) {
@@ -247,7 +274,7 @@ export function ImageCropOverlay(props: {
     const pointer = getImageCropLocalPointer({
       clientX: event.clientX,
       clientY: event.clientY,
-      frame,
+      frame: draftFrame,
       rootLeft: rootBounds?.left ?? 0,
       rootTop: rootBounds?.top ?? 0,
       stageScale: safeStageScale
@@ -255,6 +282,7 @@ export function ImageCropOverlay(props: {
     activePointerRef.current = {
       localX: pointer.x,
       localY: pointer.y,
+      mode: "pan",
       pointerId: event.pointerId
     };
     setIsDragging(true);
@@ -270,7 +298,7 @@ export function ImageCropOverlay(props: {
     const pointer = getImageCropLocalPointer({
       clientX: event.clientX,
       clientY: event.clientY,
-      frame,
+      frame: draftFrame,
       rootLeft: rootBounds?.left ?? 0,
       rootTop: rootBounds?.top ?? 0,
       stageScale: safeStageScale
@@ -278,19 +306,59 @@ export function ImageCropOverlay(props: {
     const deltaX = pointer.x - activePointer.localX;
     const deltaY = pointer.y - activePointer.localY;
     activePointerRef.current = {
+      ...activePointer,
       localX: pointer.x,
       localY: pointer.y,
       pointerId: event.pointerId
     };
+    if (activePointer.mode === "resize" && activePointer.handle) {
+      const resized = resizeImageCropDraft({
+        draft: { frame: draftFrame, crop: draftCrop },
+        handle: activePointer.handle,
+        deltaX: deltaX / safeStageScale,
+        deltaY: deltaY / safeStageScale,
+        minimumFrameSize: 8 / safeStageScale,
+      });
+      setDraftFrame(resized.frame);
+      setDraftCrop(resized.crop);
+      return;
+    }
     setDraftCrop((crop) =>
       panImageCrop({
         crop,
         deltaX,
         deltaY,
-        frameHeight: frame.height * safeStageScale,
-        frameWidth: frame.width * safeStageScale
+        frameHeight: draftFrame.height * safeStageScale,
+        frameWidth: draftFrame.width * safeStageScale
       })
     );
+  }
+
+  function handleResizePointerDown(
+    event: ReactPointerEvent<HTMLButtonElement>,
+    handle: ImageCropHandle,
+  ) {
+    if (event.button !== 0 || !imageReady || !canResizeFrame) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    const rootBounds = overlayRef.current?.getBoundingClientRect();
+    const pointer = getImageCropLocalPointer({
+      clientX: event.clientX,
+      clientY: event.clientY,
+      frame: draftFrame,
+      rootLeft: rootBounds?.left ?? 0,
+      rootTop: rootBounds?.top ?? 0,
+      stageScale: safeStageScale,
+    });
+    activePointerRef.current = {
+      handle,
+      localX: pointer.x,
+      localY: pointer.y,
+      mode: "resize",
+      pointerId: event.pointerId,
+    };
+    setIsDragging(true);
   }
 
   function finishPointer(event: ReactPointerEvent<HTMLDivElement>) {
@@ -313,13 +381,13 @@ export function ImageCropOverlay(props: {
     const pointer = getImageCropLocalPointer({
       clientX: event.clientX,
       clientY: event.clientY,
-      frame,
+      frame: draftFrame,
       rootLeft: rootBounds?.left ?? 0,
       rootTop: rootBounds?.top ?? 0,
       stageScale: safeStageScale
     });
-    const anchorX = pointer.x / (frame.width * safeStageScale);
-    const anchorY = pointer.y / (frame.height * safeStageScale);
+    const anchorX = pointer.x / (draftFrame.width * safeStageScale);
+    const anchorY = pointer.y / (draftFrame.height * safeStageScale);
 
     setDraftCrop((crop) =>
       zoomImageCrop({
@@ -342,6 +410,12 @@ export function ImageCropOverlay(props: {
     );
   }
 
+  function resetDraft() {
+    completedRef.current = false;
+    setDraftFrame(frame);
+    setDraftCrop(getResetCrop());
+  }
+
   return (
     <div
       aria-describedby="image-crop-instructions"
@@ -352,6 +426,24 @@ export function ImageCropOverlay(props: {
       ref={overlayRef}
       role="dialog"
     >
+      <div
+        aria-hidden="true"
+        className="image-crop-source-layer"
+        style={frameStyle}
+      >
+        <img
+          alt=""
+          className="image-crop-preview is-source"
+          draggable={false}
+          src={imageSource}
+          style={{
+            height: previewLayout.height * safeStageScale,
+            left: previewLayout.left * safeStageScale,
+            top: previewLayout.top * safeStageScale,
+            width: previewLayout.width * safeStageScale,
+          }}
+        />
+      </div>
       <div
         className={`image-crop-viewport ${isDragging ? "is-dragging" : ""}`}
         style={frameStyle}
@@ -384,6 +476,18 @@ export function ImageCropOverlay(props: {
           }}
         />
         <div className="image-crop-grid" aria-hidden="true" />
+        {cropHandles.map((handle) => (
+          <button
+            aria-label={`${handle} 자르기 핸들`}
+            className={`image-crop-handle is-${handle}`}
+            data-crop-handle={handle}
+            disabled={!canResizeFrame}
+            key={handle}
+            tabIndex={-1}
+            type="button"
+            onPointerDown={(event) => handleResizePointerDown(event, handle)}
+          />
+        ))}
       </div>
       <div
         className="image-crop-toolbar"
@@ -393,8 +497,13 @@ export function ImageCropOverlay(props: {
         }}
       >
         <span className="image-crop-instructions" id="image-crop-instructions">
-          이미지를 드래그해 위치를 바꾸고 확대·축소한 뒤 적용하세요.
+          이미지를 드래그하거나 검은 핸들로 범위를 조절한 뒤 적용하세요.
         </span>
+        {!canResizeFrame && resizeDisabledReason ? (
+          <span className="image-crop-capability-reason" role="status">
+            {resizeDisabledReason}
+          </span>
+        ) : null}
         <button
           aria-label="축소"
           disabled={!imageReady}
@@ -411,7 +520,7 @@ export function ImageCropOverlay(props: {
         >
           +
         </button>
-        <button type="button" onClick={() => finish("reset")}>
+        <button type="button" onClick={resetDraft}>
           초기화
         </button>
         <button ref={cancelButtonRef} type="button" onClick={() => finish("cancel")}>

@@ -12,37 +12,33 @@ describe("ImageCropOverlay", () => {
   it("completes one session once and keeps cancel free of Deck mutations", () => {
     const onApply = vi.fn();
     const onCancel = vi.fn();
-    const onReset = vi.fn();
+    const frame = { x: 0, y: 0, width: 400, height: 240, rotation: 0 };
     const crop = { left: 0.2, top: 0.1, right: 0.2, bottom: 0.1 };
 
     const completed = completeImageCropDraft({
       action: "apply",
       completed: false,
-      crop,
+      draft: { frame, crop },
       onApply,
       onCancel,
-      onReset
     });
     completeImageCropDraft({
-      action: "reset",
+      action: "apply",
       completed,
-      crop,
+      draft: { frame, crop },
       onApply,
       onCancel,
-      onReset
     });
 
     expect(onApply).toHaveBeenCalledOnce();
-    expect(onApply).toHaveBeenCalledWith(crop);
-    expect(onReset).not.toHaveBeenCalled();
+    expect(onApply).toHaveBeenCalledWith({ frame, crop });
 
     completeImageCropDraft({
       action: "cancel",
       completed: false,
-      crop,
+      draft: { frame, crop },
       onApply: vi.fn(),
       onCancel,
-      onReset: vi.fn()
     });
     expect(onCancel).toHaveBeenCalledOnce();
   });
@@ -87,17 +83,18 @@ describe("ImageCropOverlay", () => {
           src: "data:image/png;base64,AA=="
         }}
         stageScale={1}
+        canResizeFrame
         onApply={vi.fn()}
         onCancel={vi.fn()}
-        onReset={vi.fn()}
       />
     );
 
     expect(html).toContain('role="dialog"');
     expect(html).toContain('aria-modal="true"');
-    expect(html).toContain("이미지를 드래그해 위치를 바꾸고");
+    expect(html).toContain("검은 핸들로 범위를 조절");
     expect(html).toContain("초기화");
     expect(html).toContain("취소");
     expect(html).toContain("적용");
+    expect(html.match(/data-crop-handle=/g)).toHaveLength(8);
   });
 });

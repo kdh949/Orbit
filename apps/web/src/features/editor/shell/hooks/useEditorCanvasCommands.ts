@@ -5,6 +5,7 @@ import {
   createActivitySlide,
   createElementId,
   createGroupedElementFramePatch,
+  createImageCropPatch,
   createSlideId,
   createTableOperationPatch,
   getGroupChildElements,
@@ -13,6 +14,7 @@ import {
   getTableStructureCapability,
   type TableOperation,
   type TableCellRange,
+  type ImageCropPatchDraft,
 } from "../../../../../../../packages/editor-core/src/index";
 import {
   createElementFramePatch,
@@ -1175,6 +1177,30 @@ export function useEditorCanvasCommands(args: {
     }
   }
 
+  function changeImageCrop(
+    slideId: string,
+    elementId: string,
+    draft: ImageCropPatchDraft,
+  ) {
+    const slide = args.deck.slides.find(
+      (candidate) => candidate.slideId === slideId,
+    );
+    const element = slide?.elements.find(
+      (candidate) => candidate.elementId === elementId,
+    );
+    if (!canEditSlideCanvas(slide) || element?.type !== "image") return;
+
+    try {
+      args.commitPatch((currentDeck) =>
+        createImageCropPatch(currentDeck, slideId, elementId, draft),
+      );
+    } catch (error) {
+      args.setLastPatchLabel(
+        error instanceof Error ? `실패 · ${error.message}` : "실패 · unknown",
+      );
+    }
+  }
+
   function changeElementLayerOrder(
     slideId: string,
     elementId: string,
@@ -1403,6 +1429,7 @@ export function useEditorCanvasCommands(args: {
       addActivitySlide,
       addTextElement,
       changeElementFrame,
+      changeImageCrop,
       changeElementLayerOrder,
       clearCanvasSelection,
       commitCustomShapeGeometry,

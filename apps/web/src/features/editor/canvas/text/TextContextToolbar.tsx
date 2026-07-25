@@ -39,6 +39,15 @@ export type TextContextToolbarPlacement = {
   top: number;
 };
 
+export type TextSelectionRect = {
+  bottom: number;
+  height: number;
+  left: number;
+  right: number;
+  top: number;
+  width: number;
+};
+
 export type TextContextToolbarFontOption = {
   available: boolean;
   family: string;
@@ -50,17 +59,30 @@ const viewportPadding = 12;
 
 export function getTextContextToolbarPlacement(args: {
   element: Pick<TextElement, "height" | "rotation" | "width" | "x" | "y">;
+  selectionRect?: TextSelectionRect | null;
   stageRect: { left: number; top: number };
   stageScale: number;
   toolbarSize: { height: number; width: number };
   viewportSize: { height: number; width: number };
 }): TextContextToolbarPlacement {
   const scale = Math.max(0.0001, args.stageScale);
-  const anchor = getRotatedElementAabb(args.element);
-  const anchorLeft = args.stageRect.left + anchor.x * scale;
-  const anchorTop = args.stageRect.top + anchor.y * scale;
-  const anchorWidth = anchor.width * scale;
-  const anchorBottom = anchorTop + anchor.height * scale;
+  const elementAnchor = getRotatedElementAabb(args.element);
+  const selectionAnchor =
+    args.selectionRect && args.selectionRect.width >= 0 && args.selectionRect.height >= 0
+      ? args.selectionRect
+      : null;
+  const anchorLeft = selectionAnchor
+    ? selectionAnchor.left
+    : args.stageRect.left + elementAnchor.x * scale;
+  const anchorTop = selectionAnchor
+    ? selectionAnchor.top
+    : args.stageRect.top + elementAnchor.y * scale;
+  const anchorWidth = selectionAnchor
+    ? selectionAnchor.width
+    : elementAnchor.width * scale;
+  const anchorBottom = selectionAnchor
+    ? selectionAnchor.bottom
+    : anchorTop + elementAnchor.height * scale;
   const maxLeft = Math.max(
     viewportPadding,
     args.viewportSize.width - args.toolbarSize.width - viewportPadding,
@@ -152,6 +174,7 @@ export function TextContextToolbar(props: {
   element: TextElement;
   loadedFontFamilies?: readonly string[];
   range?: RichTextRange | null;
+  selectionRect?: TextSelectionRect | null;
   readOnly: boolean;
   slide: Slide;
   stageElement: HTMLElement | null;
@@ -166,6 +189,7 @@ export function TextContextToolbar(props: {
     element,
     loadedFontFamilies = bundledTextFontFamilies,
     range = null,
+    selectionRect = null,
     readOnly,
     slide,
     stageElement,
@@ -185,6 +209,7 @@ export function TextContextToolbar(props: {
     setPlacement(
       getTextContextToolbarPlacement({
         element,
+        selectionRect,
         stageRect,
         stageScale,
         toolbarSize: {
@@ -203,6 +228,12 @@ export function TextContextToolbar(props: {
     element.width,
     element.x,
     element.y,
+    selectionRect?.bottom,
+    selectionRect?.height,
+    selectionRect?.left,
+    selectionRect?.right,
+    selectionRect?.top,
+    selectionRect?.width,
     stageElement,
     stageScale,
   ]);

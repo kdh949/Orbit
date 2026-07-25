@@ -7,7 +7,7 @@ import {
   deriveKeywordActionUsage,
   validateSlideAnimations
 } from "../../../../../../packages/editor-core/src/index";
-import { demoIds, type Slide } from "@orbit/shared";
+import { demoIds, type DeckElement, type Slide } from "@orbit/shared";
 import type { Job } from "../../../../../../packages/shared/src/jobs/job.schema";
 import { getRenderableSlideElements } from "../canvas/EditorCanvas";
 import { getImageCropActionState } from "../canvas/image/imageCropSession";
@@ -139,11 +139,17 @@ import {
 } from "./components/EditorSlideRehearsal";
 import { SlideNavigatorPane } from "./components/SlideNavigatorPane";
 import { EditorUndoToast } from "./components/EditorUndoToast";
-import { EditorContextMenus } from "./components/EditorContextMenus";
+import {
+  EditorContextMenus,
+  type ImageContextMenuAction
+} from "./components/EditorContextMenus";
 import { EditorModals } from "./components/EditorModals";
 import { createTargetDurationPatch } from "./targetDurationModel";
 import { EditorCanvasStage } from "./components/EditorCanvasStage";
-import { EditorToolbar } from "./components/EditorToolbar";
+import {
+  EditorRibbon,
+  type EditorRibbonImageAlignment
+} from "./components/EditorRibbon";
 import { IconLibrarySidePanel } from "./components/IconLibrarySidePanel";
 import {
   EditorRightPanel,
@@ -964,6 +970,16 @@ export function EditorShell(props: { projectId?: string }) {
     workingDeckRef
   });
   const { copiedElementRef } = editorCanvasRefs;
+  const imageContextActionDisabledReasons =
+    selectedElement?.type === "image"
+      ? getImageContextActionDisabledReasons({
+          animationDisabledReason: animationMutationDisabledReason,
+          cropDisabledReason: imageCropActionState.reason,
+          deck,
+          element: selectedElement,
+          hasClipboard: Boolean(copiedElementRef.current)
+        })
+      : {};
   const handleAddChartElement = editorCanvasActions.addChartElement;
   const handleAddSlide = editorCanvasActions.addSlide;
   const handleAddActivitySlide = editorCanvasActions.addActivitySlide;
@@ -980,6 +996,7 @@ export function EditorShell(props: { projectId?: string }) {
   const handleDeleteSelectedElement = editorCanvasActions.deleteSelectedElement;
   const handleDuplicateSelectedElement = editorCanvasActions.duplicateSelectedElement;
   const handleElementFrameChange = editorCanvasActions.changeElementFrame;
+  const handleImageCropChange = editorCanvasActions.changeImageCrop;
   const handleElementLayerOrderChange =
     editorCanvasActions.changeElementLayerOrder;
   const handleInsertShapeElement = editorCanvasActions.insertShapeElement;
@@ -1568,6 +1585,59 @@ export function EditorShell(props: { projectId?: string }) {
     setCustomShapeEditElementId(null);
     setElementContextMenu(null);
     setImageCropElementId(selectedElement.elementId);
+  }
+
+  function handleImageContextAction(
+    action: ImageContextMenuAction,
+    target: { elementId: string; slideId: string },
+  ) {
+    const targetSlide = deck.slides.find((slide) => slide.slideId === target.slideId);
+    const image = targetSlide?.elements.find(
+      (element) => element.elementId === target.elementId,
+    );
+    if (!targetSlide || image?.type !== "image") return;
+
+    switch (action) {
+      case "cut":
+        handleCopySelectedElement();
+        handleDeleteSelectedElement();
+        return;
+      case "copy": handleCopySelectedElement(); return;
+      case "paste": handlePasteCopiedElement(); return;
+      case "crop": startImageCrop(); return;
+      case "replace":
+        openImageFilePicker({ ...target, type: "replace" });
+        return;
+      case "bring-to-front":
+      case "bring-forward":
+      case "send-backward":
+      case "send-to-back":
+        handleElementLayerOrderChange(target.slideId, target.elementId, action);
+        return;
+      case "align-left":
+        handleElementFrameChange(target.slideId, target.elementId, { x: 0 }); return;
+      case "align-center-x":
+        handleElementFrameChange(target.slideId, target.elementId, {
+          x: Math.round((deck.canvas.width - image.width) / 2),
+        }); return;
+      case "align-right":
+        handleElementFrameChange(target.slideId, target.elementId, {
+          x: Math.max(0, Math.round(deck.canvas.width - image.width)),
+        }); return;
+      case "align-top":
+        handleElementFrameChange(target.slideId, target.elementId, { y: 0 }); return;
+      case "align-center-y":
+        handleElementFrameChange(target.slideId, target.elementId, {
+          y: Math.round((deck.canvas.height - image.height) / 2),
+        }); return;
+      case "align-bottom":
+        handleElementFrameChange(target.slideId, target.elementId, {
+          y: Math.max(0, Math.round(deck.canvas.height - image.height)),
+        }); return;
+      case "add-animation": openAnimationInspector(); return;
+      case "open-alt-text": requestPropertiesPanel(); return;
+      case "delete": handleDeleteSelectedElement();
+    }
   }
 
   function openAnimationInspector() {
@@ -2166,7 +2236,7 @@ export function EditorShell(props: { projectId?: string }) {
         )}
         <section className="stage-pane">
           {!isSlideRehearsalActive ? (
-            <EditorToolbar
+            <EditorRibbon
               canZoomIn={stageScale < maximumManualEditorZoom}
               canZoomOut={stageScale > minimumManualEditorZoom}
               canMutate={canMutateDeck}
@@ -2201,6 +2271,13 @@ export function EditorShell(props: { projectId?: string }) {
               isImageUploadPending={isImageUploadPending}
               isShapeMenuOpen={isShapeMenuOpen}
               isStageFitToViewport={isStageFitToViewport}
+              imageCropDisabledReason={imageCropActionState.reason}
+              imageFrameDisabledReason={
+                imageContextActionDisabledReasons["align-center-x"] ?? null
+              }
+              imageReplaceDisabledReason={
+                imageContextActionDisabledReasons.replace ?? null
+              }
               onAddText={handleAddTextElement}
               onOpenIconLibrary={toggleIconLibrary}
               onOpenImagePicker={() => {
@@ -2211,9 +2288,51 @@ export function EditorShell(props: { projectId?: string }) {
                   });
                 }
               }}
-              onOpenRightPanel={
-                isRightPanelOpen ? undefined : () => setIsRightPanelOpen(true)
-              }
+              onOpenRightPanel={requestPropertiesPanel}
+              onOpenAnimationPanel={openAnimationInspector}
+              onOpenAltText={requestPropertiesPanel}
+              onStartImageCrop={startImageCrop}
+              onReplaceImage={() => {
+                if (currentSlide && selectedElement?.type === "image") {
+                  openImageFilePicker({
+                    elementId: selectedElement.elementId,
+                    slideId: currentSlide.slideId,
+                    type: "replace"
+                  });
+                }
+              }}
+              onSetImageFit={(fit) => {
+                if (currentSlide && selectedElement?.type === "image") {
+                  handleElementPropsChange(
+                    currentSlide.slideId,
+                    selectedElement.elementId,
+                    { fit }
+                  );
+                }
+              }}
+              onAlignImage={(alignment: EditorRibbonImageAlignment) => {
+                if (!currentSlide || selectedElement?.type !== "image") return;
+                const actions = {
+                  left: "align-left",
+                  centerX: "align-center-x",
+                  right: "align-right",
+                  top: "align-top",
+                  centerY: "align-center-y",
+                  bottom: "align-bottom"
+                } as const;
+                handleImageContextAction(actions[alignment], {
+                  elementId: selectedElement.elementId,
+                  slideId: currentSlide.slideId
+                });
+              }}
+              onChangeImageLayer={(action) => {
+                if (!currentSlide || selectedElement?.type !== "image") return;
+                handleElementLayerOrderChange(
+                  currentSlide.slideId,
+                  selectedElement.elementId,
+                  action
+                );
+              }}
               onRedo={handleRedo}
               onSelectTool={() => setInsertTool("select")}
               onToggleChartMenu={() => {
@@ -2229,6 +2348,8 @@ export function EditorShell(props: { projectId?: string }) {
               onZoomIn={zoomCanvasIn}
               onZoomOut={zoomCanvasOut}
               redoDisabled={redoStack.length === 0}
+              selectedElementType={selectedElement?.type ?? null}
+              selectionKey={selectedElement?.elementId ?? null}
               shapeMenuButtonRef={shapeMenuButtonRef}
               stageScale={stageScale}
               undoDisabled={undoStack.length === 0}
@@ -2260,6 +2381,9 @@ export function EditorShell(props: { projectId?: string }) {
                   isPlayingCurrentSlideAnimations || isSlideRehearsalActive,
               editingElementId,
               imageCropElementId: canMutateDeck ? imageCropElementId : null,
+              imageCropCanResizeFrame: imageCropActionState.canResizeFrame,
+              imageCropResizeDisabledReason:
+                imageCropActionState.resizeDisabledReason,
               elementStates: animationPreviewElementStates,
               insertTool,
               selectedElementIds,
@@ -2270,6 +2394,7 @@ export function EditorShell(props: { projectId?: string }) {
               visibleElements,
               onClearSelection: handleCanvasBackgroundSelectionClear,
               onCommitElementFrame: handleElementFrameChange,
+              onCommitImageCrop: handleImageCropChange,
               onCommitElementProps: (elementId, nextProps) => {
                 if (currentSlide) {
                   handleElementPropsChange(currentSlide.slideId, elementId, nextProps);
@@ -2601,6 +2726,7 @@ export function EditorShell(props: { projectId?: string }) {
         isChartMenuOpen={isChartMenuOpen}
         isImageUploadPending={isImageUploadPending}
         isShapeMenuOpen={isShapeMenuOpen}
+        imageActionDisabledReasons={imageContextActionDisabledReasons}
         onCloseChartMenu={() => setIsChartMenuOpen(false)}
         onCloseElementContextMenu={() => setElementContextMenu(null)}
         onCloseShapeMenu={() => setIsShapeMenuOpen(false)}
@@ -2610,6 +2736,7 @@ export function EditorShell(props: { projectId?: string }) {
           setIsChartMenuOpen(false);
         }}
         onInsertShape={handleInsertShapeElement}
+        onImageAction={handleImageContextAction}
         onReplaceImage={openImageFilePicker}
         onUngroup={handleUngroupElement}
         shapeMenuPosition={shapeMenuPosition}
@@ -2717,6 +2844,47 @@ export function getOoxmlSyncStatus(
     label: "OOXML 동기화 중",
     retryable: false
   };
+}
+
+function getImageContextActionDisabledReasons(args: {
+  animationDisabledReason: string | null;
+  cropDisabledReason: string | null;
+  deck: Deck;
+  element: Extract<DeckElement, { type: "image" }>;
+  hasClipboard: boolean;
+}): Partial<Record<ImageContextMenuAction, string>> {
+  const reasons: Partial<Record<ImageContextMenuAction, string>> = {};
+  const imported =
+    args.deck.metadata.sourceType === "import" &&
+    args.element.ooxmlOrigin !== "authored";
+  const capabilities = args.element.ooxmlEditCapabilities;
+  const frameReason = args.element.locked
+    ? "잠긴 이미지는 위치와 레이어를 변경할 수 없습니다."
+    : imported && capabilities?.frame !== true
+      ? "원본 PPTX에서 이미지 프레임 변경을 안전하게 저장할 수 없습니다."
+      : null;
+  const deleteReason = imported && capabilities?.delete !== true
+    ? "원본 PPTX에서 이미지 삭제를 안전하게 저장할 수 없습니다."
+    : null;
+
+  if (!args.hasClipboard) reasons.paste = "복사한 요소가 없습니다.";
+  if (args.cropDisabledReason) reasons.crop = args.cropDisabledReason;
+  if (imported && capabilities?.imageSource !== true) {
+    reasons.replace = "원본 PPTX에서 이미지 교체를 안전하게 저장할 수 없습니다.";
+  }
+  if (deleteReason) {
+    reasons.cut = deleteReason;
+    reasons.delete = deleteReason;
+  }
+  if (frameReason) {
+    for (const action of [
+      "bring-to-front", "bring-forward", "send-backward", "send-to-back",
+      "align-left", "align-center-x", "align-right",
+      "align-top", "align-center-y", "align-bottom"
+    ] as const) reasons[action] = frameReason;
+  }
+  if (args.animationDisabledReason) reasons["add-animation"] = args.animationDisabledReason;
+  return reasons;
 }
 
 function readOoxmlSyncWarnings(job: Job): string[] {

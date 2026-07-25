@@ -135,7 +135,7 @@ describe("editor zoom", () => {
         1080,
         600,
       ),
-    ).toBeCloseTo(512 / 1080, 5);
+    ).toBeCloseTo(468 / 1080, 5);
   });
 
   it("preserves the existing small-screen Fit floor", () => {
