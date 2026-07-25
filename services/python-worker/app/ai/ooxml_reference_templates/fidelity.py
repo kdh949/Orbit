@@ -56,6 +56,8 @@ def evaluate_ooxml_reference_fidelity(
         warning_codes.append("OOXML_REFERENCE_FIDELITY_ENVIRONMENT_INCOMPLETE")
     if threshold["status"] != "calibrated":
         warning_codes.append("OOXML_REFERENCE_FIDELITY_THRESHOLD_UNCALIBRATED")
+    if environment.get("localDemo") is True:
+        warning_codes.append("OOXML_REFERENCE_LOCAL_DEMO_UNCALIBRATED")
 
     if not environment_complete or not threshold["applied"]:
         return _not_run_report(

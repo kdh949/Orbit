@@ -39,7 +39,9 @@ from app.ai.ooxml_reference_templates.private_generation_runtime import (
     PrivateOoxmlReferenceGenerationRuntime,
     ProjectImageAsset,
     _locked_snapshot,
+    _libreoffice_render_environment,
     _master_placeholder_type,
+    _resolved_package_font_files,
     _slot_mask_png,
     generated_storage_key,
 )
@@ -496,6 +498,29 @@ def test_reference_renderer_scopes_fontconfig_to_reference_subprocess(
     assert captured == [b"package", canvas, scoped_environment]
 
 
+def test_libreoffice_renderer_version_matches_calibration_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        private_generation_runtime.shutil,
+        "which",
+        lambda _name: "/usr/bin/libreoffice",
+    )
+    monkeypatch.setattr(
+        private_generation_runtime.subprocess,
+        "run",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            stdout="LibreOffice 25.2.3.2 520(Build:2)\n"
+        ),
+    )
+
+    assert _libreoffice_render_environment() == {
+        "renderer": "libreoffice-pdf-pymupdf",
+        "rendererVersion": "25.2.3.2",
+        "resolvePackageFonts": True,
+    }
+
+
 def test_image_slot_reads_only_project_scoped_private_asset_metadata() -> None:
     content = _png()
     key = "projects/project_1/assets/file-image-source.png"
@@ -591,6 +616,38 @@ def test_main_wiring_is_flag_and_exact_allowlist_gated() -> None:
         enabled.ooxml_reference_generation_runtime,
         PrivateOoxmlReferenceGenerationRuntime,
     )
+    assert (
+        enabled.ooxml_reference_generation_runtime
+        ._local_demo_enabled
+        is False
+    )
+
+
+def test_main_wiring_enables_font_substitution_only_for_local_demo() -> None:
+    state = SimpleNamespace()
+    client = FakeS3Client()
+    _seed_calibration(client)
+
+    configure_ooxml_reference_template_catalog(
+        state,
+        load_config(
+            {
+                **VALID_ENV,
+                "AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED": "true",
+                "AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST": (
+                    "operating-review@1"
+                ),
+                "AI_PPT_OOXML_REFERENCE_LOCAL_DEMO_ENABLED": "true",
+            }
+        ),
+        client=client,
+    )
+
+    assert (
+        state.ooxml_reference_generation_runtime
+        ._local_demo_enabled
+        is True
+    )
 
 
 def test_enabled_main_wiring_fails_closed_without_private_calibration() -> None:
@@ -616,6 +673,57 @@ def test_enabled_main_wiring_fails_closed_without_private_calibration() -> None:
         == "OOXML_REFERENCE_FIDELITY_CALIBRATION_UNAVAILABLE"
     )
     assert CALIBRATION_OBJECT_KEY not in str(caught.value)
+
+
+def test_local_demo_font_resolution_allows_substitution_without_weakening_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    package = BytesIO()
+    with zipfile.ZipFile(package, "w") as archive:
+        archive.writestr(
+            "ppt/slides/slide1.xml",
+            '<a:rPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+            '<a:latin typeface="Missing Demo Font"/>'
+            "</a:rPr>",
+        )
+    monkeypatch.setattr(
+        private_generation_runtime.shutil,
+        "which",
+        lambda _name: "fc-match",
+    )
+    monkeypatch.setattr(
+        private_generation_runtime,
+        "inspect_font_resolution",
+        lambda *_args: {
+            "requestedFamily": "Missing Demo Font",
+            "roles": ["package-requested"],
+            "status": "substituted",
+            "resolvedFamily": "DejaVu Sans",
+            "sha256": "f" * 64,
+        },
+    )
+
+    with pytest.raises(RuntimeError, match="font substitution is not allowed"):
+        _resolved_package_font_files(
+            package.getvalue(),
+            approved_font_alias_policy().model_dump(by_alias=True, mode="json"),
+        )
+
+    assert _resolved_package_font_files(
+        package.getvalue(),
+        approved_font_alias_policy().model_dump(by_alias=True, mode="json"),
+        allow_local_demo_substitution=True,
+    ) == [
+        {
+            "requestedFamily": "Missing Demo Font",
+            "roles": ["package-requested"],
+            "status": "substituted",
+            "resolvedFamily": "DejaVu Sans",
+            "sha256": "f" * 64,
+            "family": "DejaVu Sans",
+            "role": "package-requested",
+        }
+    ]
 
 
 def _runtime(

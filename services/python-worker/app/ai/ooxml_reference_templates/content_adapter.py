@@ -118,6 +118,29 @@ def adapt_content_plan(content_plan: ContentPlan) -> ReferenceContentPlan:
     return ReferenceContentPlan(title=content_plan.outline.title, slides=slides)
 
 
+def normalize_local_demo_text_only_content_plan(
+    content_plan: ReferenceContentPlan,
+) -> ReferenceContentPlan:
+    last_order = len(content_plan.slides)
+    return content_plan.model_copy(
+        update={
+            "slides": [
+                slide.model_copy(
+                    update={
+                        "semantic_role": (
+                            slide.semantic_role
+                            if slide.order in {1, last_order}
+                            else "statement"
+                        ),
+                        "required_capabilities": [],
+                    }
+                )
+                for slide in content_plan.slides
+            ]
+        }
+    )
+
+
 def _adapt_slide(slide: SlidePlan, *, last_order: int) -> ReferenceContentSlide:
     semantic_role = _semantic_role_for(slide, last_order=last_order)
     body = "\n".join(item.text for item in slide.content_items).strip()

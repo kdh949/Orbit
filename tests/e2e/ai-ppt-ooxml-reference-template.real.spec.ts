@@ -26,7 +26,6 @@ import { authenticateE2ePage } from "./authenticatedProject";
 const realE2eEnabled = process.env.OOXML_REFERENCE_REAL_E2E === "1";
 const selectedTemplateId =
   process.env.OOXML_REFERENCE_REAL_E2E_TEMPLATE_ID ?? "operating-review";
-const primaryModifier = process.platform === "darwin" ? "Meta" : "Control";
 
 test.describe("AI PPT OOXML reference template real vertical", () => {
   test.skip(
@@ -147,7 +146,7 @@ test.describe("AI PPT OOXML reference template real vertical", () => {
           `/api/v1/projects/${encodeURIComponent(queuedJob.projectId)}/deck/patches`,
       { timeout: 60_000 },
     );
-    await editor.press(`${primaryModifier}+S`);
+    await page.getByRole("button", { name: "캔버스에 맞추기" }).click();
     const patchResponse = await patchResponsePromise;
     await expectSuccessfulResponse(patchResponse);
     await expect(

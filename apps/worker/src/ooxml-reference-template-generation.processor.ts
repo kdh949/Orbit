@@ -341,7 +341,7 @@ async function storeSlideRenderArtifacts(
         shardKey: slideRenderShardKey(order),
       },
       {
-        slideId: asset.fileId,
+        slideId: `slide_${order}`,
         order,
         renderAssetFileId: asset.fileId,
       },

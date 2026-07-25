@@ -82,6 +82,7 @@ export function resolveEditorPasteAction(input: {
 
 export function useEditorKeyboardShortcuts(args: {
   canMutateDeck: boolean;
+  canSaveDeck?: boolean;
   canPasteImage: boolean;
   copiedElementRef: { current: unknown };
   editingElementId: string | null;
@@ -120,6 +121,7 @@ export function useEditorKeyboardShortcuts(args: {
       const command = resolveEditorKeyboardCommand({
         altKey: event.altKey,
         canMutateDeck: args.canMutateDeck,
+        canSaveDeck: args.canSaveDeck,
         canPaste: Boolean(args.copiedElementRef.current),
         ctrlKey: event.ctrlKey,
         defaultPrevented: event.defaultPrevented,

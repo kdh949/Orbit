@@ -12,6 +12,7 @@
 ```dotenv
 AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED=false
 AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST=
+AI_PPT_OOXML_REFERENCE_LOCAL_DEMO_ENABLED=false
 ```
 
 - `AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED` 기본값은 `false`다.
@@ -80,6 +81,23 @@ signed URL, 폰트·이미지 bytes는 로그에 남기지 않는다.
 
 자동 fallback은 성공률로 계산하지 않는다. 이 모드는 실패해도 System Design Pack으로
 전환하지 않는다.
+
+## 로컬 데모
+
+폰트 설치와 Microsoft PowerPoint calibration 전에 기능 흐름만 시연할 때는 격리된
+local storage와 `APP_ENV=local`에서만 다음 값을 사용할 수 있다.
+
+```dotenv
+AI_PPT_OOXML_REFERENCE_LOCAL_DEMO_ENABLED=true
+```
+
+이 모드는 누락 폰트의 LibreOffice substitution을 허용하고 Job 결과에
+`OOXML_REFERENCE_LOCAL_DEMO_UNCALIBRATED`를 기록한다. 구조, relationship, package,
+locked-region gate는 우회하지 않는다. catalog에 없는 중간 slide role과 media
+capability는 text-only `statement` content로 정규화한다. local demo calibration은
+승인된 fidelity 증거가 아니므로 QA/production bucket에 게시하거나 rollout 승인에
+사용하면 안 된다. staging/production은 이 값이 `true`이면 시작 단계에서
+fail-closed한다.
 
 ## rollback
 

@@ -13,7 +13,10 @@ from app.ai.deck_generation.models import (
     SlidePlan,
     SourceEvidence,
 )
-from app.ai.ooxml_reference_templates.content_adapter import adapt_content_plan
+from app.ai.ooxml_reference_templates.content_adapter import (
+    adapt_content_plan,
+    normalize_local_demo_text_only_content_plan,
+)
 from app.ai.ooxml_reference_templates.models import OoxmlReferenceTemplateManifest
 from app.ai.ooxml_reference_templates.planner import (
     ReferenceTemplatePlanningError,
@@ -348,6 +351,42 @@ def test_capacity_filter_selects_larger_same_role_source() -> None:
     )
 
     assert plan.slides[1].source_slide_id == "statement-03"
+
+
+def test_local_demo_normalizes_unsupported_roles_and_capabilities_only() -> None:
+    adapted = adapt_content_plan(
+        _content_plan(
+            messages=("단계별 실행", "대안 비교"),
+            body_types=("process", "comparison"),
+        )
+    )
+    adapted = adapted.model_copy(
+        update={
+            "slides": [
+                adapted.slides[0],
+                adapted.slides[1].model_copy(
+                    update={"required_capabilities": ["image"]}
+                ),
+                *adapted.slides[2:],
+            ]
+        }
+    )
+
+    normalized = normalize_local_demo_text_only_content_plan(adapted)
+
+    assert [slide.semantic_role for slide in adapted.slides] == [
+        "cover",
+        "process",
+        "comparison",
+        "closing",
+    ]
+    assert [slide.semantic_role for slide in normalized.slides] == [
+        "cover",
+        "statement",
+        "statement",
+        "closing",
+    ]
+    assert all(not slide.required_capabilities for slide in normalized.slides)
 
 
 def test_required_media_capability_fails_closed_without_media_content() -> None:

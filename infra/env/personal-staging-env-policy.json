@@ -45,6 +45,10 @@
       "source": "doppler-optional",
       "delivery": "compose"
     },
+    "AI_PPT_OOXML_REFERENCE_LOCAL_DEMO_ENABLED": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
     "AI_SLIDE_IMAGE_REVIEW_MODE": {
       "source": "repo-default",
       "delivery": "code-default"

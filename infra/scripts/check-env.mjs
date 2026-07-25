@@ -71,6 +71,7 @@ const requiredKeys = [
   "AI_PPT_SYSTEM_DESIGN_PACK_ALLOWLIST",
   "AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED",
   "AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST",
+  "AI_PPT_OOXML_REFERENCE_LOCAL_DEMO_ENABLED",
   "OPENAI_IMAGE_MODEL",
   "IMAGE_PROVIDER",
   "PUBLIC_IMAGE_PROVIDER",
@@ -174,6 +175,15 @@ for (const service of ["api", "worker", "python-worker"]) {
       failures.push(`docker-compose.yml ${service} missing env delivery: ${key}`);
     }
   }
+}
+
+const pythonWorkerKeys =
+  localComposeServiceKeys.get("python-worker") ?? new Set();
+if (!pythonWorkerKeys.has("AI_PPT_OOXML_REFERENCE_LOCAL_DEMO_ENABLED")) {
+  failures.push(
+    "docker-compose.yml python-worker missing env delivery: " +
+      "AI_PPT_OOXML_REFERENCE_LOCAL_DEMO_ENABLED",
+  );
 }
 
 const localKeys = new Set(envFiles.get(".env.example").keys());

@@ -101,6 +101,15 @@ describe("resolveEditorKeyboardCommand", () => {
     ).toEqual({ canExecute: false, type: "save" });
     expect(
       resolve({
+        canMutateDeck: false,
+        canSaveDeck: true,
+        ctrlKey: true,
+        isInlineTextEditing: true,
+        key: "S",
+      }),
+    ).toEqual({ canExecute: true, type: "save" });
+    expect(
+      resolve({
         key: "s",
         metaKey: true,
         target: targetInside("[data-editor-keyboard-scope]"),

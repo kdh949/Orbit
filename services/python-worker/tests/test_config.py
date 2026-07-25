@@ -117,6 +117,29 @@ def test_ooxml_reference_private_catalog_rollout_is_exact_and_defaults_off() -> 
             )
 
 
+def test_ooxml_reference_local_demo_mode_is_local_only() -> None:
+    enabled = load_config(
+        {
+            **VALID_ENV,
+            "AI_PPT_OOXML_REFERENCE_LOCAL_DEMO_ENABLED": "true",
+        }
+    )
+
+    assert enabled.ai_ppt_ooxml_reference_local_demo_enabled is True
+
+    with pytest.raises(
+        ConfigError,
+        match="AI_PPT_OOXML_REFERENCE_LOCAL_DEMO_ENABLED",
+    ):
+        load_config(
+            {
+                **VALID_ENV,
+                "APP_ENV": "production",
+                "AI_PPT_OOXML_REFERENCE_LOCAL_DEMO_ENABLED": "true",
+            }
+        )
+
+
 def test_ai_slide_image_review_mode_defaults_to_auto() -> None:
     config = load_config(VALID_ENV)
 

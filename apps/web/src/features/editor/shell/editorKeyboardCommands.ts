@@ -22,6 +22,7 @@ export type EditorEscapeLayer =
 export type EditorKeyboardCommandInput = {
   altKey?: boolean;
   canMutateDeck: boolean;
+  canSaveDeck?: boolean;
   canPaste?: boolean;
   ctrlKey?: boolean;
   defaultPrevented?: boolean;
@@ -66,7 +67,7 @@ export function resolveEditorKeyboardCommand(
   if (!input.altKey && hasCommandModifier && key === "s") {
     return {
       canExecute: Boolean(
-        input.canMutateDeck &&
+        (input.canSaveDeck ?? input.canMutateDeck) &&
           !input.repeat &&
           !input.hasOpenModal &&
           !input.hasOpenMenu &&

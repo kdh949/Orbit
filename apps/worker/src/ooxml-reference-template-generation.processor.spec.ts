@@ -94,7 +94,7 @@ describe("processOoxmlReferenceTemplateGenerationJob", () => {
     expect(artifacts.storeSucceeded).toHaveBeenCalledWith(
       expect.objectContaining({ stage: "slide-render", shardKey: "001" }),
       {
-        slideId: "file_render_001",
+        slideId: "slide_1",
         order: 1,
         renderAssetFileId: "file_render_001",
       },
@@ -102,7 +102,7 @@ describe("processOoxmlReferenceTemplateGenerationJob", () => {
     expect(artifacts.storeSucceeded).toHaveBeenCalledWith(
       expect.objectContaining({ stage: "slide-render", shardKey: "002" }),
       {
-        slideId: "file_render_002",
+        slideId: "slide_2",
         order: 2,
         renderAssetFileId: "file_render_002",
       },

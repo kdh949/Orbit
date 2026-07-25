@@ -41,6 +41,7 @@ ENV_KEYS = {
     "AI_PPT_SYSTEM_DESIGN_PACK_ALLOWLIST",
     "AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED",
     "AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST",
+    "AI_PPT_OOXML_REFERENCE_LOCAL_DEMO_ENABLED",
     "OPENAI_TRANSCRIPTION_MODEL",
     "OPENAI_EMBEDDING_MODEL",
     "WHISPERX_API_URL",
@@ -128,6 +129,10 @@ class PythonWorkerConfig(BaseModel):
         default="",
         alias="AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST",
     )
+    ai_ppt_ooxml_reference_local_demo_enabled: bool = Field(
+        default=False,
+        alias="AI_PPT_OOXML_REFERENCE_LOCAL_DEMO_ENABLED",
+    )
     openai_transcription_model: str = Field(
         alias="OPENAI_TRANSCRIPTION_MODEL", min_length=1
     )
@@ -160,6 +165,14 @@ class PythonWorkerConfig(BaseModel):
             )
         except ValueError as error:
             errors.append(str(error))
+
+        if (
+            self.ai_ppt_ooxml_reference_local_demo_enabled
+            and self.app_env != "local"
+        ):
+            errors.append(
+                "AI_PPT_OOXML_REFERENCE_LOCAL_DEMO_ENABLED is only allowed in local"
+            )
 
         for key in ["PYTHON_WORKER_URL", "API_BASE_URL"]:
             value = self.model_dump(by_alias=True).get(key)

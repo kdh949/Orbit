@@ -1931,6 +1931,7 @@ export function EditorShell(props: { projectId?: string }) {
 
   useEditorKeyboardShortcuts({
     canMutateDeck: canMutateDeckStructure,
+    canSaveDeck: canMutateDeck,
     canPasteImage: imageDropEnabled,
     copiedElementRef,
     editingElementId,

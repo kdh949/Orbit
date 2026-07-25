@@ -114,6 +114,11 @@ def test_all_stages_execute_real_clone_slot_fidelity_and_materialization_path(
         "slotAssignmentCount": 4,
     }
     assert materialization["jobResult"]["fidelityReport"]["status"] == "passed"
+    assert materialization["jobResult"]["warningCodes"] == []
+    assert [slide["slideId"] for slide in materialization["deck"]["slides"]] == [
+        "slide_1",
+        "slide_2",
+    ]
     assert materialization["baselinePackage"] == {
         "fileId": "file-baseline",
         "originalName": "operating-review-generated-baseline.pptx",
@@ -184,6 +189,42 @@ def test_all_stages_execute_real_clone_slot_fidelity_and_materialization_path(
     assert not any(
         forbidden in planning for forbidden in ('"x"', '"y"', "zIndex", "geometry")
     )
+
+
+def test_local_demo_warning_is_propagated_to_job_result(tmp_path: Path) -> None:
+    runtime = _FakeRuntime(tmp_path, local_demo=True)
+    dependencies: list[dict[str, object]] = []
+
+    for stage in GENERATION_STAGE_ORDER:
+        response = execute_ooxml_reference_generation_stage(
+            OoxmlReferenceGenerationStageRequest.model_validate(
+                {
+                    **_base_request(),
+                    "stage": stage,
+                    "dependencies": dependencies,
+                }
+            ),
+            runtime=runtime,
+        )
+        dependencies.append(
+            {
+                "stage": stage,
+                "payload": {
+                    "data": response.artifact,
+                    "metrics": {
+                        "sourceSlideCount": response.source_slide_count,
+                        "slotCount": response.slot_count,
+                    },
+                    "issueCodes": response.issue_codes,
+                },
+            }
+        )
+
+    materialization = dependencies[-1]["payload"]["data"]
+    assert isinstance(materialization, dict)
+    assert materialization["jobResult"]["warningCodes"] == [
+        "OOXML_REFERENCE_LOCAL_DEMO_UNCALIBRATED"
+    ]
 
 
 def test_same_inputs_produce_the_same_planning_and_package_checksums(
@@ -333,8 +374,15 @@ def _base_request() -> dict[str, object]:
 
 
 class _FakeRuntime:
-    def __init__(self, root: Path, *, source_bytes: bytes | None = None) -> None:
+    def __init__(
+        self,
+        root: Path,
+        *,
+        source_bytes: bytes | None = None,
+        local_demo: bool = False,
+    ) -> None:
         root.mkdir(parents=True, exist_ok=True)
+        self.local_demo = local_demo
         self.source_bytes = source_bytes or _source_package(root)
         self.source_sha256 = hashlib.sha256(self.source_bytes).hexdigest()
         self.source_size = len(self.source_bytes)
@@ -543,6 +591,7 @@ class _FakeRuntime:
                 "sourceSha256": self.source_sha256,
                 "templateManifestSha256": "e" * 64,
                 "artifactSha256": hashlib.sha256(package_bytes).hexdigest(),
+                **({"localDemo": True} if self.local_demo else {}),
             },
             calibration={
                 "status": "calibrated",

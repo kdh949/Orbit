@@ -162,12 +162,20 @@ Focused Practice나 Challenge Q&A를 켜려면 Adaptive core도 켜야 한다. p
 ```txt
 AI_PPT_OOXML_REFERENCE_TEMPLATES_ENABLED=false
 AI_PPT_OOXML_REFERENCE_TEMPLATE_ALLOWLIST=
+AI_PPT_OOXML_REFERENCE_LOCAL_DEMO_ENABLED=false
 ```
 
 OOXML reference mode는 기본적으로 닫혀 있다. global flag를 켜도 allowlist의 exact
 `template-id@version`만 catalog와 새 generation에 노출한다. 여러 항목은 쉼표로
 구분하며 ID-only, `@latest`, `@0`, 대문자와 빈 중간 항목을 허용하지 않는다. allowlist는
 server-only이고 browser runtime config에는 global availability boolean만 공개한다.
+
+`AI_PPT_OOXML_REFERENCE_LOCAL_DEMO_ENABLED=true`는 `APP_ENV=local`의 Python
+worker에서만 허용한다. 이 값은 누락 폰트의 renderer substitution을 허용하지만
+`OOXML_REFERENCE_LOCAL_DEMO_UNCALIBRATED` 경고를 결과에 남기며, 구조·package·locked
+region gate는 그대로 실행한다. LLM이 catalog에 없는 중간 slide role이나 media
+capability를 반환하면 text-only `statement` content로 정규화한다. staging/production에서는
+시작 단계에서 거부한다.
 
 flag/allowlist rollback은 새 노출과 새 Job 생성만 닫는다. 이미 enqueue된 Job,
 generation preview와 기존 reference Deck의 sync/export는 계속 동작한다. 자세한 절차는

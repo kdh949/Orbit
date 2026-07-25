@@ -468,7 +468,7 @@ def _materialization(
         render_asset_file_ids=[asset.file_id for asset in render_assets],
         template_snapshot=snapshot,
         fidelity_report=fidelity,
-        warning_codes=[],
+        warning_codes=list(fidelity.warning_codes),
     )
     artifact = {
         "deck": deck,
@@ -787,7 +787,7 @@ def _deck(
         title_value = content.value_for("title")
         slides.append(
             {
-                "slideId": f"slide_{payload.job_id}_{order}",
+                "slideId": f"slide_{order}",
                 "order": order,
                 "kind": "content",
                 "title": title_value.content if title_value else "",

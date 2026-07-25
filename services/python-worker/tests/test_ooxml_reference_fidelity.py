@@ -155,6 +155,16 @@ def test_noop_identity_control_passes_exact_locked_region_gate() -> None:
     assert report["slides"][0]["intendedSlotMaskPixelCount"] == 0
 
 
+def test_local_demo_is_explicitly_warned_even_when_structural_gate_passes() -> None:
+    report = _evaluate(environment=_environment(localDemo=True))
+
+    assert report["status"] == "passed"
+    assert report["structuralGate"]["passed"] is True
+    assert report["warningCodes"] == [
+        "OOXML_REFERENCE_LOCAL_DEMO_UNCALIBRATED"
+    ]
+
+
 def test_generated_comparison_excludes_intended_slot_mask_from_locked_region() -> None:
     report = _evaluate(
         mode="generated-comparison",

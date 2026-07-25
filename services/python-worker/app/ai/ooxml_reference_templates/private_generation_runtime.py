@@ -41,6 +41,7 @@ from app.ai.deck_generation.stage_runtime import (
 from app.ai.ooxml_reference_templates.content_adapter import (
     ReferenceContentPlan,
     adapt_content_plan,
+    normalize_local_demo_text_only_content_plan,
 )
 from app.ai.ooxml_reference_templates.generation_runtime import (
     GeneratedAsset,
@@ -189,6 +190,7 @@ class PrivateOoxmlReferenceGenerationRuntime:
         render_deck: RenderDeck | object | None = None,
         render_environment: RenderEnvironment | object | None = None,
         project_asset_reader: object | None = None,
+        local_demo_enabled: bool = False,
     ) -> None:
         if not bucket.strip():
             raise PrivateGenerationRuntimeError(
@@ -224,6 +226,7 @@ class PrivateOoxmlReferenceGenerationRuntime:
             Any,
             project_asset_reader or PostgresProjectAssetReader(database_url),
         )
+        self._local_demo_enabled = local_demo_enabled
         self._available_fonts: set[str] | None = None
 
     def __repr__(self) -> str:
@@ -376,6 +379,8 @@ class PrivateOoxmlReferenceGenerationRuntime:
                     api_key=self._api_key,
                 ).content_plan
             adapted = adapt_content_plan(ContentPlan.model_validate(grounded_plan))
+            if self._local_demo_enabled:
+                adapted = normalize_local_demo_text_only_content_plan(adapted)
         except Exception as error:
             raise PrivateGenerationRuntimeError(
                 "OOXML_REFERENCE_CONTENT_PLANNING_FAILED",
@@ -610,7 +615,10 @@ class PrivateOoxmlReferenceGenerationRuntime:
                 environment["fontFiles"] = _resolved_package_font_files(
                     package_bytes,
                     self._fidelity_calibration.get("fontAliasPolicy"),
+                    allow_local_demo_substitution=self._local_demo_enabled,
                 )
+            if self._local_demo_enabled:
+                environment["localDemo"] = True
         except Exception as error:
             raise PrivateGenerationRuntimeError(
                 "OOXML_REFERENCE_RENDER_ENVIRONMENT_UNAVAILABLE",
@@ -902,6 +910,7 @@ def build_private_generation_runtime(
         content_model=config.openai_model,
         api_key=config.openai_api_key,
         fidelity_calibration=calibration,
+        local_demo_enabled=config.ai_ppt_ooxml_reference_local_demo_enabled,
     )
 
 
@@ -1382,9 +1391,15 @@ def _libreoffice_render_environment() -> Mapping[str, Any]:
         text=True,
         timeout=30,
     )
+    renderer_version = re.search(
+        r"\b\d+\.\d+\.\d+\.\d+\b",
+        office_result.stdout,
+    )
+    if renderer_version is None:
+        raise RuntimeError("LibreOffice version is invalid")
     return {
         "renderer": "libreoffice-pdf-pymupdf",
-        "rendererVersion": office_result.stdout.strip(),
+        "rendererVersion": renderer_version.group(0),
         "resolvePackageFonts": True,
     }
 
@@ -1403,6 +1418,8 @@ def _render_reference_pptx_to_png_assets(
 def _resolved_package_font_files(
     package_bytes: bytes,
     font_alias_policy: object | None,
+    *,
+    allow_local_demo_substitution: bool = False,
 ) -> list[dict[str, Any]]:
     font_match = shutil.which("fc-match")
     if font_match is None:
@@ -1434,7 +1451,14 @@ def _resolved_package_font_files(
             font_match,
             cast(Mapping[str, object] | None, font_alias_policy),
         )
-        if resolution["status"] not in {"exact", "approved-alias"}:
+        accepted = resolution["status"] in {"exact", "approved-alias"}
+        demo_substitution = (
+            allow_local_demo_substitution
+            and resolution["status"] in {"substituted", "alias-mismatch"}
+            and isinstance(resolution.get("resolvedFamily"), str)
+            and isinstance(resolution.get("sha256"), str)
+        )
+        if not accepted and not demo_substitution:
             raise RuntimeError("package font substitution is not allowed")
         resolved.append(
             {
