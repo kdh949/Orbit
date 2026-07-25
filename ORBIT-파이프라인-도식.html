@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI PPT 생성 파이프라인 — 도식</title>
+<style>
+  :root{
+    --red:#DC2626; --red-bg:#FEF5F5; --red-bd:#F5C6C6;
+    --blue:#2563EB; --blue-bg:#F4F8FF; --blue-bd:#BFD6FA;
+    --ink:#1F2937; --muted:#4B5563;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+    background:#FFFFFF; color:var(--ink);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  #wrap{transform-origin:center center}
+
+  .board{width:1800px; display:flex; align-items:stretch; padding:40px 10px}
+
+  /* ---------- cards ---------- */
+  .card{
+    width:390px; border-radius:22px; padding:28px 28px 26px;
+    display:flex; flex-direction:column; align-items:center; text-align:center;
+    border:2px solid; box-shadow:0 12px 30px rgba(31,41,55,.08);
+  }
+  .card.problem{background:var(--red-bg); border-color:var(--red-bd)}
+  .card.solution{background:var(--blue-bg); border-color:var(--blue-bd)}
+
+  .tag{
+    font-size:14.5px; font-weight:800; letter-spacing:.02em;
+    border-radius:999px; padding:6px 20px; border:1.5px solid; background:#fff;
+  }
+  .problem .tag{color:var(--red); border-color:var(--red-bd)}
+  .solution .tag{color:var(--blue); border-color:var(--blue-bd)}
+
+  h2{font-size:27.5px; font-weight:800; margin-top:13px; letter-spacing:-.01em; white-space:nowrap}
+  .problem h2{color:var(--red)}
+  .solution h2{color:var(--blue)}
+
+  .art{flex-shrink:0; display:flex; align-items:center; justify-content:center; margin:18px 0 16px; height:172px}
+
+  .story{
+    width:100%; border-top:1.5px solid rgba(31,41,55,.1); padding-top:16px;
+    font-size:16.5px; line-height:1.62; color:var(--muted); text-align:left; font-weight:500;
+    flex:1;
+  }
+  .story b{color:var(--ink); font-weight:700}
+
+  .chip{
+    margin-top:14px; font-family:ui-monospace,Consolas,monospace;
+    font-size:14px; font-weight:700; color:var(--blue);
+    background:#fff; border:1.5px solid var(--blue-bd); border-radius:11px; padding:8px 16px;
+  }
+
+  /* ---------- arrows ---------- */
+  .gap{width:80px; flex-shrink:0; display:flex; align-items:center; justify-content:center}
+  .sk{fill:none; stroke-width:5; stroke-linecap:round; stroke-linejoin:round}
+</style>
+</head>
+<body>
+<div id="wrap">
+<div class="board">
+
+  <!-- ① Problem 01 -->
+  <div class="card problem">
+    <span class="tag">Problem 01</span>
+    <h2>한 번에 전체 생성</h2>
+    <div class="art">
+      <svg width="180" height="152" viewBox="0 0 190 160">
+        <rect x="8" y="8" width="174" height="136" rx="14" fill="#fff" stroke="#E5A5A5" stroke-width="3"/>
+        <line x1="8" y1="38" x2="182" y2="38" stroke="#F1CFCF" stroke-width="3"/>
+        <circle cx="26" cy="23" r="4.5" fill="#F1B8B8"/><circle cx="42" cy="23" r="4.5" fill="#F1B8B8"/><circle cx="58" cy="23" r="4.5" fill="#F1B8B8"/>
+        <rect x="22" y="52" width="26" height="20" rx="4" fill="#FBE9E9"/>
+        <rect x="22" y="80" width="26" height="20" rx="4" fill="#FBE9E9"/>
+        <rect x="22" y="108" width="26" height="20" rx="4" fill="#FBE9E9"/>
+        <path d="M112 60 L140 108 L84 108 Z" fill="#DC2626"/>
+        <rect x="109.5" y="76" width="5" height="16" rx="2.5" fill="#fff"/>
+        <circle cx="112" cy="100" r="3.2" fill="#fff"/>
+      </svg>
+    </div>
+    <p class="story">
+      덱 전체를 <b>한 번의 호출</b>로 만들었다.
+      완료 전까지 화면에는 아무것도 보이지 않았고,
+      마지막 단계에서 실패하면 <b>처음부터 전부 다시</b> 실행해야 했다.
+    </p>
+  </div>
+
+  <div class="gap"><svg width="56" height="48" viewBox="0 0 64 52"><path d="M4 26h40M32 8l22 18-22 18" class="sk" stroke="#2563EB"/></svg></div>
+
+  <!-- ② Solution 01 -->
+  <div class="card solution">
+    <span class="tag">Solution 01</span>
+    <h2>Stage + Shard 분리</h2>
+    <div class="art">
+      <svg width="212" height="164" viewBox="0 0 220 170">
+        <circle cx="30" cy="24" r="15" fill="#fff" stroke="#2563EB" stroke-width="3"/>
+        <text x="30" y="30" text-anchor="middle" font-size="15" font-weight="800" fill="#2563EB">1</text>
+        <path d="M50 24h18" class="sk" stroke="#2563EB" stroke-width="3"/>
+        <circle cx="86" cy="24" r="15" fill="#fff" stroke="#2563EB" stroke-width="3"/>
+        <text x="86" y="30" text-anchor="middle" font-size="15" font-weight="800" fill="#2563EB">2</text>
+        <path d="M106 24h14" class="sk" stroke="#2563EB" stroke-width="3"/>
+        <text x="134" y="30" font-size="17" font-weight="800" fill="#2563EB">…</text>
+        <path d="M152 24h14" class="sk" stroke="#2563EB" stroke-width="3"/>
+        <circle cx="188" cy="24" r="15" fill="#fff" stroke="#2563EB" stroke-width="3"/>
+        <text x="188" y="30" text-anchor="middle" font-size="15" font-weight="800" fill="#2563EB">9</text>
+        <g>
+          <rect x="18" y="58" width="42" height="32" rx="6" fill="#fff" stroke="#BFD6FA" stroke-width="2.5"/>
+          <rect x="66" y="58" width="42" height="32" rx="6" fill="#fff" stroke="#BFD6FA" stroke-width="2.5"/>
+          <rect x="114" y="58" width="42" height="32" rx="6" fill="#fff" stroke="#BFD6FA" stroke-width="2.5"/>
+          <rect x="162" y="58" width="42" height="32" rx="6" fill="#fff" stroke="#BFD6FA" stroke-width="2.5"/>
+          <rect x="18" y="98" width="42" height="32" rx="6" fill="#fff" stroke="#BFD6FA" stroke-width="2.5"/>
+          <rect x="66" y="98" width="42" height="32" rx="6" fill="#fff" stroke="#DC2626" stroke-width="3" stroke-dasharray="6 4"/>
+          <rect x="114" y="98" width="42" height="32" rx="6" fill="#fff" stroke="#BFD6FA" stroke-width="2.5"/>
+          <rect x="162" y="98" width="42" height="32" rx="6" fill="#fff" stroke="#BFD6FA" stroke-width="2.5"/>
+          <path d="M80 107 a9 9 0 1 1 -3 12 M77 121 l-1 -7 6 2" fill="none" stroke="#DC2626" stroke-width="3" stroke-linecap="round"/>
+        </g>
+        <circle cx="196" cy="146" r="15" fill="#2563EB"/>
+        <path d="M189.5 146l4.5 4.5 8.5-9.5" class="sk" stroke="#fff" stroke-width="3.4"/>
+      </svg>
+    </div>
+    <p class="story">
+      그래서 생성을 <b>9개 stage와 슬라이드 조각</b>으로 나누고,
+      조각마다 결과를 저장(checkpoint)했다.
+      이제 실패하면 <b>그 조각만 다시</b> 실행하고,
+      완성된 슬라이드는 먼저 보여줄 수 있다.
+    </p>
+  </div>
+
+  <div class="gap"><svg width="56" height="48" viewBox="0 0 64 52"><path d="M4 26h40M32 8l22 18-22 18" class="sk" stroke="#2563EB"/></svg></div>
+
+  <!-- ③ Problem 02 -->
+  <div class="card problem">
+    <span class="tag">Problem 02</span>
+    <h2>Redis 큐 ≠ DB 상태</h2>
+    <div class="art">
+      <svg width="204" height="152" viewBox="0 0 212 158">
+        <!-- redis-ish stack -->
+        <g>
+          <rect x="14" y="38" width="76" height="26" rx="7" fill="#DC2626"/>
+          <rect x="20" y="66" width="76" height="26" rx="7" fill="#B91C1C"/>
+          <rect x="14" y="94" width="76" height="26" rx="7" fill="#DC2626"/>
+          <text x="54" y="140" text-anchor="middle" font-size="13.5" font-weight="800" fill="#DC2626">큐 (할 일)</text>
+        </g>
+        <text x="106" y="88" text-anchor="middle" font-size="34" font-weight="900" fill="#DC2626">≠</text>
+        <!-- db cylinder gray -->
+        <g>
+          <ellipse cx="164" cy="44" rx="38" ry="12" fill="#6B7280"/>
+          <path d="M126 44v62c0 7 17 12 38 12s38-5 38-12V44" fill="#6B7280" opacity=".85"/>
+          <ellipse cx="164" cy="66" rx="38" ry="12" fill="none" stroke="#fff" stroke-width="2.5" opacity=".5"/>
+          <ellipse cx="164" cy="88" rx="38" ry="12" fill="none" stroke="#fff" stroke-width="2.5" opacity=".5"/>
+          <text x="164" y="140" text-anchor="middle" font-size="13.5" font-weight="800" fill="#4B5563">DB (진행 상태)</text>
+        </g>
+      </svg>
+    </div>
+    <p class="story">
+      그런데 <b>할 일은 Redis 큐에, 진행 상태는 DB에</b> 따로 있었다.
+      워커가 마지막 재시도 중에 죽으면, DB에는 '실행 중'으로 남지만
+      <b>처리하는 워커는 없는 작업</b>이 생겼다.
+    </p>
+  </div>
+
+  <div class="gap"><svg width="56" height="48" viewBox="0 0 64 52"><path d="M4 26h40M32 8l22 18-22 18" class="sk" stroke="#2563EB"/></svg></div>
+
+  <!-- ④ Solution 02 -->
+  <div class="card solution">
+    <span class="tag">Solution 02</span>
+    <h2>Postgres Queue 통합</h2>
+    <div class="art">
+      <svg width="212" height="152" viewBox="0 0 220 158">
+        <g>
+          <ellipse cx="88" cy="32" rx="52" ry="15" fill="#2563EB"/>
+          <path d="M36 32v76c0 8 23 15 52 15s52-7 52-15V32" fill="#2563EB" opacity=".88"/>
+          <ellipse cx="88" cy="60" rx="52" ry="15" fill="none" stroke="#fff" stroke-width="3" opacity=".55"/>
+          <ellipse cx="88" cy="88" rx="52" ry="15" fill="none" stroke="#fff" stroke-width="3" opacity=".55"/>
+          <text x="88" y="140" text-anchor="middle" font-size="13.5" font-weight="800" fill="#2563EB">큐 = 상태 테이블</text>
+        </g>
+        <g>
+          <path d="M178 24l30 10v26c0 20-13 33-30 40-17-7-30-20-30-40V34z" fill="#fff" stroke="#2563EB" stroke-width="4"/>
+          <path d="M165 60l9 9 17-19" class="sk" stroke="#2563EB" stroke-width="5"/>
+        </g>
+      </svg>
+    </div>
+    <p class="story">
+      그래서 <b>큐 자체를 Postgres 테이블로</b> 옮겼다.
+      작업 선점, 산출물 저장, 상태 변경이 <b>한 트랜잭션</b> 안에서 끝나므로,
+      두 기록이 어긋나는 상황 자체가 사라졌다.
+    </p>
+    <div class="chip">SKIP LOCKED · Lease · Transaction</div>
+  </div>
+
+</div>
+</div>
+
+<script>
+function fit(){
+  const w = document.getElementById("wrap");
+  const s = Math.min(window.innerWidth/1860, window.innerHeight/660, 1.1);
+  w.style.transform = `scale(${s})`;
+}
+window.addEventListener("resize", fit); fit();
+</script>
+</body>
+</html>

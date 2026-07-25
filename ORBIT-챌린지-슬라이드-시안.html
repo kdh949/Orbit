@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORBIT 기술 챌린지 — 슬라이드 시안 6종</title>
+<style>
+  :root{
+    --lilac-50:#FAF8FF; --lilac-100:#F3EFFF; --lilac-200:#E6DCFF; --lilac-300:#C9B4F7;
+    --lilac-500:#8B5CF6; --lilac-600:#7C3AED; --lilac-700:#6D28D9; --lilac-900:#2A1E52;
+    --ink:#241F3A; --muted:#6B6485; --line:#E7E1F5;
+    --ok:#16A34A; --bad:#DC2626; --amber:#D97706;
+    --dark-bg:#171230; --dark-card:#241D45; --dark-line:#3A3163; --dark-text:#EFEAFF; --dark-muted:#A79BD6;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+    background:#EDE9F8; color:var(--ink); overflow:hidden; display:flex; flex-direction:column}
+
+  /* ===== chrome ===== */
+  .top{height:58px; flex-shrink:0; display:flex; align-items:center; gap:18px; padding:0 22px;
+    background:#fff; border-bottom:1px solid var(--line); z-index:10}
+  .top h1{font-size:15.5px; font-weight:800; color:var(--lilac-900); white-space:nowrap}
+  .tabs{display:flex; gap:6px; align-items:center; margin-left:8px}
+  .tabs .grp{font-size:12px; font-weight:800; color:var(--muted); margin:0 4px 0 14px; white-space:nowrap}
+  .tab{border:1.5px solid var(--line); background:#fff; border-radius:9px; padding:6px 13px;
+    font-size:13px; font-weight:700; color:var(--muted); cursor:pointer; font-family:inherit; white-space:nowrap}
+  .tab:hover{border-color:var(--lilac-300); color:var(--lilac-700)}
+  .tab.on{background:var(--lilac-600); border-color:var(--lilac-600); color:#fff}
+  .hint{margin-left:auto; font-size:12px; color:var(--muted); white-space:nowrap}
+
+  /* ===== stage scaling ===== */
+  #viewport{flex:1; position:relative; overflow:hidden}
+  .stage{position:absolute; left:50%; top:50%; width:1280px; height:720px;
+    transform-origin:center center; border-radius:14px; overflow:hidden;
+    box-shadow:0 24px 70px rgba(42,30,82,.28); display:none}
+  .stage.active{display:block}
+
+  /* ===== shared slide bits ===== */
+  .pad{position:absolute; inset:0; padding:52px 64px; display:flex; flex-direction:column}
+  .kick{font-size:15px; font-weight:800; letter-spacing:.14em; color:var(--lilac-600); margin-bottom:10px}
+  .t{font-size:40px; font-weight:800; letter-spacing:-.01em; line-height:1.2}
+  .t .a{color:var(--lilac-600)}
+  .light{background:var(--lilac-50)}
+  .cardz{background:#fff; border:1.5px solid var(--line); border-radius:16px; box-shadow:0 8px 24px rgba(109,40,217,.07)}
+  .foot{font-size:16px; color:var(--muted); display:flex; align-items:center; gap:10px}
+  .foot b{color:var(--lilac-700)}
+  .code-ref{font-size:11.5px; color:#A79BD6; margin-top:6px}
+  .ic{width:22px; height:22px; flex-shrink:0}
+
+  /* ===================== 1A: 막대 비교 ===================== */
+  .v1a .rows{flex:1; display:flex; gap:40px; margin-top:26px; min-height:0}
+  .v1a .bars{flex:1.5; display:flex; flex-direction:column; justify-content:center; gap:4px}
+  .v1a .axis-label{font-size:15px; font-weight:700; color:var(--muted); margin-bottom:14px}
+  .v1a .brow{display:flex; align-items:center; gap:16px; padding:10px 0}
+  .v1a .bname{width:150px; flex-shrink:0}
+  .v1a .bname b{display:flex; align-items:center; gap:8px; font-size:19px}
+  .v1a .bname .n{display:inline-flex; width:26px; height:26px; border-radius:50%; background:var(--lilac-600); color:#fff;
+    align-items:center; justify-content:center; font-size:14px; font-weight:800}
+  .v1a .bname small{display:block; font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.35}
+  .v1a .btrack{flex:1; height:34px; background:var(--lilac-100); border-radius:10px; overflow:hidden}
+  .v1a .bfill{height:100%; width:0; border-radius:10px; background:linear-gradient(90deg,var(--lilac-300),var(--lilac-600));
+    transition:width 1s cubic-bezier(.2,.7,.2,1)}
+  .v1a .brow.r1 .bfill{transition-delay:.15s} .v1a .brow.r2 .bfill{transition-delay:.55s} .v1a .brow.r3 .bfill{transition-delay:.95s}
+  .stage.active .v1a .brow.r1 .bfill{width:100%}
+  .stage.active .v1a .brow.r2 .bfill{width:13%}
+  .stage.active .v1a .brow.r3 .bfill{width:3.2%}
+  .v1a .bscope{width:96px; flex-shrink:0; font-size:16.5px; font-weight:800; color:var(--lilac-700)}
+  .v1a .btw{display:flex; align-items:center; gap:10px; margin:2px 0 2px 166px; color:var(--lilac-600); font-size:14px; font-weight:700}
+  .v1a .pipe{flex:.62; display:flex; flex-direction:column; justify-content:center; gap:10px; opacity:.75}
+  .v1a .pbox{border:1.5px solid var(--lilac-200); background:#fff; border-radius:12px; padding:14px; text-align:center}
+  .v1a .pbox b{font-size:15.5px} .v1a .pbox small{display:block; color:var(--muted); font-size:12.5px; margin-top:3px}
+  .v1a .pgate{text-align:center; font-size:13.5px; font-weight:800; color:var(--lilac-600)}
+  .v1a .footwrap{margin-top:8px}
+
+  /* ===================== 1B: 다크 · 조각 그리드 ===================== */
+  .v1b{background:radial-gradient(900px 500px at 80% 10%, rgba(139,92,246,.25), transparent 55%), var(--dark-bg); color:var(--dark-text)}
+  .v1b .kick{color:var(--lilac-300)}
+  .v1b .t .a{color:var(--lilac-300)}
+  .v1b .cols{flex:1; display:flex; gap:26px; margin-top:30px; align-items:stretch}
+  .v1b .tryc{flex:1; background:var(--dark-card); border:1.5px solid var(--dark-line); border-radius:18px;
+    padding:24px 22px; display:flex; flex-direction:column; align-items:center; text-align:center}
+  .v1b .tryc h3{font-size:19px; display:flex; gap:9px; align-items:center}
+  .v1b .tryc h3 .n{width:26px; height:26px; border-radius:50%; background:var(--lilac-500); color:#fff;
+    display:inline-flex; align-items:center; justify-content:center; font-size:14px; font-weight:800}
+  .v1b .grid{display:grid; grid-template-columns:repeat(4,1fr); gap:7px; width:100%; margin:20px 0 14px}
+  .v1b .tile{aspect-ratio:16/10.5; border-radius:6px; background:#3B3268; border:1px solid #4A3F80; position:relative}
+  .v1b .tile.done{background:linear-gradient(150deg,#6D5BD0,#8B5CF6); border-color:#8B5CF6}
+  .v1b .tile.fail{background:#5B2333; border-color:var(--bad)}
+  .v1b .tile.fail::after{content:"✗"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#FF8F8F; font-size:14px; font-weight:800}
+  .v1b .tile.retry{outline:2.5px solid #FFB4B4; outline-offset:1.5px}
+  .v1b .tile.tx{outline:2.5px solid #7EE2A8; outline-offset:1.5px}
+  .v1b .tile.tx::after{content:"tx"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#7EE2A8; font-size:12px; font-weight:800}
+  .v1b .scope{font-size:15px; font-weight:800}
+  .v1b .scope.badc{color:#FF9D9D} .v1b .scope.okc{color:#7EE2A8}
+  .v1b .desc{font-size:13px; color:var(--dark-muted); margin-top:8px; line-height:1.5; min-height:40px}
+  .v1b .colarr{align-self:center; font-size:22px; color:var(--lilac-300); font-weight:800}
+  .v1b .footwrap{margin-top:22px; display:flex; justify-content:space-between; align-items:center}
+  .v1b .foot{color:var(--dark-muted)} .v1b .foot b{color:var(--lilac-300)}
+  .v1b .sqlchip{font-family:ui-monospace,Consolas,monospace; font-size:13px; background:#1E1840; border:1px solid var(--dark-line);
+    color:#B9A8F5; border-radius:9px; padding:8px 14px}
+
+  /* ===================== 1C: 큐-DB 단일화 ===================== */
+  .v1c .duo{flex:1; display:flex; align-items:center; gap:22px; margin-top:24px}
+  .v1c .panel{flex:1; padding:26px 26px 22px; display:flex; flex-direction:column; min-height:430px}
+  .v1c .panel h3{display:flex; align-items:center; gap:10px; font-size:20px; margin-bottom:6px}
+  .v1c .panel .sub{font-size:13.5px; color:var(--muted); margin-bottom:18px}
+  .v1c .badge{font-size:12px; font-weight:800; border-radius:999px; padding:4px 12px; margin-left:auto}
+  .v1c .badge.b1{background:#FDECEC; color:var(--bad)} .v1c .badge.b2{background:#EAF7EF; color:var(--ok)}
+  .v1c .diagram{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px}
+  .v1c .sys{display:flex; gap:34px; align-items:center}
+  .v1c .sbox{border:1.5px solid var(--line); border-radius:14px; padding:16px 20px; text-align:center; background:var(--lilac-50)}
+  .v1c .sbox b{font-size:16px} .v1c .sbox small{display:block; font-size:12px; color:var(--muted); margin-top:3px}
+  .v1c .zap{font-size:24px; color:var(--bad); font-weight:800; position:relative}
+  .v1c .mismatch{font-size:13.5px; color:var(--bad); font-weight:700; text-align:center; line-height:1.5;
+    background:#FDECEC; border-radius:10px; padding:10px 16px}
+  .v1c .one{border:2px solid var(--lilac-500); background:var(--lilac-100); border-radius:16px; padding:18px 26px; text-align:center}
+  .v1c .one b{font-size:17px; color:var(--lilac-900)}
+  .v1c .one .sql{font-family:ui-monospace,Consolas,monospace; font-size:13.5px; color:var(--lilac-700);
+    background:#fff; border:1px solid var(--lilac-200); border-radius:9px; padding:8px 14px; margin-top:10px; display:inline-block}
+  .v1c .txline{font-size:14.5px; font-weight:800; color:var(--ok); background:#EAF7EF; border-radius:10px; padding:10px 16px; text-align:center}
+  .v1c .bigarr{font-size:34px; color:var(--lilac-600); font-weight:800; flex-shrink:0}
+  .v1c .minibars{display:flex; gap:18px; align-items:center; margin-top:20px; justify-content:center}
+  .v1c .mb{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); font-weight:700}
+  .v1c .mb i{display:inline-block; height:10px; border-radius:5px; background:var(--lilac-500)}
+
+  /* ===== 챌린지 ② 공통 ===== */
+  .barcode{height:24px; display:flex; overflow:hidden; border-radius:4px; background:#fff}
+  .barcode span{flex:1; margin-right:1px}
+  .axis{position:relative; height:14px; border-radius:999px; margin:34px 10px 40px;
+    background:linear-gradient(90deg,#DDD8EA 0%, #DDD8EA 89%, var(--lilac-500) 89%, var(--lilac-600) 100%)}
+  .axis .tick{position:absolute; top:20px; font-size:13px; font-weight:700; color:var(--muted); transform:translateX(-50%)}
+  .axis .zone{position:absolute; top:-24px; font-size:13.5px; font-weight:800; transform:translateX(-50%); white-space:nowrap}
+  .axis .zone.keep{color:#8D86A8} .axis .zone.pass{color:var(--lilac-700)}
+  .axis .th{position:absolute; left:89%; top:-10px; bottom:-10px; border-left:2.5px dashed var(--bad)}
+  .axis .th i{position:absolute; top:-22px; left:-24px; width:48px; text-align:center; font-style:normal; font-size:13px; font-weight:800; color:var(--bad)}
+  .axis .dot{position:absolute; left:94.42%; top:50%; width:18px; height:18px; border-radius:50%;
+    background:#fff; border:5px solid var(--ok); transform:translate(-50%,-50%); box-shadow:0 3px 10px rgba(22,163,74,.4)}
+  .axis .dotlab{position:absolute; left:94.42%; top:-34px; transform:translateX(-50%); font-size:13.5px; font-weight:800; color:var(--ok); white-space:nowrap}
+  .simbar{height:14px; background:#EDEBF4; border-radius:999px; overflow:hidden}
+  .simbar i{display:block; height:100%; width:0; border-radius:999px; background:linear-gradient(90deg,#34D399,#16A34A); transition:width .9s .4s cubic-bezier(.2,.7,.2,1)}
+  .stage.active .simbar i{width:94.42%}
+  .chiprow{display:flex; gap:10px; flex-wrap:wrap}
+  .kchip{border:1.5px solid var(--lilac-200); background:#fff; color:var(--lilac-900); border-radius:999px;
+    padding:7px 15px; font-size:13.5px; font-weight:700}
+  .kchip b{color:var(--lilac-700)}
+
+  /* ===================== 2A: 매칭 재현 ===================== */
+  .v2a .wrap{flex:1; display:flex; gap:36px; margin-top:22px; min-height:0}
+  .v2a .left{flex:.9; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px}
+  .v2a .bubble{position:relative; background:#fff; border:1.5px solid var(--lilac-200); border-radius:18px;
+    padding:18px 22px; box-shadow:0 8px 24px rgba(109,40,217,.08); max-width:400px}
+  .v2a .bubble::after{content:""; position:absolute; bottom:-12px; left:52px; width:22px; height:22px; background:#fff;
+    border-right:1.5px solid var(--lilac-200); border-bottom:1.5px solid var(--lilac-200); transform:rotate(45deg)}
+  .v2a .bubble .who{display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:800; color:var(--lilac-600); margin-bottom:7px}
+  .v2a .bubble p{font-size:19px; font-weight:700; line-height:1.5}
+  .v2a .sttchip{font-size:12.5px; color:var(--muted); background:var(--lilac-100); border:1px solid var(--lilac-200);
+    border-radius:999px; padding:6px 14px; font-weight:700}
+  .v2a .match{flex:1.1; padding:24px 28px; display:flex; flex-direction:column; gap:12px}
+  .v2a .lat{font-size:14px; font-weight:800}
+  .v2a .qhead{display:flex; align-items:baseline}
+  .v2a .qhead b{font-size:16.5px} .v2a .qhead span{margin-left:auto; font-size:13px; color:var(--muted); font-weight:700}
+  .v2a .qtext{font-size:17px; font-weight:600}
+  .v2a .rank{background:var(--lilac-50); border:1.5px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:6px}
+  .v2a .rank .rhead{display:flex; align-items:baseline; margin-bottom:8px}
+  .v2a .rank .rhead b{color:#2563EB; font-size:16px}
+  .v2a .rank .rhead .sim{margin-left:auto; font-size:17px; font-weight:800}
+  .v2a .rank p{font-size:17px; font-weight:600; margin-bottom:12px}
+  .v2a .verdict{display:flex; align-items:center; gap:10px; margin-top:2px}
+  .v2a .verdict .vchip{background:#EAF7EF; color:var(--ok); font-weight:800; font-size:14px; border-radius:999px; padding:7px 16px}
+
+  /* ===================== 2B: 3단계 ===================== */
+  .v2b .fails{display:flex; gap:14px; margin-top:16px}
+  .v2b .failrow{display:flex; align-items:center; gap:8px; font-size:14.5px; font-weight:700; color:var(--muted);
+    background:#fff; border:1.5px solid var(--line); border-radius:999px; padding:8px 16px}
+  .v2b .failrow .x{color:var(--bad); font-weight:800}
+  .v2b .steps3{display:flex; gap:14px; align-items:stretch; margin-top:20px}
+  .v2b .step{flex:1; padding:18px 18px 16px; text-align:left; position:relative}
+  .v2b .step .shead{display:flex; align-items:center; gap:10px; margin-bottom:9px}
+  .v2b .step .shead .n{width:26px; height:26px; border-radius:8px; background:var(--lilac-600); color:#fff;
+    display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:14px}
+  .v2b .step .shead b{font-size:18px}
+  .v2b .step ul{list-style:none; display:flex; flex-direction:column; gap:5px}
+  .v2b .step li{font-size:13.5px; color:var(--muted); line-height:1.45}
+  .v2b .step li b{color:var(--ink)}
+  .v2b .sarr{align-self:center; font-size:24px; color:var(--lilac-500); font-weight:800}
+  .v2b .compare{display:flex; align-items:center; gap:14px; margin-top:18px; justify-content:center}
+  .v2b .cmp{display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid var(--line);
+    border-radius:12px; padding:10px 16px; font-size:14.5px; font-weight:600}
+  .v2b .cmp small{font-size:11.5px; font-weight:800; color:var(--lilac-600); display:block}
+  .v2b .simbadge{background:#EAF7EF; color:var(--ok); border-radius:999px; padding:8px 15px; font-size:14px; font-weight:800; white-space:nowrap}
+  .v2b .bottomrow{display:flex; justify-content:center; gap:12px; margin-top:2px}
+
+  /* ===================== 2C: 다크 · 대본 vs 발화 ===================== */
+  .v2c{background:radial-gradient(1000px 560px at 20% 0%, rgba(139,92,246,.28), transparent 55%), var(--dark-bg); color:var(--dark-text)}
+  .v2c .kick{color:var(--lilac-300)} .v2c .t .a{color:var(--lilac-300)}
+  .v2c .subline{margin-top:10px; font-size:15px; color:var(--dark-muted)}
+  .v2c .duel{flex:1; display:flex; align-items:center; gap:26px; margin-top:10px}
+  .v2c .side{flex:1; background:var(--dark-card); border:1.5px solid var(--dark-line); border-radius:20px; padding:24px}
+  .v2c .side .who{display:flex; align-items:center; gap:10px; font-size:14px; font-weight:800; color:var(--lilac-300); margin-bottom:12px}
+  .v2c .side p{font-size:21px; font-weight:700; line-height:1.55; min-height:66px}
+  .v2c .side .barcode{margin-top:16px; background:transparent}
+  .v2c .mid{flex-shrink:0; width:250px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px}
+  .v2c .simnum{font-size:58px; font-weight:900; color:#7EE2A8; line-height:1}
+  .v2c .simlab{font-size:14px; font-weight:800; color:var(--dark-muted); letter-spacing:.12em}
+  .v2c .pass{background:rgba(126,226,168,.14); border:1.5px solid rgba(126,226,168,.5); color:#7EE2A8;
+    font-size:14.5px; font-weight:800; border-radius:999px; padding:8px 18px; margin-top:6px}
+  .v2c .eq{font-size:24px; color:var(--lilac-300); font-weight:800}
+  .v2c .chips{display:flex; justify-content:center; gap:10px; margin-top:20px; flex-wrap:wrap}
+  .v2c .kchip{background:var(--dark-card); border-color:var(--dark-line); color:var(--dark-text)}
+  .v2c .kchip b{color:var(--lilac-300)}
+  .v2c .avatar{width:44px; height:44px; flex-shrink:0}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>ORBIT 기술 챌린지 · 슬라이드 시안</h1>
+  <div class="tabs" id="tabs">
+    <span class="grp">챌린지 ①</span>
+    <button class="tab" data-i="0">A 막대 비교</button>
+    <button class="tab" data-i="1">B 조각 그리드</button>
+    <button class="tab" data-i="2">C 큐 단일화</button>
+    <span class="grp">챌린지 ②</span>
+    <button class="tab" data-i="3">A 매칭 재현</button>
+    <button class="tab" data-i="4">B 3단계</button>
+    <button class="tab" data-i="5">C 대본 vs 발화</button>
+  </div>
+  <span class="hint">← → 로 시안 이동</span>
+</header>
+
+<div id="viewport">
+
+<!-- ============ 1A · 막대 비교 (라이트, 플랜 기본안) ============ -->
+<section class="stage light" id="s0">
+  <div class="pad v1a">
+    <div>
+      <div class="kick">기술적 챌린지 ①</div>
+      <div class="t">덱 생성 — <span class="a">재시도 범위</span></div>
+    </div>
+    <div class="rows">
+      <div class="bars">
+        <div class="axis-label">실패하면 다시 실행해야 하는 범위</div>
+        <div class="brow r1">
+          <div class="bname"><b><span class="n">1</span>단일 호출</b><small>수 분간 빈 화면</small></div>
+          <div class="btrack"><div class="bfill"></div></div>
+          <div class="bscope">덱 전체</div>
+        </div>
+        <div class="btw">▼ 실패한 조각만 재시도</div>
+        <div class="brow r2">
+          <div class="bname"><b><span class="n">2</span>stage 분할</b><small>9 stage + 슬라이드 shard + checkpoint</small></div>
+          <div class="btrack"><div class="bfill"></div></div>
+          <div class="bscope">조각</div>
+        </div>
+        <div class="btw">▼ 큐와 상태를 한 곳에</div>
+        <div class="brow r3">
+          <div class="bname"><b><span class="n">3</span>Postgres 큐</b><small>SKIP LOCKED 선점 + lease</small></div>
+          <div class="btrack"><div class="bfill"></div></div>
+          <div class="bscope">트랜잭션</div>
+        </div>
+      </div>
+      <div class="pipe">
+        <div class="pbox"><b>planning</b><small>× 4 stage</small></div>
+        <div class="pgate">▼ 승인 게이트 (사용자)</div>
+        <div class="pbox"><b>execution</b><small>× 슬라이드</small></div>
+      </div>
+    </div>
+    <div class="footwrap">
+      <div class="foot">▸ <b>완성된 슬라이드부터 순서대로 미리보기</b> — 데모에서 본 장면</div>
+      <div class="code-ref">postgres-stage-runner.ts · stage-checkpoint-repository.ts · f732449aa · 6b1ee637e</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 1B · 다크 · 조각 그리드 ============ -->
+<section class="stage v1b" id="s1">
+  <div class="pad">
+    <div>
+      <div class="kick">기술적 챌린지 ①</div>
+      <div class="t">실패가 번지는 범위를 <span class="a">조각 하나</span>까지 줄이기</div>
+    </div>
+    <div class="cols">
+      <div class="tryc">
+        <h3><span class="n">1</span>단일 호출</h3>
+        <div class="grid" data-mode="all"></div>
+        <div class="scope badc">1개 실패 → 12개 전부 재실행</div>
+        <div class="desc">한 번의 호출로 전체 덱 생성.<br>수 분간 빈 화면.</div>
+      </div>
+      <div class="colarr">→</div>
+      <div class="tryc">
+        <h3><span class="n">2</span>stage 분할</h3>
+        <div class="grid" data-mode="one"></div>
+        <div class="scope okc">실패한 조각만 재시도</div>
+        <div class="desc">9 stage + 슬라이드 shard + checkpoint.<br>단, 큐(Redis)와 상태(DB)가 어긋나는 버그.</div>
+      </div>
+      <div class="colarr">→</div>
+      <div class="tryc">
+        <h3><span class="n">3</span>Postgres 큐</h3>
+        <div class="grid" data-mode="tx"></div>
+        <div class="scope okc">선점·저장·상태 전이 = 한 트랜잭션</div>
+        <div class="desc">큐와 상태를 한 DB에.<br>상태를 두 곳에 쓰지 않으니 어긋날 수 없다.</div>
+      </div>
+    </div>
+    <div class="footwrap">
+      <div class="foot">▸ <b>완성된 슬라이드부터 순서대로 미리보기</b></div>
+      <div class="sqlchip">SELECT … FOR UPDATE SKIP LOCKED</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 1C · 큐-DB 단일화 ============ -->
+<section class="stage light" id="s2">
+  <div class="pad v1c">
+    <div>
+      <div class="kick">기술적 챌린지 ①</div>
+      <div class="t">큐와 상태가 <span class="a">어긋날 수 없는</span> 구조 만들기</div>
+    </div>
+    <div class="duo">
+      <div class="cardz panel">
+        <h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>
+          시도 2까지 — 두 시스템<span class="badge b1">어긋남</span></h3>
+        <div class="sub">stage 분할로 재시도 범위는 "조각"이 됐지만…</div>
+        <div class="diagram">
+          <div class="sys">
+            <div class="sbox"><b>Redis</b><small>BullMQ 큐</small></div>
+            <div class="zap">⚡</div>
+            <div class="sbox"><b>PostgreSQL</b><small>checkpoint 상태</small></div>
+          </div>
+          <div class="mismatch">마지막 attempt 실패가 DB에 안 남으면<br>"실행 중"인데 아무도 처리하지 않는 잡 (f732449aa)</div>
+        </div>
+      </div>
+      <div class="bigarr">→</div>
+      <div class="cardz panel">
+        <h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2"><path d="M20 7L9.5 17.5 4 12"/></svg>
+          시도 3 — 한 시스템<span class="badge b2">한 트랜잭션</span></h3>
+        <div class="sub">큐 자체를 Postgres 테이블로</div>
+        <div class="diagram">
+          <div class="one">
+            <b>PostgreSQL — 큐 = checkpoint 테이블</b><br>
+            <span class="sql">FOR UPDATE SKIP LOCKED + lease 10분</span>
+          </div>
+          <div class="txline">선점 → 산출물 저장 → 상태 전이 : 하나의 COMMIT</div>
+        </div>
+      </div>
+    </div>
+    <div class="minibars">
+      <span class="mb">재시도 범위:</span>
+      <span class="mb"><i style="width:120px"></i>덱 전체</span> →
+      <span class="mb"><i style="width:26px"></i>조각</span> →
+      <span class="mb"><i style="width:9px"></i>트랜잭션</span>
+      <span class="mb" style="margin-left:26px">▸ 완성된 슬라이드부터 순서대로 미리보기</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2A · 매칭 재현 (라이트) ============ -->
+<section class="stage light" id="s3">
+  <div class="pad v2a">
+    <div>
+      <div class="kick">기술적 챌린지 ②</div>
+      <div class="t">발표자는 <span class="a">대본대로 읽지 않는다</span></div>
+    </div>
+    <div class="wrap">
+      <div class="left">
+        <svg width="190" height="200" viewBox="0 0 190 200">
+          <ellipse cx="95" cy="192" rx="70" ry="7" fill="#E6DCFF"/>
+          <rect x="55" y="120" width="80" height="72" rx="8" fill="#7C3AED"/>
+          <rect x="49" y="112" width="92" height="14" rx="7" fill="#6D28D9"/>
+          <circle cx="95" cy="52" r="24" fill="#F5D7C4"/>
+          <path d="M71 50 a24 24 0 0 1 48 0 l-6 -14 a24 16 0 0 0 -36 0 z" fill="#3A2C55"/>
+          <path d="M63 118 q0 -38 32 -38 q32 0 32 38 z" fill="#8B5CF6"/>
+          <rect x="120" y="86" width="9" height="34" rx="4.5" fill="#8B5CF6" transform="rotate(-28 124 86)"/>
+          <circle cx="139" cy="79" r="7" fill="#F5D7C4"/>
+          <rect x="141" y="60" width="5" height="22" rx="2.5" fill="#4A3F80"/>
+          <circle cx="143.5" cy="55" r="7" fill="#241F3A"/>
+        </svg>
+        <div class="bubble">
+          <div class="who">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+            실제 발화 (STT 인식 결과)
+          </div>
+          <p>"많은 분들이 와주셔서 그런지 조금 떨리네요"</p>
+        </div>
+        <span class="sttchip">Web Speech · 후보 3개 + 발음 사전 재랭킹</span>
+      </div>
+      <div class="cardz match">
+        <div class="lat">Latency: 23 ms</div>
+        <div class="qhead"><b>Query embedding</b><span>384d</span></div>
+        <div class="qtext">많은 분들이 와주셔서 그런지 조금 떨리네요</div>
+        <div class="barcode" data-seed="7"></div>
+        <div class="rank">
+          <div class="rhead"><b>Rank #1</b><span class="sim">Similarity: 0.9442</span></div>
+          <p>대본: "이렇게 많은 분들이 와주시다니 조금 떨리네요"</p>
+          <div class="simbar"><i></i></div>
+        </div>
+        <div class="barcode" data-seed="21"></div>
+        <div class="verdict">
+          <span class="vchip">✓ 임계값 0.89 통과 → 슬라이드 전환</span>
+          <span class="code-ref" style="margin:0">문턱 3개: 유사도 0.89 · 마진 0.04 · 어휘겹침 0.55</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2B · 3단계 파이프라인 (라이트, 플랜 기본안) ============ -->
+<section class="stage light" id="s4">
+  <div class="pad v2b">
+    <div>
+      <div class="kick">기술적 챌린지 ②</div>
+      <div class="t">대본과 <span class="a">다르게 말해도</span> 인식하기</div>
+    </div>
+    <div class="fails">
+      <span class="failrow"><span class="x">✗</span> 정확 문자열 매칭 — 조사·어미 하나에 실패</span>
+      <span class="failrow"><span class="x">✗</span> 동의어·약어 사전 — 사전에 없는 표현은 놓침</span>
+    </div>
+    <div class="steps3">
+      <div class="cardz step">
+        <div class="shead"><span class="n">1</span><b>인식</b>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+        <ul>
+          <li><b>후보 3개</b> + 발음 사전</li>
+          <li>bias 점수 ≥ 0.75일 때만 1순위 교체</li>
+        </ul>
+      </div>
+      <div class="sarr">→</div>
+      <div class="cardz step">
+        <div class="shead"><span class="n">2</span><b>의미</b>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2"><path d="M4 12h4l2-5 4 10 2-5h4"/></svg></div>
+        <ul>
+          <li><b>E5-small 임베딩</b> (384d, 브라우저)</li>
+          <li>prefix는 실측으로 query / query</li>
+        </ul>
+      </div>
+      <div class="sarr">→</div>
+      <div class="cardz step">
+        <div class="shead"><span class="n">3</span><b>판정</b>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2"><path d="M12 20V10M6 20v-6M18 20v-3M3 20h18"/></svg></div>
+        <ul>
+          <li><b>문턱 3개</b> 전부 통과해야만 전환</li>
+          <li>하나라도 미달 → 애드리브, 유지</li>
+        </ul>
+      </div>
+    </div>
+    <div class="compare">
+      <div class="cmp">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#6B6485" stroke-width="2"><path d="M6 3h9l4 4v14H6zM15 3v4h4"/></svg>
+        <span><small>대본</small>"이렇게 많은 분들이 와주시다니 조금 떨리네요"</span>
+      </div>
+      <span class="simbadge">0.9442</span>
+      <div class="cmp">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        <span><small>실제 발화</small>"많은 분들이 와주셔서 그런지 조금 떨리네요"</span>
+      </div>
+    </div>
+    <div class="axis">
+      <span class="zone keep" style="left:44%">ad-lib · 슬라이드 유지</span>
+      <span class="zone pass" style="left:95%">전환</span>
+      <span class="th"><i>0.89</i></span>
+      <span class="dot"></span><span class="dotlab">0.9442 실측</span>
+      <span class="tick" style="left:0%">0.0</span>
+      <span class="tick" style="left:100%">1.0</span>
+    </div>
+    <div class="bottomrow">
+      <span class="kchip">마진 <b>0.04</b></span>
+      <span class="kchip">어휘겹침 <b>0.55</b></span>
+      <span class="kchip">검증 <b>p95 ≤ 500ms</b> · 오탐 <b>≤ 1%</b></span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2C · 다크 · 대본 vs 발화 ============ -->
+<section class="stage v2c" id="s5">
+  <div class="pad">
+    <div>
+      <div class="kick">기술적 챌린지 ②</div>
+      <div class="t">"정확히 그 단어"가 아니어도 <span class="a">알아듣는다</span></div>
+      <div class="subline">문자열 매칭 ✗ · 동의어 사전 ✗ → 의미 비교 + 3중 판정으로</div>
+    </div>
+    <div class="duel">
+      <div class="side">
+        <div class="who">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#C9B4F7" stroke-width="2"><path d="M6 3h9l4 4v14H6zM15 3v4h4M9 12h6M9 16h6"/></svg>
+          대본 (스크립트)
+        </div>
+        <p>"이렇게 많은 분들이 와주시다니 조금 떨리네요"</p>
+        <div class="barcode" data-seed="21"></div>
+      </div>
+      <div class="mid">
+        <span class="eq">≈</span>
+        <div class="simnum">0.9442</div>
+        <div class="simlab">COSINE SIMILARITY</div>
+        <span class="pass">✓ 0.89 통과 → 슬라이드 전환</span>
+      </div>
+      <div class="side">
+        <div class="who">
+          <svg class="avatar" viewBox="0 0 44 44"><circle cx="22" cy="22" r="21" fill="#3A3163"/><circle cx="22" cy="17" r="7.5" fill="#F5D7C4"/><path d="M8 38 q0 -12 14 -12 q14 0 14 12 z" fill="#8B5CF6"/></svg>
+          실제 발화 — 대본대로 읽지 않았다
+        </div>
+        <p>"많은 분들이 와주셔서 그런지 조금 떨리네요"</p>
+        <div class="barcode" data-seed="7"></div>
+      </div>
+    </div>
+    <div class="chips">
+      <span class="kchip">유사도 문턱 <b>0.89</b></span>
+      <span class="kchip">1·2등 마진 <b>0.04</b></span>
+      <span class="kchip">어휘겹침 <b>0.55</b></span>
+      <span class="kchip">Latency <b>23 ms</b></span>
+      <span class="kchip">E5-small <b>384d</b></span>
+      <span class="kchip">검증 <b>p95 ≤ 500ms</b></span>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+/* ---- stage scaling ---- */
+const stages = Array.from(document.querySelectorAll(".stage"));
+const tabs = Array.from(document.querySelectorAll(".tab"));
+let cur = 0;
+function fit(){
+  const vp = document.getElementById("viewport");
+  const s = Math.min(vp.clientWidth/1300, vp.clientHeight/740);
+  stages.forEach(st => st.style.transform = `translate(-50%,-50%) scale(${s})`);
+}
+function go(i){
+  cur = (i + stages.length) % stages.length;
+  stages.forEach((s,k)=>s.classList.toggle("active", k===cur));
+  tabs.forEach((t,k)=>t.classList.toggle("on", k===cur));
+}
+tabs.forEach(t => t.addEventListener("click", ()=>go(+t.dataset.i)));
+document.addEventListener("keydown", e=>{
+  if(e.key==="ArrowRight"||e.key===" "){e.preventDefault();go(cur+1);}
+  else if(e.key==="ArrowLeft"){e.preventDefault();go(cur-1);}
+});
+window.addEventListener("resize", fit);
+
+/* ---- 1B grids ---- */
+document.querySelectorAll(".v1b .grid").forEach(g=>{
+  const mode = g.dataset.mode;
+  for(let i=0;i<12;i++){
+    const t=document.createElement("div");
+    t.className="tile";
+    if(mode==="all"){ t.classList.add(i===6?"fail":"retry"); if(i!==6) t.classList.add("done"); }
+    if(mode==="one"){ t.classList.add(i===6?"fail":"done"); if(i===6) t.classList.add("retry"); }
+    if(mode==="tx"){ t.classList.add("done"); if(i===6){t.className="tile tx";} }
+    g.appendChild(t);
+  }
+});
+
+/* ---- embedding barcode strips (seeded) ---- */
+function lcg(seed){ let s = seed >>> 0; return () => (s = (s*1664525 + 1013904223) >>> 0) / 4294967296; }
+document.querySelectorAll(".barcode").forEach(el=>{
+  const rnd = lcg(+el.dataset.seed || 1);
+  for(let i=0;i<130;i++){
+    const sp = document.createElement("span");
+    const r = rnd();
+    if(r < .42){ sp.style.background = `hsla(228, ${70+rnd()*25}%, ${40+rnd()*35}%, ${.55+rnd()*.45})`; }
+    else if(r < .8){ sp.style.background = `hsla(356, ${68+rnd()*25}%, ${48+rnd()*32}%, ${.5+rnd()*.5})`; }
+    else { sp.style.background = `hsla(${rnd()<.5?228:356}, 60%, 90%, .8)`; }
+    el.appendChild(sp);
+  }
+});
+
+fit(); go(0);
+</script>
+</body>
+</html>
