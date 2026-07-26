@@ -17,7 +17,7 @@ import {
 import type {
   ExtractedSentence,
   SpeechTrackerSnapshot
-} from "../speech/speechTrackingEvents";
+} from "../../../runtime/speech/tracking/speechTrackingEvents";
 import type {
   RehearsalTimingSnapshot,
   TimingAdviceState,

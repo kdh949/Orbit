@@ -23,7 +23,7 @@ import {
 import {
   RehearsalPanelTopGrid,
 } from "../panel/RehearsalPanel";
-import { splitSpeakerNotesIntoSentences } from "../speech/phraseExtractor";
+import { splitSpeakerNotesIntoSentences } from "../../../runtime/speech/tracking/phraseExtractor";
 import {
   createPresenterCommandMessage,
   createPresenterRemoteHeartbeatMessage,

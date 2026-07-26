@@ -2,7 +2,7 @@ import type { Keyword } from "@orbit/shared";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import type { ExtractedSentence, SpeechTrackerSnapshot } from "../speech/speechTrackingEvents";
+import type { ExtractedSentence, SpeechTrackerSnapshot } from "../../../runtime/speech/tracking/speechTrackingEvents";
 import type { RehearsalTimingSnapshot, TimingAdviceState } from "./rehearsalTiming";
 import {
   RehearsalPanel

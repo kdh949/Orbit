@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createSpeechTracker,
   type SpeechTracker,
-} from "../rehearsal/speech/speechTracker";
-import type { SpeechTrackerSnapshot } from "../rehearsal/speech/speechTrackingEvents";
+} from "../../runtime/speech/tracking/speechTracker";
+import type { SpeechTrackerSnapshot } from "../../runtime/speech/tracking/speechTrackingEvents";
 import { createLiveSttPort } from "../../runtime/speech/stt/liveSttEngineRegistry";
 import type { LiveSttPort } from "../../runtime/speech/stt/liveSttPort";
 import { normalizeLiveSttBiasPhrases } from "../../runtime/speech/stt/liveSttPort";

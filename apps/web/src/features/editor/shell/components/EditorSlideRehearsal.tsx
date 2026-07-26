@@ -14,8 +14,8 @@ import {
   RehearsalScriptTeleprompter,
   type RehearsalScriptTeleprompterRow
 } from "../../../rehearsal/presenter/RehearsalScriptTeleprompter";
-import { createDefaultPhraseExtractor } from "../../../rehearsal/speech/phraseExtractor";
-import type { SpeechTrackerSnapshot } from "../../../rehearsal/speech/speechTrackingEvents";
+import { createDefaultPhraseExtractor } from "../../../../runtime/speech/tracking/phraseExtractor";
+import type { SpeechTrackerSnapshot } from "../../../../runtime/speech/tracking/speechTrackingEvents";
 import {
   type PracticeSessionState,
   type SlidePracticeRuntimeState

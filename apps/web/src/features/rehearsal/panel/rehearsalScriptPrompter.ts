@@ -1,5 +1,5 @@
-import type { ExtractedSentence } from "../speech/speechTrackingEvents";
-import type { PrompterProgressSnapshot } from "../speech/prompterProgressTracker";
+import type { ExtractedSentence } from "../../../runtime/speech/tracking/speechTrackingEvents";
+import type { PrompterProgressSnapshot } from "../../../runtime/speech/tracking/prompterProgressTracker";
 
 export type RehearsalScriptPrompterRowStatus =
   | "covered"

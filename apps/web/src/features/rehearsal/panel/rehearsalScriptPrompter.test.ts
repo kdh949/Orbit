@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ExtractedSentence } from "../speech/speechTrackingEvents";
+import type { ExtractedSentence } from "../../../runtime/speech/tracking/speechTrackingEvents";
 import {
   createRehearsalScriptPrompterRows,
   getRehearsalScriptFocusSentenceId
@@ -172,11 +172,11 @@ describe("createRehearsalScriptPrompterRows", () => {
 function progress(
   overrides: Partial<
     NonNullable<
-      import("../speech/speechTrackingEvents").SpeechTrackerSnapshot["prompterProgress"]
+      import("../../../runtime/speech/tracking/speechTrackingEvents").SpeechTrackerSnapshot["prompterProgress"]
     >
   > = {}
 ): NonNullable<
-  import("../speech/speechTrackingEvents").SpeechTrackerSnapshot["prompterProgress"]
+  import("../../../runtime/speech/tracking/speechTrackingEvents").SpeechTrackerSnapshot["prompterProgress"]
 > {
   return {
     slideId: "slide_1",

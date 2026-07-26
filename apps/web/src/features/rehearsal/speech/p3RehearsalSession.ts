@@ -13,8 +13,8 @@ import type {
   LiveSttPort,
   LiveSttResult
 } from "../../../runtime/speech/stt/liveSttPort";
-import { createDefaultPhraseExtractor } from "./phraseExtractor";
-import { buildSpeechTrackingBiasPhrases } from "./speechBiasPhrases";
+import { createDefaultPhraseExtractor } from "../../../runtime/speech/tracking/phraseExtractor";
+import { buildSpeechTrackingBiasPhrases } from "../../../runtime/speech/tracking/speechBiasPhrases";
 import {
   createRehearsalLogCollector,
   type RehearsalLogCollector
@@ -23,9 +23,9 @@ import {
   defaultSpeechTrackingConfig,
   type AdviceEventType,
   type SpeechTrackingConfigOverride
-} from "./speechTrackingConfig";
-import type { SpeechTrackerKeyword } from "./speechTracker";
-import { createSpeechTracker, type SpeechTracker } from "./speechTracker";
+} from "../../../runtime/speech/tracking/speechTrackingConfig";
+import type { SpeechTrackerKeyword } from "../../../runtime/speech/tracking/speechTracker";
+import { createSpeechTracker, type SpeechTracker } from "../../../runtime/speech/tracking/speechTracker";
 import {
   createSemanticDebugState,
   semanticDebugErrorMessage,
@@ -41,7 +41,7 @@ import {
   type SemanticCapabilityStatuses,
   type SemanticCapabilityTransition
 } from "./semanticCapabilityState";
-import type { SpeechTrackerSnapshot, SpeechTrackingEvent } from "./speechTrackingEvents";
+import type { SpeechTrackerSnapshot, SpeechTrackingEvent } from "../../../runtime/speech/tracking/speechTrackingEvents";
 
 export type P3RehearsalSessionSlide = {
   slideId: string;

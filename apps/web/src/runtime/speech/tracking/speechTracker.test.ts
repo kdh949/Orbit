@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PronunciationLexiconEntry } from "@orbit/shared";
+import type { PronunciationLexiconEntry } from "@orbit/shared/pronunciation";
 
 import { createSpeechTracker } from "./speechTracker";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PronunciationLexiconSnapshot } from "@orbit/shared";
+import type { PronunciationLexiconSnapshot } from "@orbit/shared/pronunciation";
 
 import {
   calculateWordMultisetRecall,

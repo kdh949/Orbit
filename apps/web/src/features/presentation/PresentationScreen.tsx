@@ -12,7 +12,7 @@ import {
 } from "../rehearsal/presenter/AnimationFlowNavigator";
 import { SlideshowRenderer } from "../rehearsal/presenter/SlideshowRenderer";
 import type { ActivityPasscodeRuntimeState } from "../activity-slides/rendering/ActivityElementRuntimeContext";
-import type { SpeechTrackerSnapshot } from "../rehearsal/speech/speechTrackingEvents";
+import type { SpeechTrackerSnapshot } from "../../runtime/speech/tracking/speechTrackingEvents";
 import {
   PresenterStageSection,
   PresenterTimerCard,

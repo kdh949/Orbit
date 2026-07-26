@@ -5,7 +5,7 @@ import type {
   SemanticMeasurementMode
 } from "@orbit/shared";
 
-import { normalizeSpeechText } from "./phraseExtractor";
+import { normalizeSpeechText } from "../../../runtime/speech/tracking/phraseExtractor";
 import {
   selectSemanticCueCandidates,
   type SemanticCueCandidate

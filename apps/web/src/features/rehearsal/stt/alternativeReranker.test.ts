@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { rerankAlternatives } from "../../../runtime/speech/stt/alternativeReranker";
-import { buildSpeechTrackingBiasPhrases } from "../speech/speechBiasPhrases";
+import { buildSpeechTrackingBiasPhrases } from "../../../runtime/speech/tracking/speechBiasPhrases";
 
 describe("alternativeReranker", () => {
   it("대안이 없으면 null을 반환한다", () => {
