@@ -11,7 +11,6 @@ import { DataSource } from "typeorm";
 import { JobsService } from "../jobs/jobs.service";
 import {
   DECK_EXPORT_ENQUEUE_JOB,
-  DeckUseCasesBase,
   PPTX_OOXML_SYNC_ENQUEUE_JOB,
   SEMANTIC_CUE_EXTRACTION_ENQUEUE_JOB,
   SPEAKER_NOTES_SUGGESTION_ENQUEUE_JOB,
@@ -19,6 +18,7 @@ import {
   type SemanticCueExtractionEnqueueJob,
   type SpeakerNotesSuggestionEnqueueJob,
 } from "./use-cases/deck-use-cases.base";
+import { DeckAutomationUseCases } from "./use-cases/deck-automation.use-cases";
 
 export {
   DECK_EXPORT_ENQUEUE_JOB,
@@ -34,7 +34,7 @@ export {
 type DeckExportEnqueueJob = typeof enqueueDeckExportJob;
 
 @Injectable()
-export class DecksService extends DeckUseCasesBase {
+export class DecksService extends DeckAutomationUseCases {
   constructor(
     @InjectDataSource() dataSource: DataSource,
     @Optional() jobsService?: JobsService,

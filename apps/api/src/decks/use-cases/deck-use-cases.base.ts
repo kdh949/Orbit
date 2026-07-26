@@ -17,44 +17,19 @@ import {
   type EnqueueSpeakerNotesSuggestionJobInput,
 } from "@orbit/job-queue";
 import {
-  appendDeckPatchAckResponseSchema,
   appendDeckPatchRequestSchema,
-  appendDeckPatchResponseSchema,
   deckApiErrorSchema,
-  deckExportEnqueueErrorSchema,
-  deckExportRequestSchema,
   deckSchema,
-  deckSnapshotDetailSchema,
   deckSnapshotIdSchema,
   deckSnapshotReasonSchema,
   deckSnapshotSchema,
-  getDeckResponseSchema,
-  getPptxNotesPreviewResponseSchema,
-  getPptxImportQualityResponseSchema,
-  getOoxmlSyncStateResponseSchema,
   PPTX_OOXML_SYNC_CAPABILITY_VERSION,
-  listDeckSnapshotsResponseSchema,
   putDeckRequestSchema,
-  putDeckResponseSchema,
-  qualityReportSchema,
-  retryOoxmlSyncResponseSchema,
-  restoreDeckSnapshotResponseSchema,
   recoverTemplateBlueprintSlideIds,
-  createSemanticCueExtractionJobResponseSchema,
-  semanticCueExtractionJobPayloadSchema,
-  semanticCueExtractionRequestSchema,
-  createSpeakerNotesSuggestionJobResponseSchema,
-  speakerNotesSuggestionJobPayloadSchema,
-  speakerNotesSuggestionRequestSchema,
   templateBlueprintSchema,
 } from "@orbit/shared/deck";
-import { jobSchema } from "@orbit/shared/jobs";
 import type {
-  AppendDeckPatchAckRequest,
-  AppendDeckPatchAckResponse,
-  AppendDeckPatchFullRequest,
   AppendDeckPatchRequest,
-  AppendDeckPatchResponse,
   Deck,
   DeckApiError,
   DeckApiErrorCode,
@@ -62,38 +37,20 @@ import type {
   DeckElement,
   DeckPatchOperation,
   DeckSnapshot,
-  DeckSnapshotDetail,
   DeckSnapshotReason,
-  GetDeckResponse,
-  GetPptxNotesPreviewResponse,
-  GetPptxImportQualityResponse,
   OoxmlSyncState,
-  ListDeckSnapshotsResponse,
   PutDeckRequest,
-  PutDeckResponse,
-  RestoreDeckSnapshotResponse,
-  CreateSemanticCueExtractionJobResponse,
-  CreateSpeakerNotesSuggestionJobResponse,
   TemplateBlueprint,
 } from "@orbit/shared/deck";
 import type { Job } from "@orbit/shared/jobs";
-import {
-  ConflictException,
-  HttpException,
-  HttpStatus,
-  NotFoundException,
-} from "@nestjs/common";
+import { HttpException, HttpStatus } from "@nestjs/common";
 import { PinoLogger } from "nestjs-pino";
 import { DataSource, EntityManager } from "typeorm";
 import { ZodError } from "zod";
 import { JobsService } from "../../jobs/jobs.service";
-import {
-  assertAsyncJobAdmissionOpen,
-  isAsyncJobAdmissionDraining,
-} from "../../jobs/async-job-admission";
-import { serializeLogError } from "../../logging";
+import { isAsyncJobAdmissionDraining } from "../../jobs/async-job-admission";
 
-type DeckRow = {
+export type DeckRow = {
   project_id: string;
   deck_id: string;
   deck_json: unknown;
@@ -101,7 +58,7 @@ type DeckRow = {
   updated_at: Date | string;
 };
 
-type DeckSnapshotRow = {
+export type DeckSnapshotRow = {
   snapshot_id: string;
   project_id: string;
   deck_id: string;
@@ -128,11 +85,11 @@ type TemplateBlueprintRow = {
   blueprint_json: unknown;
 };
 
-type PptxImportQualityRow = {
+export type PptxImportQualityRow = {
   quality_report_json: unknown;
 };
 
-type PptxNotesPreviewAssetRow = {
+export type PptxNotesPreviewAssetRow = {
   file_id: string;
   project_id: string;
   purpose: string;
@@ -140,11 +97,11 @@ type PptxNotesPreviewAssetRow = {
   mime_type: string;
 };
 
-type OoxmlTemplateBlueprint = TemplateBlueprintRow & {
+export type OoxmlTemplateBlueprint = TemplateBlueprintRow & {
   blueprint: TemplateBlueprint;
 };
 
-type PptxOoxmlSyncJobInput = {
+export type PptxOoxmlSyncJobInput = {
   deckId: string;
   changeId: string;
   targetDeckVersion: number;
@@ -152,7 +109,7 @@ type PptxOoxmlSyncJobInput = {
 
 type DeckExportEnqueueJob = (input: EnqueueDeckExportJobInput) => Promise<void>;
 type QueryExecutor = DataSource | EntityManager;
-const deckCheckpointPatchInterval = 20;
+export const deckCheckpointPatchInterval = 20;
 export type PptxOoxmlSyncEnqueueJob = (
   input: EnqueuePptxOoxmlSyncJobInput,
 ) => Promise<void>;
@@ -186,343 +143,6 @@ export class DeckUseCasesBase {
     protected readonly enqueueSpeakerNotesSuggestion: SpeakerNotesSuggestionEnqueueJob = enqueueSpeakerNotesSuggestionJob,
   ) {}
 
-  async getDeck(projectId: string): Promise<GetDeckResponse> {
-    const deckRow = await this.findDeckRow(this.dataSource, projectId);
-
-    if (!deckRow) {
-      throwDeckApiException(
-        "DECK_NOT_FOUND",
-        HttpStatus.NOT_FOUND,
-        `Deck not found for project: ${projectId}`,
-      );
-    }
-
-    const deck = await this.readCurrentDeckState(
-      this.dataSource,
-      parseDeckRow(deckRow),
-      projectId,
-      deckRow.deck_id,
-      toIso(deckRow.updated_at),
-    );
-
-    return getDeckResponseSchema.parse({
-      projectId,
-      deck: deck.deck,
-      updatedAt: deck.updatedAt,
-    });
-  }
-
-  async getDeckForUpdate(
-    manager: EntityManager,
-    projectId: string,
-    deckId: string,
-  ): Promise<Deck> {
-    const deckRow = await this.findDeckRowForUpdate(
-      manager,
-      projectId,
-      deckId,
-    );
-
-    if (!deckRow) {
-      throwDeckApiException(
-        "DECK_NOT_FOUND",
-        HttpStatus.NOT_FOUND,
-        `Deck not found for project: ${projectId}`,
-      );
-    }
-
-    return (
-      await this.readCurrentDeckState(
-        manager,
-        parseDeckRow(deckRow),
-        projectId,
-        deckId,
-        toIso(deckRow.updated_at),
-        true,
-      )
-    ).deck;
-  }
-
-  async createInitialDeckInTransaction(
-    manager: EntityManager,
-    deck: Deck,
-    createdAt: string,
-  ): Promise<InitialDeckWriteResult> {
-    const initialDeck = deckSchema.parse(deck);
-    const storedDeck = await this.writeDeckCheckpoint(
-      manager,
-      initialDeck,
-      createdAt,
-      null,
-    );
-    await this.updateProjectTitle(manager, storedDeck.projectId, storedDeck.title);
-    const snapshot = await this.createSnapshot(
-      manager,
-      storedDeck,
-      "deck-replaced",
-      createdAt,
-    );
-
-    return { deck: storedDeck, snapshot, updatedAt: createdAt };
-  }
-
-  async getPptxImportQuality(
-    projectId: string,
-  ): Promise<GetPptxImportQualityResponse> {
-    const { deck } = await this.getDeck(projectId);
-    const rows = await this.dataSource.query<PptxImportQualityRow[]>(
-      `
-        SELECT quality_report_json
-        FROM template_blueprints
-        WHERE project_id = $1 AND deck_id = $2
-        ORDER BY updated_at DESC, created_at DESC
-        LIMIT 1
-      `,
-      [projectId, deck.deckId],
-    );
-    const qualityReport = qualityReportSchema.safeParse(
-      rows[0]?.quality_report_json,
-    );
-
-    return getPptxImportQualityResponseSchema.parse({
-      importQuality: qualityReport.success
-        ? { qualityReport: qualityReport.data }
-        : null,
-    });
-  }
-
-  async getPptxNotesPreview(
-    projectId: string,
-    slideId: string,
-  ): Promise<GetPptxNotesPreviewResponse> {
-    const { deck } = await this.getDeck(projectId);
-    const slide = deck.slides.find(
-      (candidate) => candidate.slideId === slideId,
-    );
-    if (!slide) {
-      throw new NotFoundException(`Deck slide not found: ${slideId}`);
-    }
-
-    const response = (
-      status: GetPptxNotesPreviewResponse["notesPreview"]["status"],
-      assetUrl: string | null = null,
-    ) =>
-      getPptxNotesPreviewResponseSchema.parse({
-        notesPreview: { slideId, status, assetUrl },
-      });
-    const imported = await this.findOoxmlTemplateBlueprint(
-      this.dataSource,
-      projectId,
-      deck.deckId,
-      deck,
-    );
-    if (!imported) {
-      return response(
-        deck.metadata.sourceType === "import" ? "unavailable" : "absent",
-      );
-    }
-
-    const blueprintSlide = imported.blueprint.slides.find(
-      (candidate) => candidate.slideId === slideId,
-    );
-    if (!blueprintSlide) return response("unavailable");
-
-    const syncState = await this.readOoxmlSyncState(projectId, deck);
-    if (syncState.status === "pending") return response("sync-pending");
-    if (syncState.status === "stale" || syncState.status === "failed") {
-      return response("stale");
-    }
-
-    const notesPage = blueprintSlide.notesPage;
-    if (!notesPage || notesPage.status === "absent") {
-      return response("absent");
-    }
-    if (notesPage.status !== "rendered") {
-      return response("render-unavailable");
-    }
-
-    const previewFileId = notesPage.renderAssetFileId;
-    if (!previewFileId) return response("unavailable");
-
-    let rows: PptxNotesPreviewAssetRow[];
-    try {
-      rows = await this.dataSource.query<PptxNotesPreviewAssetRow[]>(
-        `
-          SELECT file_id, project_id, purpose, status, mime_type
-          FROM project_assets
-          WHERE project_id = $1 AND file_id = $2
-          LIMIT 1
-        `,
-        [projectId, previewFileId],
-      );
-    } catch {
-      return response("unavailable");
-    }
-    const asset = rows[0];
-    if (
-      !asset ||
-      asset.project_id !== projectId ||
-      asset.purpose !== "design-asset" ||
-      asset.status !== "uploaded" ||
-      !asset.mime_type.startsWith("image/")
-    ) {
-      return response("unavailable");
-    }
-
-    return response(
-      "available",
-      `/api/v1/projects/${encodeURIComponent(projectId)}/assets/${encodeURIComponent(
-        previewFileId,
-      )}/content`,
-    );
-  }
-
-  async createExportJob(projectId: string, body: unknown) {
-    if (!this.jobsService) {
-      throw new HttpException(
-        "Deck export job service is unavailable",
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
-    }
-
-    const request = deckExportRequestSchema.parse(body ?? {});
-    const { deck } = await this.getDeck(projectId);
-    if (request.format === "pptx") {
-      const syncState = await this.readOoxmlSyncState(projectId, deck);
-      if (
-        syncState.status !== "not-applicable" &&
-        syncState.status !== "synced"
-      ) {
-        throw new HttpException(
-          {
-            code: "DECK_EXPORT_OOXML_SYNC_NOT_READY",
-            message:
-              "최신 편집 내용의 PPTX 동기화가 완료되지 않았습니다. 동기화 재시도 후 다시 내보내세요.",
-            ooxmlSyncState: syncState,
-          },
-          HttpStatus.CONFLICT,
-        );
-      }
-    }
-    if (request.presentationSessionId) {
-      await this.assertExportSession(
-        projectId,
-        deck.deckId,
-        request.presentationSessionId,
-      );
-    }
-    const queuedJob = await this.jobsService.create({
-      projectId,
-      type: "deck-export",
-      payload: {
-        deckId: deck.deckId,
-        format: request.format,
-        ...(request.presentationSessionId
-          ? { presentationSessionId: request.presentationSessionId }
-          : {}),
-      },
-    });
-
-    try {
-      const config = loadOrbitConfig(process.env, { service: "api" });
-      await this.enqueueDeckExport({
-        driver: config.JOB_QUEUE_DRIVER,
-        redisUrl: config.REDIS_URL,
-        jobId: queuedJob.jobId,
-        projectId,
-        deck,
-        format: request.format,
-        ...(request.presentationSessionId
-          ? { presentationSessionId: request.presentationSessionId }
-          : {}),
-      });
-      this.logger?.info(
-        {
-          event: "deck_export.enqueued",
-          jobId: queuedJob.jobId,
-          projectId,
-          deckId: deck.deckId,
-          format: request.format,
-          presentationSessionId: request.presentationSessionId,
-        },
-        "Deck export job enqueued.",
-      );
-    } catch (error) {
-      const publicMessage = "Deck export queue is unavailable.";
-      const failedJobPatch = {
-        status: "failed",
-        progress: 0,
-        message: publicMessage,
-        error: {
-          code: "DECK_EXPORT_ENQUEUE_FAILED",
-          message: publicMessage,
-          retryable: true,
-        },
-      } as const;
-      const updatedJob = await this.jobsService.update(
-        queuedJob.jobId,
-        failedJobPatch,
-      );
-      const failedJob = jobSchema.parse(
-        updatedJob ?? { ...queuedJob, ...failedJobPatch },
-      );
-      this.logger?.error(
-        {
-          event: "deck_export.enqueue_failed",
-          jobId: queuedJob.jobId,
-          projectId,
-          deckId: deck.deckId,
-          format: request.format,
-          presentationSessionId: request.presentationSessionId,
-          error: serializeLogError(error),
-        },
-        "Deck export job enqueue failed.",
-      );
-      throw new HttpException(
-        deckExportEnqueueErrorSchema.parse({
-          code: "DECK_EXPORT_ENQUEUE_FAILED",
-          message: publicMessage,
-          job: failedJob,
-        }),
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
-    }
-
-    return { job: jobSchema.parse(queuedJob) };
-  }
-
-  async getOoxmlSyncState(projectId: string) {
-    const { deck } = await this.getDeck(projectId);
-    const state = await this.readOoxmlSyncState(projectId, deck);
-    return getOoxmlSyncStateResponseSchema.parse({ ooxmlSyncState: state });
-  }
-
-  async retryOoxmlSync(projectId: string) {
-    const { deck } = await this.getDeck(projectId);
-    const current = await this.readOoxmlSyncState(projectId, deck);
-    if (current.status === "not-applicable" || current.status === "synced") {
-      return retryOoxmlSyncResponseSchema.parse({ ooxmlSyncState: current });
-    }
-    if (
-      current.status === "pending" &&
-      current.job?.status !== "failed"
-    ) {
-      return retryOoxmlSyncResponseSchema.parse({ ooxmlSyncState: current });
-    }
-    if (!current.retryable) {
-      throw new ConflictException("PPTX OOXML sync job is not retryable.");
-    }
-
-    assertAsyncJobAdmissionOpen();
-    const job = await this.enqueueOoxmlSync(projectId, {
-      deckId: deck.deckId,
-      changeId: `retry_${randomUUID()}`,
-      targetDeckVersion: deck.version,
-    });
-    const state = await this.readOoxmlSyncState(projectId, deck, job);
-    return retryOoxmlSyncResponseSchema.parse({ ooxmlSyncState: state });
-  }
-
   protected async assertExportSession(
     projectId: string,
     deckId: string,
@@ -544,723 +164,6 @@ export class DeckUseCasesBase {
         HttpStatus.NOT_FOUND,
       );
     }
-  }
-
-  async putDeck(projectId: string, body: unknown): Promise<PutDeckResponse> {
-    const request = parsePutDeckRequest(body);
-
-    if (request.deck.projectId !== projectId) {
-      throwDeckApiException(
-        "PROJECT_MISMATCH",
-        HttpStatus.BAD_REQUEST,
-        "URL projectId must match deck.projectId",
-        [`projectId=${projectId}`, `deck.projectId=${request.deck.projectId}`],
-      );
-    }
-
-    let syncInput: PptxOoxmlSyncJobInput | null = null;
-    const response = await this.dataSource.transaction(async (manager) => {
-      const updatedAt = nowIso();
-      const deckRow = await this.findProjectDeckRowForUpdate(
-        manager,
-        projectId,
-      );
-      let currentDeck: Deck | undefined;
-      let templateBlueprint: OoxmlTemplateBlueprint | undefined;
-
-      if (deckRow) {
-        if (deckRow.deck_id !== request.deck.deckId) {
-          throwDeckApiException(
-            "DECK_MISMATCH",
-            HttpStatus.CONFLICT,
-            "Stored deckId must match deck.deckId",
-            [
-              `deck.deckId=${deckRow.deck_id}`,
-              `request.deckId=${request.deck.deckId}`,
-            ],
-          );
-        }
-
-        currentDeck = (
-          await this.readCurrentDeckState(
-            manager,
-            parseDeckRow(deckRow),
-            projectId,
-            deckRow.deck_id,
-            toIso(deckRow.updated_at),
-            true,
-          )
-        ).deck;
-        const baseVersion = request.baseVersion ?? request.deck.version;
-
-        if (currentDeck.version !== baseVersion) {
-          throwDeckApiException(
-            "STALE_BASE_VERSION",
-            HttpStatus.CONFLICT,
-            "Deck baseVersion does not match current deck version",
-            [
-              `deck.version=${currentDeck.version}`,
-              `request.baseVersion=${baseVersion}`,
-            ],
-          );
-        }
-
-        templateBlueprint = await this.findOoxmlTemplateBlueprint(
-          manager,
-          projectId,
-          currentDeck.deckId,
-          currentDeck,
-        );
-      }
-
-      const requestedDeck = removeLegacyAiGeneratedTitleAnimations(
-        request.deck,
-      );
-      const replacement =
-        currentDeck && templateBlueprint
-          ? createOoxmlReplacement(currentDeck, requestedDeck, updatedAt)
-          : undefined;
-      const nextDeck = replacement?.deck ?? requestedDeck;
-
-      await this.deletePatchRowsAfterVersion(
-        manager,
-        projectId,
-        nextDeck.deckId,
-        nextDeck.version,
-      );
-
-      if (replacement) {
-        await this.insertPatchLog(manager, projectId, replacement.changeRecord);
-      }
-
-      const deck = await this.writeDeckCheckpoint(
-        manager,
-        nextDeck,
-        updatedAt,
-        templateBlueprint ?? null,
-      );
-      await this.updateProjectTitle(manager, projectId, deck.title);
-      const snapshot = await this.createSnapshot(
-        manager,
-        deck,
-        request.snapshotReason ?? "deck-replaced",
-        updatedAt,
-      );
-
-      if (replacement) {
-        syncInput = {
-          deckId: deck.deckId,
-          changeId: replacement.changeRecord.changeId,
-          targetDeckVersion: deck.version,
-        };
-      }
-
-      return {
-        deck,
-        snapshot,
-        updatedAt,
-      };
-    });
-
-    const ooxmlSyncJob = syncInput
-      ? await this.enqueueOoxmlSync(projectId, syncInput)
-      : undefined;
-
-    return putDeckResponseSchema.parse({
-      ...response,
-      ...(ooxmlSyncJob ? { ooxmlSyncJob } : {}),
-    });
-  }
-
-  async appendPatch(
-    projectId: string,
-    body: AppendDeckPatchAckRequest,
-  ): Promise<AppendDeckPatchAckResponse>;
-  async appendPatch(
-    projectId: string,
-    body: AppendDeckPatchFullRequest,
-  ): Promise<AppendDeckPatchResponse>;
-  async appendPatch(
-    projectId: string,
-    body: unknown,
-  ): Promise<AppendDeckPatchResponse | AppendDeckPatchAckResponse>;
-  async appendPatch(
-    projectId: string,
-    body: unknown,
-  ): Promise<AppendDeckPatchResponse | AppendDeckPatchAckResponse> {
-    const request = parseAppendDeckPatchRequest(body);
-    let syncInput: PptxOoxmlSyncJobInput | null = null;
-
-    const response = await this.dataSource.transaction(async (manager) => {
-      const deckRow = await this.findDeckRowForUpdate(
-        manager,
-        projectId,
-        request.patch.deckId,
-      );
-
-      if (!deckRow) {
-        throwDeckApiException(
-          "DECK_NOT_FOUND",
-          HttpStatus.NOT_FOUND,
-          `Deck not found for project: ${projectId}`,
-        );
-      }
-
-      const checkpointVersion = deckRow.version;
-      const currentDeck = (
-        await this.readCurrentDeckState(
-          manager,
-          parseDeckRow(deckRow),
-          projectId,
-          request.patch.deckId,
-          toIso(deckRow.updated_at),
-          true,
-        )
-      ).deck;
-
-      if (currentDeck.projectId !== projectId) {
-        throwDeckApiException(
-          "PROJECT_MISMATCH",
-          HttpStatus.BAD_REQUEST,
-          "Stored deck projectId must match URL projectId",
-          [`projectId=${projectId}`, `deck.projectId=${currentDeck.projectId}`],
-        );
-      }
-
-      const updatedAt = nowIso();
-      const applyResult = applyDeckPatch(currentDeck, request.patch, {
-        createdAt: updatedAt,
-      });
-
-      if (!applyResult.ok) {
-        throwApplyPatchException(applyResult.error);
-      }
-
-      await this.insertPatchLog(manager, projectId, applyResult.changeRecord);
-      const templateBlueprint = await this.findOoxmlTemplateBlueprint(
-        manager,
-        projectId,
-        applyResult.deck.deckId,
-        currentDeck,
-      );
-      const shouldCheckpoint =
-        !templateBlueprint &&
-        (Boolean(request.snapshotReason) ||
-          applyResult.deck.version - checkpointVersion >=
-            deckCheckpointPatchInterval);
-      const deck =
-        templateBlueprint || shouldCheckpoint
-          ? await this.writeDeckCheckpoint(
-              manager,
-              applyResult.deck,
-              updatedAt,
-              templateBlueprint ?? null,
-            )
-          : applyResult.deck;
-
-      if (applyResult.deck.title !== currentDeck.title) {
-        await this.updateProjectTitle(
-          manager,
-          projectId,
-          applyResult.deck.title,
-        );
-      }
-
-      const snapshot = request.snapshotReason
-        ? await this.createSnapshot(
-            manager,
-            deck,
-            request.snapshotReason,
-            updatedAt,
-          )
-        : null;
-      if (templateBlueprint) {
-        syncInput = {
-          deckId: deck.deckId,
-          changeId: applyResult.changeRecord.changeId,
-          targetDeckVersion: deck.version,
-        };
-      }
-
-      return {
-        deck,
-        changeRecord: applyResult.changeRecord,
-        snapshot,
-        updatedAt,
-      };
-    });
-
-    const ooxmlSyncJob = syncInput
-      ? await this.enqueueOoxmlSync(projectId, syncInput)
-      : undefined;
-
-    if (request.responseMode === "ack") {
-      return appendDeckPatchAckResponseSchema.parse({
-        deckId: response.deck.deckId,
-        version: response.deck.version,
-        changeRecord: response.changeRecord,
-        ...(response.snapshot ? { snapshot: response.snapshot } : {}),
-        ...(ooxmlSyncJob ? { ooxmlSyncJob } : {}),
-        updatedAt: response.updatedAt,
-      });
-    }
-
-    return appendDeckPatchResponseSchema.parse({
-      ...response,
-      ...(ooxmlSyncJob ? { ooxmlSyncJob } : {}),
-    });
-  }
-
-  async createSemanticCueExtractionJob(
-    projectId: string,
-    body: unknown,
-  ): Promise<CreateSemanticCueExtractionJobResponse> {
-    const request = semanticCueExtractionRequestSchema.parse(body ?? {});
-
-    if (!this.jobsService) {
-      throwDeckApiException(
-        "DECK_VALIDATION_FAILED",
-        HttpStatus.SERVICE_UNAVAILABLE,
-        "Jobs service is not available",
-      );
-    }
-
-    const preparedRequest = await this.dataSource.transaction(
-      async (manager) => {
-        const deckRow = await this.findProjectDeckRowForUpdate(
-          manager,
-          projectId,
-        );
-
-        if (!deckRow) {
-          throwDeckApiException(
-            "DECK_NOT_FOUND",
-            HttpStatus.NOT_FOUND,
-            `Deck not found for project: ${projectId}`,
-          );
-        }
-
-        const requestedDeckId = request.deckId ?? deckRow.deck_id;
-        if (requestedDeckId !== deckRow.deck_id) {
-          throwDeckApiException(
-            "DECK_MISMATCH",
-            HttpStatus.BAD_REQUEST,
-            "Requested deckId must match project deck",
-            [
-              `deck.deckId=${deckRow.deck_id}`,
-              `request.deckId=${requestedDeckId}`,
-            ],
-          );
-        }
-
-        const materializedState = await this.readCurrentDeckState(
-          manager,
-          parseDeckRow(deckRow),
-          projectId,
-          deckRow.deck_id,
-          toIso(deckRow.updated_at),
-          true,
-        );
-        const deck = await this.writeDeckCheckpoint(
-          manager,
-          materializedState.deck,
-          nowIso(),
-        );
-
-        return semanticCueExtractionJobPayloadSchema.shape.request.parse({
-          deckId: deck.deckId,
-          force: request.force,
-          baseVersion: deck.version,
-        });
-      },
-    );
-
-    const queuedJob = await this.jobsService.create({
-      projectId,
-      type: "semantic-cue-extraction",
-      payload: { request: preparedRequest },
-    });
-
-    try {
-      const config = loadOrbitConfig(process.env, { service: "api" });
-      await this.enqueueSemanticCueJob({
-        driver: config.JOB_QUEUE_DRIVER,
-        redisUrl: config.REDIS_URL,
-        jobId: queuedJob.jobId,
-        projectId,
-        request: preparedRequest,
-      });
-      this.logger?.info(
-        {
-          event: "semantic_cue.extraction.queued",
-          jobId: queuedJob.jobId,
-          jobType: queuedJob.type,
-          projectId,
-          deckId: preparedRequest.deckId,
-          deckVersion: preparedRequest.baseVersion,
-          force: preparedRequest.force,
-        },
-        "Semantic cue extraction job enqueued.",
-      );
-    } catch (error) {
-      await this.jobsService.update(queuedJob.jobId, {
-        status: "failed",
-        progress: 0,
-        message: "Semantic cue extraction enqueue failed.",
-        error: {
-          code: "SEMANTIC_CUE_EXTRACTION_ENQUEUE_FAILED",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Semantic cue extraction enqueue failed.",
-        },
-      });
-      this.logger?.error(
-        {
-          event: "semantic_cue.extraction.failed",
-          jobId: queuedJob.jobId,
-          jobType: queuedJob.type,
-          projectId,
-          deckId: preparedRequest.deckId,
-          deckVersion: preparedRequest.baseVersion,
-          reason: "enqueue_failed",
-          error: serializeLogError(error),
-        },
-        "Semantic cue extraction enqueue failed.",
-      );
-      throw error;
-    }
-
-    return createSemanticCueExtractionJobResponseSchema.parse({
-      job: queuedJob,
-    });
-  }
-
-  async createSpeakerNotesSuggestionJob(
-    projectId: string,
-    body: unknown,
-  ): Promise<CreateSpeakerNotesSuggestionJobResponse> {
-    const request = speakerNotesSuggestionRequestSchema.parse(body);
-
-    if (!this.jobsService) {
-      throwDeckApiException(
-        "DECK_VALIDATION_FAILED",
-        HttpStatus.SERVICE_UNAVAILABLE,
-        "Jobs service is not available",
-      );
-    }
-
-    const preparedRequest = await this.dataSource.transaction(async (manager) => {
-      const deckRow = await this.findProjectDeckRowForUpdate(manager, projectId);
-      if (!deckRow) {
-        throwDeckApiException(
-          "DECK_NOT_FOUND",
-          HttpStatus.NOT_FOUND,
-          `Deck not found for project: ${projectId}`,
-        );
-      }
-      if (request.deckId !== deckRow.deck_id) {
-        throwDeckApiException(
-          "DECK_MISMATCH",
-          HttpStatus.BAD_REQUEST,
-          "Requested deckId must match project deck",
-        );
-      }
-
-      const materializedState = await this.readCurrentDeckState(
-        manager,
-        parseDeckRow(deckRow),
-        projectId,
-        deckRow.deck_id,
-        toIso(deckRow.updated_at),
-        true,
-      );
-      if (materializedState.deck.version !== request.baseVersion) {
-        throwDeckApiException(
-          "STALE_BASE_VERSION",
-          HttpStatus.CONFLICT,
-          "Deck changed before the speaker notes suggestion started",
-        );
-      }
-      const slide = materializedState.deck.slides.find(
-        (candidate) => candidate.slideId === request.slideId,
-      );
-      if (!slide) {
-        throwDeckApiException(
-          "DECK_VALIDATION_FAILED",
-          HttpStatus.BAD_REQUEST,
-          "Requested slide does not exist in the deck",
-        );
-      }
-      const hasNotes = slide.speakerNotes.trim().length > 0;
-      const requiresExistingNotes = request.mode !== "draft" && request.mode !== "icebreaker";
-      if (
-        (request.mode === "draft" && hasNotes) ||
-        (requiresExistingNotes && !hasNotes)
-      ) {
-        throwDeckApiException(
-          "DECK_VALIDATION_FAILED",
-          HttpStatus.BAD_REQUEST,
-          hasNotes
-            ? "Draft mode is only available when speaker notes are empty"
-            : "Refinement modes require existing speaker notes",
-        );
-      }
-
-      const deck = await this.writeDeckCheckpoint(
-        manager,
-        materializedState.deck,
-        nowIso(),
-      );
-      return speakerNotesSuggestionJobPayloadSchema.shape.request.parse({
-        ...request,
-        baseVersion: deck.version,
-      });
-    });
-
-    const queuedJob = await this.jobsService.create({
-      projectId,
-      type: "speaker-notes-suggestion",
-      payload: { request: preparedRequest },
-    });
-
-    try {
-      const config = loadOrbitConfig(process.env, { service: "api" });
-      await this.enqueueSpeakerNotesSuggestion({
-        driver: config.JOB_QUEUE_DRIVER,
-        redisUrl: config.REDIS_URL,
-        jobId: queuedJob.jobId,
-        projectId,
-        request: preparedRequest,
-      });
-      this.logger?.info(
-        {
-          event: "speaker_notes.suggestion.queued",
-          jobId: queuedJob.jobId,
-          jobType: queuedJob.type,
-          projectId,
-          deckId: preparedRequest.deckId,
-          slideId: preparedRequest.slideId,
-          deckVersion: preparedRequest.baseVersion,
-          mode: preparedRequest.mode,
-        },
-        "Speaker notes suggestion job enqueued.",
-      );
-    } catch (error) {
-      await this.jobsService.update(queuedJob.jobId, {
-        status: "failed",
-        progress: 0,
-        message: "Speaker notes suggestion enqueue failed.",
-        error: {
-          code: "SPEAKER_NOTES_SUGGESTION_ENQUEUE_FAILED",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Speaker notes suggestion enqueue failed.",
-        },
-      });
-      this.logger?.error(
-        {
-          event: "speaker_notes.suggestion.failed",
-          jobId: queuedJob.jobId,
-          jobType: queuedJob.type,
-          projectId,
-          deckId: preparedRequest.deckId,
-          slideId: preparedRequest.slideId,
-          deckVersion: preparedRequest.baseVersion,
-          mode: preparedRequest.mode,
-          reason: "enqueue_failed",
-          error: serializeLogError(error),
-        },
-        "Speaker notes suggestion enqueue failed.",
-      );
-      throw error;
-    }
-
-    return createSpeakerNotesSuggestionJobResponseSchema.parse({ job: queuedJob });
-  }
-
-  async listSnapshots(projectId: string): Promise<ListDeckSnapshotsResponse> {
-    const rows = await this.dataSource.query<DeckSnapshotRow[]>(
-      `
-        SELECT snapshot_id, project_id, deck_id, deck_json, version, reason, created_at
-        FROM deck_snapshots
-        WHERE project_id = $1
-        ORDER BY created_at DESC, version DESC, snapshot_id DESC
-      `,
-      [projectId],
-    );
-    const snapshots = deduplicateRestoreSnapshotRows(rows);
-
-    return listDeckSnapshotsResponseSchema.parse({
-      projectId,
-      snapshots: snapshots.map(parseSnapshotRow),
-    });
-  }
-
-  async getSnapshot(
-    projectId: string,
-    snapshotId: string,
-  ): Promise<DeckSnapshotDetail> {
-    const rows = await this.dataSource.query<DeckSnapshotRow[]>(
-      `
-        SELECT snapshot_id, project_id, deck_id, deck_json, version, reason, created_at
-        FROM deck_snapshots
-        WHERE project_id = $1 AND snapshot_id = $2
-        LIMIT 1
-      `,
-      [projectId, snapshotId],
-    );
-    const row = rows[0];
-
-    if (!row) {
-      throwDeckApiException(
-        "SNAPSHOT_NOT_FOUND",
-        HttpStatus.NOT_FOUND,
-        `Snapshot not found: ${snapshotId}`,
-      );
-    }
-
-    return deckSnapshotDetailSchema.parse({
-      ...parseSnapshotRow(row),
-      deck: removeLegacyAiGeneratedTitleAnimations(parseDeckJson(row.deck_json)),
-    });
-  }
-
-  async getOrCreateSnapshot(deck: Deck): Promise<DeckSnapshot> {
-    return this.dataSource.transaction(async (manager) => {
-      await manager.query(
-        `SELECT deck_id FROM decks WHERE project_id = $1 AND deck_id = $2 FOR UPDATE`,
-        [deck.projectId, deck.deckId],
-      );
-      const rows = await manager.query<DeckSnapshotRow[]>(
-        `SELECT snapshot_id, project_id, deck_id, deck_json, version, reason, created_at
-         FROM deck_snapshots
-         WHERE project_id = $1 AND deck_id = $2 AND version = $3
-         ORDER BY created_at DESC, snapshot_id DESC LIMIT 1`,
-        [deck.projectId, deck.deckId, deck.version],
-      );
-      return rows[0]
-        ? parseSnapshotRow(rows[0])
-        : this.createSnapshot(manager, deck, "auto-save", nowIso());
-    });
-  }
-
-  async restoreSnapshot(
-    projectId: string,
-    snapshotId: string,
-  ): Promise<RestoreDeckSnapshotResponse> {
-    let syncInput: PptxOoxmlSyncJobInput | null = null;
-    const response = await this.dataSource.transaction(async (manager) => {
-      const snapshotRow = await this.findSnapshotRow(manager, snapshotId);
-
-      if (!snapshotRow) {
-        throwDeckApiException(
-          "SNAPSHOT_NOT_FOUND",
-          HttpStatus.NOT_FOUND,
-          `Snapshot not found: ${snapshotId}`,
-        );
-      }
-
-      if (snapshotRow.project_id !== projectId) {
-        throwDeckApiException(
-          "SNAPSHOT_PROJECT_MISMATCH",
-          HttpStatus.BAD_REQUEST,
-          "Snapshot does not belong to the requested project",
-          [
-            `projectId=${projectId}`,
-            `snapshot.projectId=${snapshotRow.project_id}`,
-          ],
-        );
-      }
-
-      const restoredSnapshot = parseSnapshotRow(snapshotRow);
-      const deck = removeLegacyAiGeneratedTitleAnimations(
-        parseDeckJson(snapshotRow.deck_json),
-      );
-      const updatedAt = nowIso();
-      let currentDeck: Deck | undefined;
-      let templateBlueprint: OoxmlTemplateBlueprint | undefined;
-      const currentRow = await this.findDeckRowForUpdate(
-        manager,
-        projectId,
-        deck.deckId,
-      );
-      if (currentRow) {
-        const currentState = await this.readCurrentDeckState(
-          manager,
-          parseDeckJson(currentRow.deck_json),
-          projectId,
-          deck.deckId,
-          toIso(currentRow.updated_at),
-          true,
-        );
-        currentDeck = currentState.deck;
-        templateBlueprint = await this.findOoxmlTemplateBlueprint(
-          manager,
-          projectId,
-          currentDeck.deckId,
-          currentDeck,
-        );
-        const existingRestoreSnapshot =
-          await this.findEquivalentRestoreSnapshot(manager, currentDeck);
-        if (!existingRestoreSnapshot) {
-          await this.createSnapshot(
-            manager,
-            currentDeck,
-            "snapshot-restore",
-            updatedAt,
-          );
-        }
-      }
-
-      if (currentDeck && templateBlueprint) {
-        const replacement = createOoxmlReplacement(
-          currentDeck,
-          deck,
-          updatedAt,
-        );
-        await this.insertPatchLog(manager, projectId, replacement.changeRecord);
-        const restoredDeck = await this.writeDeckCheckpoint(
-          manager,
-          replacement.deck,
-          updatedAt,
-          templateBlueprint,
-        );
-        await this.updateProjectTitle(
-          manager,
-          projectId,
-          restoredDeck.title,
-        );
-        syncInput = {
-          deckId: restoredDeck.deckId,
-          changeId: replacement.changeRecord.changeId,
-          targetDeckVersion: restoredDeck.version,
-        };
-
-        return { deck: restoredDeck, restoredSnapshot, updatedAt };
-      }
-
-      await this.deletePatchRowsAfterVersion(
-        manager,
-        projectId,
-        deck.deckId,
-        deck.version,
-      );
-      await this.writeDeckCheckpoint(manager, deck, updatedAt);
-      await this.updateProjectTitle(manager, projectId, deck.title);
-
-      return { deck, restoredSnapshot, updatedAt };
-    });
-
-    const ooxmlSyncJob = syncInput
-      ? await this.enqueueOoxmlSync(projectId, syncInput)
-      : undefined;
-
-    return restoreDeckSnapshotResponseSchema.parse({
-      ...response,
-      ...(ooxmlSyncJob ? { ooxmlSyncJob } : {}),
-    });
   }
 
   protected async readCurrentDeckState(
@@ -1657,8 +560,7 @@ export class DeckUseCasesBase {
       };
     }
 
-    const syncedDeckVersion =
-      imported.blueprint.ooxmlSyncedDeckVersion ?? null;
+    const syncedDeckVersion = imported.blueprint.ooxmlSyncedDeckVersion ?? null;
     const job =
       suppliedJob ??
       (await this.jobsService?.getLatestPptxOoxmlSync(
@@ -1685,8 +587,7 @@ export class DeckUseCasesBase {
         status === "stale" ||
         (status === "failed" &&
           (job?.error?.retryable === true ||
-            attemptedCapabilityVersion <
-              PPTX_OOXML_SYNC_CAPABILITY_VERSION)),
+            attemptedCapabilityVersion < PPTX_OOXML_SYNC_CAPABILITY_VERSION)),
       ...(job ? { job } : {}),
     };
   }
@@ -1782,7 +683,7 @@ function readSyncCapabilityVersion(job: Job | null | undefined): number {
   );
 }
 
-function parsePutDeckRequest(body: unknown): PutDeckRequest {
+export function parsePutDeckRequest(body: unknown): PutDeckRequest {
   const result = putDeckRequestSchema.safeParse(body);
 
   if (!result.success) {
@@ -1797,7 +698,7 @@ function parsePutDeckRequest(body: unknown): PutDeckRequest {
   return result.data;
 }
 
-function createOoxmlReplacement(
+export function createOoxmlReplacement(
   currentDeck: Deck,
   requestedDeck: Deck,
   createdAt: string,
@@ -2038,7 +939,9 @@ function ooxmlElementFrame(element: DeckElement) {
   };
 }
 
-function parseAppendDeckPatchRequest(body: unknown): AppendDeckPatchRequest {
+export function parseAppendDeckPatchRequest(
+  body: unknown,
+): AppendDeckPatchRequest {
   const result = appendDeckPatchRequestSchema.safeParse(body);
 
   if (!result.success) {
@@ -2053,7 +956,7 @@ function parseAppendDeckPatchRequest(body: unknown): AppendDeckPatchRequest {
   return result.data;
 }
 
-function parseDeckRow(row: DeckRow | undefined): Deck {
+export function parseDeckRow(row: DeckRow | undefined): Deck {
   if (!row) {
     throwDeckApiException(
       "DECK_NOT_FOUND",
@@ -2065,7 +968,7 @@ function parseDeckRow(row: DeckRow | undefined): Deck {
   return parseDeckJson(normalizeStoredDeckRowIdentity(row));
 }
 
-function parseDeckJson(deckJson: unknown): Deck {
+export function parseDeckJson(deckJson: unknown): Deck {
   const result = deckSchema.safeParse(deckJson);
 
   if (result.success) {
@@ -2334,7 +1237,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function deduplicateRestoreSnapshotRows(
+export function deduplicateRestoreSnapshotRows(
   rows: DeckSnapshotRow[],
 ): DeckSnapshotRow[] {
   const restoreStates: Array<{ deckId: string; deck: Deck }> = [];
@@ -2356,7 +1259,7 @@ function deduplicateRestoreSnapshotRows(
   });
 }
 
-function parseSnapshotRow(row: DeckSnapshotRow): DeckSnapshot {
+export function parseSnapshotRow(row: DeckSnapshotRow): DeckSnapshot {
   return deckSnapshotSchema.parse({
     snapshotId: row.snapshot_id,
     projectId: row.project_id,
@@ -2367,7 +1270,7 @@ function parseSnapshotRow(row: DeckSnapshotRow): DeckSnapshot {
   });
 }
 
-function throwApplyPatchException(error: ApplyDeckPatchError): never {
+export function throwApplyPatchException(error: ApplyDeckPatchError): never {
   if (error.code === "BASE_VERSION_MISMATCH") {
     throwDeckApiException(
       "STALE_BASE_VERSION",
@@ -2403,7 +1306,7 @@ function throwApplyPatchException(error: ApplyDeckPatchError): never {
   );
 }
 
-function throwDeckApiException(
+export function throwDeckApiException(
   code: DeckApiErrorCode,
   status: HttpStatus,
   message: string,
@@ -2425,12 +1328,12 @@ function formatZodError(error: ZodError): string[] {
   });
 }
 
-function toIso(value: Date | string): string {
+export function toIso(value: Date | string): string {
   return value instanceof Date
     ? value.toISOString()
     : new Date(value).toISOString();
 }
 
-function nowIso(): string {
+export function nowIso(): string {
   return new Date().toISOString();
 }
