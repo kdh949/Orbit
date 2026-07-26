@@ -65,16 +65,15 @@ test("구조 지표를 production과 test 파일로 분리해 계산한다", () 
   assert.equal(metrics.scopedAgentInstructionFiles, 2);
 });
 
-test("schema v2 snapshot에 Git tree identity와 대표 task 4개를 기록한다", () => {
+test("schema v3 snapshot에 Git tree identity와 대표 task 4개를 기록한다", () => {
   const snapshot = createBenchmarkSnapshot(createRepositoryFixture(), {
     capturedAt: "2026-07-26T00:00:00.000Z",
     gitIdentity,
-    sourceArchiveSha256: "c".repeat(64),
   });
 
   assert.equal(BENCHMARK_TASKS.length, 4);
-  assert.equal(snapshot.schemaVersion, 2);
-  assert.equal(snapshot.toolVersion, 2);
+  assert.equal(snapshot.schemaVersion, 3);
+  assert.equal(snapshot.toolVersion, 3);
   assert.equal(snapshot.headCommit, gitIdentity.headCommit);
   assert.equal(snapshot.treeHash, gitIdentity.treeHash);
   assert.equal(snapshot.manualBenchmark.initialRunsPerTask, 1);
@@ -114,55 +113,36 @@ test("현재 구조 지표와 baseline의 nested delta를 계산한다", () => {
   );
 });
 
-test("legacy schema와 잘못된 archive hash를 거부한다", () => {
+test("legacy schema와 Git identity 누락을 거부한다", () => {
   const issues = validateBenchmarkSnapshot({
-    schemaVersion: 1,
-    toolVersion: 1,
+    schemaVersion: 2,
+    toolVersion: 2,
     capturedAt: "",
     headCommit: "",
     treeHash: "",
     workingTreeDirty: "no",
-    sourceArchiveSha256: "invalid",
     structural: {},
-    macroRuns: [],
     manualBenchmark: { tasks: [] },
   });
 
   assert.ok(issues.some((issue) => issue.includes("schemaVersion")));
   assert.ok(issues.some((issue) => issue.includes("toolVersion")));
-  assert.ok(issues.some((issue) => issue.includes("sourceArchiveSha256")));
+  assert.ok(issues.some((issue) => issue.includes("Git commit")));
   assert.ok(issues.some((issue) => issue.includes("manifestCoverage")));
 });
 
-test("Git metadata가 없는 source archive snapshot identity를 허용한다", () => {
+test("유효하지 않은 Git identity를 거부한다", () => {
   const snapshot = createBenchmarkSnapshot(createRepositoryFixture(), {
     gitIdentity: {
-      headCommit: null,
-      treeHash: null,
+      headCommit: "invalid",
+      treeHash: "invalid",
       workingTreeDirty: false,
     },
-    sourceArchiveSha256: "d".repeat(64),
   });
-
-  assert.equal(snapshot.headCommit, null);
-  assert.equal(snapshot.treeHash, null);
-  assert.deepEqual(validateBenchmarkSnapshot(snapshot), []);
-});
-
-test("archive snapshot에 검증되지 않은 commit label을 함께 기록하지 않는다", () => {
-  const snapshot = createBenchmarkSnapshot(createRepositoryFixture(), {
-    gitIdentity: {
-      headCommit: null,
-      treeHash: null,
-      workingTreeDirty: false,
-    },
-    sourceArchiveSha256: "d".repeat(64),
-  });
-  snapshot.headCommit = "unverified";
 
   assert.ok(
     validateBenchmarkSnapshot(snapshot).some((issue) =>
-      issue.includes("archive-only"),
+      issue.includes("Git commit"),
     ),
   );
 });

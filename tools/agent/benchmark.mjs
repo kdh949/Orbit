@@ -1,14 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-} from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { extname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -28,7 +21,7 @@ import {
 } from "./lib/import-graph.mjs";
 import { matchesRepoGlob, toRepoPath } from "./lib/repo-path.mjs";
 
-export const BENCHMARK_TOOL_VERSION = 2;
+export const BENCHMARK_TOOL_VERSION = 3;
 const CODE_EXTENSIONS = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 
 export const BENCHMARK_TASKS = [
@@ -242,15 +235,13 @@ export function createBenchmarkSnapshot(rootDirectory, options = {}) {
   }
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     toolVersion: BENCHMARK_TOOL_VERSION,
     capturedAt: options.capturedAt ?? new Date().toISOString(),
-    headCommit: gitIdentity.headCommit ?? null,
-    treeHash: gitIdentity.treeHash ?? null,
+    headCommit: gitIdentity.headCommit,
+    treeHash: gitIdentity.treeHash,
     workingTreeDirty: gitIdentity.workingTreeDirty,
-    sourceArchiveSha256: options.sourceArchiveSha256 ?? null,
     structural: collectStructuralMetrics(rootDirectory),
-    macroRuns: options.macroRuns ?? [],
     manualBenchmark: {
       status: "pending",
       initialRunsPerTask: 1,
@@ -278,8 +269,8 @@ function isNonNegativeInteger(value) {
 
 export function validateBenchmarkSnapshot(snapshot) {
   const issues = [];
-  if (snapshot?.schemaVersion !== 2) {
-    issues.push("schemaVersion은 2여야 합니다.");
+  if (snapshot?.schemaVersion !== 3) {
+    issues.push("schemaVersion은 3이어야 합니다.");
   }
   if (snapshot?.toolVersion !== BENCHMARK_TOOL_VERSION) {
     issues.push(`toolVersion은 ${BENCHMARK_TOOL_VERSION}여야 합니다.`);
@@ -288,39 +279,14 @@ export function validateBenchmarkSnapshot(snapshot) {
     issues.push("capturedAt이 필요합니다.");
   }
   const gitHashPattern = /^[a-f0-9]{40,64}$/i;
-  const hasGitIdentity =
-    gitHashPattern.test(snapshot?.headCommit ?? "") &&
-    gitHashPattern.test(snapshot?.treeHash ?? "");
-  const hasArchiveIdentity = /^[a-f0-9]{64}$/i.test(
-    snapshot?.sourceArchiveSha256 ?? "",
-  );
-  if (!hasGitIdentity && !hasArchiveIdentity) {
-    issues.push(
-      "Git commit/tree 또는 source archive SHA-256 identity가 필요합니다.",
-    );
-  }
   if (
-    hasArchiveIdentity &&
-    !hasGitIdentity &&
-    (snapshot?.headCommit !== null || snapshot?.treeHash !== null)
+    !gitHashPattern.test(snapshot?.headCommit ?? "") ||
+    !gitHashPattern.test(snapshot?.treeHash ?? "")
   ) {
-    issues.push(
-      "archive-only snapshot의 headCommit과 treeHash는 null이어야 합니다.",
-    );
-  }
-  if ((snapshot?.headCommit === null) !== (snapshot?.treeHash === null)) {
-    issues.push(
-      "headCommit과 treeHash는 함께 기록하거나 함께 null이어야 합니다.",
-    );
+    issues.push("유효한 Git commit과 tree identity가 필요합니다.");
   }
   if (typeof snapshot?.workingTreeDirty !== "boolean") {
     issues.push("workingTreeDirty는 boolean이어야 합니다.");
-  }
-  if (
-    snapshot?.sourceArchiveSha256 !== null &&
-    !/^[a-f0-9]{64}$/i.test(snapshot?.sourceArchiveSha256 ?? "")
-  ) {
-    issues.push("sourceArchiveSha256은 SHA-256 hex 또는 null이어야 합니다.");
   }
   if (
     typeof snapshot?.structural !== "object" ||
@@ -357,21 +323,6 @@ export function validateBenchmarkSnapshot(snapshot) {
       coverage.percent > 100
     ) {
       issues.push("manifestCoverage가 유효하지 않습니다.");
-    }
-  }
-  if (!Array.isArray(snapshot?.macroRuns)) {
-    issues.push("macroRuns가 필요합니다.");
-  } else {
-    for (const run of snapshot.macroRuns) {
-      if (
-        run?.kind !== "macro-refactor" ||
-        !isNonNegativeInteger(run.elapsedSeconds) ||
-        !isNonNegativeInteger(run.reportedTokens) ||
-        !/^[a-f0-9]{64}$/i.test(run.sourceArchiveSha256 ?? "") ||
-        !/^[a-f0-9]{64}$/i.test(run.resultArchiveSha256 ?? "")
-      ) {
-        issues.push("macroRuns 항목이 유효하지 않습니다.");
-      }
     }
   }
   if (!Array.isArray(snapshot?.manualBenchmark?.tasks)) {
@@ -438,8 +389,6 @@ function renderComparison(rows) {
 function parseArguments(argv) {
   const options = {
     allowDirty: false,
-    archive: null,
-    archiveSha256: null,
     command: "snapshot",
     file: null,
     json: false,
@@ -454,12 +403,6 @@ function parseArguments(argv) {
     const argument = args[index];
     if (argument === "--allow-dirty") {
       options.allowDirty = true;
-    } else if (argument === "--archive") {
-      options.archive = args[index + 1];
-      index += 1;
-    } else if (argument === "--archive-sha256") {
-      options.archiveSha256 = args[index + 1];
-      index += 1;
     } else if (argument === "--json") {
       options.json = true;
     } else if (argument === "--ref") {
@@ -501,55 +444,15 @@ function withArchivedRef(rootDirectory, ref, callback) {
   }
 }
 
-function withSourceArchive(archiveFile, callback) {
-  const archivePath = resolve(archiveFile);
-  if (!existsSync(archivePath)) {
-    throw new Error(`source archive가 없습니다: ${archivePath}`);
-  }
-  const temporaryRoot = mkdtempSync(
-    join(tmpdir(), "orbit-agent-benchmark-zip-"),
-  );
-  try {
-    execFileSync("tar", ["-xf", archivePath, "-C", temporaryRoot]);
-    const entries = readdirSync(temporaryRoot, { withFileTypes: true }).filter(
-      (entry) => entry.name !== "__MACOSX",
-    );
-    const measurementRoot =
-      entries.length === 1 && entries[0].isDirectory()
-        ? join(temporaryRoot, entries[0].name)
-        : temporaryRoot;
-    const sourceArchiveSha256 = createHash("sha256")
-      .update(readFileSync(archivePath))
-      .digest("hex");
-    return callback(
-      measurementRoot,
-      { headCommit: null, treeHash: null, workingTreeDirty: false },
-      sourceArchiveSha256,
-    );
-  } finally {
-    rmSync(temporaryRoot, { force: true, recursive: true });
-  }
-}
-
 function createCurrentSnapshot(options, allowDirty) {
-  const create = (measurementRoot, gitIdentity, archiveSha256) =>
+  const create = (measurementRoot, gitIdentity) =>
     createBenchmarkSnapshot(measurementRoot, {
       allowDirty,
       gitIdentity,
-      sourceArchiveSha256: archiveSha256 ?? options.archiveSha256,
     });
-  if (options.archive && options.ref) {
-    throw new Error("--archive와 --ref는 함께 사용할 수 없습니다.");
-  }
-  if (options.archive) {
-    return withSourceArchive(options.archive, create);
-  }
   return options.ref
     ? withArchivedRef(options.root, options.ref, create)
-    : createBenchmarkSnapshot(options.root, {
-        allowDirty,
-        sourceArchiveSha256: options.archiveSha256,
-      });
+    : createBenchmarkSnapshot(options.root, { allowDirty });
 }
 
 function run() {
@@ -573,7 +476,7 @@ function run() {
       options.file === null
     ) {
       throw new Error(
-        "사용법: agent:benchmark [snapshot [--ref <commit>|--archive <zip>] [--allow-dirty]|" +
+        "사용법: agent:benchmark [snapshot [--ref <commit>] [--allow-dirty]|" +
           "tasks|validate <file>|compare <file>]",
       );
     }
