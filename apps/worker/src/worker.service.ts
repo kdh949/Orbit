@@ -14,18 +14,12 @@ import {
   semanticCueExtractionQueueName,
   speakerNotesSuggestionQueueName,
   workerHealthCheckQueueName,
-  focusedPracticeAnalysisQueueName,
-  slidePracticeAnalysisQueueName,
-  challengeQnaGenerationQueueName,
-  challengeQnaAnswerAnalysisQueueName,
-  slideQuestionGuideGenerationQueueName,
   aiDeckResearchContentQueueName,
   aiDeckDesignLayoutQueueName,
   aiDeckImageQueueName,
   aiDeckQaFinalizeQueueName,
   designImageGenerationJobName,
   designImageGenerationQueueName,
-  activityResponseRetentionQueueName,
   enqueueActivityResponseRetentionJob,
 } from "@orbit/job-queue";
 import { loadOrbitConfig } from "@orbit/config";
@@ -68,25 +62,21 @@ import { processSemanticCueExtractionJob } from "./semantic-cue-extraction.proce
 import { processSpeakerNotesSuggestionJob } from "./speaker-notes-suggestion.processor";
 import { workerStorage } from "./storage";
 import { processWorkerHealthCheckJob } from "./worker-health-check.processor";
-import { processFocusedPracticeAnalysisJob } from "./focused-practice-analysis.processor";
-import { processSlidePracticeAnalysisJob } from "./slide-practice-analysis.processor";
 import {
   enqueueExpiredRehearsalAudioDeletions,
   enqueueExpiredSlidePracticeAudioDeletions,
   reconcileStorageDeletionOutbox,
 } from "./storage-deletion-reconciler";
-import { processChallengeQnaGenerationJob } from "./challenge-qna-generation.processor";
-import { processChallengeQnaAnswerJob } from "./challenge-qna-answer.processor";
 import { ChallengeQnaEvidenceCache } from "./challenge-qna-evidence-cache";
-import { processSlideQuestionGuideGenerationJob } from "./slide-question-guide-generation.processor";
 import { deleteExpiredSlidePracticeData } from "./slide-practice-retention";
 import { processDesignImageGenerationJob } from "./design-image-generation.processor";
 import { dispatchDueActivityRetentionJobs } from "./activity-retention.dispatcher";
-import { processActivityResponseRetentionJob } from "./activity-retention.processor";
 import {
   selectWorkerQueueNames,
   workerQueueRuntimeOptions,
 } from "./runtime/worker-queue-policy";
+import { createPracticeWorkerRegistrations } from "./runtime/registrations/practice-worker-registrations";
+import type { WorkerRegistration } from "./runtime/worker-registration";
 
 @Injectable()
 export class WorkerService implements OnModuleInit, OnModuleDestroy {
@@ -224,10 +214,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    const registrations: Array<{
-      queueName: string;
-      handler: (job: BullMqJob) => Promise<OrbitJob | void>;
-    }> = [
+    const registrations: WorkerRegistration[] = [
       {
         queueName: referenceExtractQueueName,
         handler: (job) => {
@@ -499,80 +486,13 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
             job.data,
           ),
       },
-      {
-        queueName: focusedPracticeAnalysisQueueName,
-        handler: (job) =>
-          processFocusedPracticeAnalysisJob(
-            this.dataSource,
-            storage,
-            this.config.PYTHON_WORKER_URL,
-            job.data,
-          ),
-      },
-      {
-        queueName: slidePracticeAnalysisQueueName,
-        handler: (job) =>
-          processSlidePracticeAnalysisJob(
-            this.dataSource,
-            storage,
-            this.config.PYTHON_WORKER_URL,
-            job.data,
-            (event) => {
-              const level = event.status === "unavailable" ? "warn" : "info";
-              this.logger[level](
-                event,
-                "Slide practice coaching completed.",
-              );
-            },
-          ),
-      },
-      {
-        queueName: challengeQnaGenerationQueueName,
-        handler: (job) =>
-          processChallengeQnaGenerationJob(
-            this.dataSource,
-            this.config.PYTHON_WORKER_URL,
-            job.data,
-          ),
-      },
-      {
-        queueName: challengeQnaAnswerAnalysisQueueName,
-        handler: (job) =>
-          processChallengeQnaAnswerJob(
-            this.dataSource,
-            storage,
-            this.challengeQnaEvidenceCache!,
-            this.config.PYTHON_WORKER_URL,
-            job.data,
-          ),
-      },
-      {
-        queueName: slideQuestionGuideGenerationQueueName,
-        handler: (job) =>
-          processSlideQuestionGuideGenerationJob(
-            this.dataSource,
-            this.config.PYTHON_WORKER_URL,
-            job.data,
-            (event) => {
-              if (event.event === "slide_question_guide.generation.failed") {
-                this.logger.error(
-                  event,
-                  "Slide question guide generation failed.",
-                );
-                return;
-              }
-              this.logger.info(
-                event,
-                "Slide question guide web research completed.",
-              );
-            },
-          ),
-      },
-      {
-        queueName: activityResponseRetentionQueueName,
-        handler: (job) =>
-          processActivityResponseRetentionJob(this.dataSource, job.data),
-      },
+      ...createPracticeWorkerRegistrations({
+        challengeQnaEvidenceCache: this.challengeQnaEvidenceCache!,
+        config: this.config,
+        dataSource: this.dataSource,
+        logger: this.logger,
+        storage,
+      }),
     ];
     const selectedQueues = new Set(this.queueNames);
     this.workers = registrations
