@@ -3,14 +3,18 @@ import { io } from "socket.io-client";
 import type { Socket as ClientSocket } from "socket.io-client";
 
 import { fetchEditorSessionDebug } from "../api/editorSessionApi";
+import type {
+  EditorSessionDebugState,
+  EditorSocketStatus,
+  ProjectPresenceUser
+} from "../editorSession.model";
 import { toEditorErrorMessage } from "../utils/editorFileValidation";
 
-export type ProjectPresenceUser = {
-  id: string;
-  connectedAt: string;
-  email?: string;
-  userId?: string;
-};
+export type {
+  EditorSessionDebugState,
+  EditorSocketStatus,
+  ProjectPresenceUser
+} from "../editorSession.model";
 
 type ProjectPresenceEvent = {
   payload?: {
@@ -18,23 +22,6 @@ type ProjectPresenceEvent = {
     users?: ProjectPresenceUser[];
   };
 };
-
-export type EditorSocketStatus =
-  | "connecting"
-  | "connected"
-  | "disconnected"
-  | "error";
-
-export type EditorSessionDebugState =
-  | { status: "idle" | "loading"; message: string }
-  | {
-      authenticatedAt: string;
-      email: string;
-      expiresAt: string;
-      status: "ready";
-      userId: string;
-    }
-  | { status: "error"; message: string };
 
 export function useProjectPresence(args: {
   isDebugOpen: boolean;

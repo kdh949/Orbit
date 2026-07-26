@@ -1,6 +1,6 @@
 import type { Deck, Slide } from "@orbit/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ElementPresentationState } from "../../slides/rendering/ReadOnlySlideCanvas";
+import type { ElementPresentationState } from "../../slides/rendering/presentationState";
 import {
   computeSettledElementStates,
   createBaseElementStates,

@@ -25,6 +25,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { AnnotationCommandQueue } from "./annotationCommandQueue";
+import type { CompanionAnnotationCommandInput } from "./companionSocket.contract";
 import type { CompanionSignalInput } from "./companionWebRtc";
 
 type CompanionSocket = Pick<
@@ -34,19 +35,7 @@ type CompanionSocket = Pick<
   volatile?: Pick<Socket, "emit">;
 };
 
-type AnnotationCommandBaseFields =
-  | "authorityEpochId"
-  | "baseRevision"
-  | "sequence"
-  | "sessionId"
-  | "surfaceId";
-
-export type CompanionAnnotationCommandInput =
-  PresentationCompanionAnnotationCommand extends infer Command
-    ? Command extends PresentationCompanionAnnotationCommand
-      ? Omit<Command, AnnotationCommandBaseFields>
-      : never
-    : never;
+export type { CompanionAnnotationCommandInput } from "./companionSocket.contract";
 
 const createDefaultCompanionSocket = (): CompanionSocket =>
   io({ withCredentials: true });

@@ -1,6 +1,6 @@
 import type { DeckElement, GroupElementProps, Slide } from "@orbit/shared";
 
-import type { ElementPresentationState } from "./ReadOnlySlideCanvas";
+import type { ElementPresentationState } from "./presentationState";
 
 export function resolveGroupedElementPresentationStates(args: {
   elementStates: Record<string, ElementPresentationState>;

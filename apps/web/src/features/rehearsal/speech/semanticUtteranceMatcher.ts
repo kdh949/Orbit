@@ -14,6 +14,9 @@ import {
   type SemanticOutcomePolicy,
   type SemanticUtteranceDecision
 } from "./semanticUtteranceDecision";
+import type { SemanticUtteranceMatch } from "./semanticUtterance.types";
+
+export type { SemanticUtteranceMatch } from "./semanticUtterance.types";
 
 export type SemanticSpeechConfig = {
   enabled: boolean;
@@ -40,15 +43,6 @@ export type SemanticScriptIndex = {
   dimensions: 384;
   sentences: SemanticScriptSentenceEmbedding[];
   builtAtMs: number;
-};
-
-export type SemanticUtteranceMatch = {
-  rank: number;
-  sentenceId: string;
-  sentenceIndex: number;
-  text: string;
-  similarity: number;
-  covered: boolean;
 };
 
 export type SemanticUtteranceMatcher = {

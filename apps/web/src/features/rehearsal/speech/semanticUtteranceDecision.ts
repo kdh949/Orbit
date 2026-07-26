@@ -1,5 +1,5 @@
 import { calculateWordMultisetRecall } from "./speechMatcher";
-import type { SemanticUtteranceMatch } from "./semanticUtteranceMatcher";
+import type { SemanticUtteranceMatch } from "./semanticUtterance.types";
 
 export type UtteranceOutcomeKind = "covered" | "paraphrased" | "ad-lib" | "missed";
 

@@ -22,7 +22,7 @@ import {
   Text as KonvaText
 } from "react-konva";
 import type { ComponentType } from "react";
-import type { ElementPresentationState } from "./ReadOnlySlideCanvas";
+import type { ElementPresentationState } from "./presentationState";
 
 import { ImageElementContent } from "./ImageElementContent";
 import { ActivityQrElementContent } from "../../activity-slides/rendering/ActivityQrElementContent";

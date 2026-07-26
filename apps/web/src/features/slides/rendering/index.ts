@@ -1,8 +1,8 @@
 export {
   ReadOnlySlideCanvas,
-  type ElementPresentationState,
   type SlideRuntimeHighlight
 } from "./ReadOnlySlideCanvas";
+export type { ElementPresentationState } from "./presentationState";
 export {
   SlideBackground,
   buildSlideBackgroundStyle,
