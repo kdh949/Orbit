@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const appSource = read("../App.tsx");
 const providersSource = read("./AppProviders.tsx");
+const appRoutesSource = read("./routing/appRoutes.ts");
 const routesSource = read("./staticRoutes.ts");
 
 describe("App shell architecture", () => {
@@ -15,8 +16,12 @@ describe("App shell architecture", () => {
   });
 
   it("delegates fixed route lookup and query parsing", () => {
-    expect(appSource).toContain("resolveStaticRoute(normalized, currentSearch");
-    expect(appSource).toContain("parseRouteNonNegativeInteger");
+    expect(appSource).toContain("getRoute()");
+    expect(appSource).not.toContain("resolveStaticRoute");
+    expect(appRoutesSource).toContain(
+      "resolveStaticRoute(normalized, currentSearch",
+    );
+    expect(appRoutesSource).toContain("parseRouteNonNegativeInteger");
     expect(routesSource).toContain("staticRouteTable");
     expect(routesSource).toContain("parseRouteNonNegativeInteger");
   });
