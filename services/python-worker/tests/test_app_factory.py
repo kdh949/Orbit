@@ -16,3 +16,46 @@ def test_app_factory_registers_extracted_routes_once() -> None:
     assert set(paths["/extract/reference"]) == {"post"}
     assert set(paths["/references/index"]) == {"post"}
     assert set(paths["/references/search"]) == {"post"}
+
+
+def test_app_factory_preserves_the_public_endpoint_inventory() -> None:
+    app = create_app()
+    paths = app.openapi()["paths"]
+
+    assert {path: set(methods) for path, methods in paths.items()} == {
+        "/ai/deck-color-customization": {"post"},
+        "/ai/deck-color-options": {"post"},
+        "/ai/design-agent/propose": {"post"},
+        "/ai/export-deck-pptx": {"post"},
+        "/ai/export-pptx-png-zip": {"post"},
+        "/ai/extract-semantic-cues": {"post"},
+        "/ai/generate-deck": {"post"},
+        "/ai/pptx-ooxml-generation": {"post"},
+        "/ai/pptx-ooxml-sync": {"post"},
+        "/ai/repair-deck-visuals": {"post"},
+        "/ai/review-deck-visuals": {"post"},
+        "/ai/speaker-notes/suggest": {"post"},
+        "/audio/clip": {"post"},
+        "/audio/transcribe": {"post"},
+        "/audio/transcribe-private": {"post"},
+        "/challenge-qna/analyze-answer": {"post"},
+        "/challenge-qna/generate": {"post"},
+        "/design/import-pptx": {"post"},
+        "/documents/parse": {"post"},
+        "/extract/reference": {"post"},
+        "/focused-practice/analyze": {"post"},
+        "/health": {"get"},
+        "/internal/ai/deck-generation/content-planning": {"post"},
+        "/internal/ai/deck-generation/design-planning": {"post"},
+        "/internal/ai/deck-generation/layout-compile": {"post"},
+        "/internal/ai/deck-generation/slide-compose": {"post"},
+        "/internal/ai/deck-generation/source-grounding": {"post"},
+        "/references/index": {"post"},
+        "/references/search": {"post"},
+        "/rehearsal/analyze": {"post"},
+        "/rehearsal/analyze-semantic-cues": {"post"},
+        "/rehearsal/progress-comment": {"post"},
+        "/slide-practice/analyze-audio": {"post"},
+        "/slide-practice/coaching": {"post"},
+        "/slide-question-guides/generate": {"post"},
+    }
