@@ -4,6 +4,38 @@
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts",
+      "require": "./dist/index.js"
+    },
+    "./adapters/bullmq": {
+      "types": "./dist/adapters/bullmq/index.d.ts",
+      "import": "./src/adapters/bullmq/index.ts",
+      "require": "./dist/adapters/bullmq/index.js"
+    },
+    "./names": {
+      "types": "./dist/names/index.d.ts",
+      "import": "./src/names/index.ts",
+      "require": "./dist/names/index.js"
+    },
+    "./payloads": {
+      "types": "./dist/payloads/index.d.ts",
+      "import": "./src/payloads/index.ts",
+      "require": "./dist/payloads/index.js"
+    },
+    "./ports": {
+      "types": "./dist/ports/index.d.ts",
+      "import": "./src/ports/index.ts",
+      "require": "./dist/ports/index.js"
+    },
+    "./redis": {
+      "types": "./dist/redis/index.d.ts",
+      "import": "./src/redis/index.ts",
+      "require": "./dist/redis/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rm -rf dist",

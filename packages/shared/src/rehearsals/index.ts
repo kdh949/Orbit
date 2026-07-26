@@ -6,3 +6,6 @@ export * from "./rehearsal-semantic-evidence.schema";
 export * from "./rehearsal-transcript-artifact.schema";
 export * from "./slide-transcript-snapshot.schema";
 export * from "./rehearsal.schema";
+export * from "./project-summary-contracts";
+export * from "./trend-contracts";
+export * from "./rehearsal-api-contracts";

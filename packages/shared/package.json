@@ -48,6 +48,18 @@
       "rehearsals": [
         "dist/rehearsals/index.d.ts"
       ],
+      "rehearsals/api": [
+        "dist/rehearsals/rehearsal-api-contracts.d.ts"
+      ],
+      "rehearsals/core": [
+        "dist/rehearsals/rehearsal-core-contracts.d.ts"
+      ],
+      "rehearsals/project-summary": [
+        "dist/rehearsals/project-summary-contracts.d.ts"
+      ],
+      "rehearsals/trends": [
+        "dist/rehearsals/trend-contracts.d.ts"
+      ],
       "slide-practice": [
         "dist/slide-practice/index.d.ts"
       ]
@@ -128,6 +140,26 @@
       "types": "./dist/rehearsals/index.d.ts",
       "import": "./src/rehearsals/index.ts",
       "require": "./dist/rehearsals/index.js"
+    },
+    "./rehearsals/api": {
+      "types": "./dist/rehearsals/rehearsal-api-contracts.d.ts",
+      "import": "./src/rehearsals/rehearsal-api-contracts.ts",
+      "require": "./dist/rehearsals/rehearsal-api-contracts.js"
+    },
+    "./rehearsals/core": {
+      "types": "./dist/rehearsals/rehearsal-core-contracts.d.ts",
+      "import": "./src/rehearsals/rehearsal-core-contracts.ts",
+      "require": "./dist/rehearsals/rehearsal-core-contracts.js"
+    },
+    "./rehearsals/project-summary": {
+      "types": "./dist/rehearsals/project-summary-contracts.d.ts",
+      "import": "./src/rehearsals/project-summary-contracts.ts",
+      "require": "./dist/rehearsals/project-summary-contracts.js"
+    },
+    "./rehearsals/trends": {
+      "types": "./dist/rehearsals/trend-contracts.d.ts",
+      "import": "./src/rehearsals/trend-contracts.ts",
+      "require": "./dist/rehearsals/trend-contracts.js"
     },
     "./slide-practice": {
       "types": "./dist/slide-practice/index.d.ts",
