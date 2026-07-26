@@ -70,14 +70,7 @@ import {
   ensurePresenterCompanionSession,
   type PresenterCompanionSessionIdentity,
 } from "../presentation/presentationApi";
-import {
-  LiveSttAdapterError,
-  type LiveSttAdapter,
-  type LiveSttAudioLevelEvent,
-  type LiveSttBiasContext,
-  type LiveSttDecodingMethod,
-} from "../../runtime/speech/stt/liveSttAdapter";
-import type { LiveSttDebugPcmRecording } from "../../runtime/speech/stt/liveSttPcmDebug";
+import { type LiveSttAdapter } from "../../runtime/speech/stt/liveSttAdapter";
 import {
   confirmRehearsalCommandCandidate,
   createRehearsalCommandConfirmationState,
@@ -87,20 +80,15 @@ import {
 } from "./rehearsalCommands";
 import {
   applyLiveTranscriptBias,
-  buildLiveSttBiasContext,
   getLiveSttBiasMode,
   shouldUseLiveSttPostprocessBias,
 } from "./stt/liveSttBias";
 import { getRehearsalSlideTitle as getSlideTitle } from "./rehearsalSlideText";
 import {
   LiveSttError,
-  type LiveSttBiasPhrase,
-  type LiveSttEngineId,
   type LiveSttPort,
   type LiveSttResult,
 } from "../../runtime/speech/stt/liveSttPort";
-import { createLiveSttPort } from "../../runtime/speech/stt/liveSttEngineRegistry";
-import { fetchLiveSttRuntimeConfig } from "../../runtime/speech/stt/liveSttRuntimeConfig";
 import {
   applyLiveTranscriptEvent,
   confirmKeywordOccurrenceMatches,
@@ -114,7 +102,6 @@ import {
   type LiveTranscriptAnalysis,
   type LiveTranscriptBuffer,
 } from "../../runtime/speech/tracking/liveTranscriptAnalysis";
-import { SherpaLiveSttPort } from "../../runtime/speech/stt/sherpa/sherpaLiveSttPort";
 import { createRehearsalScriptPrompterRows } from "./panel/rehearsalScriptPrompter";
 import {
   getKeywordOccurrenceTriggerIdsForSlide,
@@ -187,11 +174,7 @@ import {
   prepareSlideAssets,
   retainSlideAssetWindow,
 } from "../slides/rendering";
-import {
-  canRetryInitialRecordingLiveStt,
-  createInitialLiveSttRetryCoordinator,
-  sanitizeLiveSttErrorMessage,
-} from "./panel/rehearsalLiveSttRecovery";
+import { sanitizeLiveSttErrorMessage } from "./panel/rehearsalLiveSttRecovery";
 import {
   createSemanticCapabilityStatusItems,
   getNextSemanticCapabilityRecoveryDelay,
@@ -271,13 +254,6 @@ import { PracticeGoalReminder } from "../coaching/PracticeGoalReminder";
 import { ActivityPresenterPanel } from "../activity-slides";
 import { RehearsalFailureScreen } from "./completion/RehearsalFailureScreen";
 import {
-  downloadLiveSttDebugPcm,
-  getLiveAudioLevelLabel,
-  getLiveAudioLevelPercent,
-  getLiveSttDebugDecodingMethod,
-  shouldShowLiveSttDebugPcmDownload,
-} from "./stt/liveSttUiModel";
-import {
   buildP3SessionSlides,
   getHighlightedKeywordOccurrencesForSlide,
   getRehearsalPrompterRows,
@@ -287,6 +263,10 @@ import {
 } from "./rehearsalWorkspaceModel";
 import { useRehearsalMediaSession } from "./hooks/useRehearsalMediaSession";
 import { useRehearsalRunLifecycle } from "./hooks/useRehearsalRunLifecycle";
+import {
+  createDefaultLiveSttPort,
+  useLiveSttSession,
+} from "./hooks/useLiveSttSession";
 
 type RehearsalPhase =
   | "idle"
@@ -297,13 +277,6 @@ type RehearsalPhase =
   | "succeeded"
   | "failed";
 type RehearsalTimeMode = "stopwatch" | "timer";
-type LiveSttStatus =
-  | "idle"
-  | "starting"
-  | "listening"
-  | "unavailable"
-  | "failed"
-  | "stopped";
 type RehearsalRuntimeStatus =
   | "idle"
   | "running"
@@ -358,58 +331,6 @@ function readBrowserLocalStorage() {
   }
 }
 
-function createDefaultLiveSttPort(
-  options: {
-    engineId?: LiveSttEngineId;
-    legacyAdapter?: LiveSttAdapter;
-    onAudioLevel?: (event: LiveSttAudioLevelEvent) => void;
-    onDebugPcmAvailable?: (recording: LiveSttDebugPcmRecording) => void;
-    getDecodingMethod?: () => LiveSttDecodingMethod | null;
-    projectId?: string;
-  } = {},
-) {
-  const {
-    engineId,
-    legacyAdapter,
-    onAudioLevel,
-    onDebugPcmAvailable,
-    getDecodingMethod,
-    projectId,
-  } = options;
-  const sherpaOptions = {
-    onAudioLevel,
-    onDebugPcmAvailable,
-    getDecodingMethod,
-  };
-  const shouldUseSherpaCompatibility = !engineId || engineId === "sherpa";
-
-  if (shouldUseSherpaCompatibility && legacyAdapter) {
-    return new SherpaLiveSttPort({ ...sherpaOptions, adapter: legacyAdapter });
-  }
-
-  if (shouldUseSherpaCompatibility) {
-    const windowAdapter = window.__orbitCreateLiveSttAdapter?.();
-    if (windowAdapter) {
-      return new SherpaLiveSttPort({
-        ...sherpaOptions,
-        adapter: windowAdapter,
-      });
-    }
-    return new SherpaLiveSttPort(sherpaOptions);
-  }
-
-  return createLiveSttPort(engineId, {
-    onAudioLevel,
-    projectId,
-  });
-}
-
-function readLiveSttPortProjectId(port: LiveSttPort) {
-  return "projectId" in port && typeof port.projectId === "string"
-    ? port.projectId
-    : null;
-}
-
 export type RehearsalWorkspaceProps = {
   initialDeck?: Deck;
   fallbackDeck?: Deck;
@@ -428,6 +349,8 @@ export type RehearsalWorkspaceProps = {
 
 export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   const [deck, setDeck] = useState<Deck | null>(props.initialDeck ?? null);
+  const { settings: presenterSettings, save: savePresenterSettings } =
+    usePresenterSettings();
   const [currentSlideIndex, setCurrentSlideIndex] = useState(
     props.presenterInitialSlideIndex ?? 0,
   );
@@ -440,14 +363,8 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   const [error, setError] = useState("");
   const [run, setRun] = useState<RehearsalRun | null>(null);
   const [job, setJob] = useState<Job | null>(null);
-  const [liveStatus, setLiveStatus] = useState<LiveSttStatus>("idle");
-  const [liveError, setLiveError] = useState("");
   const [liveKeywordState, setLiveKeywordState] =
     useState<LiveTranscriptAnalysis | null>(null);
-  const [liveAudioLevel, setLiveAudioLevel] =
-    useState<LiveSttAudioLevelEvent | null>(null);
-  const [liveDebugPcmRecording, setLiveDebugPcmRecording] =
-    useState<LiveSttDebugPcmRecording | null>(null);
   const [liveCue, setLiveCue] = useState<LiveSttAnimationCueEvent | null>(null);
   const [liveSlideAdvance, setLiveSlideAdvance] =
     useState<LiveSttSlideAdvanceEvent | null>(null);
@@ -508,7 +425,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   const [pauseDetectorSnapshot, setPauseDetectorSnapshot] =
     useState<PauseDetectorSnapshot | null>(null);
   const [isLiveDemoActive, setIsLiveDemoActive] = useState(false);
-  const [isLiveSttRetrying, setIsLiveSttRetrying] = useState(false);
   const [isLiveStopModalOpen, setIsLiveStopModalOpen] = useState(false);
   const [displayRole, setDisplayRole] = useState<
     "presenter" | "slide-receiver" | "slide-surface"
@@ -538,11 +454,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   const [editingTimeField, setEditingTimeField] = useState<
     "elapsed" | "duration" | null
   >(null);
-  const liveSttPortRef = useRef<LiveSttPort | null>(props.liveSttPort ?? null);
-  const liveSttSubscriptionCleanupRef = useRef<(() => void) | null>(null);
-  const liveSttRetryCoordinatorRef = useRef(
-    createInitialLiveSttRetryCoordinator(),
-  );
   const p3SessionRef = useRef<P3RehearsalSession | null>(null);
   const semanticEmbeddingServicePromiseRef =
     useRef<Promise<E5EmbeddingService> | null>(null);
@@ -595,7 +506,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   const liveKeywordStateRef = useRef<LiveTranscriptAnalysis | null>(null);
   const liveKeywordOccurrenceStateRef =
     useRef<LiveKeywordOccurrenceState | null>(null);
-  const liveBiasContextRef = useRef<LiveSttBiasContext | null>(null);
   const liveCommandConfirmationRef = useRef(
     createRehearsalCommandConfirmationState(),
   );
@@ -617,6 +527,22 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     typeof createSlideAssetNavigationGate
   > | null>(null);
   const mediaSession = useRehearsalMediaSession();
+  const liveSttSession = useLiveSttSession({
+    fallbackEngineId: presenterSettings.sttEngine,
+    initialPort: props.liveSttPort,
+    legacyAdapter: props.liveSttAdapter,
+    projectId: deck?.projectId ?? props.projectId,
+  });
+  const {
+    audioLevel: liveAudioLevel,
+    audioLevelLabel: liveAudioLevelLabel,
+    audioLevelPercent: liveAudioLevelPercent,
+    canDownloadDebugPcm: canDownloadLiveSttDebugPcm,
+    error: liveError,
+    isRetrying: isLiveSttRetrying,
+    setError: setLiveError,
+    status: liveStatus,
+  } = liveSttSession;
   const runLifecycle = useRehearsalRunLifecycle({
     getLiveTranscript: () =>
       renderLiveTranscriptBuffer(liveSessionTranscriptBufferRef.current),
@@ -656,9 +582,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
       },
     });
   }
-  const { settings: presenterSettings, save: savePresenterSettings } =
-    usePresenterSettings();
-
   useEffect(() => {
     function handleDeveloperModeShortcut(event: KeyboardEvent) {
       if (
@@ -981,16 +904,15 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   useEffect(() => {
     return () => {
       resetAutoAdvanceRuntimeState(currentSlide?.slideId ?? null);
-      cleanupLiveSttSubscriptions();
+      liveSttSession.cleanupSubscriptions();
       const p3Session = p3SessionRef.current;
       p3SessionRef.current = null;
       pendingP3SlideIndexRef.current = null;
       if (p3Session) {
         void p3Session.stop();
       } else {
-        void liveSttPortRef.current?.stop();
+        void liveSttSession.stopPort();
       }
-      void liveSttPortRef.current?.dispose();
     };
   }, []);
 
@@ -1248,8 +1170,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
         presenterStepIndex,
       )
     : 0;
-  const liveAudioLevelLabel = getLiveAudioLevelLabel(liveAudioLevel);
-  const liveAudioLevelPercent = getLiveAudioLevelPercent(liveAudioLevel);
   const liveAudioMeterState = liveAudioLevel
     ? liveAudioLevelLabel === "입력 과대"
       ? "clipped"
@@ -1257,9 +1177,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
         ? "quiet"
         : "active"
     : "idle";
-  const canDownloadLiveSttDebugPcm = shouldShowLiveSttDebugPcmDownload(
-    liveDebugPcmRecording,
-  );
   const p3TimingSnapshot: RehearsalTimingSnapshot = deck
     ? {
         deckTargetSeconds: getRehearsalDeckTargetSeconds(deck),
@@ -1385,19 +1302,13 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     } else {
       resetLivePlaybackForSlide(currentSlide);
     }
-    const nextBiasContext =
-      deck && currentSlide
-        ? buildLiveSttBiasContext(currentSlide, {
-            nearbySlides: getNearbySlides(deck, currentSlideIndex),
-            pronunciationLexicon:
-              runLifecycle.getActiveRun()?.evaluationSnapshot
-                ?.pronunciationLexicon,
-          })
-        : null;
-    liveBiasContextRef.current = nextBiasContext;
-    void liveSttPortRef.current?.updateBiasPhrases(
-      getBiasPhrasesFromContext(nextBiasContext),
-    );
+    if (deck && currentSlide) {
+      liveSttSession.updateBias(deck, currentSlideIndex, {
+        nearbySlides: getNearbySlides(deck, currentSlideIndex),
+        pronunciationLexicon:
+          runLifecycle.getActiveRun()?.evaluationSnapshot?.pronunciationLexicon,
+      });
+    }
     const p3Session = p3SessionRef.current;
     if (p3Session && (isLiveDemoActive || phase === "recording")) {
       const p3State = p3Session.getState();
@@ -1434,9 +1345,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     setJob(null);
     setHasLocalCompletion(false);
     setIsCompletionModalOpen(false);
-    setLiveError("");
-    setLiveAudioLevel(null);
-    setLiveDebugPcmRecording(null);
+    liveSttSession.resetAttempt();
     if (options.allowDuringReport) {
       setPhase("idle");
     }
@@ -1507,9 +1416,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   async function startLiveDemo() {
     if (!deck || !canStartLiveDemo) return;
 
-    setLiveError("");
-    setLiveAudioLevel(null);
-    setLiveDebugPcmRecording(null);
+    liveSttSession.resetAttempt();
     setHasLocalCompletion(false);
     setElapsedSeconds(0);
     setIsTimerRunning(true);
@@ -1520,8 +1427,12 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     resetAutoAdvanceRuntimeState(currentSlide?.slideId ?? null);
 
     if (!navigator.mediaDevices?.getUserMedia) {
-      setLiveError("이 브라우저는 마이크 녹음을 지원하지 않습니다.");
-      setLiveStatus("failed");
+      liveSttSession.fail(
+        new LiveSttError(
+          "start_failed",
+          "이 브라우저는 마이크 녹음을 지원하지 않습니다.",
+        ),
+      );
       return;
     }
 
@@ -1545,31 +1456,25 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
       setIsLiveDemoActive(false);
       setRehearsalRuntimeStatus("idle");
       rehearsalRuntimeStatusRef.current = "idle";
-      setLiveError(toMicrophoneErrorMessage(cause));
-      setLiveStatus("failed");
+      liveSttSession.fail(
+        new LiveSttError("start_failed", toMicrophoneErrorMessage(cause)),
+      );
     }
   }
 
   async function retryInitialRecordingLiveStt() {
     const stream = mediaSession.getStream("recording");
-    const coordinator = liveSttRetryCoordinatorRef.current;
-    if (
-      !canRetryInitialRecordingLiveStt({
-        hasActiveSession: p3SessionRef.current !== null,
-        hasReusableStream: mediaSession.hasReusableStream("recording"),
-        isRecording: phase === "recording",
-        isRetrying: isLiveSttRetrying || coordinator.isRetrying(),
-        liveStatus,
-      }) ||
-      !stream
-    ) {
+    if (!stream) {
       return false;
     }
 
-    setIsLiveSttRetrying(true);
-    setLiveError("");
-    try {
-      return await coordinator.retry((isCurrent) =>
+    return liveSttSession.retryRecording(
+      {
+        hasActiveSession: p3SessionRef.current !== null,
+        hasReusableStream: mediaSession.hasReusableStream("recording"),
+        isRecording: phase === "recording",
+      },
+      (isCurrent) =>
         startP3Tracking(
           stream,
           runLifecycle.getActiveRun()?.evaluationSnapshot ?? undefined,
@@ -1578,16 +1483,13 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
             mediaSession.getStream("recording") === stream &&
             mediaSession.hasReusableStream("recording"),
         ),
-      );
-    } finally {
-      setIsLiveSttRetrying(false);
-    }
+    );
   }
 
   function stopLiveDemo(options: { showCompletionModal?: boolean } = {}) {
     const wasLiveDemoActive = isLiveDemoActive || isLiveSttActive;
     setRehearsalRuntimeStatus("stopping");
-    cleanupLiveSttSubscriptions();
+    liveSttSession.cleanupSubscriptions();
     const p3Session = p3SessionRef.current;
     p3SessionRef.current = null;
     pendingP3SlideIndexRef.current = null;
@@ -1604,17 +1506,14 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
       pendingP3RunMetaRef.current = runMetaPromise;
       void runMetaPromise;
     } else {
-      void liveSttPortRef.current?.stop();
+      void liveSttSession.stopPort();
     }
     mediaSession.releaseStream("live-demo");
-    setLiveAudioLevel(null);
+    liveSttSession.markStopped();
     setIsLiveDemoActive(false);
     setIsTimerRunning(false);
     setRehearsalRuntimeStatus("idle");
     rehearsalRuntimeStatusRef.current = "idle";
-    setLiveStatus((current) =>
-      current === "listening" || current === "starting" ? "stopped" : current,
-    );
     resetLivePlaybackForSlide(currentSlide);
     resetAutoAdvanceRuntimeState(currentSlide?.slideId ?? null);
     if (options.showCompletionModal && wasLiveDemoActive) {
@@ -1626,13 +1525,13 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     if (phase !== "recording") return;
 
     captureSlideTranscriptSnapshot("rehearsal-end");
-    liveSttRetryCoordinatorRef.current.cancel();
+    liveSttSession.cancelRetry();
     setRehearsalRuntimeStatus("stopping");
     setPhase("uploading");
     setIsTimerRunning(false);
     resetLivePlaybackForSlide(currentSlide);
     resetAutoAdvanceRuntimeState(currentSlide?.slideId ?? null);
-    cleanupLiveSttSubscriptions();
+    liveSttSession.cleanupSubscriptions();
     const p3Session = p3SessionRef.current;
     p3SessionRef.current = null;
     pendingP3SlideIndexRef.current = null;
@@ -1649,12 +1548,9 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
       pendingP3RunMetaRef.current = runMetaPromise;
       void runMetaPromise;
     } else {
-      void liveSttPortRef.current?.stop();
+      void liveSttSession.stopPort();
     }
-    setLiveAudioLevel(null);
-    setLiveStatus((current) =>
-      current === "listening" || current === "starting" ? "stopped" : current,
-    );
+    liveSttSession.markStopped();
     mediaSession.stopRecording();
     setRehearsalRuntimeStatus("idle");
     rehearsalRuntimeStatusRef.current = "idle";
@@ -1696,7 +1592,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
             setP3SessionState(p3Session.getState());
           }
         } else {
-          await liveSttPortRef.current?.stop();
+          await liveSttSession.stopPort();
         }
       },
     });
@@ -1706,10 +1602,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
         isRecordingPause ? "recording" : "live-demo",
         false,
       );
-      setLiveAudioLevel(null);
-      setLiveStatus((current) =>
-        current === "listening" || current === "starting" ? "stopped" : current,
-      );
+      liveSttSession.markStopped();
       setIsTimerRunning(false);
       setRehearsalRuntimeStatus("paused");
       rehearsalRuntimeStatusRef.current = "paused";
@@ -1720,11 +1613,11 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     }
 
     if (pauseResult.error) {
-      const error = toLiveSttError(pauseResult.error);
+      const error = liveSttSession.normalizeError(pauseResult.error);
       if (isRecordingPause) {
         setError(error.message);
       } else {
-        setLiveError(error.message);
+        liveSttSession.fail(error);
       }
     }
   }
@@ -1779,8 +1672,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
             "음성 인식에 사용할 마이크 연결을 찾지 못했습니다.",
           );
         }
-        setLiveError("");
-        setLiveStatus("starting");
+        liveSttSession.markStarting();
         const resumedState = await p3Session.resume({ audioSource: stream });
         if (resumedState.status !== "running") {
           throw new LiveSttError(
@@ -1789,7 +1681,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
           );
         }
         setP3SessionState(resumedState);
-        setLiveStatus("listening");
+        liveSttSession.markListening();
       }
 
       setIsTimerRunning(true);
@@ -1797,7 +1689,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
       rehearsalRuntimeStatusRef.current = "running";
       setScriptAutoFollowKey((current) => current + 1);
     } catch (cause) {
-      const error = toLiveSttError(cause);
+      const error = liveSttSession.normalizeError(cause);
       await mediaSession.pauseRecording().catch(() => undefined);
       mediaSession.setStreamEnabled(
         phase === "recording" ? "recording" : "live-demo",
@@ -1806,8 +1698,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
       if (phase === "recording") {
         setError(error.message);
       } else {
-        setLiveError(error.message);
-        setLiveStatus(isLiveSttUnavailable(error) ? "unavailable" : "failed");
+        liveSttSession.fail(error);
       }
       setIsTimerRunning(false);
       setRehearsalRuntimeStatus("paused");
@@ -1889,48 +1780,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     }
 
     setTimerDurationSeconds(Math.min(nextSeconds, 60 * 60 * 24 - 1));
-  }
-
-  function getOrCreateLiveSttPort(engineId: LiveSttEngineId) {
-    if (props.liveSttPort) {
-      liveSttPortRef.current = props.liveSttPort;
-      return props.liveSttPort;
-    }
-
-    const cachedPort = liveSttPortRef.current;
-    const activeProjectId =
-      deckRef.current?.projectId ?? props.projectId ?? demoIds.projectId;
-    if (
-      cachedPort?.engineId === engineId &&
-      (cachedPort.engineId !== "openai-realtime" ||
-        readLiveSttPortProjectId(cachedPort) === activeProjectId)
-    ) {
-      return cachedPort;
-    }
-
-    cachedPort?.dispose();
-    const port = createDefaultLiveSttPort({
-      engineId,
-      legacyAdapter: props.liveSttAdapter,
-      onAudioLevel: setLiveAudioLevel,
-      onDebugPcmAvailable: setLiveDebugPcmRecording,
-      getDecodingMethod: getLiveSttDebugDecodingMethod,
-      projectId: activeProjectId,
-    });
-    liveSttPortRef.current = port;
-    return port;
-  }
-
-  async function resolveEffectiveLiveSttEngine(): Promise<LiveSttEngineId> {
-    if (props.liveSttPort) {
-      return props.liveSttPort.engineId;
-    }
-
-    try {
-      return (await fetchLiveSttRuntimeConfig()).liveSttEngine;
-    } catch {
-      return presenterSettings.sttEngine;
-    }
   }
 
   function getOrCreateSemanticMatcher() {
@@ -2064,36 +1913,18 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
       return false;
     }
 
-    let port: LiveSttPort;
-    try {
-      const effectiveEngineId = await resolveEffectiveLiveSttEngine();
-      if (!shouldContinue()) {
-        return false;
-      }
-      port = getOrCreateLiveSttPort(effectiveEngineId);
-    } catch (cause) {
-      if (!shouldContinue()) {
-        return false;
-      }
-      const error = toLiveSttError(cause);
-      setLiveStatus(isLiveSttUnavailable(error) ? "unavailable" : "failed");
-      setLiveError(error.message);
-      setLiveAudioLevel(null);
+    const port = await liveSttSession.preparePort(
+      {
+        onError: handleLiveSttError,
+        onResult: handleLiveSttResult,
+      },
+      shouldContinue,
+    );
+    if (!port) {
       resetAutoAdvanceRuntimeState(currentSlide?.slideId ?? null);
       return false;
     }
-    liveSttPortRef.current = port;
-    setLiveStatus("starting");
-    setLiveAudioLevel(null);
     pendingP3SlideIndexRef.current = null;
-    cleanupLiveSttSubscriptions();
-
-    const unsubscribeResult = port.onResult(handleLiveSttResult);
-    const unsubscribeError = port.onError(handleLiveSttError);
-    liveSttSubscriptionCleanupRef.current = () => {
-      unsubscribeResult();
-      unsubscribeError();
-    };
 
     let session: P3RehearsalSession | null = null;
     session = createP3RehearsalSession({
@@ -2157,7 +1988,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
           await session.stop().catch(() => null);
         }
         if (p3SessionRef.current === session) {
-          cleanupLiveSttSubscriptions();
+          liveSttSession.cleanupSubscriptions();
           p3SessionRef.current = null;
           pendingP3SlideIndexRef.current = null;
         }
@@ -2177,7 +2008,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
       pendingP3RunMetaRef.current = null;
       setP3RunMeta(null);
       setP3SessionState(session.getState());
-      setLiveStatus("listening");
+      liveSttSession.markListening();
       return true;
     } catch (cause) {
       const isStaleRetry = !shouldContinue();
@@ -2187,13 +2018,10 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
         }
         return false;
       }
-      cleanupLiveSttSubscriptions();
+      liveSttSession.cleanupSubscriptions();
       p3SessionRef.current = null;
       pendingP3SlideIndexRef.current = null;
-      const error = toLiveSttError(cause);
-      setLiveStatus(isLiveSttUnavailable(error) ? "unavailable" : "failed");
-      setLiveError(error.message);
-      setLiveAudioLevel(null);
+      liveSttSession.fail(cause);
       resetAutoAdvanceRuntimeState(currentSlide?.slideId ?? null);
       return false;
     }
@@ -2387,9 +2215,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
       return;
     }
 
-    setLiveStatus(isLiveSttUnavailable(error) ? "unavailable" : "failed");
-    setLiveError(error.message);
-    setLiveAudioLevel(null);
+    liveSttSession.fail(error);
     resetAutoAdvanceRuntimeState(currentSlide?.slideId ?? null);
   }
 
@@ -2448,7 +2274,15 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
 
     const transcript = renderLiveTranscriptBuffer(nextBuffer);
     const biasMode = getLiveSttBiasMode();
-    const biasContext = getCurrentLiveBiasContext(deckSnapshot, slideIndex);
+    const biasContext = liveSttSession.getBiasContext(
+      deckSnapshot,
+      slideIndex,
+      {
+        nearbySlides: getNearbySlides(deckSnapshot, slideIndex),
+        pronunciationLexicon:
+          runLifecycle.getActiveRun()?.evaluationSnapshot?.pronunciationLexicon,
+      },
+    );
     const matchingTranscript = shouldUseLiveSttPostprocessBias(biasMode)
       ? applyLiveTranscriptBias(transcript, biasContext)
       : transcript;
@@ -2555,7 +2389,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
 
     setLiveKeywordState(analysis);
     liveKeywordStateRef.current = analysis;
-    setLiveStatus("listening");
+    liveSttSession.markListening();
 
     if (isAdvanceSlideCommand(confirmedCommand)) {
       cancelAutoAdvanceForManualCommand();
@@ -2696,31 +2530,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
       slideId: slide.slideId,
     };
     setLiveSlideAdvance(null);
-  }
-
-  function getCurrentLiveBiasContext(deckSnapshot: Deck, slideIndex: number) {
-    const slide = deckSnapshot.slides[slideIndex];
-    if (!slide) {
-      return null;
-    }
-
-    const current = liveBiasContextRef.current;
-    if (current?.slideId === slide.slideId) {
-      return current;
-    }
-
-    const nextBiasContext = buildLiveSttBiasContext(slide, {
-      nearbySlides: getNearbySlides(deckSnapshot, slideIndex),
-      pronunciationLexicon:
-        runLifecycle.getActiveRun()?.evaluationSnapshot?.pronunciationLexicon,
-    });
-    liveBiasContextRef.current = nextBiasContext;
-    return nextBiasContext;
-  }
-
-  function cleanupLiveSttSubscriptions() {
-    liveSttSubscriptionCleanupRef.current?.();
-    liveSttSubscriptionCleanupRef.current = null;
   }
 
   const goPrevious = () => {
@@ -3201,13 +3010,10 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     isTimerRunning ||
     rehearsalRuntimeStatus === "paused";
   const sanitizedLiveError = sanitizeLiveSttErrorMessage(liveError);
-  const canRetryRecordingLiveStt = canRetryInitialRecordingLiveStt({
+  const canRetryRecordingLiveStt = liveSttSession.canRetryRecording({
     hasActiveSession: p3SessionRef.current !== null,
     hasReusableStream: mediaSession.hasReusableStream("recording"),
     isRecording: phase === "recording",
-    isRetrying:
-      isLiveSttRetrying || liveSttRetryCoordinatorRef.current.isRetrying(),
-    liveStatus,
   });
   const comparisonModel = runComparison
     ? buildRehearsalRunComparisonViewModel(
@@ -3259,8 +3065,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     pendingP3RunMetaRef.current = null;
     setRun(null);
     setHasLocalCompletion(false);
-    setLiveStatus("idle");
-    setLiveError("");
+    liveSttSession.reset();
     setError("");
     setPracticeWithoutVoiceAt(null);
     setSemanticCapabilityEvents([]);
@@ -3538,7 +3343,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
           })
         }
         deck={deck}
-        resolveLiveSttEngine={resolveEffectiveLiveSttEngine}
+        resolveLiveSttEngine={liveSttSession.resolveEffectiveEngine}
         onPracticeWithoutVoice={startPracticeWithoutVoice}
         onStart={() => void startRecording()}
       />
@@ -3992,11 +3797,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
                     <button
                       className="secondary-action"
                       type="button"
-                      onClick={() => {
-                        if (liveDebugPcmRecording) {
-                          downloadLiveSttDebugPcm(liveDebugPcmRecording);
-                        }
-                      }}
+                      onClick={liveSttSession.downloadDebugPcm}
                     >
                       <Download size={16} />
                       모델 입력 WAV 다운로드
@@ -4585,48 +4386,6 @@ function toMicrophoneErrorMessage(cause: unknown) {
   }
 
   return "마이크를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.";
-}
-
-function toLiveSttError(cause: unknown) {
-  if (cause instanceof LiveSttError) {
-    return cause;
-  }
-
-  if (cause instanceof LiveSttAdapterError) {
-    return new LiveSttError(
-      cause.code === "LIVE_STT_MODEL_UNAVAILABLE"
-        ? "model_unavailable"
-        : "start_failed",
-      cause.message,
-    );
-  }
-
-  return new LiveSttError(
-    "start_failed",
-    cause instanceof Error ? cause.message : "Live STT를 시작하지 못했습니다.",
-  );
-}
-
-function isLiveSttUnavailable(error: LiveSttError) {
-  return (
-    error.code === "model_unavailable" || error.code === "unsupported_runtime"
-  );
-}
-
-function getBiasPhrasesFromContext(
-  context: LiveSttBiasContext | null,
-): LiveSttBiasPhrase[] {
-  return (
-    context?.terms.map((term) => ({
-      text: term.text,
-      weight: term.weight,
-      source: term.source,
-      ...(term.keywordId === undefined ? {} : { keywordId: term.keywordId }),
-      ...(term.canonicalText === undefined
-        ? {}
-        : { canonicalText: term.canonicalText }),
-    })) ?? []
-  );
 }
 
 function toErrorMessage(cause: unknown) {

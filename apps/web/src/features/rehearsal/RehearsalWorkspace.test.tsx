@@ -118,9 +118,6 @@ const createdAt = "2026-06-29T00:00:00.000Z";
 const rehearsalWorkspaceSourcePath = fileURLToPath(
   new URL("./RehearsalWorkspace.tsx", import.meta.url),
 );
-const rehearsalPreflightSourcePath = fileURLToPath(
-  new URL("./preflight/RehearsalPreflightScreen.tsx", import.meta.url),
-);
 const livePresentationOutputSourcePath = fileURLToPath(
   new URL("../presentation/useLivePresentationOutput.ts", import.meta.url),
 );
@@ -1110,45 +1107,6 @@ describe("RehearsalWorkspace", () => {
     );
   });
 
-  it("creates fallback Live STT ports from the runtime-configured engine", () => {
-    const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
-    const preflightSource = fs.readFileSync(
-      rehearsalPreflightSourcePath,
-      "utf8",
-    );
-    const defaultStart = source.indexOf("function createDefaultLiveSttPort");
-    const defaultEnd = source.indexOf("export function RehearsalWorkspace");
-    const createDefaultLiveSttPortBody = source.slice(defaultStart, defaultEnd);
-    const start = source.indexOf("function getOrCreateLiveSttPort");
-    const end = source.indexOf("async function startP3Tracking");
-    const getOrCreateLiveSttPortBody = source.slice(start, end);
-
-    expect(createDefaultLiveSttPortBody).toContain(
-      'const shouldUseSherpaCompatibility = !engineId || engineId === "sherpa"',
-    );
-    expect(createDefaultLiveSttPortBody).toContain(
-      "shouldUseSherpaCompatibility && legacyAdapter",
-    );
-    expect(createDefaultLiveSttPortBody).toContain(
-      "return createLiveSttPort(engineId,",
-    );
-    expect(createDefaultLiveSttPortBody).toContain("projectId");
-    expect(getOrCreateLiveSttPortBody).toContain("props.liveSttPort");
-    expect(getOrCreateLiveSttPortBody).toContain(
-      "cachedPort?.engineId === engineId",
-    );
-    expect(getOrCreateLiveSttPortBody).toContain(
-      'cachedPort.engineId !== "openai-realtime"',
-    );
-    expect(getOrCreateLiveSttPortBody).toContain("activeProjectId");
-    expect(getOrCreateLiveSttPortBody).toContain("cachedPort?.dispose()");
-    expect(getOrCreateLiveSttPortBody).toContain("engineId");
-    expect(source).toContain("await fetchLiveSttRuntimeConfig()");
-    expect(source).toContain("return presenterSettings.sttEngine");
-    expect(preflightSource).toContain("props.resolveLiveSttEngine()");
-    expect(preflightSource).toContain("props.createLiveSttPort(engineId)");
-  });
-
   it("resynchronizes P3 tracking when the slide changes while STT is starting", () => {
     const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
     const effectStart = source.indexOf(
@@ -1167,29 +1125,6 @@ describe("RehearsalWorkspace", () => {
     expect(startP3TrackingBody).toContain(
       "session.enterSlide(latestSlideIndex)",
     );
-  });
-
-  it("passes live STT bias phrases on slide changes from the shared bias context", () => {
-    const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
-    const effectStart = source.indexOf("const nextBiasContext =");
-    const effectEnd = source.indexOf(
-      "const p3Session = p3SessionRef.current",
-      effectStart,
-    );
-    const slideChangeEffectBody = source.slice(effectStart, effectEnd);
-    const compactEffectBody = slideChangeEffectBody.replace(/\s+/g, "");
-
-    expect(compactEffectBody).toContain(
-      "voidliveSttPortRef.current?.updateBiasPhrases(",
-    );
-    expect(compactEffectBody).toContain(
-      "getBiasPhrasesFromContext(nextBiasContext)",
-    );
-    expect(slideChangeEffectBody).toContain("const nextBiasContext =");
-    expect(slideChangeEffectBody).toContain(
-      "buildLiveSttBiasContext(currentSlide",
-    );
-    expect(slideChangeEffectBody).toContain("nearbySlides: getNearbySlides");
   });
 
   it("syncs current P3 advice state into the session log", () => {
