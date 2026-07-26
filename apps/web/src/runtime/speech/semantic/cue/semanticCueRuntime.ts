@@ -5,7 +5,7 @@ import type {
   SemanticMeasurementMode
 } from "@orbit/shared";
 
-import { normalizeSpeechText } from "../../../runtime/speech/tracking/phraseExtractor";
+import { normalizeSpeechText } from "../../tracking/phraseExtractor";
 import {
   selectSemanticCueCandidates,
   type SemanticCueCandidate
@@ -19,7 +19,7 @@ import {
   SemanticCueNliProviderError,
   type SemanticCueNliDecision,
   type SemanticCueNliProvider
-} from "../../../runtime/speech/semantic/nli/semanticCueNliProvider";
+} from "../nli/semanticCueNliProvider";
 import {
   buildSemanticCueReportEvidence,
   normalizeBoundedText
@@ -34,7 +34,7 @@ import {
   type SemanticCueRuntimeConfig
 } from "./semanticCueRuntimeConfig";
 import type { SemanticCapabilityTransition } from "./semanticCapabilityState";
-import type { SemanticMatchDecisionReason } from "../../../runtime/speech/semantic/semanticUtteranceDecision";
+import type { SemanticMatchDecisionReason } from "../semanticUtteranceDecision";
 
 export type SemanticCueRuntime = {
   prepareSlide: (input: {

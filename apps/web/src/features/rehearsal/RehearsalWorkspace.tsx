@@ -265,16 +265,16 @@ import {
 import {
   getSemanticCueRuntimeFlags,
   isSemanticCueNliEnabledForMode,
-} from "./speech/semanticCueFeatureFlags";
+} from "../../runtime/speech/semantic/cue/semanticCueFeatureFlags";
 import {
   createSemanticCueDebugRingBuffer,
   type SemanticCueDebugEvent,
-} from "./speech/semanticCueDebugEvents";
+} from "../../runtime/speech/semantic/cue/semanticCueDebugEvents";
 import {
   createSemanticCueEmbeddingIndex,
   type SemanticCueEmbeddingIndex,
-} from "./speech/semanticCueEmbeddingIndex";
-import { createSemanticCueRuntime } from "./speech/semanticCueRuntime";
+} from "../../runtime/speech/semantic/cue/semanticCueEmbeddingIndex";
+import { createSemanticCueRuntime } from "../../runtime/speech/semantic/cue/semanticCueRuntime";
 import { createMockSemanticCueNliProvider } from "../../runtime/speech/semantic/nli/mockSemanticCueNliProvider";
 import { createBrowserTransformersSemanticCueNliProvider } from "../../runtime/speech/semantic/nli/browserSemanticCueNliProvider";
 import {

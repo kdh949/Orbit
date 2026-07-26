@@ -5,7 +5,7 @@ import {
   serializeSemanticCueDebugEvents,
   shouldShowSemanticCueDebugPanel
 } from "./SemanticCueDebugPanel";
-import type { SemanticCueDebugEvent } from "../speech/semanticCueDebugEvents";
+import type { SemanticCueDebugEvent } from "../../../runtime/speech/semantic/cue/semanticCueDebugEvents";
 import type { SemanticCapabilityEvent } from "@orbit/shared";
 
 describe("SemanticCueDebugPanel", () => {

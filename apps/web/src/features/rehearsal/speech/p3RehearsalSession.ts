@@ -33,14 +33,14 @@ import {
 } from "../../../runtime/speech/semantic/semanticSpeechDebug";
 import type { SemanticMatchDecisionReason } from "../../../runtime/speech/semantic/semanticUtteranceDecision";
 import type { SemanticUtteranceMatcher } from "../../../runtime/speech/semantic/semanticUtteranceMatcher";
-import type { SemanticCueDebugEvent } from "./semanticCueDebugEvents";
-import type { SemanticCueRuntime } from "./semanticCueRuntime";
-import { createSemanticEvidenceWindow } from "./semanticEvidenceWindow";
+import type { SemanticCueDebugEvent } from "../../../runtime/speech/semantic/cue/semanticCueDebugEvents";
+import type { SemanticCueRuntime } from "../../../runtime/speech/semantic/cue/semanticCueRuntime";
+import { createSemanticEvidenceWindow } from "../../../runtime/speech/semantic/cue/semanticEvidenceWindow";
 import {
   createSemanticCapabilityState,
   type SemanticCapabilityStatuses,
   type SemanticCapabilityTransition
-} from "./semanticCapabilityState";
+} from "../../../runtime/speech/semantic/cue/semanticCapabilityState";
 import type { SpeechTrackerSnapshot, SpeechTrackingEvent } from "../../../runtime/speech/tracking/speechTrackingEvents";
 
 export type P3RehearsalSessionSlide = {

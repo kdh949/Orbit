@@ -6,7 +6,7 @@ import type {
   SemanticMeasurementMode
 } from "@orbit/shared";
 
-import type { SemanticCueDebugEvent } from "../speech/semanticCueDebugEvents";
+import type { SemanticCueDebugEvent } from "../../../runtime/speech/semantic/cue/semanticCueDebugEvents";
 
 export type SemanticCueDebugTimelineEntry =
   | {

@@ -1,4 +1,4 @@
-import type { SemanticMatchDecisionReason } from "../../../runtime/speech/semantic/semanticUtteranceDecision";
+import type { SemanticMatchDecisionReason } from "../semanticUtteranceDecision";
 import { semanticCueRuntimeConfig } from "./semanticCueRuntimeConfig";
 
 export type SemanticCueNliRunReason =

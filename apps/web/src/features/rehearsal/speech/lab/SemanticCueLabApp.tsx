@@ -7,20 +7,20 @@ import { createBrowserTransformersSemanticCueNliProvider } from "../../../../run
 import {
   createSemanticCueEmbeddingIndex,
   type SemanticCueEmbeddingIndex
-} from "../semanticCueEmbeddingIndex";
+} from "../../../../runtime/speech/semantic/cue/semanticCueEmbeddingIndex";
 import type { SemanticCueNliProvider } from "../../../../runtime/speech/semantic/nli/semanticCueNliProvider";
 import {
   createSemanticCueRuntime,
   type SemanticCueRuntimeResult
-} from "../semanticCueRuntime";
+} from "../../../../runtime/speech/semantic/cue/semanticCueRuntime";
 import {
   semanticCueRuntimeConfig,
   type SemanticCueRuntimeConfig
-} from "../semanticCueRuntimeConfig";
+} from "../../../../runtime/speech/semantic/cue/semanticCueRuntimeConfig";
 import {
   defaultSemanticCueCombinerConfig,
   type SemanticCueCombinerConfig
-} from "../semanticCueScoreCombiner";
+} from "../../../../runtime/speech/semantic/cue/semanticCueScoreCombiner";
 import { createLiveSttPort } from "../../../../runtime/speech/stt/liveSttEngineRegistry";
 import type { LiveSttEngineId, LiveSttPort } from "../../../../runtime/speech/stt/liveSttPort";
 import { semanticCueLabPresets } from "./semanticCueLabPresets";
