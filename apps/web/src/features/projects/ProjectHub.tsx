@@ -1,14 +1,14 @@
+import { demoIds } from "@orbit/shared/common";
+import { type CommunityTemplateCard } from "@orbit/shared/community-templates";
+import { type PptxImportPreference } from "@orbit/shared/deck";
 import {
-  demoIds,
-  type CommunityTemplateCard,
-  type PptxImportPreference,
   type Project,
   type ProjectListItem,
   type ProjectListSort,
   type ProjectPageRequest,
   type ProjectTagColor,
   type ProjectTagDefinition,
-} from "@orbit/shared";
+} from "@orbit/shared/projects";
 import {
   useInfiniteQuery,
   useQuery,

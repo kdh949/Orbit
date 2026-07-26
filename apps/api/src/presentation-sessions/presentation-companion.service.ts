@@ -4,7 +4,7 @@ import {
   presentationCompanionStatusSchema,
   type PresentationCompanionBootstrap,
   type PresentationCompanionStatus,
-} from "@orbit/shared";
+} from "@orbit/shared/presentation";
 import { randomBytes } from "node:crypto";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectPinoLogger, PinoLogger } from "nestjs-pino";

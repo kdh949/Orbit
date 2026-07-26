@@ -6,8 +6,8 @@ import type {
   DesignImageReferenceAttachment,
   SelectedDesignImageReference,
   SpeakerNotesSuggestionMode,
-  Slide
-} from "@orbit/shared";
+  Slide,
+} from "@orbit/shared/deck";
 import { IconArrowUp as ArrowUp, IconPhoto as Photo } from "@tabler/icons-react";
 import {
   useEffect,

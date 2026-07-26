@@ -3,8 +3,8 @@ import type {
   ActivityResponse,
   ActivityRuntimeStatus,
   GetAudienceActivityResponse,
-  UpsertActivityResponseRequest
-} from "@orbit/shared";
+  UpsertActivityResponseRequest,
+} from "@orbit/shared/activities";
 import {
   IconArrowRight,
   IconCheck,

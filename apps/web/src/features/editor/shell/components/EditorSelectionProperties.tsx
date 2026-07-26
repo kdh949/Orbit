@@ -4,8 +4,8 @@ import type {
   Deck,
   DeckAnimation,
   DeckElement,
-  Slide
-} from "@orbit/shared";
+  Slide,
+} from "@orbit/shared/deck";
 import type { ComponentProps } from "react";
 
 import { getCustomShapeAbsoluteNodes } from "../../canvas/custom-shape/geometry";

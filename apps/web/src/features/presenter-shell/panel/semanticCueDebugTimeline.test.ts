@@ -1,4 +1,4 @@
-import type { SemanticCapabilityEvent } from "@orbit/shared";
+import type { SemanticCapabilityEvent } from "@orbit/shared/rehearsals";
 import { describe, expect, it } from "vitest";
 
 import type { SemanticCueDebugEvent } from "../../../runtime/speech/semantic/cue/semanticCueDebugEvents";

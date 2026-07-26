@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { RehearsalRun } from "@orbit/shared";
+import type { RehearsalRun } from "@orbit/shared/rehearsals";
 import {
   getRehearsalRunNumber,
   navigateTo,

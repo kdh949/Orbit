@@ -6,7 +6,7 @@ import {
   type GenerateDeckDiagnostics,
   type GenerateDeckValidation,
   type GenerateDeckVisualRepairAction,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import type { StoragePort } from "@orbit/storage";
 import type { DataSource } from "typeorm";
 import { z } from "zod";

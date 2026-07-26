@@ -1,7 +1,4 @@
-import {
-  generateDeckValidationSchema,
-  slideSchema,
-} from "@orbit/shared";
+import { generateDeckValidationSchema, slideSchema } from "@orbit/shared/deck";
 import { z } from "zod";
 
 const slideComposeResponseSchema = z

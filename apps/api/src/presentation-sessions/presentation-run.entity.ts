@@ -1,10 +1,10 @@
+import type { Deck } from "@orbit/shared/deck";
 import type {
-  Deck,
   PresentationRecordingMode,
-  RehearsalReport,
   PresentationRunStatus,
   PresentationVoiceReport,
-} from "@orbit/shared";
+} from "@orbit/shared/presentation";
+import type { RehearsalReport } from "@orbit/shared/rehearsals";
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from "typeorm";
 
 import { ProjectEntity } from "../projects/project.entity";

@@ -1,4 +1,5 @@
-import { deckSchema, type CommunityTemplateCard } from "@orbit/shared";
+import { type CommunityTemplateCard } from "@orbit/shared/community-templates";
+import { deckSchema } from "@orbit/shared/deck";
 import {
   Component,
   Suspense,

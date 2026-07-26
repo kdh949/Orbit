@@ -1,4 +1,4 @@
-import type { Deck, DeckExportFormat } from "@orbit/shared";
+import type { Deck, DeckExportFormat } from "@orbit/shared/deck";
 import { useQuery } from "@tanstack/react-query";
 import {
   IconChevronDown as ChevronDown,

@@ -1,4 +1,9 @@
-import type { DeckAnimation, Keyword, Slide, DeckElement } from "@orbit/shared";
+import type {
+  DeckAnimation,
+  Keyword,
+  Slide,
+  DeckElement,
+} from "@orbit/shared/deck";
 import {
   IconPlus as Plus,
   IconTrash as Trash2,

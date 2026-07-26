@@ -1,4 +1,4 @@
-import { createKeywordOccurrenceId, type Keyword } from "@orbit/shared";
+import { createKeywordOccurrenceId, type Keyword } from "@orbit/shared/deck";
 import { useState } from "react";
 
 import { DropdownMenu, DropdownMenuItem } from "../../../../components/ui";

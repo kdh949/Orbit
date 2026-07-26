@@ -1,4 +1,5 @@
-import type { ActivityRuntimeStatus, ActivitySlide } from "@orbit/shared";
+import type { ActivityRuntimeStatus } from "@orbit/shared/activities";
+import type { ActivitySlide } from "@orbit/shared/deck";
 import { IconChartBar, IconCopy, IconQrcode } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 

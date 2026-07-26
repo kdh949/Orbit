@@ -1,4 +1,5 @@
-import type { Deck, Job } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
+import type { Job } from "@orbit/shared/jobs";
 import type { StoragePort } from "@orbit/storage";
 import type { DataSource } from "typeorm";
 import { afterEach, describe, expect, it, vi } from "vitest";

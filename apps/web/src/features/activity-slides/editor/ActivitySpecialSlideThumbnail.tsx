@@ -1,4 +1,8 @@
-import type { ActivityResultsSlide, ActivitySlide, Deck } from "@orbit/shared";
+import type {
+  ActivityResultsSlide,
+  ActivitySlide,
+  Deck,
+} from "@orbit/shared/deck";
 import { lazy, Suspense } from "react";
 
 import { OrbitBrand } from "../../../components/ui";

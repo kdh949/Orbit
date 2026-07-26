@@ -1,10 +1,12 @@
 import {
+  referenceExtractionResultSchema,
+  type ReferenceExtractionFile,
+} from "@orbit/shared/deck";
+import {
   aiDeckGenerationStageMessageSchema,
   aiDeckReferenceExtractionResultReferenceSchema,
-  referenceExtractionResultSchema,
   type AiDeckReferenceExtractionResultReference,
-  type ReferenceExtractionFile,
-} from "@orbit/shared";
+} from "@orbit/shared/jobs";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 

@@ -1,4 +1,4 @@
-import type { DeckAnimation, DeckSlideAction, Slide } from "@orbit/shared";
+import type { DeckAnimation, DeckSlideAction, Slide } from "@orbit/shared/deck";
 import {
   createAnimationTimeline,
   getAnimationTimelineRoot

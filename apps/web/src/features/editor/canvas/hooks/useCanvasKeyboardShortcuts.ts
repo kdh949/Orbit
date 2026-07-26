@@ -1,4 +1,4 @@
-import type { CustomShapeElementProps, DeckElement } from "@orbit/shared";
+import type { CustomShapeElementProps, DeckElement } from "@orbit/shared/deck";
 import { useEffect } from "react";
 
 import { commitCustomShapeEditGeometry } from "../utils/canvasInteractionUtils";

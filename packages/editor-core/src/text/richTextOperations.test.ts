@@ -2,8 +2,8 @@ import {
   textElementPropsSchema,
   type TextElementParagraph,
   type TextElementProps,
-  type TextElementRun
-} from "@orbit/shared";
+  type TextElementRun,
+} from "@orbit/shared/deck";
 import { describe, expect, it } from "vitest";
 import {
   applyRichTextCharacterStyle,

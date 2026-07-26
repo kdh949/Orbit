@@ -1,5 +1,5 @@
 import { MessageSquareWarning } from "lucide-react";
-import type { RehearsalReport } from "@orbit/shared";
+import type { RehearsalReport } from "@orbit/shared/rehearsals";
 
 const FILLER_CHART_COLORS = [
   "#0072B2",

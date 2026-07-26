@@ -1,4 +1,8 @@
-import type { CustomShapeElementProps, CustomShapeNode, DeckElement } from "@orbit/shared";
+import type {
+  CustomShapeElementProps,
+  CustomShapeNode,
+  DeckElement,
+} from "@orbit/shared/deck";
 import { Path as KonvaPathShape } from "konva/lib/shapes/Path";
 
 export type CanvasPoint = {

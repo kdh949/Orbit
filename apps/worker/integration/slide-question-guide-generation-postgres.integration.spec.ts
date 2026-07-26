@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { slideSchema } from "@orbit/shared";
+import { slideSchema } from "@orbit/shared/deck";
 import { DataSource } from "typeorm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 

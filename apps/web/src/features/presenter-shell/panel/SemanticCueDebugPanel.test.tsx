@@ -6,7 +6,7 @@ import {
   shouldShowSemanticCueDebugPanel
 } from "./SemanticCueDebugPanel";
 import type { SemanticCueDebugEvent } from "../../../runtime/speech/semantic/cue/semanticCueDebugEvents";
-import type { SemanticCapabilityEvent } from "@orbit/shared";
+import type { SemanticCapabilityEvent } from "@orbit/shared/rehearsals";
 
 describe("SemanticCueDebugPanel", () => {
   it("renders NLI execution and blocked action reasons", () => {

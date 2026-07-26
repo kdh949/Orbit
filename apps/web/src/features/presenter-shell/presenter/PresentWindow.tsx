@@ -1,8 +1,8 @@
+import type { Deck } from "@orbit/shared/deck";
 import type {
-  Deck,
   PresentationCompanionAnnotationSnapshot,
   PresentationCompanionLaser,
-} from "@orbit/shared";
+} from "@orbit/shared/realtime";
 import {
   IconArrowsMaximize,
   IconChevronLeft,

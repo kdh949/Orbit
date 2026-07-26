@@ -2,7 +2,7 @@ import type {
   PresentationCompanionNavigationCommand,
   PresentationCompanionOutputState,
   PresentationCompanionPrompterState,
-} from "@orbit/shared";
+} from "@orbit/shared/realtime";
 import {
   IconChevronDown,
   IconChevronLeft,

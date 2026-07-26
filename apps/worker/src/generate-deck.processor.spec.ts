@@ -3,8 +3,8 @@ import {
   deckSchema,
   generateDeckResponseSchema,
   type Deck,
-  type GenerateDeckJobResult
-} from "@orbit/shared";
+  type GenerateDeckJobResult,
+} from "@orbit/shared/deck";
 import type { DataSource } from "typeorm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { processGenerateDeckJob } from "./generate-deck.processor";

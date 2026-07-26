@@ -1,16 +1,16 @@
+import { demoIds } from "@orbit/shared/common";
+import { listPresentationRunsResponseSchema } from "@orbit/shared/presentation";
 import {
-  demoIds,
   getRehearsalProjectSummaryResponseSchema,
-  listPresentationRunsResponseSchema,
   rehearsalRunComparisonSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
+import type { PresentationRun } from "@orbit/shared/presentation";
+import type { Project } from "@orbit/shared/projects";
 import type {
-  Project,
-  PresentationRun,
   RehearsalProjectSummary,
   RehearsalRun,
   RehearsalRunComparison,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 
 type Fetcher = (
   input: RequestInfo | URL,

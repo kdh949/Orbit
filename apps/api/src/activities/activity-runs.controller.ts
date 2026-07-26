@@ -15,8 +15,8 @@ import {
   deletePresentationSessionResultsRequestSchema,
   moderateActivityTextRequestSchema,
   supersedeActivityRunRequestSchema,
-  updateActivityRunStatusRequestSchema
-} from "@orbit/shared";
+  updateActivityRunStatusRequestSchema,
+} from "@orbit/shared/activities";
 import type { Request } from "express";
 
 import { authSessionCookieName } from "../auth/auth.constants";

@@ -14,13 +14,13 @@ import {
   themeSchema,
   type Deck,
   type DeckCanvas,
-  type Job,
   type QualityReport,
   type QualityReportSlide,
   type PptxImportPreference,
   type SlideImportRenderMode,
   type TemplateBlueprint,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
+import { type Job } from "@orbit/shared/jobs";
 import type { StoragePort } from "@orbit/storage";
 import type { DataSource, EntityManager } from "typeorm";
 import { z } from "zod";

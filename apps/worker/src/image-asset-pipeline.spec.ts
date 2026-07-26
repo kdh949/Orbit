@@ -3,7 +3,7 @@ import type {
   OfficialImageProvider,
   PublicImageSearchProvider
 } from "@orbit/ai";
-import { deckSchema } from "@orbit/shared";
+import { deckSchema } from "@orbit/shared/deck";
 import type { StoragePort } from "@orbit/storage";
 import type { DataSource } from "typeorm";
 import { afterEach, describe, expect, it, vi } from "vitest";

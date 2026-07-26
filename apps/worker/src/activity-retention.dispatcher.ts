@@ -1,4 +1,4 @@
-import type { ActivityResponseRetentionJobPayload } from "@orbit/shared";
+import type { ActivityResponseRetentionJobPayload } from "@orbit/shared/activities";
 import type { DataSource, EntityManager } from "typeorm";
 
 type DueSessionRow = {

@@ -1,4 +1,4 @@
-import type { DeckElement, Keyword } from "@orbit/shared";
+import type { DeckElement, Keyword } from "@orbit/shared/deck";
 
 import { IdBadge } from "./EditorIdBadge";
 

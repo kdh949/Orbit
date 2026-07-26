@@ -1,4 +1,4 @@
-import { maxAssetUploadSizeBytes } from "@orbit/shared";
+import { maxAssetUploadSizeBytes } from "@orbit/shared/files";
 
 import { defaultImageInsertFrame } from "./editorLayout";
 

@@ -1,4 +1,4 @@
-import type { DeckAnimation } from "@orbit/shared";
+import type { DeckAnimation } from "@orbit/shared/deck";
 import { IconTrash } from "@tabler/icons-react";
 
 import { AnimationPanelSection } from "./AnimationPanelSection";

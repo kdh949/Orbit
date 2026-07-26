@@ -1,6 +1,6 @@
 import { Pause, Play, MicOff, Volume1, Volume2 } from "lucide-react";
 import { useMemo } from "react";
-import type { RehearsalReport } from "@orbit/shared";
+import type { RehearsalReport } from "@orbit/shared/rehearsals";
 import { useRehearsalAudioSegmentPlayback } from "./useRehearsalAudioSegmentPlayback";
 
 type Props = {

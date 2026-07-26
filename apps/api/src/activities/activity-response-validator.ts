@@ -1,8 +1,8 @@
 import type {
   ActivityAnswer,
   ActivityDefinition,
-  UpsertActivityResponseRequest
-} from "@orbit/shared";
+  UpsertActivityResponseRequest,
+} from "@orbit/shared/activities";
 
 export class ActivityResponseValidationError extends Error {
   constructor(message: string) {

@@ -1,20 +1,21 @@
 import { CommunityGalleryPage } from "./features/community-templates/CommunityGalleryPage";
 import { CommunityTemplateDetailPage } from "./features/community-templates/CommunityTemplateDetailPage";
+import { legacyRehearsalSlideSpeakingRate } from "@orbit/shared/coaching";
+import { demoIds } from "@orbit/shared/common";
+import { deckSchema, type Deck } from "@orbit/shared/deck";
 import {
-  deckSchema,
-  demoIds,
-  legacyRehearsalReportMetricsDefaults,
-  legacyRehearsalSlideSpeakingRate,
-  legacyRehearsalSilenceAnalysis,
-  legacyRehearsalVolumeAnalysis,
   projectAccessResponseSchema,
-  type Deck,
   type Project,
   type ProjectAccessResponse,
   type ProjectMemberRole,
+} from "@orbit/shared/projects";
+import {
+  legacyRehearsalReportMetricsDefaults,
+  legacyRehearsalSilenceAnalysis,
+  legacyRehearsalVolumeAnalysis,
   type RehearsalReport,
   type RehearsalRun,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { IconFileText } from "@tabler/icons-react";
 import type { FormEvent, ReactNode } from "react";

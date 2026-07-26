@@ -32,7 +32,6 @@ import {
   getPptxNotesPreviewResponseSchema,
   getPptxImportQualityResponseSchema,
   getOoxmlSyncStateResponseSchema,
-  jobSchema,
   PPTX_OOXML_SYNC_CAPABILITY_VERSION,
   listDeckSnapshotsResponseSchema,
   putDeckRequestSchema,
@@ -48,7 +47,8 @@ import {
   speakerNotesSuggestionJobPayloadSchema,
   speakerNotesSuggestionRequestSchema,
   templateBlueprintSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
+import { jobSchema } from "@orbit/shared/jobs";
 import type {
   AppendDeckPatchAckRequest,
   AppendDeckPatchAckResponse,
@@ -67,7 +67,6 @@ import type {
   GetDeckResponse,
   GetPptxNotesPreviewResponse,
   GetPptxImportQualityResponse,
-  Job,
   OoxmlSyncState,
   ListDeckSnapshotsResponse,
   PutDeckRequest,
@@ -76,7 +75,8 @@ import type {
   CreateSemanticCueExtractionJobResponse,
   CreateSpeakerNotesSuggestionJobResponse,
   TemplateBlueprint,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
+import type { Job } from "@orbit/shared/jobs";
 import {
   ConflictException,
   HttpException,

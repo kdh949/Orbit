@@ -1,9 +1,9 @@
+import type { SemanticCue } from "@orbit/shared/deck";
 import type {
   RehearsalSemanticCueDecision,
-  SemanticCue,
   SemanticFallbackReason,
-  SemanticMeasurementMode
-} from "@orbit/shared";
+  SemanticMeasurementMode,
+} from "@orbit/shared/rehearsals";
 
 import { normalizeSpeechText } from "../../tracking/phraseExtractor";
 import {

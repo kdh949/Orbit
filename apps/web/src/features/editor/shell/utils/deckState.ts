@@ -1,4 +1,4 @@
-import type { Deck, DeckPatch } from "@orbit/shared";
+import type { Deck, DeckPatch } from "@orbit/shared/deck";
 
 function isSameDeckIdentity(left: Deck, right: Deck) {
   return left.deckId === right.deckId && left.projectId === right.projectId;

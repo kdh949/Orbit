@@ -3,7 +3,7 @@ import {
   evaluationCriterionSchema,
   practiceGoalSchema,
   reportObservationSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
 import { describe, expect, it } from "vitest";
 
 import { deriveCoachingActions } from "./coaching-action-derivation";

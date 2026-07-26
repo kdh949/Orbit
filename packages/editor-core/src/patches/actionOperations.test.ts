@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Deck } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
 import { createDemoDeck } from "../index";
 import {
   createAddAnimationWithKeywordTriggerPatch,

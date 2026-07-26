@@ -1,7 +1,4 @@
-import type {
-  DeckAnimation,
-  DeckAnimationStartMode
-} from "@orbit/shared";
+import type { DeckAnimation, DeckAnimationStartMode } from "@orbit/shared/deck";
 
 export const animationTimelineDiagnosticLimit = 100;
 

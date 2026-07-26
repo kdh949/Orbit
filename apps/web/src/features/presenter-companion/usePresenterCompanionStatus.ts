@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { PresentationCompanionStatus } from "@orbit/shared";
+import type { PresentationCompanionStatus } from "@orbit/shared/presentation";
 import { fetchPresenterCompanionStatus } from "./presenterCompanionApi";
 
 export const presenterCompanionStatusPollIntervalMs = 3_000;

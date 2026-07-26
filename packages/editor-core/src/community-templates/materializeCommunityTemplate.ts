@@ -1,9 +1,10 @@
-import { communityTemplateSnapshotSchema, deckSchema } from "@orbit/shared";
+import { communityTemplateSnapshotSchema } from "@orbit/shared/community-templates";
+import { deckSchema } from "@orbit/shared/deck";
 import type {
   CommunityTemplateElement,
   CommunityTemplateSnapshot,
-  Deck,
-} from "@orbit/shared";
+} from "@orbit/shared/community-templates";
+import type { Deck } from "@orbit/shared/deck";
 
 export type MaterializeCommunityTemplateInput = {
   snapshot: CommunityTemplateSnapshot;

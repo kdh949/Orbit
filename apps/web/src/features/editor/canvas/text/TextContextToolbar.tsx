@@ -13,7 +13,7 @@ import type {
   DeckElement,
   Slide,
   TextElementBullet,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import {
   type MouseEvent as ReactMouseEvent,
   useCallback,

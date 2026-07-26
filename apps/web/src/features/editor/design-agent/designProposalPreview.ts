@@ -1,5 +1,5 @@
 import { applyDeckPatch } from "@orbit/editor-core/patches";
-import type { Deck, DesignAgentProposal } from "@orbit/shared";
+import type { Deck, DesignAgentProposal } from "@orbit/shared/deck";
 
 export type DesignProposalPreview = {
   baseDeck: Deck;

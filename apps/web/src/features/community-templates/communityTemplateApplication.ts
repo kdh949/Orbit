@@ -1,7 +1,7 @@
 import type {
   CommunityTemplateCard,
   UseCommunityTemplateResponse,
-} from "@orbit/shared";
+} from "@orbit/shared/community-templates";
 
 export type CommunityTemplateApplyAttempt = {
   card: CommunityTemplateCard;

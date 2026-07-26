@@ -1,5 +1,5 @@
 import { createDemoDeck, sanitizeCommunityTemplate } from "@orbit/editor-core";
-import type { CommunityTemplateCard } from "@orbit/shared";
+import type { CommunityTemplateCard } from "@orbit/shared/community-templates";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 

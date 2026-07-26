@@ -1,4 +1,5 @@
-import { generateDeckRequestSchema, type Job } from "@orbit/shared";
+import { generateDeckRequestSchema } from "@orbit/shared/deck";
+import { type Job } from "@orbit/shared/jobs";
 import type { DataSource } from "typeorm";
 import { describe, expect, it, vi } from "vitest";
 

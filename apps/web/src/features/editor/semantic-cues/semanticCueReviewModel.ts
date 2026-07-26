@@ -3,8 +3,8 @@ import type {
   DeckPatch,
   SemanticCue,
   SemanticCueSourceRef,
-  Slide
-} from "@orbit/shared";
+  Slide,
+} from "@orbit/shared/deck";
 
 export type SemanticCueReviewChoice = "core" | "supporting" | "excluded";
 

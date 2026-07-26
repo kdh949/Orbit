@@ -1,4 +1,4 @@
-import type { ImageElementProps } from "@orbit/shared";
+import type { ImageElementProps } from "@orbit/shared/deck";
 
 export type ImageCrop = NonNullable<ImageElementProps["crop"]>;
 

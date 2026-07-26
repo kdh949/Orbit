@@ -2,7 +2,7 @@ import {
   type EnqueueReferenceExtractJobInput
 } from "@orbit/job-queue";
 import { loadOrbitConfig } from "@orbit/config";
-import { jobSchema } from "@orbit/shared";
+import { jobSchema } from "@orbit/shared/jobs";
 import { Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { InjectPinoLogger, PinoLogger } from "nestjs-pino";

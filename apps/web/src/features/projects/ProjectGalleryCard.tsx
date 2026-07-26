@@ -1,4 +1,4 @@
-import type { ProjectListItem } from "@orbit/shared";
+import type { ProjectListItem } from "@orbit/shared/projects";
 import {
   IconPin,
   IconPinFilled,

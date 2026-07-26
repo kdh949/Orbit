@@ -1,4 +1,4 @@
-import type { TextElementProps } from "@orbit/shared";
+import type { TextElementProps } from "@orbit/shared/deck";
 import { describe, expect, it } from "vitest";
 
 import { p0AnimationDeck } from "../../../../runtime/presentation/slideshow/__fixtures__/animationDeck";

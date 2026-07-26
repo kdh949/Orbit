@@ -1,4 +1,4 @@
-import type { DeckAnimationStartMode } from "@orbit/shared";
+import type { DeckAnimationStartMode } from "@orbit/shared/deck";
 
 import { AnimationRangeField } from "./AnimationRangeField";
 

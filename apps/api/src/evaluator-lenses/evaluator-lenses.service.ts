@@ -1,7 +1,7 @@
 import {
   evaluatorLensRegistryResponseSchema,
   type EvaluatorLensDefinition,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
 import { Injectable } from "@nestjs/common";
 
 const lenses: EvaluatorLensDefinition[] = [

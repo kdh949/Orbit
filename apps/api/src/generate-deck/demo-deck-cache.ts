@@ -1,5 +1,5 @@
 import type { OrbitConfig } from "@orbit/config";
-import { deckSchema, type Deck } from "@orbit/shared";
+import { deckSchema, type Deck } from "@orbit/shared/deck";
 import { ServiceUnavailableException } from "@nestjs/common";
 
 type QueryExecutor = {

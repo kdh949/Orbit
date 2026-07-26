@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { PresentationCompanionAnnotationCommand } from "@orbit/shared";
+import type { PresentationCompanionAnnotationCommand } from "@orbit/shared/realtime";
 import {
   createCompanionAnnotationCommand,
   type CompanionAnnotationCommandInput,

@@ -1,4 +1,4 @@
-import type { Deck, DeckChangeRecord } from "@orbit/shared";
+import type { Deck, DeckChangeRecord } from "@orbit/shared/deck";
 
 export type ApplyDeckPatchErrorCode =
   | "PATCH_VALIDATION_FAILED"

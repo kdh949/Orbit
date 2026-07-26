@@ -1,8 +1,5 @@
-import {
-  designImageGenerationJobPayloadSchema,
-  jobSchema,
-  type Job,
-} from "@orbit/shared";
+import { designImageGenerationJobPayloadSchema } from "@orbit/shared/deck";
+import { jobSchema, type Job } from "@orbit/shared/jobs";
 import type { StoragePort } from "@orbit/storage";
 import type { DataSource } from "typeorm";
 import {

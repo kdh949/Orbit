@@ -112,7 +112,7 @@ import type {
   DeckExportFormat,
   DeckExportRequest,
   SemanticCue,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import { useQuery } from "@tanstack/react-query";
 import type Konva from "konva";
 import type {

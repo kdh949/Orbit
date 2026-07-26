@@ -1,4 +1,4 @@
-import type { RehearsalSemanticCueDecision } from "@orbit/shared";
+import type { RehearsalSemanticCueDecision } from "@orbit/shared/rehearsals";
 
 import type { SemanticCueCandidate } from "./semanticCueCandidateSelector";
 import type { SemanticCueScoreCombination } from "./semanticCueScoreCombiner";

@@ -1,4 +1,4 @@
-import type { ActivitySlide } from "@orbit/shared";
+import type { ActivitySlide } from "@orbit/shared/deck";
 import {
   IconKey,
   IconLayoutBottombar,

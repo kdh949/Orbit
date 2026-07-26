@@ -1,8 +1,5 @@
-import type {
-  DeckExportFormat,
-  DeckExportRequest,
-  PresentationSession
-} from "@orbit/shared";
+import type { DeckExportFormat, DeckExportRequest } from "@orbit/shared/deck";
+import type { PresentationSession } from "@orbit/shared/presentation";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 

@@ -1,4 +1,4 @@
-import type { PresentationCompanionAnnotationCommand } from "@orbit/shared";
+import type { PresentationCompanionAnnotationCommand } from "@orbit/shared/realtime";
 import { describe, expect, it } from "vitest";
 import {
   applyAnnotationCommand,

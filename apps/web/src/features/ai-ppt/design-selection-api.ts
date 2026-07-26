@@ -2,7 +2,7 @@ import {
   aiDeckDesignSelectionResponseSchema,
   generateDeckDesignSelectionSchema,
   type GenerateDeckDesignSelection,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 
 export function styleColorPath(projectId: string, jobId: string) {
   return `/project/${encodeURIComponent(projectId)}/style-color/${encodeURIComponent(jobId)}`;

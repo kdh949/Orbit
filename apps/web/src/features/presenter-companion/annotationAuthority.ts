@@ -3,7 +3,7 @@ import {
   type PresentationCompanionAnnotationAck,
   type PresentationCompanionAnnotationCommand,
   type PresentationCompanionAnnotationSnapshot,
-} from "@orbit/shared";
+} from "@orbit/shared/realtime";
 import {
   applyAnnotationCommand,
   createAnnotationSnapshot,

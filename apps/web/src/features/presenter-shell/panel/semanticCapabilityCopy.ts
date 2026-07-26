@@ -1,7 +1,7 @@
 import type {
   SemanticCapabilityEvent,
-  SemanticFallbackReason
-} from "@orbit/shared";
+  SemanticFallbackReason,
+} from "@orbit/shared/rehearsals";
 
 export type SemanticCapabilityCopy = {
   source: "system-status";

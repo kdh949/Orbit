@@ -1,5 +1,8 @@
 import { ForbiddenException } from "@nestjs/common";
-import type { GenerateDeckRequest, SavedDesignPackPreferences } from "@orbit/shared";
+import type {
+  GenerateDeckRequest,
+  SavedDesignPackPreferences,
+} from "@orbit/shared/deck";
 import type { Repository } from "typeorm";
 import { describe, expect, it } from "vitest";
 import { SavedDesignPackEntity } from "./saved-design-pack.entity";

@@ -1,4 +1,4 @@
-import type { Keyword } from "@orbit/shared";
+import type { Keyword } from "@orbit/shared/deck";
 
 export type AnimationKeywordTriggerOption = {
   keywordId: string;

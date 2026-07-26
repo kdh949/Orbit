@@ -3,13 +3,14 @@ import type {
   EnqueueRehearsalSttJobInput,
 } from "@orbit/job-queue";
 import { loadOrbitConfig } from "@orbit/config";
+import { type RehearsalFocusProfile } from "@orbit/shared/coaching";
+import { createAssetUploadUrlRequestSchema } from "@orbit/shared/files";
 import {
   completeRehearsalAudioUploadRequestSchema,
   createRehearsalAudioClipRequestSchema,
   completeRehearsalAudioUploadResponseSchema,
   cancelRehearsalRunResponseSchema,
   createRehearsalEvaluationSnapshot,
-  createAssetUploadUrlRequestSchema,
   createRehearsalAudioUploadUrlRequestSchema,
   createRehearsalAudioUploadUrlResponseSchema,
   createRehearsalRunRequestSchema,
@@ -24,8 +25,7 @@ import {
   updateRehearsalRunMetaRequestSchema,
   updateRehearsalRunMetaResponseSchema,
   type RehearsalEvaluationSnapshot,
-  type RehearsalFocusProfile,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import {
   BadRequestException,
   ConflictException,

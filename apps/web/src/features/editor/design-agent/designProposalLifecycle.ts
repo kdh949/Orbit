@@ -1,4 +1,4 @@
-import type { Deck } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
 import type { DesignProposalPreview } from "./designProposalPreview";
 import { isDesignProposalStale } from "./designProposalPreview";
 

@@ -1,20 +1,23 @@
 import type { StoragePort } from "@orbit/storage";
+import { jobSchema, type Job } from "@orbit/shared/jobs";
 import {
-  analyzeKoreanFillers,
-  jobSchema,
+  presentationAnalysisJobPayloadSchema,
+  presentationVoiceReportSchema,
+  type PresentationVoiceReport,
+} from "@orbit/shared/presentation";
+import {
   legacyRehearsalSilenceAnalysis,
   legacyRehearsalVolumeAnalysis,
   legacyRehearsalReportMetricsDefaults,
-  presentationAnalysisJobPayloadSchema,
-  presentationVoiceReportSchema,
   rehearsalReportSchema,
-  slidePracticeServerAudioResponseSchema,
-  type Job,
-  type PresentationVoiceReport,
   type RehearsalReport,
   type SlideTranscriptSnapshot,
+} from "@orbit/shared/rehearsals";
+import {
+  analyzeKoreanFillers,
+  slidePracticeServerAudioResponseSchema,
   type SlidePracticeServerAudioResponse,
-} from "@orbit/shared";
+} from "@orbit/shared/slide-practice";
 import { createHash } from "node:crypto";
 import type { DataSource } from "typeorm";
 import { z } from "zod";

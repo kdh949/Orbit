@@ -1,7 +1,7 @@
 import {
   assetUploadUrlRequestSchema,
   completeAssetUploadRequestSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/files";
 import {
   Body,
   Controller,

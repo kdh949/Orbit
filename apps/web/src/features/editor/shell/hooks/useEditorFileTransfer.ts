@@ -10,8 +10,8 @@ import type {
   DeckPatch,
   DesignImageGenerationResult,
   PptxImportPreference,
-  PptxImportQuality
-} from "@orbit/shared";
+  PptxImportQuality,
+} from "@orbit/shared/deck";
 import type { ChangeEvent, MutableRefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 

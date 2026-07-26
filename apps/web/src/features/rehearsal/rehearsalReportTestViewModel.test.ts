@@ -2,7 +2,7 @@ import {
   legacyRehearsalReportMetricsDefaults,
   legacyRehearsalVolumeAnalysis,
   type RehearsalReport,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import { describe, expect, it } from "vitest";
 import { buildRehearsalReportTestSlideMetrics } from "./rehearsalReportTestViewModel";
 

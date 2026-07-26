@@ -1,5 +1,5 @@
 import { loadOrbitConfig } from "@orbit/config";
-import { runtimeConfigResponseSchema } from "@orbit/shared";
+import { runtimeConfigResponseSchema } from "@orbit/shared/config";
 import { Controller, Get } from "@nestjs/common";
 
 @Controller("api/v1/runtime-config")

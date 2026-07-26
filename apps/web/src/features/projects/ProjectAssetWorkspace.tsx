@@ -1,23 +1,24 @@
+import { demoIds } from "@orbit/shared/common";
+import { deckSchema, type Deck } from "@orbit/shared/deck";
 import {
   allowedAssetMimeTypes,
-  deckSchema,
-  deleteProjectResponseSchema,
-  demoIds,
   maxAssetUploadSizeBytes,
+  type AssetUploadUrlRequest,
+  type AssetUploadUrlResponse,
+  type FilePurpose,
+  type UploadedFile,
+} from "@orbit/shared/files";
+import {
+  deleteProjectResponseSchema,
   projectListResponseSchema,
   projectPageResponseSchema,
   updateProjectPinResponseSchema,
   updateProjectTagsResponseSchema,
-  type AssetUploadUrlRequest,
-  type AssetUploadUrlResponse,
-  type Deck,
-  type FilePurpose,
   type Project,
   type ProjectListItem,
   type ProjectPageRequest,
   type ProjectPageResponse,
-  type UploadedFile,
-} from "@orbit/shared";
+} from "@orbit/shared/projects";
 
 import { resolveRedesignPalette } from "../../styles/redesignPalette";
 

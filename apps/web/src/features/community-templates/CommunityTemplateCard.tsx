@@ -1,7 +1,7 @@
 import type {
   CommunityTemplateCard as CommunityTemplateCardValue,
   CommunityTemplateCategory,
-} from "@orbit/shared";
+} from "@orbit/shared/community-templates";
 
 import { CommunityTemplatePreview } from "./CommunityTemplatePreview";
 

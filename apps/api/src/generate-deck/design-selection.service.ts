@@ -6,9 +6,9 @@ import {
   generateDeckJobResultSchema,
   generateDeckRequestSchema,
   generateDeckStoredJobPayloadSchema,
-  jobErrorSchema,
   type AiDeckDesignSelectionResponse,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
+import { jobErrorSchema } from "@orbit/shared/jobs";
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { InjectPinoLogger, PinoLogger } from "nestjs-pino";

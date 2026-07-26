@@ -4,8 +4,8 @@ import {
   type SemanticCapabilityEvent,
   type SemanticCapabilityState,
   type SemanticFallbackReason,
-  type SemanticMeasurementMode
-} from "@orbit/shared";
+  type SemanticMeasurementMode,
+} from "@orbit/shared/rehearsals";
 
 export type SemanticCapabilityStatuses = Record<
   SemanticCapability,

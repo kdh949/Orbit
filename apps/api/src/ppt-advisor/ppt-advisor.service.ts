@@ -4,7 +4,7 @@ import {
   type PptAdvisorRequest,
   type PptAdvisorResponse,
   type PptAdvisorSuggestion,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import { Inject, Injectable } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import { InjectPinoLogger, PinoLogger } from "nestjs-pino";

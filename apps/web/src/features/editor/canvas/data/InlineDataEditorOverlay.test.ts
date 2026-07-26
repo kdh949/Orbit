@@ -1,4 +1,4 @@
-import type { ChartStyle } from "@orbit/shared";
+import type { ChartStyle } from "@orbit/shared/deck";
 import { describe, expect, it } from "vitest";
 
 import {

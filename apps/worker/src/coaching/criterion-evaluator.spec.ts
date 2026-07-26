@@ -3,7 +3,7 @@ import {
   reportObservationSchema,
   type EvaluationCriterion,
   type ReportObservation,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
 import { describe, expect, it } from "vitest";
 
 import { evaluateCriterion } from "./criterion-evaluator";

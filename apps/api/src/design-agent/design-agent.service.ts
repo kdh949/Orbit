@@ -20,7 +20,7 @@ import {
   type Slide,
   type SmartArtItem,
   type SmartArtRequest,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import {
   BadRequestException,
   ConflictException,

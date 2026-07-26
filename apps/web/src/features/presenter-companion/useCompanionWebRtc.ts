@@ -1,4 +1,4 @@
-import type { PresentationCompanionSignal } from "@orbit/shared";
+import type { PresentationCompanionSignal } from "@orbit/shared/realtime";
 import { useEffect, useRef, useState } from "react";
 import {
   createReceiverCompanionWebRtcController,

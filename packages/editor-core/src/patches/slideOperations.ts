@@ -1,11 +1,11 @@
-import { deriveKeywordOccurrences, slideSchema } from "@orbit/shared";
+import { deriveKeywordOccurrences, slideSchema } from "@orbit/shared/deck";
 import type {
   Deck,
   DeckPatch,
   SemanticCueSourceRef,
   Slide,
   SlideTransition,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 
 type LocalIdPrefix =
   | "slide_"

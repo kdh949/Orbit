@@ -2,8 +2,8 @@ import { loadOrbitConfig } from "@orbit/config";
 import {
   referenceExtractionStartResponseSchema,
   type ReferenceExtractionRequest,
-  type ReferenceExtractionStartResponse
-} from "@orbit/shared";
+  type ReferenceExtractionStartResponse,
+} from "@orbit/shared/deck";
 import { BadGatewayException, BadRequestException, Injectable } from "@nestjs/common";
 import { ExtractService } from "../extract/extract.service";
 import { FilesService } from "../files/files.service";

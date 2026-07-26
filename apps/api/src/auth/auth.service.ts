@@ -3,26 +3,30 @@ import {
   authResponseSchema,
   authSessionSchema,
   authUserSchema,
-  createProjectTagDefinitionRequestSchema,
   loginRequestSchema,
   meResponseSchema,
-  projectTagDefinitionsResponseSchema,
   registerRequestSchema,
-  updateProfileRequestSchema
-} from "@orbit/shared";
+  updateProfileRequestSchema,
+} from "@orbit/shared/auth";
+import {
+  createProjectTagDefinitionRequestSchema,
+  projectTagDefinitionsResponseSchema,
+} from "@orbit/shared/projects";
 import type {
   AuthResponse,
   AuthAvatar,
   AuthSession,
   AuthUser,
-  CreateProjectTagDefinitionRequest,
   LoginRequest,
   MeResponse,
   OfficialAvatarId,
-  ProjectTagDefinitionsResponse,
   RegisterRequest,
-  UpdateProfileRequest
-} from "@orbit/shared";
+  UpdateProfileRequest,
+} from "@orbit/shared/auth";
+import type {
+  CreateProjectTagDefinitionRequest,
+  ProjectTagDefinitionsResponse,
+} from "@orbit/shared/projects";
 import {
   BadRequestException,
   ConflictException,

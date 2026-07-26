@@ -1,8 +1,4 @@
-import type {
-  Chart,
-  ChartStyle,
-  DeckElement
-} from "@orbit/shared";
+import type { Chart, ChartStyle, DeckElement } from "@orbit/shared/deck";
 import { IconPlus, IconX } from "@tabler/icons-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";

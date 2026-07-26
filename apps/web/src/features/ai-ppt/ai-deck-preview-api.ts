@@ -2,7 +2,7 @@ import {
   aiDeckPreviewResponseSchema,
   type AiDeckPreviewResponse,
   type Deck,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 
 // 다음 슬라이드가 공개될 때까지의 간격
 export const aiDeckRevealIntervalMs = 1250;

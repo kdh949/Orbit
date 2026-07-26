@@ -6,7 +6,7 @@ import {
   type PresentationBrief,
   type EvaluatorLensDefinition,
   type PutPresentationBriefRequest,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
 
 type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 

@@ -1,4 +1,5 @@
-import { Deck, RehearsalMetrics } from "@orbit/shared";
+import { Deck } from "@orbit/shared/deck";
+import { RehearsalMetrics } from "@orbit/shared/presentation";
 
 export * from "./image-providers";
 export * from "./provider-contracts";

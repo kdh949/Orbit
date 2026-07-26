@@ -2,9 +2,9 @@ import type { EnqueueGenerateDeckJobInput } from "@orbit/job-queue";
 import { createDemoDeck } from "@orbit/editor-core";
 import {
   generateDeckRequestSchema,
-  type Job,
-  type SavedDesignPackSnapshot
-} from "@orbit/shared";
+  type SavedDesignPackSnapshot,
+} from "@orbit/shared/deck";
+import { type Job } from "@orbit/shared/jobs";
 import { BadRequestException, ServiceUnavailableException } from "@nestjs/common";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FilesService } from "../files/files.service";

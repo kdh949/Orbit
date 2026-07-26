@@ -4,7 +4,7 @@ import type {
   EvaluatorLensDefinition,
   PresentationBrief,
   PutPresentationBriefRequest,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   IconArrowLeft,

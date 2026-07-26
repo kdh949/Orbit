@@ -1,4 +1,4 @@
-import type { Deck, DeckElement, Slide } from "@orbit/shared";
+import type { Deck, DeckElement, Slide } from "@orbit/shared/deck";
 import { Presentation } from "lucide-react";
 import type { ReactNode } from "react";
 import { ActivityPresenterPanel } from "../activity-slides";

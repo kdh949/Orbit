@@ -1,4 +1,4 @@
-import type { Deck, DeckElement, Slide } from "@orbit/shared";
+import type { Deck, DeckElement, Slide } from "@orbit/shared/deck";
 import type Konva from "konva";
 import {
   Group as KonvaGroup,

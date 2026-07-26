@@ -1,4 +1,7 @@
-import type { ProjectListItem, ProjectTagDefinition } from "@orbit/shared";
+import type {
+  ProjectListItem,
+  ProjectTagDefinition,
+} from "@orbit/shared/projects";
 import {
   IconChartBar,
   IconChevronDown,

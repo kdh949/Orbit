@@ -1,5 +1,6 @@
 import { CircleAlert, MicOff, Pause, PauseCircle, Play } from "lucide-react";
-import type { Deck, RehearsalReport } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
+import type { RehearsalReport } from "@orbit/shared/rehearsals";
 import { useRehearsalAudioSegmentPlayback } from "./useRehearsalAudioSegmentPlayback";
 
 type Props = {

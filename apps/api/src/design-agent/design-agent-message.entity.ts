@@ -2,7 +2,7 @@ import type {
   DesignAgentContext,
   DesignAgentMessageRole,
   DesignAgentMessageStatus,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from "typeorm";
 import { ProjectEntity } from "../projects/project.entity";
 

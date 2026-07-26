@@ -1,4 +1,4 @@
-import type { Deck, Slide } from "@orbit/shared";
+import type { Deck, Slide } from "@orbit/shared/deck";
 
 import type { AdviceEventType, PaceAdviceConfig } from "../../../runtime/speech/tracking/speechTrackingConfig";
 import type { LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";

@@ -1,4 +1,4 @@
-import type { Deck, Slide } from "@orbit/shared";
+import type { Deck, Slide } from "@orbit/shared/deck";
 import type Konva from "konva";
 
 import { getRenderableSlideElements } from "../../canvas/EditorCanvas";

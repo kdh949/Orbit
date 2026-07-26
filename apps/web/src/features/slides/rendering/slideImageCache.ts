@@ -1,4 +1,4 @@
-import type { Deck, Slide } from "@orbit/shared";
+import type { Deck, Slide } from "@orbit/shared/deck";
 import { resolveEditorAssetUrl } from "../../editor/shared/editorAssetUrl";
 import { usesSourceSlideSnapshot } from "../../../runtime/presentation/slideshow/elementNormalization";
 

@@ -7,8 +7,8 @@ import type {
   DeckPatch,
   DeckPatchOperation,
   ShapeElementProps,
-  TextElementProps
-} from "@orbit/shared";
+  TextElementProps,
+} from "@orbit/shared/deck";
 
 const bodyTextRoles = new Set<DeckElement["role"]>([
   "body",

@@ -1,4 +1,7 @@
-import type { ProjectMemberRole, ProjectMemberStatus } from "@orbit/shared";
+import type {
+  ProjectMemberRole,
+  ProjectMemberStatus,
+} from "@orbit/shared/projects";
 import { createContext, useContext, type ReactNode } from "react";
 
 export type ProjectAccessMembership = {

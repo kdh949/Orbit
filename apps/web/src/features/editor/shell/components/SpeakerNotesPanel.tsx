@@ -1,4 +1,4 @@
-import type { Deck } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
 import {
   IconChevronDown as ChevronDown,
   IconChevronUp as ChevronUp,

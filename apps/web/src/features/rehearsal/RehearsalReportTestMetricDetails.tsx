@@ -1,4 +1,5 @@
-import type { Deck, RehearsalReport } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
+import type { RehearsalReport } from "@orbit/shared/rehearsals";
 import { MicOff, Pause, Play } from "lucide-react";
 import {
   buildFillerDistribution,

@@ -1,5 +1,9 @@
-import type { AppendDeckPatchRequest, Deck, Keyword } from "@orbit/shared";
-import { appendDeckPatchRequestSchema, deckSchema, keywordSchema } from "@orbit/shared";
+import type { AppendDeckPatchRequest, Deck, Keyword } from "@orbit/shared/deck";
+import {
+  appendDeckPatchRequestSchema,
+  deckSchema,
+  keywordSchema,
+} from "@orbit/shared/deck";
 
 export type KeywordValidationIssue = {
   field: "keyword" | "synonym" | "abbreviation";

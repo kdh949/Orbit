@@ -1,4 +1,4 @@
-import type { Slide } from "@orbit/shared";
+import type { Slide } from "@orbit/shared/deck";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 

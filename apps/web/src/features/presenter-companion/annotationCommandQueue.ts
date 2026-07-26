@@ -1,7 +1,7 @@
 import type {
   PresentationCompanionAnnotationAck,
   PresentationCompanionAnnotationCommand,
-} from "@orbit/shared";
+} from "@orbit/shared/realtime";
 import type { CompanionAnnotationCommandInput } from "./companionSocket.contract";
 
 export const companionAnnotationQueueLimit = 256;

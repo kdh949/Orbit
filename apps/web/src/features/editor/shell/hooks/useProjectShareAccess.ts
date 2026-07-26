@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ProjectMembersResponse } from "@orbit/shared";
+import type { ProjectMembersResponse } from "@orbit/shared/projects";
 import {
   fetchProjectMembers,
   inviteProjectMember,

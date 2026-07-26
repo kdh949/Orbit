@@ -4,7 +4,7 @@ import {
   repairSemanticQaOnce,
   type Deck,
   type GenerateDeckValidation,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import {
   hasMediaPlaceholder,
   resolvedVisualAssetCount,

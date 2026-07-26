@@ -9,7 +9,7 @@ import {
   aiDeckGenerationStageSchema,
   jobErrorSchema,
   jobSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/jobs";
 import {
   ConflictException,
   Inject,

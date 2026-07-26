@@ -1,7 +1,7 @@
 import {
   companionDeckSnapshotSchema,
   type CompanionDeckSnapshot,
-} from "@orbit/shared";
+} from "@orbit/shared/presentation";
 import { createActivitySlide, createDemoDeck } from "@orbit/editor-core";
 import type { ReactNode } from "react";
 import { forwardRef } from "react";

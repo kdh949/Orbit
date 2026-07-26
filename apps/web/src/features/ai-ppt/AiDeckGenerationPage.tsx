@@ -1,4 +1,4 @@
-import type { AiDeckPreviewResponse, Deck } from "@orbit/shared";
+import type { AiDeckPreviewResponse, Deck } from "@orbit/shared/deck";
 import { useQueryClient } from "@tanstack/react-query";
 import { IconArrowLeft, IconLoader2, IconRefresh } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";

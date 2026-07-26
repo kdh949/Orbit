@@ -1,7 +1,7 @@
 import type {
   CommunityTemplateCard,
   CommunityTemplateCategory,
-} from "@orbit/shared";
+} from "@orbit/shared/community-templates";
 import { IconSearch, IconUpload } from "@tabler/icons-react";
 
 import { OrbitButton, OrbitDialog, OrbitInput } from "../../components/ui";

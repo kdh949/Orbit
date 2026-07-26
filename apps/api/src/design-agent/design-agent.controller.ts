@@ -3,7 +3,7 @@ import {
   createDesignImageGenerationRequestSchema,
   type CreateDesignImageGenerationRequest,
   type CreateDesignAgentMessageRequest,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import { Body, Controller, Param, Post, Req } from "@nestjs/common";
 import { AuthService } from "../auth/auth.service";
 import { getCurrentUser, type SignedCookieRequest } from "../auth/current-user";

@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
-import type { ActivityDefinition, ActivityQuestion } from "@orbit/shared";
+import type {
+  ActivityDefinition,
+  ActivityQuestion,
+} from "@orbit/shared/activities";
 
 export function createActivityDefinitionFingerprint(
   definition: ActivityDefinition

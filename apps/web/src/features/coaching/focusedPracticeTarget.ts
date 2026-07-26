@@ -1,9 +1,9 @@
 import {
   splitFocusedPracticeSentences,
-  type Deck,
   type FocusedPracticeAttempt,
   type FocusedPracticeTargetScope,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
+import { type Deck } from "@orbit/shared/deck";
 
 export type FocusedPracticeRangeTransition = {
   enteredAtMs: number;

@@ -13,10 +13,10 @@ import {
   type Deck,
   type DeckApiErrorCode,
   type DeckPatch,
-  type Job,
   type PptxImportQuality,
-  type PptxNotesPreview
-} from "@orbit/shared";
+  type PptxNotesPreview,
+} from "@orbit/shared/deck";
+import { type Job } from "@orbit/shared/jobs";
 
 import type {
   PatchProducer,

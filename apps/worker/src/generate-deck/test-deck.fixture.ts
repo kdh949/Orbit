@@ -1,4 +1,4 @@
-import { deckSchema, type Deck } from "@orbit/shared";
+import { deckSchema, type Deck } from "@orbit/shared/deck";
 
 export function createTestDeck(projectId = "project-a"): Deck {
   return deckSchema.parse({

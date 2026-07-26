@@ -1,4 +1,4 @@
-import type { PresentationCompanionAnnotationCommand } from "@orbit/shared";
+import type { PresentationCompanionAnnotationCommand } from "@orbit/shared/realtime";
 
 type AnnotationCommandBaseFields =
   | "authorityEpochId"

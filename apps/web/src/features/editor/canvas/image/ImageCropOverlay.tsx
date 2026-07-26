@@ -1,4 +1,4 @@
-import type { ImageElementProps } from "@orbit/shared";
+import type { ImageElementProps } from "@orbit/shared/deck";
 import type { PointerEvent as ReactPointerEvent, WheelEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 

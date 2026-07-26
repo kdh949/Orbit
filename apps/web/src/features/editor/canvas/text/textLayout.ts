@@ -2,8 +2,8 @@ import type {
   Deck,
   Slide,
   TextElementParagraph,
-  TextElementProps
-} from "@orbit/shared";
+  TextElementProps,
+} from "@orbit/shared/deck";
 import { Text as KonvaTextShape } from "konva/lib/shapes/Text";
 import type { RichTextFontStyle } from "../../../slides/rendering/richTextLayout";
 import {

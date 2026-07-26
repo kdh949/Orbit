@@ -12,7 +12,7 @@ import {
   designImageGenerationQueueName,
   slideQuestionGuideGenerationQueueName,
 } from "@orbit/job-queue";
-import type { Job } from "@orbit/shared";
+import type { Job } from "@orbit/shared/jobs";
 import type { PinoLogger } from "nestjs-pino";
 import type { DataSource } from "typeorm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

@@ -2,7 +2,7 @@ import {
   isWithinTargetRange,
   slidePracticeMetricTargets,
   type SlidePracticeReportRecord,
-} from "@orbit/shared";
+} from "@orbit/shared/slide-practice";
 
 export type PracticeCelebrationOutcome = {
   great: boolean;

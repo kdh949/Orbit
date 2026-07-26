@@ -1,4 +1,7 @@
-import type { ActivityRun, ActivityRuntimeStatus } from "@orbit/shared";
+import type {
+  ActivityRun,
+  ActivityRuntimeStatus,
+} from "@orbit/shared/activities";
 import { useCallback, useEffect, useState } from "react";
 
 import { activityApi, ActivityApiError } from "../api/activityApi";

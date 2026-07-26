@@ -1,4 +1,4 @@
-import type { Deck, DeckPatch } from "@orbit/shared";
+import type { Deck, DeckPatch } from "@orbit/shared/deck";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { useRef, useState } from "react";
 

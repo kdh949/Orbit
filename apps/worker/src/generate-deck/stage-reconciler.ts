@@ -5,7 +5,7 @@ import {
   type AiDeckGenerationStageMessage,
   type Job,
   type JobError,
-} from "@orbit/shared";
+} from "@orbit/shared/jobs";
 import type { DataSource } from "typeorm";
 import { z } from "zod";
 

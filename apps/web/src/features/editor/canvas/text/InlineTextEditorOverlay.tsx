@@ -6,7 +6,7 @@ import type {
   TextElementParagraph,
   TextElementProps,
   TextElementRun,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import {
   forwardRef,
   useEffect,

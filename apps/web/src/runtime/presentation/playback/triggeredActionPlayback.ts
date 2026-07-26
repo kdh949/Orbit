@@ -3,7 +3,7 @@ import {
   executeSlideAction,
   type SlidePlaybackState
 } from "@orbit/editor-core/playback";
-import type { DeckSlideAction, Slide } from "@orbit/shared";
+import type { DeckSlideAction, Slide } from "@orbit/shared/deck";
 
 import type { SlideshowAnimationPlan } from "../slideshow/slideshowStepModel";
 

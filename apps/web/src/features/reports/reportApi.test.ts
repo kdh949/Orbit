@@ -1,4 +1,4 @@
-import type { RehearsalRunComparison } from "@orbit/shared";
+import type { RehearsalRunComparison } from "@orbit/shared/rehearsals";
 import { describe, expect, it, vi } from "vitest";
 import {
   fetchProjectRehearsalReportRuns,

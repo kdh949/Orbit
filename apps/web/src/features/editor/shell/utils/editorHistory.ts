@@ -1,4 +1,4 @@
-import type { Deck } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
 import { resolveSelectedSlideId } from "../slideRailModel";
 
 export type HistoryEntry = {

@@ -6,8 +6,8 @@ import type {
   DeckSnapshot,
   GetDeckResponse,
   Keyword,
-  PutDeckResponse
-} from "@orbit/shared";
+  PutDeckResponse,
+} from "@orbit/shared/deck";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { fetchProjectDeck, putProjectDeck, saveSlideKeywords } from "./keywordEditorApi";

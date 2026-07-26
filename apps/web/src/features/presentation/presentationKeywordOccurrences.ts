@@ -1,4 +1,4 @@
-import { deriveKeywordOccurrences, type Slide } from "@orbit/shared";
+import { deriveKeywordOccurrences, type Slide } from "@orbit/shared/deck";
 
 import { getKeywordOccurrenceTriggerIdsForSlide } from "../../runtime/presentation/playback/triggeredActionPlayback";
 

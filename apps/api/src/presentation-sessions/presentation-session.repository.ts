@@ -1,7 +1,7 @@
 import type {
   PresentationAccessMode,
   PresentationSessionPurpose,
-} from "@orbit/shared";
+} from "@orbit/shared/presentation";
 import { Injectable } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource, EntityManager } from "typeorm";

@@ -1,19 +1,20 @@
 import {
   coachingIdSchema,
   completeFocusedPracticeAudioRequestSchema,
-  createAssetUploadUrlRequestSchema,
   createFocusedPracticeAttemptRequestSchema,
   createFocusedPracticeSessionRequestSchema,
-  deckSchema,
   focusedPracticeAttemptSchema,
   focusedPracticeAttemptSummarySchema,
   focusedPracticeSessionSchema,
-  rehearsalEvaluationSnapshotSchema,
-  type Deck,
   type FocusedPracticeAttempt,
   type FocusedPracticeSession,
+} from "@orbit/shared/coaching";
+import { deckSchema, type Deck } from "@orbit/shared/deck";
+import { createAssetUploadUrlRequestSchema } from "@orbit/shared/files";
+import {
+  rehearsalEvaluationSnapshotSchema,
   type RehearsalEvaluationSnapshot,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import { enqueueFocusedPracticeAnalysisJob } from "@orbit/job-queue";
 import { isAdaptiveCoachingProjectAllowed, loadOrbitConfig } from "@orbit/config";
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from "@nestjs/common";

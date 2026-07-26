@@ -1,4 +1,5 @@
-import type { SemanticCapabilityEvent, SemanticCue } from "@orbit/shared";
+import type { SemanticCue } from "@orbit/shared/deck";
+import type { SemanticCapabilityEvent } from "@orbit/shared/rehearsals";
 import { describe, expect, it, vi } from "vitest";
 
 import { LiveSttError, type LiveSttPort, type LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";

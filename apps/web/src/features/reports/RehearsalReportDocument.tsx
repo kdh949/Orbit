@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import type { Deck, RehearsalReport, RehearsalRun } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
+import type { RehearsalReport, RehearsalRun } from "@orbit/shared/rehearsals";
 import { OrbitButton } from "../../components/ui";
 import { navigateTo } from "./reportUtils";
 import { RehearsalHabitOverview } from "../rehearsal/RehearsalHabitOverview";

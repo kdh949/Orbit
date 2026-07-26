@@ -20,7 +20,7 @@ import {
   updateProjectTagsRequestSchema,
   updateProjectRequestSchema,
   upsertProjectMemberRequestSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/projects";
 import type { Request } from "express";
 import { AuthService } from "../auth/auth.service";
 import { authSessionCookieName } from "../auth/auth.constants";

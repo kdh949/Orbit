@@ -1,4 +1,4 @@
-import type { GenerateDeckRequest } from "@orbit/shared";
+import type { GenerateDeckRequest } from "@orbit/shared/deck";
 import { z } from "zod";
 
 import {

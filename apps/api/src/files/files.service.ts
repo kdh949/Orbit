@@ -4,14 +4,14 @@ import {
   ownerOnlyFilePurposes,
   privateAudioPurposes,
   uploadedFileSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/files";
 import type {
   AssetUploadUrlRequest,
   AssetUploadUrlResponse,
   CompleteAssetUploadRequest,
   FilePurpose,
   UploadedFile,
-} from "@orbit/shared";
+} from "@orbit/shared/files";
 import { StoragePort } from "@orbit/storage";
 import { createHash, randomUUID } from "crypto";
 import type { Readable } from "node:stream";

@@ -1,4 +1,4 @@
-import type { Deck, Slide } from "@orbit/shared";
+import type { Deck, Slide } from "@orbit/shared/deck";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { interpolateSlideshowTransitionStates } from "../../../../../../runtime/presentation/slideshow/useSlideshowTransitions";

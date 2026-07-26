@@ -19,6 +19,7 @@ const rehearsalConsumerRoots = new Set([
   "presentation",
   "presenter-companion",
 ]);
+const testFilePattern = /(?:^|\/)[^/]+\.(?:spec|test)\.[^/]+$/;
 
 function toRepoPath(root, absolutePath) {
   return relative(root, absolutePath).split(sep).join("/");
@@ -54,6 +55,31 @@ export function findPackageSourceImports(content) {
     const offset = match.index ?? 0;
     const line = content.slice(0, offset).split("\n").length;
     findings.push({ line, specifier });
+  }
+  return findings;
+}
+
+export function findSharedRootImports(content, filePath, rootDirectory) {
+  const root = resolve(rootDirectory);
+  const file = toRepoPath(root, resolve(filePath));
+  if (testFilePattern.test(file)) {
+    return [];
+  }
+
+  const findings = [];
+  for (const match of content.matchAll(stringLiteralPattern)) {
+    if (match[1] !== "@orbit/shared") {
+      continue;
+    }
+    const offset = match.index ?? 0;
+    const prefix = content.slice(Math.max(0, offset - 24), offset);
+    if (!/(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*)$/.test(prefix)) {
+      continue;
+    }
+    findings.push({
+      line: content.slice(0, offset).split("\n").length,
+      specifier: match[1],
+    });
   }
   return findings;
 }
@@ -138,7 +164,7 @@ export function findForbiddenWebFeatureImports(
 
 export function checkImportBoundaries(rootDirectory, options = {}) {
   const root = resolve(rootDirectory);
-  const sourceRoots = options.sourceRoots ?? ["apps", "services"];
+  const sourceRoots = options.sourceRoots ?? ["apps", "packages", "services"];
   const findings = [];
 
   for (const sourceRoot of sourceRoots) {
@@ -149,6 +175,13 @@ export function checkImportBoundaries(rootDirectory, options = {}) {
           ...finding,
           file: toRepoPath(root, file),
           code: "FORBIDDEN_PACKAGE_SOURCE_IMPORT",
+        });
+      }
+      for (const finding of findSharedRootImports(content, file, root)) {
+        findings.push({
+          ...finding,
+          file: toRepoPath(root, file),
+          code: "FORBIDDEN_SHARED_ROOT_IMPORT",
         });
       }
       for (const finding of findWebRuntimeFeatureImports(content, file, root)) {

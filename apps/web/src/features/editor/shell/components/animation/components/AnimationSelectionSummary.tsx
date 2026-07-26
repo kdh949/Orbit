@@ -1,4 +1,4 @@
-import type { DeckElement } from "@orbit/shared";
+import type { DeckElement } from "@orbit/shared/deck";
 import {
   IconChartBar as BarChart3,
   IconPhoto as ImageIcon,

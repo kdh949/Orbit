@@ -1,4 +1,4 @@
-import type { SemanticCue } from "@orbit/shared";
+import type { SemanticCue } from "@orbit/shared/deck";
 
 import { normalizeSpeechText } from "../../tracking/phraseExtractor";
 import {

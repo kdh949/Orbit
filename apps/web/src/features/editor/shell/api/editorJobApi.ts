@@ -9,9 +9,9 @@ import {
   type DeckExportJobResult,
   type OoxmlSyncState,
   type PptxImportPreference,
-  type PptxOoxmlGenerationJobResult
-} from "@orbit/shared";
-import { jobSchema, type Job } from "@orbit/shared";
+  type PptxOoxmlGenerationJobResult,
+} from "@orbit/shared/deck";
+import { jobSchema, type Job } from "@orbit/shared/jobs";
 
 import { uploadProjectAsset } from "../../../projects/ProjectAssetWorkspace";
 import { getPptxImportValidationMessage } from "../utils/editorFileValidation";

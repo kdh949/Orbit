@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createActivitySlide, createDemoDeck } from "@orbit/editor-core";
-import type { ActivityPublicResult } from "@orbit/shared";
+import type { ActivityPublicResult } from "@orbit/shared/activities";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 

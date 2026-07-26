@@ -1,12 +1,11 @@
+import type { SemanticCue, SemanticCueImportance } from "@orbit/shared/deck";
+import type { PronunciationLexiconEntry } from "@orbit/shared/pronunciation";
 import type {
   RehearsalRunMeta,
   RehearsalSemanticCueDecision,
   SemanticCapabilityEvent,
-  SemanticCue,
-  SemanticCueImportance,
   SemanticMeasurementMode,
-  PronunciationLexiconEntry,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 
 import type {
   LiveSttBiasPhrase,

@@ -1,10 +1,10 @@
+import { type Deck } from "@orbit/shared/deck";
 import {
   slideQuestionGuideTextHashInput,
-  type Deck,
   type SlidePracticeReport,
   type VoiceBaselineMetrics,
   type VoiceBaselineRecord,
-} from "@orbit/shared";
+} from "@orbit/shared/slide-practice";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useFocusedPracticeAudio, type FocusedPracticeCapture } from "../../coaching/useFocusedPracticeAudio";

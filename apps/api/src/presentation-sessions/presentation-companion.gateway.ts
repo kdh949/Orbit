@@ -6,6 +6,7 @@ import {
   presentationCompanionScopeRoomId,
   presentationPresenterRoomId,
 } from "@orbit/realtime";
+import { type CompanionAccessScope } from "@orbit/shared/presentation";
 import {
   presentationCompanionAnnotationAckSchema,
   presentationCompanionAnnotationCommandSchema,
@@ -20,9 +21,8 @@ import {
   presentationCompanionPrompterStateSchema,
   presentationCompanionSignalSchema,
   presentationCompanionSnapshotRequestSchema,
-  type CompanionAccessScope,
   type PresentationCompanionEvent,
-} from "@orbit/shared";
+} from "@orbit/shared/realtime";
 import {
   ConnectedSocket,
   MessageBody,

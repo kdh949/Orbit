@@ -12,8 +12,8 @@ import {
   generateDeckStartResponseSchema,
   generateDeckStoredJobPayloadSchema,
   type DeckColorCustomizationResponse,
-  type DeckColorOptionsResponse
-} from "@orbit/shared";
+  type DeckColorOptionsResponse,
+} from "@orbit/shared/deck";
 import { loadOrbitConfig } from "@orbit/config";
 import {
   BadRequestException,

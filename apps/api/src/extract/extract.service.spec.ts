@@ -1,4 +1,4 @@
-import type { Job } from "@orbit/shared";
+import type { Job } from "@orbit/shared/jobs";
 import type { PinoLogger } from "nestjs-pino";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { JobsService } from "../jobs/jobs.service";

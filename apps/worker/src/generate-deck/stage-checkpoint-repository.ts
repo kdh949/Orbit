@@ -10,7 +10,7 @@ import {
   type AiDeckGenerationStageMessage,
   type AiDeckGenerationStageStatus,
   type JobError,
-} from "@orbit/shared";
+} from "@orbit/shared/jobs";
 import { randomUUID } from "node:crypto";
 import type { DataSource } from "typeorm";
 import { z } from "zod";

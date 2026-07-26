@@ -1,4 +1,4 @@
-import type { PracticePlanResponse } from "@orbit/shared";
+import type { PracticePlanResponse } from "@orbit/shared/coaching";
 
 export function practiceGoalCategoryLabel(category: string) {
   return ({

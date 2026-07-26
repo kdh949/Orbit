@@ -1,4 +1,4 @@
-import type { CustomShapeElementProps } from "@orbit/shared";
+import type { CustomShapeElementProps } from "@orbit/shared/deck";
 import type Konva from "konva";
 import { useMemo } from "react";
 

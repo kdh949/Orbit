@@ -1,4 +1,4 @@
-import type { PracticePlanResponse } from "@orbit/shared";
+import type { PracticePlanResponse } from "@orbit/shared/coaching";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 

@@ -3,7 +3,7 @@ import {
   generateDeckStagedCoordinatorJobName,
   redisConnectionOptions,
 } from "@orbit/job-queue";
-import type { Job } from "@orbit/shared";
+import type { Job } from "@orbit/shared/jobs";
 import { Queue } from "bullmq";
 import type Redis from "ioredis";
 import type { DataSource } from "typeorm";

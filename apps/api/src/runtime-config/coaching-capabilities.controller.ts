@@ -1,5 +1,5 @@
 import { isAdaptiveCoachingProjectAllowed, loadOrbitConfig } from "@orbit/config";
-import { coachingCapabilitiesResponseSchema } from "@orbit/shared";
+import { coachingCapabilitiesResponseSchema } from "@orbit/shared/config";
 import { Controller, Get, Param, Req } from "@nestjs/common";
 import { AuthService } from "../auth/auth.service";
 import { getCurrentUser, type SignedCookieRequest } from "../auth/current-user";

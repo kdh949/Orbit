@@ -2,10 +2,8 @@ import {
   enqueuePptxOoxmlGenerationJob,
   type EnqueuePptxOoxmlGenerationJobInput
 } from "@orbit/job-queue";
-import {
-  jobSchema,
-  pptxOoxmlGenerationRequestSchema
-} from "@orbit/shared";
+import { pptxOoxmlGenerationRequestSchema } from "@orbit/shared/deck";
+import { jobSchema } from "@orbit/shared/jobs";
 import { loadOrbitConfig } from "@orbit/config";
 import { BadRequestException, Injectable, Optional } from "@nestjs/common";
 import { z } from "zod";

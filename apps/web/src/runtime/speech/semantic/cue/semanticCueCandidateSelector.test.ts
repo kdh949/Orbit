@@ -1,4 +1,4 @@
-import type { SemanticCue } from "@orbit/shared";
+import type { SemanticCue } from "@orbit/shared/deck";
 import { describe, expect, it } from "vitest";
 
 import { selectSemanticCueCandidates } from "./semanticCueCandidateSelector";

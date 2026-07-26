@@ -35,6 +35,7 @@
     "py:sync": "cd services/python-worker && uv sync",
     "py:test": "cd services/python-worker && uv run pytest",
     "repo:doctor": "node tools/agent/repo-doctor.mjs",
+    "shared:subpaths": "node tools/agent/shared-subpath-codemod.mjs",
     "test": "node tools/agent/run-with-verification-env.mjs pnpm turbo run test --env-mode=loose",
     "test:agent-context": "node --test tools/agent/context.test.mjs",
     "test:agent-benchmark": "node --test tools/agent/benchmark.test.mjs",

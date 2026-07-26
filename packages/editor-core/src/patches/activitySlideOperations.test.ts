@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deckSchema } from "@orbit/shared";
+import { deckSchema } from "@orbit/shared/deck";
 
 import { createDemoDeck } from "../index";
 import { activityDesignPresetIds } from "../activity-layouts/activityDesignPresets";

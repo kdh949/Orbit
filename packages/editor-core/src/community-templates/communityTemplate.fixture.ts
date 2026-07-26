@@ -1,5 +1,5 @@
-import type { Deck } from "@orbit/shared";
-import { deckSchema } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
+import { deckSchema } from "@orbit/shared/deck";
 
 import { createDemoDeck } from "../fixtures";
 

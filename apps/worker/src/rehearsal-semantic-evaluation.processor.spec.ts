@@ -1,4 +1,4 @@
-import { rehearsalReportSchema } from "@orbit/shared";
+import { rehearsalReportSchema } from "@orbit/shared/rehearsals";
 import type { DataSource } from "typeorm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { processRehearsalSemanticEvaluationJob } from "./rehearsal-semantic-evaluation.processor";

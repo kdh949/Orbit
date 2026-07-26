@@ -1,9 +1,9 @@
 import {
   deckShellSchema,
   generateDeckResponseSchema,
-  type AiDeckGenerationStage,
   type GenerateDeckResponse,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
+import { type AiDeckGenerationStage } from "@orbit/shared/jobs";
 import { z } from "zod";
 
 export const aiDeckPlanningStageSchema = z.enum([

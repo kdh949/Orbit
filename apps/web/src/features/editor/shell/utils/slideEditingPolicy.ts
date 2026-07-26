@@ -1,4 +1,4 @@
-import type { DeckElement, Slide } from "@orbit/shared";
+import type { DeckElement, Slide } from "@orbit/shared/deck";
 
 const activityElementTypes = new Set<DeckElement["type"]>([
   "text",

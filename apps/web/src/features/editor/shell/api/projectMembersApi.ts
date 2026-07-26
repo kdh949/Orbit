@@ -1,8 +1,8 @@
-import { projectMembersResponseSchema } from "@orbit/shared";
+import { projectMembersResponseSchema } from "@orbit/shared/projects";
 import type {
   ProjectMemberRole,
-  ProjectMembersResponse
-} from "@orbit/shared";
+  ProjectMembersResponse,
+} from "@orbit/shared/projects";
 
 export type ShareRole = "owner" | "editor" | "viewer";
 

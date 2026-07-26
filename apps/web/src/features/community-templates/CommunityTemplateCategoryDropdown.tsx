@@ -1,4 +1,4 @@
-import type { CommunityTemplateCategory } from "@orbit/shared";
+import type { CommunityTemplateCategory } from "@orbit/shared/community-templates";
 import { useQuery } from "@tanstack/react-query";
 import { IconCheck, IconChevronDown, IconSearch } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";

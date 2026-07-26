@@ -1,7 +1,7 @@
 import type {
   PresentationAccessMode,
-  PresentationSession
-} from "@orbit/shared";
+  PresentationSession,
+} from "@orbit/shared/presentation";
 import { IconShare as Share2, IconX as X } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";

@@ -1,17 +1,17 @@
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createDemoDeck } from "@orbit/editor-core";
+import { legacyRehearsalSlideSpeakingRate } from "@orbit/shared/coaching";
+import { createKeywordOccurrenceId } from "@orbit/shared/deck";
+import { type Job } from "@orbit/shared/jobs";
 import {
-  createKeywordOccurrenceId,
   createRehearsalEvaluationSnapshot,
   legacyRehearsalReportMetricsDefaults,
-  legacyRehearsalSlideSpeakingRate,
   legacyRehearsalSilenceAnalysis,
   legacyRehearsalVolumeAnalysis,
-  type Job,
   type RehearsalReport,
   type RehearsalRun,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import type { ReactNode } from "react";
 import { forwardRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";

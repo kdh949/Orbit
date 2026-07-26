@@ -1,17 +1,17 @@
 import type {
-  Deck,
   EvaluationCriterion,
   PresentationBrief,
   RehearsalEvaluationPlan,
-  RehearsalEvaluationSnapshot,
   RehearsalFocusProfile,
   RehearsalFocusProfileSnapshot,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
+import type { Deck } from "@orbit/shared/deck";
+import type { RehearsalEvaluationSnapshot } from "@orbit/shared/rehearsals";
 import {
-  canonicalJson,
   rehearsalEvaluationPlanSchema,
   rehearsalFocusProfileSnapshotSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
+import { canonicalJson } from "@orbit/shared/common";
 import { createHash } from "node:crypto";
 
 export function sha256Canonical(value: unknown): string {

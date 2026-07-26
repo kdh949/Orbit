@@ -1,4 +1,4 @@
-import type { TableCellProps } from "@orbit/shared";
+import type { TableCellProps } from "@orbit/shared/deck";
 import { useEffect, useRef } from "react";
 
 import type { TableCellLayout } from "../../../slides/rendering/tableLayout";

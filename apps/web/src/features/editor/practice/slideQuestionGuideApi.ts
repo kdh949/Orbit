@@ -1,12 +1,12 @@
+import { canonicalJson } from "@orbit/shared/common";
+import { jobSchema } from "@orbit/shared/jobs";
 import {
   autoCreateSlideQuestionGuidesResponseSchema,
-  canonicalJson,
-  jobSchema,
   slideQuestionGuideJobResponseSchema,
   slideQuestionGuideListResponseSchema,
   slideQuestionGuideSchema,
   type SlideQuestionGuide,
-} from "@orbit/shared";
+} from "@orbit/shared/slide-practice";
 
 export async function autoCreateSlideQuestionGuides(input: {
   projectId: string;

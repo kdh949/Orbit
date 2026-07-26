@@ -1,11 +1,11 @@
-import { deckElementCoordinateLimit } from "@orbit/shared";
+import { deckElementCoordinateLimit } from "@orbit/shared/deck";
 import type {
   Deck,
   DeckCanvas,
   DeckElement,
   DeckPatch,
-  ElementFramePatch
-} from "@orbit/shared";
+  ElementFramePatch,
+} from "@orbit/shared/deck";
 
 const minimumElementSize = 1;
 

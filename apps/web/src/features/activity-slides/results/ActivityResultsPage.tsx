@@ -1,4 +1,5 @@
-import type { ActivitySessionResultItem, ProjectMemberRole } from "@orbit/shared";
+import type { ActivitySessionResultItem } from "@orbit/shared/activities";
+import type { ProjectMemberRole } from "@orbit/shared/projects";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   IconArrowLeft,

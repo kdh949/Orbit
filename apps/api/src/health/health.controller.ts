@@ -1,4 +1,4 @@
-import { demoIds } from "@orbit/shared";
+import { demoIds } from "@orbit/shared/common";
 import { Controller, Get } from "@nestjs/common";
 import { DatabaseReadinessService } from "../database/database-readiness.service";
 

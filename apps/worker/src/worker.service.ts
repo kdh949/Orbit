@@ -23,7 +23,7 @@ import {
   enqueueActivityResponseRetentionJob,
 } from "@orbit/job-queue";
 import { loadOrbitConfig } from "@orbit/config";
-import type { Job as OrbitJob } from "@orbit/shared";
+import type { Job as OrbitJob } from "@orbit/shared/jobs";
 import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { type Job as BullMqJob, Worker as BullMqWorker } from "bullmq";

@@ -1,4 +1,4 @@
-import type { Job } from "@orbit/shared";
+import type { Job } from "@orbit/shared/jobs";
 import { createDemoDeck } from "@orbit/editor-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Repository } from "typeorm";

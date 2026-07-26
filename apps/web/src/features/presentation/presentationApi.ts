@@ -1,18 +1,20 @@
 import {
+  getDeckResponseSchema,
+  putDeckResponseSchema,
+  type Deck,
+} from "@orbit/shared/deck";
+import { type AssetUploadUrlResponse } from "@orbit/shared/files";
+import {
   completePresentationAudioResponseSchema,
   createPresentationAudioUploadResponseSchema,
   createPresentationRunResponseSchema,
-  getDeckResponseSchema,
   getPresentationRunReportResponseSchema,
   getPresentationRunResponseSchema,
   presentationSessionResponseSchema,
-  putDeckResponseSchema,
-  type AssetUploadUrlResponse,
-  type Deck,
   type PresentationRecordingMode,
   type PresentationSessionPurpose,
-  type SlideTranscriptSnapshot,
-} from "@orbit/shared";
+} from "@orbit/shared/presentation";
+import { type SlideTranscriptSnapshot } from "@orbit/shared/rehearsals";
 
 import { activityApi } from "../activity-slides/api/activityApi";
 import { normalizePresentationRecordingFile } from "./presentationRecording";

@@ -1,4 +1,4 @@
-import type { Deck } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
 import { ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RehearsalSlideCanvasPreview } from "./RehearsalSlideCanvasPreview";

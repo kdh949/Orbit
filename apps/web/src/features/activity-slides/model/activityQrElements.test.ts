@@ -1,5 +1,5 @@
 import { createDemoDeck, createActivitySlide } from "@orbit/editor-core";
-import { deckSchema } from "@orbit/shared";
+import { deckSchema } from "@orbit/shared/deck";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { activityApi } from "../api/activityApi";

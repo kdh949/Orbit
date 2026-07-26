@@ -2,7 +2,7 @@ import type {
   CommunityTemplateCard,
   CommunityTemplateCategory,
   CommunityTemplateListQuery,
-} from "@orbit/shared";
+} from "@orbit/shared/community-templates";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useReducer } from "react";
 

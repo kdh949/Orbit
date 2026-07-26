@@ -1,4 +1,4 @@
-import type { DeckCanvas, DeckElement } from "@orbit/shared";
+import type { DeckCanvas, DeckElement } from "@orbit/shared/deck";
 
 const CANVAS_ID_BADGE_GAP = 10;
 const CANVAS_ID_STAGE_PADDING = 12;

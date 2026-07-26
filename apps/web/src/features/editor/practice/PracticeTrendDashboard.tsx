@@ -3,7 +3,7 @@ import {
   isWithinTargetRange,
   slidePracticeMetricTargets,
   type SlidePracticeReportRecord,
-} from "@orbit/shared";
+} from "@orbit/shared/slide-practice";
 import {
   useRef,
   useState,

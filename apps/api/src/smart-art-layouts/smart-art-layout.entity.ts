@@ -1,4 +1,7 @@
-import type { SmartArtElementTemplate, SmartArtLayoutType } from "@orbit/shared";
+import type {
+  SmartArtElementTemplate,
+  SmartArtLayoutType,
+} from "@orbit/shared/deck";
 import { Column, Entity, Index, PrimaryColumn } from "typeorm";
 
 @Entity({ name: "smart_art_layouts" })

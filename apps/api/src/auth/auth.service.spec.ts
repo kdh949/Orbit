@@ -3,7 +3,7 @@ import { DataSource } from "typeorm";
 import { describe, expect, it, vi } from "vitest";
 import { AuthSessionStore } from "./auth-session.store";
 import { AuthService } from "./auth.service";
-import type { AuthSession } from "@orbit/shared";
+import type { AuthSession } from "@orbit/shared/auth";
 
 type UserRow = {
   user_id: string;

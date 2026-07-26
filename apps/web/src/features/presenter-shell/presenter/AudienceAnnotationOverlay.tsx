@@ -1,9 +1,9 @@
+import type { Deck } from "@orbit/shared/deck";
 import type {
-  Deck,
   PresentationCompanionAnnotationSnapshot,
   PresentationCompanionLaser,
   PresentationCompanionStroke,
-} from "@orbit/shared";
+} from "@orbit/shared/realtime";
 import type { AudienceOutputMode } from "../../../runtime/presentation/channel/presenterStateStore";
 import {
   calculateContainRect,

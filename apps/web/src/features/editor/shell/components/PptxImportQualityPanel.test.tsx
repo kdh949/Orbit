@@ -1,4 +1,4 @@
-import type { QualityReport } from "@orbit/shared";
+import type { QualityReport } from "@orbit/shared/deck";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 

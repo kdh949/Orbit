@@ -5,7 +5,7 @@ import {
   type CriterionResult,
   type EvaluationCriterion,
   type ReportObservation,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
 
 export type CriterionUnavailableReason = Extract<
   CriterionResult["reasonCode"],

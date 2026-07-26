@@ -1,4 +1,4 @@
-import type { CommunityTemplateSourceProject } from "@orbit/shared";
+import type { CommunityTemplateSourceProject } from "@orbit/shared/community-templates";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";

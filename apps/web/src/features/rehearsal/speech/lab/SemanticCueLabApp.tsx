@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { semanticCueSchema, type SemanticCue } from "@orbit/shared";
+import { semanticCueSchema, type SemanticCue } from "@orbit/shared/deck";
 
 import { getE5EmbeddingService } from "../../../../runtime/speech/semantic/e5EmbeddingService";
 import { createBrowserTransformersSemanticCueNliProvider } from "../../../../runtime/speech/semantic/nli/browserSemanticCueNliProvider";

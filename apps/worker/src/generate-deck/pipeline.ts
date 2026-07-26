@@ -4,9 +4,9 @@ import {
   type GenerateDeckDiagnostics,
   type GenerateDeckRequest,
   type GenerateDeckValidation,
-  type Job,
   type SavedDesignPackSnapshot,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
+import { type Job } from "@orbit/shared/jobs";
 import type { StoragePort } from "@orbit/storage";
 import type { DataSource } from "typeorm";
 import type { ImageAssetRuntime } from "../image-asset-pipeline";

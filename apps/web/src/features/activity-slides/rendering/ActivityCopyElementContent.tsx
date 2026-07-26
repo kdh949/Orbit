@@ -1,8 +1,4 @@
-import type {
-  ActivityCopyElementProps,
-  Deck,
-  Slide
-} from "@orbit/shared";
+import type { ActivityCopyElementProps, Deck, Slide } from "@orbit/shared/deck";
 import { Text as KonvaText } from "react-konva";
 import type { ComponentType } from "react";
 

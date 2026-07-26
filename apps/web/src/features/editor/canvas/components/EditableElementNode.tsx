@@ -5,7 +5,7 @@ import type {
   GroupElementProps,
   Slide,
   TextElementProps,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import { getGroupChildElements } from "@orbit/editor-core/patches";
 import type Konva from "konva";
 import {

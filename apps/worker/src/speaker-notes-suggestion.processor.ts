@@ -5,8 +5,8 @@ import {
   speakerNotesSuggestionProviderResultSchema,
   speakerNotesSuggestionResultSchema,
   type Deck,
-  type Job,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
+import { type Job } from "@orbit/shared/jobs";
 import type { DataSource } from "typeorm";
 import { z } from "zod";
 
