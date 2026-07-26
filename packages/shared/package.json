@@ -15,6 +15,9 @@
       "common": [
         "dist/common/index.d.ts"
       ],
+      "config": [
+        "dist/config/index.d.ts"
+      ],
       "deck": [
         "dist/deck/index.d.ts"
       ],
@@ -61,6 +64,11 @@
       "types": "./dist/common/index.d.ts",
       "import": "./src/common/index.ts",
       "require": "./dist/common/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "import": "./src/config/index.ts",
+      "require": "./dist/config/index.js"
     },
     "./deck": {
       "types": "./dist/deck/index.d.ts",
