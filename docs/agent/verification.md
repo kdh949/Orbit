@@ -35,6 +35,51 @@ pnpm verify:scope python:pptx --dry-run
 - 전체 검증 승격 조건
 - 보안·아키텍처 경계
 
+## Path context
+
+domain을 알지 못해도 변경 파일 하나에서 작업 context를 계산할 수 있다.
+
+```bash
+pnpm agent:context --path \
+  apps/web/src/runtime/speech/stt/koreanTextSimilarity.ts
+```
+
+출력에는 workspace, capability, 가장 가까운 `AGENTS.md`, manifest ownership,
+direct/reverse dependency, 인접 test, 관련 contract와 verification tier가
+포함된다. manifest가 파일을 소유하지 않아도 경로 기반 fallback을 반환하며, 둘
+이상의 manifest가 일치하면 `overlap`으로 표시한다. `runtime/speech`처럼
+feature-neutral한 capability는 manifest domain보다 경로의 capability를 우선한다.
+
+## Changed-file verification
+
+작업 중에는 domain 전체 검증 대신 변경 파일에서 계산한 tier를 실행한다.
+
+```bash
+pnpm verify:changed --dry-run --tier 1 \
+  apps/web/src/runtime/speech/stt/koreanTextSimilarity.ts
+pnpm verify:changed --tier 2 \
+  apps/web/src/runtime/speech/stt/koreanTextSimilarity.ts
+```
+
+경로를 생략하면 기준 ref와 merge base 이후의 committed, staged, unstaged,
+untracked 파일을 합쳐 계산한다. `--base`로 기준 ref를 바꿀 수 있다.
+
+| Tier | 목적                                                 | 기본 실행 시점        |
+| ---- | ---------------------------------------------------- | --------------------- |
+| 0    | import boundary, source cycle, 변경 파일 format      | 변경 직후             |
+| 1    | 같은 basename 또는 직접 reverse import인 leaf test   | patch 직후            |
+| 2    | 변경 workspace typecheck                             | PR 완료 전            |
+| 3    | 등록된 contract consumer test                        | schema/API/queue 변경 |
+| 4    | root config, migration, queue runtime의 release gate | merge/release         |
+
+기본 최대 tier는 2다. 성공 시 선택 이유를 compact하게 출력하며 첫 실패에서
+중단한다. STT leaf 변경은 인접한 `koreanTextSimilarity.test.ts`만 선택하고
+`RehearsalWorkspace.test.tsx`, API, Worker, Python test를 선택하지 않는다.
+
+cross-language contract는 `docs/agent/contract-consumers.json`에 실제 consumer와
+exact test를 등록한다. 등록된 계약만 Tier 3 test를 선택하며, 존재하지 않는 test
+경로는 canonical guard에서 실패한다.
+
 ## Affected verification
 
 현재 브랜치와 `origin/develop`의 merge base 이후 변경과 staged, unstaged,
@@ -57,13 +102,27 @@ pnpm verify:affected --dry-run --base develop
 - `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`,
   `tsconfig.base.json`
 - `apps/api/src/database/migrations/**`
-- `packages/shared/src/**/*.schema.ts`
-- `packages/shared/src/jobs/**`, `packages/shared/src/realtime/**`
 - `packages/job-queue/src/**`
 
 Python source, test, `pyproject.toml`, `uv.lock`이 바뀌면 Ruff, mypy, pytest를
-추가한다. Python 문서만 바뀐 경우에는 추가하지 않는다. shared schema 변경은
-cross-language contract 영향 가능성이 있으므로 Python 전체 검증도 추가한다.
+추가한다. Python 문서만 바뀐 경우에는 추가하지 않는다. consumer matrix에 등록된
+shared 계약은 exact consumer test를 추가한다. matrix에 없는 shared schema, Job,
+realtime 계약은 안전을 위해 전체 TypeScript와 Python 검증으로 승격한다.
+
+## Canonical Agent guard
+
+Agent 도구 전체 test와 dependency 설치 전에도 실행 가능한 repository guard를
+각각 한 명령으로 제공한다.
+
+```bash
+pnpm test:agent
+pnpm verify:guard
+```
+
+`verify:guard`는 repo truth, domain manifest, contract consumer matrix, import
+boundary, source cycle, benchmark integrity, package task graph를 검사한다.
+orientation과 impact 계산 경로는 Prettier를 top-level에서 import하지 않으므로
+dependency가 없는 checkout에서도 built-in-only guard를 실행할 수 있다.
 
 ## Import boundary
 

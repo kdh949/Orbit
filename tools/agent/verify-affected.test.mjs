@@ -50,6 +50,35 @@ test("공통 계약 변경은 전체 TypeScript와 Python 검증으로 승격한
   assert.match(renderAffectedVerificationPlan(plan), /shared schema/);
 });
 
+test("consumer matrix에 등록된 계약은 exact consumer test만 추가한다", () => {
+  const path = "packages/shared/src/coaching/example.schema.ts";
+  const classification = classifyAffectedPaths([path], {
+    contractMatrix: {
+      contracts: {
+        [path]: {
+          consumers: ["shared", "python"],
+          tests: [
+            "packages/shared/src/coaching/example.schema.test.ts",
+            "services/python-worker/tests/test_example.py",
+          ],
+        },
+      },
+    },
+  });
+  const plan = createAffectedVerificationPlan(classification, "develop");
+
+  assert.equal(classification.full, false);
+  assert.equal(classification.python, false);
+  assert.deepEqual(
+    plan.commands.map((item) => `${item.cwd}:${item.argv.join(" ")}`),
+    [
+      ".:pnpm turbo run build typecheck test --affected --env-mode=loose",
+      ".:pnpm turbo run test --filter=@orbit/shared --env-mode=loose -- src/coaching/example.schema.test.ts",
+      "services/python-worker:uv run pytest tests/test_example.py",
+    ],
+  );
+});
+
 test("root config와 migration 변경의 승격 사유를 중복 없이 보고한다", () => {
   const classification = classifyAffectedPaths([
     "turbo.json",

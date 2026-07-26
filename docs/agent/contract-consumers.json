@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "contracts": {
+    "packages/shared/src/coaching/rehearsal-analyze.schema.ts": {
+      "consumers": ["shared", "worker", "python"],
+      "tests": [
+        "packages/shared/src/coaching/p0-core-contract.schema.test.ts",
+        "packages/shared/src/rehearsals/rehearsal.schema.test.ts",
+        "apps/worker/src/rehearsal-stt.processor.spec.ts",
+        "services/python-worker/tests/test_rehearsal_analyze.py"
+      ]
+    },
+    "packages/shared/src/rehearsals/rehearsal-audio-analysis.schema.ts": {
+      "consumers": ["shared"],
+      "tests": [
+        "packages/shared/src/rehearsals/rehearsal-audio-analysis.schema.test.ts"
+      ]
+    },
+    "packages/shared/src/rehearsals/rehearsal-semantic-evidence.schema.ts": {
+      "consumers": ["web", "api", "worker", "shared"],
+      "tests": [
+        "apps/web/src/runtime/speech/semantic/cue/semanticEvidenceWindow.test.ts",
+        "apps/api/src/rehearsals/rehearsal-transcript-cache.spec.ts",
+        "apps/worker/src/rehearsal-semantic-evaluation.processor.spec.ts",
+        "packages/shared/src/rehearsals/rehearsal-semantic-evidence.schema.test.ts"
+      ]
+    }
+  }
+}
