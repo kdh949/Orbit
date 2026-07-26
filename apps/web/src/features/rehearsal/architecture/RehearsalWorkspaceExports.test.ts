@@ -22,4 +22,15 @@ describe("RehearsalWorkspace public boundary", () => {
     ]);
     expect(source).not.toMatch(/^export\s*\{/m);
   });
+
+  it("keeps the public workspace as a small controller boundary", () => {
+    const source = readFileSync(workspaceSourcePath, "utf8");
+    const sourceLines = source.trimEnd().split("\n");
+    const directDependencies = [
+      ...source.matchAll(/from\s+["']([^"']+)["']/g),
+    ].map((match) => match[1]);
+
+    expect(sourceLines.length).toBeLessThanOrEqual(25);
+    expect(directDependencies).toEqual(["./RehearsalWorkspaceController"]);
+  });
 });

@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const rehearsalWorkspaceSource = fs.readFileSync(
-  fileURLToPath(new URL("./RehearsalWorkspace.tsx", import.meta.url)),
+  fileURLToPath(new URL("./RehearsalWorkspaceController.tsx", import.meta.url)),
   "utf8",
 );
 
