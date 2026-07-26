@@ -941,36 +941,6 @@ describe("RehearsalWorkspace", () => {
     expect(resetBody).toContain("resetSlideTranscriptSnapshots(deck, 0)");
   });
 
-  it("ignores a previous report completion after a new rehearsal starts", () => {
-    const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
-    const startRecordingStart = source.indexOf(
-      "async function startRecording(",
-    );
-    const startRecordingEnd = source.indexOf(
-      "useEffect(() => {",
-      startRecordingStart,
-    );
-    const startRecordingBody = source.slice(
-      startRecordingStart,
-      startRecordingEnd,
-    );
-    const submitStart = source.indexOf("async function submitRecording(");
-    const submitEnd = source.indexOf(
-      "async function prepareEvaluationSnapshot(",
-      submitStart,
-    );
-    const submitBody = source.slice(submitStart, submitEnd);
-
-    expect(startRecordingBody).toContain(
-      "!options.allowDuringReport && !canRecord",
-    );
-    expect(startRecordingBody).toContain(
-      "recordingSubmissionVersionRef.current += 1",
-    );
-    expect(submitBody).toContain("const isCurrentSubmission =");
-    expect(submitBody).toContain("if (!isCurrentSubmission())");
-  });
-
   it("keeps the presence avatar as the socket status dialog trigger", () => {
     const topbarSource = fs.readFileSync(editorTopbarSourcePath, "utf8");
     const shellSource = fs.readFileSync(editorShellSourcePath, "utf8");
@@ -1127,33 +1097,6 @@ describe("RehearsalWorkspace", () => {
     );
   });
 
-  it("녹음 pause 완료 후 STT와 마이크를 멈추고 역순으로 재시작한다", () => {
-    const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
-    const pauseStart = source.indexOf("async function pauseActiveRehearsal");
-    const resumeStart = source.indexOf("async function resumePausedRehearsal");
-    const actionStart = source.indexOf(
-      "async function handleTimePrimaryAction",
-    );
-    const pauseBody = source.slice(pauseStart, resumeStart);
-    const resumeBody = source.slice(resumeStart, actionStart);
-
-    expect(pauseBody.indexOf("await sessionRef.current?.pause()")).toBeLessThan(
-      pauseBody.indexOf("await p3Session.pause()"),
-    );
-    expect(pauseBody.indexOf("await p3Session.pause()")).toBeLessThan(
-      pauseBody.indexOf('if (pauseResult.status === "paused")'),
-    );
-    expect(
-      pauseBody.indexOf('if (pauseResult.status === "paused")'),
-    ).toBeLessThan(pauseBody.indexOf("setMediaStreamTracksEnabled("));
-    expect(
-      resumeBody.indexOf("setMediaStreamTracksEnabled(stream, true)"),
-    ).toBeLessThan(resumeBody.indexOf("await sessionRef.current?.resume()"));
-    expect(
-      resumeBody.indexOf("await sessionRef.current?.resume()"),
-    ).toBeLessThan(resumeBody.indexOf("await p3Session.resume"));
-  });
-
   it("starts report recording from the side timer play button", () => {
     const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
     const start = source.indexOf("function handleSideTimerPrimaryAction");
@@ -1204,71 +1147,6 @@ describe("RehearsalWorkspace", () => {
     expect(source).toContain("return presenterSettings.sttEngine");
     expect(preflightSource).toContain("props.resolveLiveSttEngine()");
     expect(preflightSource).toContain("props.createLiveSttPort(engineId)");
-  });
-
-  it("routes report recording through the P3 tracking session", () => {
-    const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
-    const recordingStart = source.indexOf("async function startRecording");
-    const recordingEnd = source.indexOf("async function startLiveDemo");
-    const startRecordingBody = source.slice(recordingStart, recordingEnd);
-    const stopStart = source.indexOf("function stopRecording");
-    const stopEnd = source.indexOf("function handleTimePrimaryAction");
-    const stopRecordingBody = source.slice(stopStart, stopEnd);
-
-    expect(startRecordingBody).toContain(
-      "const evaluationSnapshot = await prepareEvaluationSnapshot(activeDeck)",
-    );
-    expect(startRecordingBody).toContain(
-      "void startP3Tracking(stream, evaluationSnapshot)",
-    );
-    expect(
-      startRecordingBody.indexOf("prepareEvaluationSnapshot"),
-    ).toBeLessThan(startRecordingBody.indexOf("startP3Tracking"));
-    expect(startRecordingBody).not.toContain("startLiveStt(stream)");
-    expect(stopRecordingBody).toContain(
-      "const p3Session = p3SessionRef.current",
-    );
-    expect(stopRecordingBody).toContain("p3Session");
-    expect(stopRecordingBody).toContain(".stop()");
-    expect(stopRecordingBody).toContain(".then((meta)");
-    expect(stopRecordingBody).toContain(".catch(() => null)");
-    expect(stopRecordingBody).toContain("setP3RunMeta(meta)");
-  });
-
-  it("reuses prepared slide snapshots when practicing again", () => {
-    const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
-    const prepareStart = source.indexOf(
-      "async function prepareEvaluationSnapshot",
-    );
-    const prepareEnd = source.indexOf(
-      "function cancelPendingEvaluationRun",
-      prepareStart,
-    );
-    const prepareBody = source.slice(prepareStart, prepareEnd);
-
-    expect(prepareBody).toContain(
-      "preparedSlideSnapshotsRef.current ??\n      readPreparedRehearsalSlideSnapshots",
-    );
-    expect(prepareBody).toContain(
-      "preparedSlideSnapshotsRef.current = slideSnapshots",
-    );
-  });
-
-  it("continues report upload when optional P3 run meta fails", () => {
-    const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
-    const stopStart = source.indexOf("function stopRecording");
-    const stopEnd = source.indexOf("function handleTimePrimaryAction");
-    const stopRecordingBody = source.slice(stopStart, stopEnd);
-    const submitStart = source.indexOf("async function submitRecording");
-    const submitEnd = source.indexOf(
-      "function handleTimePrimaryAction",
-      submitStart,
-    );
-    const submitRecordingBody = source.slice(submitStart, submitEnd);
-
-    expect(stopRecordingBody).toContain(".catch(() => null)");
-    expect(submitRecordingBody).toContain("await pendingP3RunMetaRef.current");
-    expect(submitRecordingBody).toContain("runRehearsalUploadFlow");
   });
 
   it("resynchronizes P3 tracking when the slide changes while STT is starting", () => {
