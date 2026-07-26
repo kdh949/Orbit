@@ -104,6 +104,7 @@ root build 설정, lockfile처럼 여러 workspace에 영향을 주는 변경만
 
 ```bash
 pnpm build
+pnpm format:check
 pnpm typecheck
 pnpm test
 ```
