@@ -1,4 +1,4 @@
-import type { DeckCanvas } from "@orbit/shared";
+import type { DeckCanvas } from "@orbit/shared/deck";
 
 export function EditorStateNotice(props: {
   isError: boolean;

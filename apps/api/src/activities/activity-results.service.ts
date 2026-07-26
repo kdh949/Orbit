@@ -12,20 +12,23 @@ import {
   getPresentationSessionResultsResponseSchema,
   type DeletePresentationSessionResultsRequest,
   getAudienceActiveActivityResponseSchema,
-  getAudienceActivityResponseSchema
-} from "@orbit/shared";
-import type { ActivityAnswer, ActivityPresenterResult, ActivityPublicResult } from "@orbit/shared";
+  getAudienceActivityResponseSchema,
+} from "@orbit/shared/activities";
+import type {
+  ActivityAnswer,
+  ActivityPresenterResult,
+  ActivityPublicResult,
+} from "@orbit/shared/activities";
 import {
   ConflictException,
-  forwardRef,
-  Inject,
   Injectable,
   NotFoundException,
   Optional
 } from "@nestjs/common";
 import { InjectPinoLogger, PinoLogger } from "nestjs-pino";
 
-import { PresentationSessionsService } from "../presentation-sessions/presentation-sessions.service";
+import { toPresentationSession } from "../presentation-sessions/presentation-session.mapper";
+import { PresentationSessionRepository } from "../presentation-sessions/presentation-session.repository";
 
 import { buildActivityAggregates } from "./activity-aggregate";
 import {
@@ -38,22 +41,14 @@ import {
 export class ActivityResultsService {
   constructor(
     private readonly repository: ActivityResultsRepository,
-    @Inject(forwardRef(() => PresentationSessionsService))
-    @Optional()
-    private readonly presentationSessionsService?: PresentationSessionsService,
+    private readonly presentationSessions: PresentationSessionRepository,
     @InjectPinoLogger(ActivityResultsService.name)
     @Optional()
     private readonly logger?: PinoLogger
   ) {}
 
   async getSessionArchive(projectId: string, sessionId: string) {
-    if (!this.presentationSessionsService) {
-      throw new NotFoundException("Presentation session service unavailable");
-    }
-    const session = await this.presentationSessionsService.getSessionForPresenter(
-      projectId,
-      sessionId
-    );
+    const session = await this.getPresentationSession(projectId, sessionId);
     const [runs, snapshots, participantCount] = await Promise.all([
       this.repository.listSessionRuns(projectId, sessionId),
       this.repository.listSessionSnapshots(projectId, sessionId),
@@ -96,13 +91,7 @@ export class ActivityResultsService {
     sessionId: string,
     input: DeletePresentationSessionResultsRequest
   ) {
-    if (!this.presentationSessionsService) {
-      throw new NotFoundException("Presentation session service unavailable");
-    }
-    const session = await this.presentationSessionsService.getSessionForPresenter(
-      projectId,
-      sessionId
-    );
+    const session = await this.getPresentationSession(projectId, sessionId);
     const sessionName = createSessionName(session.sessionId, session.createdAt);
     if (input.confirmation.trim() !== sessionName) {
       throw new ConflictException("Presentation session name confirmation does not match");
@@ -125,6 +114,15 @@ export class ActivityResultsService {
       "presentation session activity results permanently deleted"
     );
     return this.getSessionArchive(projectId, sessionId);
+  }
+
+  private async getPresentationSession(projectId: string, sessionId: string) {
+    const row = await this.presentationSessions.findByIdForRead(
+      projectId,
+      sessionId
+    );
+    if (!row) throw new NotFoundException("Presentation session not found");
+    return toPresentationSession(row);
   }
 
   async getPresenterResult(projectId: string, sessionId: string, runId: string) {

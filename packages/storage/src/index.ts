@@ -1,4 +1,4 @@
-import { FilePurpose, privateAudioPurposes } from "@orbit/shared";
+import { FilePurpose, privateAudioPurposes } from "@orbit/shared/files";
 import { Readable } from "node:stream";
 import {
   DeleteObjectCommand,

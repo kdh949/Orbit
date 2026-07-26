@@ -1,4 +1,4 @@
-import { normalizeRichTextProps } from "@orbit/editor-core";
+import { normalizeRichTextProps } from "@orbit/editor-core/text";
 import type {
   Deck,
   DeckElement,
@@ -6,7 +6,7 @@ import type {
   TextElementParagraph,
   TextElementProps,
   TextElementRun,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import {
   forwardRef,
   useEffect,

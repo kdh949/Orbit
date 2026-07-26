@@ -1,4 +1,4 @@
 export {
   classifyVoiceStyle,
   createUnmeasuredVoiceStyleResult,
-} from "@orbit/shared";
+} from "@orbit/shared/slide-practice";

@@ -1,4 +1,4 @@
-import type { Deck } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
 import { IconPlayerPlay } from "@tabler/icons-react";
 import { createPortal } from "react-dom";
 import { useEffect } from "react";

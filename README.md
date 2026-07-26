@@ -16,12 +16,6 @@
     <a href="#개발-가이드">개발 가이드</a>
   </p>
   <p>
-    <a href="https://github.com/na-man-mu-303-team2/Orbit/actions/workflows/typescript-ci.yml">
-      <img src="https://github.com/na-man-mu-303-team2/Orbit/actions/workflows/typescript-ci.yml/badge.svg?branch=develop" alt="TypeScript CI 상태" />
-    </a>
-    <a href="https://github.com/na-man-mu-303-team2/Orbit/actions/workflows/adaptive-coaching-ci.yml">
-      <img src="https://github.com/na-man-mu-303-team2/Orbit/actions/workflows/adaptive-coaching-ci.yml/badge.svg?branch=develop" alt="Adaptive Coaching CI 상태" />
-    </a>
     <img src="https://img.shields.io/badge/pnpm-10.12.4-F69220?logo=pnpm&logoColor=white" alt="pnpm 10.12.4" />
   </p>
 </div>
@@ -204,7 +198,9 @@ docs/               Architecture, conventions, runbooks, and research
 | 명령                               | 용도                 |
 | ---------------------------------- | -------------------- |
 | `pnpm build`                       | workspace 전체 빌드  |
-| `pnpm lint`                        | TypeScript lint      |
+| `pnpm format:check`                | 변경 파일 포맷 검사  |
+| `pnpm verify:scope <scope>`        | domain별 빠른 검증   |
+| `pnpm verify:affected`             | 변경 영향 범위 검증  |
 | `pnpm test`                        | workspace 테스트     |
 | `pnpm typecheck`                   | TypeScript typecheck |
 | `node infra/scripts/check-env.mjs` | 환경변수 계약 검증   |

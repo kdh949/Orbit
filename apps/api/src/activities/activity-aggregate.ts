@@ -1,1 +1,1 @@
-export { buildActivityAggregates } from "@orbit/shared";
+export { buildActivityAggregates } from "@orbit/shared/activities";

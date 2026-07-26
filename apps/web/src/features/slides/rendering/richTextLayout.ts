@@ -1,8 +1,8 @@
 import type {
   TextElementParagraph,
   TextElementProps,
-  TextElementRun
-} from "@orbit/shared";
+  TextElementRun,
+} from "@orbit/shared/deck";
 
 const legacyTextPadding = 4;
 

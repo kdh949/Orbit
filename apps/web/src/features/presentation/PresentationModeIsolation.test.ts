@@ -2,7 +2,9 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const presentationWorkspaceSource = read("./PresentationWorkspace.tsx");
+const presentationWorkspaceSource = read(
+  "./PresentationWorkspaceController.tsx",
+);
 const presentationApiSource = read("./presentationApi.ts");
 const presentationProcessorSource = read(
   "../../../../worker/src/presentation-analysis.processor.ts",
@@ -11,7 +13,9 @@ const presentationProcessorSource = read(
 describe("presentation mode isolation", () => {
   it("keeps live presentation persistence away from rehearsal endpoints", () => {
     expect(presentationApiSource).toContain("/presentation-sessions/${segment(sessionId)}/runs");
-    expect(presentationApiSource).not.toContain("/rehearsals");
+    expect(presentationApiSource).not.toMatch(
+      /\/api\/v1\/projects\/[^\n]*\/rehearsals/,
+    );
     expect(presentationApiSource).not.toContain("rehearsal-stt");
     expect(presentationWorkspaceSource).not.toContain("createRehearsalRun");
     expect(presentationWorkspaceSource).not.toContain("completeRehearsalAudioUpload");

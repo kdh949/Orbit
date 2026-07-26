@@ -1,4 +1,4 @@
-import { deckSchema, type Deck } from "@orbit/shared";
+import { deckSchema, type Deck } from "@orbit/shared/deck";
 import type { DataSource } from "typeorm";
 import { describe, expect, it, vi } from "vitest";
 import { projectActivityDeckForStaticExport } from "./activity-export-projection";

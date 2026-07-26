@@ -1,11 +1,10 @@
 import {
-  deckSchema,
-  type AssetUploadUrlResponse,
-  type Deck,
-  type Job,
   type PresentationBrief,
   type RehearsalFocusProfile,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
+import { deckSchema, type Deck } from "@orbit/shared/deck";
+import { type AssetUploadUrlResponse } from "@orbit/shared/files";
+import { type Job } from "@orbit/shared/jobs";
 import { BadRequestException, ConflictException } from "@nestjs/common";
 import type { PinoLogger } from "nestjs-pino";
 import { beforeEach, describe, expect, it, vi } from "vitest";

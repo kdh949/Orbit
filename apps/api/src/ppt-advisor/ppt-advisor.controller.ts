@@ -1,6 +1,6 @@
 import { Body, Controller, Post, Req } from "@nestjs/common";
-import type { PptAdvisorRequest } from "@orbit/shared";
-import { pptAdvisorRequestSchema } from "@orbit/shared";
+import type { PptAdvisorRequest } from "@orbit/shared/deck";
+import { pptAdvisorRequestSchema } from "@orbit/shared/deck";
 import { AuthService } from "../auth/auth.service";
 import { getCurrentUser, type SignedCookieRequest } from "../auth/current-user";
 import { parseRequest } from "../common/zod-request";

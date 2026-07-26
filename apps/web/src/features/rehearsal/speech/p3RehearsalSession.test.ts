@@ -1,26 +1,27 @@
-import type { SemanticCapabilityEvent, SemanticCue } from "@orbit/shared";
+import type { SemanticCue } from "@orbit/shared/deck";
+import type { SemanticCapabilityEvent } from "@orbit/shared/rehearsals";
 import { describe, expect, it, vi } from "vitest";
 
-import { LiveSttError, type LiveSttPort, type LiveSttResult } from "../stt/liveSttPort";
+import { LiveSttError, type LiveSttPort, type LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
 import {
   defaultAutoAdvanceConfig,
   defaultAutoAdvancePolicy,
   defaultPauseDetectorConfig
-} from "../advance/autoAdvanceConfig";
+} from "../../../runtime/presentation/advance/autoAdvanceConfig";
 import {
   createInitialAdvanceControllerState,
   evaluateAdvanceController
-} from "../advance/advanceController";
+} from "../../../runtime/presentation/advance/advanceController";
 import { createP3RehearsalSession, type P3RehearsalSessionSlide } from "./p3RehearsalSession";
 import { createPauseDetector } from "./pauseDetector";
-import type { SemanticCueDebugEvent } from "./semanticCueDebugEvents";
-import { createSemanticCueEmbeddingIndex } from "./semanticCueEmbeddingIndex";
-import { createSemanticCueRuntime } from "./semanticCueRuntime";
-import { createMockSemanticCueNliProvider } from "./mockSemanticCueNliProvider";
-import type { SemanticUtteranceDebugState } from "./semanticSpeechDebug";
-import type { SemanticUtteranceDecision } from "./semanticUtteranceDecision";
-import type { SemanticUtteranceMatcher, SemanticUtteranceMatch } from "./semanticUtteranceMatcher";
-import type { SpeechTrackingEvent } from "./speechTrackingEvents";
+import type { SemanticCueDebugEvent } from "../../../runtime/speech/semantic/cue/semanticCueDebugEvents";
+import { createSemanticCueEmbeddingIndex } from "../../../runtime/speech/semantic/cue/semanticCueEmbeddingIndex";
+import { createSemanticCueRuntime } from "../../../runtime/speech/semantic/cue/semanticCueRuntime";
+import { createMockSemanticCueNliProvider } from "../../../runtime/speech/semantic/nli/mockSemanticCueNliProvider";
+import type { SemanticUtteranceDebugState } from "../../../runtime/speech/semantic/semanticSpeechDebug";
+import type { SemanticUtteranceDecision } from "../../../runtime/speech/semantic/semanticUtteranceDecision";
+import type { SemanticUtteranceMatcher, SemanticUtteranceMatch } from "../../../runtime/speech/semantic/semanticUtteranceMatcher";
+import type { SpeechTrackingEvent } from "../../../runtime/speech/tracking/speechTrackingEvents";
 
 describe("p3RehearsalSession", () => {
   it("does not commit timer, tracker, or log state when STT start fails", async () => {

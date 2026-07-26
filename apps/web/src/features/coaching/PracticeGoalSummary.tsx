@@ -1,4 +1,7 @@
-import type { FocusedPracticeAttemptSummary, PracticePlanResponse } from "@orbit/shared";
+import type {
+  FocusedPracticeAttemptSummary,
+  PracticePlanResponse,
+} from "@orbit/shared/coaching";
 import { ArrowRight, Check, CheckCircle2, Clock3, MessageCircle, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 

@@ -1,8 +1,8 @@
 import {
   rehearsalSemanticEvidenceCacheKey,
   rehearsalSemanticEvidenceSchema,
-  type RehearsalSemanticEvidence
-} from "@orbit/shared";
+  type RehearsalSemanticEvidence,
+} from "@orbit/shared/rehearsals";
 import Redis from "ioredis";
 
 export const REHEARSAL_TRANSCRIPT_TTL_SECONDS = 30 * 60;

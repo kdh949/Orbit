@@ -1,25 +1,26 @@
 import { CommunityGalleryPage } from "./features/community-templates/CommunityGalleryPage";
 import { CommunityTemplateDetailPage } from "./features/community-templates/CommunityTemplateDetailPage";
+import { legacyRehearsalSlideSpeakingRate } from "@orbit/shared/coaching";
+import { demoIds } from "@orbit/shared/common";
+import { deckSchema, type Deck } from "@orbit/shared/deck";
 import {
-  deckSchema,
-  demoIds,
-  legacyRehearsalReportMetricsDefaults,
-  legacyRehearsalSlideSpeakingRate,
-  legacyRehearsalSilenceAnalysis,
-  legacyRehearsalVolumeAnalysis,
   projectAccessResponseSchema,
-  type Deck,
   type Project,
   type ProjectAccessResponse,
   type ProjectMemberRole,
+} from "@orbit/shared/projects";
+import {
+  legacyRehearsalReportMetricsDefaults,
+  legacyRehearsalSilenceAnalysis,
+  legacyRehearsalVolumeAnalysis,
   type RehearsalReport,
   type RehearsalRun,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { IconFileText } from "@tabler/icons-react";
 import type { FormEvent, ReactNode } from "react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { createDemoDeck } from "../../../packages/editor-core/src/index";
+import { createDemoDeck } from "@orbit/editor-core/fixtures";
 import {
   OrbitAppHeader,
   type OrbitAppNavigationItem,
@@ -52,13 +53,15 @@ import {
 import { ProjectExplorerPage } from "./features/projects/ProjectExplorerPage";
 import { OrbitWorkspaceHome } from "./features/projects/ProjectHub";
 import { ProjectAccessProvider } from "./features/projects/ProjectAccessContext";
-import { PptxImportProvider } from "./features/projects/PptxImportProvider";
+import { AppProviders } from "./app/AppProviders";
+import {
+  parseRouteNonNegativeInteger,
+  resolveStaticRoute,
+} from "./app/staticRoutes";
 import "./features/projects/orbit-create-deck.css";
 import "./features/projects/orbit-project-access.css";
-import {
-  RehearsalReportPage,
-  RehearsalWorkspace,
-} from "./features/rehearsal/RehearsalWorkspace";
+import { RehearsalWorkspace } from "./features/rehearsal/public";
+import { RehearsalReportPage } from "./features/rehearsal/report/RehearsalReportPage";
 import { RehearsalReportListPage } from "./features/rehearsal/RehearsalReportListPage";
 import { RehearsalProjectPickerPage } from "./features/rehearsal/RehearsalProjectPickerPage";
 import { RehearsalProjectOverviewPage } from "./features/rehearsal/RehearsalProjectOverviewPage";
@@ -66,11 +69,11 @@ import { RehearsalMicCheckModal } from "./features/rehearsal/preflight/Rehearsal
 import {
   isRehearsalEntryPath,
   rehearsalNavigationRequestEvent,
-} from "./features/rehearsal/rehearsalUtils";
-import { PresentationWorkspace } from "./features/presentation/PresentationWorkspace";
+} from "./features/reports/reportUtils";
+import { PresentationWorkspace } from "./features/presentation/public";
 import { PresentationReportPage } from "./features/presentation/PresentationReportPage";
 import { AudienceSessionPage } from "./pages/audience/AudienceSessionPage";
-import { PresentWindow } from "./features/rehearsal/presenter/PresentWindow";
+import { PresentWindow } from "./features/presenter-shell/presenter/PresentWindow";
 import { ReadOnlySlideCanvas } from "./features/slides/rendering";
 import {
   ActivityAudiencePreviewPage,
@@ -160,7 +163,7 @@ export type Route =
 export const deckRenderPayloadStorageKey = "orbit.deckRenderPayload.v1";
 
 const EditorShell = lazy(() =>
-  import("./features/editor/shell/EditorShell").then((module) => ({
+  import("./features/editor/shell/public").then((module) => ({
     default: module.EditorShell,
   })),
 );
@@ -367,63 +370,12 @@ export function getRoute(pathname?: string, search?: string): Route {
   const normalized = currentPathname.replace(/\/+$/, "") || "/";
 
   try {
-    if (normalized === "/login") return { name: "login" };
-    if (normalized === "/signup") return { name: "signup" };
-    if (normalized === "/profile") return { name: "profile" };
-    if (normalized === "/design-system") return { name: "design-system" };
-    if (normalized === "/mockup") return { name: "mockup", screen: "public" };
-    if (normalized === "/mockup/home")
-      return { name: "mockup", screen: "home" };
-    if (normalized === "/mockup/create")
-      return { name: "mockup", screen: "create" };
-    if (normalized === "/mockup/editor")
-      return { name: "mockup", screen: "editor" };
-    if (normalized === "/mockup/microphone-check")
-      return { name: "mockup", screen: "microphone-check" };
-    if (normalized === "/mockup/project-request")
-      return { name: "mockup", screen: "project-request" };
-    if (normalized === "/mockup/rehearsal")
-      return { name: "mockup", screen: "rehearsal" };
-    if (normalized === "/mockup/presenter")
-      return { name: "mockup", screen: "presenter" };
-    if (normalized === "/mockup/rehearsal-complete")
-      return { name: "mockup", screen: "rehearsal-complete" };
-    if (normalized === "/mockup/reports")
-      return { name: "mockup", screen: "reports" };
-    if (normalized === "/mockup/report")
-      return { name: "mockup", screen: "report" };
-    if (normalized === "/mockup/report-project")
-      return { name: "mockup", screen: "report-project" };
-    if (normalized === "/mockup/live")
-      return { name: "mockup", screen: "live" };
-    if (normalized === "/mockup/live-presenter")
-      return { name: "mockup", screen: "live-presenter" };
-    if (normalized === "/mockup/login")
-      return { name: "mockup", screen: "login" };
-    if (normalized === "/mockup/signup")
-      return { name: "mockup", screen: "signup" };
-    if (normalized === "/mockup/catalog")
-      return { name: "mockup", screen: "catalog" };
-    if (normalized === "/mockup/brief")
-      return { name: "mockup", screen: "brief" };
-    if (normalized === "/mockup/practice-plan")
-      return { name: "mockup", screen: "practice-plan" };
-    if (normalized === "/mockup/focused-practice")
-      return { name: "mockup", screen: "focused-practice" };
-    if (normalized === "/mockup/challenge-qna")
-      return { name: "mockup", screen: "challenge-qna" };
-    if (normalized === "/mockup/audience")
-      return { name: "mockup", screen: "audience" };
-    if (normalized === "/mockup/version-history")
-      return { name: "mockup", screen: "version-history" };
-    if (normalized === "/createdeck") return { name: "create-deck" };
-    if (normalized === "/project") {
-      return new URLSearchParams(currentSearch).get("intent") === "rehearsal"
-        ? { name: "rehearsal-project-list" }
-        : { name: "project-list" };
+    const staticRoute = resolveStaticRoute(normalized, currentSearch, {
+      deckRenderEnabled: isDeckRenderRouteEnabled(),
+    });
+    if (staticRoute) {
+      return staticRoute;
     }
-    if (normalized === "/reports") return { name: "report-list" };
-    if (normalized === "/community") return { name: "community" };
     const communityTemplateMatch = normalized.match(/^\/community\/([^/]+)$/);
     if (communityTemplateMatch) {
       return {
@@ -437,10 +389,6 @@ export function getRoute(pathname?: string, search?: string): Route {
         name: "report-project-overview",
         projectId: decodeURIComponent(reportProjectMatch[1]),
       };
-    }
-    if (normalized === "/report_mockup") return { name: "report-mockup" };
-    if (normalized === "/__deck-render" && isDeckRenderRouteEnabled()) {
-      return { name: "deck-render" };
     }
 
     const companionSpikeAudienceMatch = normalized.match(
@@ -739,9 +687,9 @@ function navigateTo(path: string) {
 
 export function App() {
   return (
-    <PptxImportProvider>
+    <AppProviders>
       <AppContent />
-    </PptxImportProvider>
+    </AppProviders>
   );
 }
 
@@ -1188,19 +1136,6 @@ function AuthLoadingFallback() {
       />
     </main>
   );
-}
-
-function parseRouteNonNegativeInteger(value: string | null) {
-  if (value === null || value.trim() === "") {
-    return undefined;
-  }
-
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 0) {
-    return undefined;
-  }
-
-  return parsed;
 }
 
 export function isDeckRenderRouteEnabled() {

@@ -1,18 +1,20 @@
 import {
-  aiDeckGenerationStageMessageSchema,
   generateDeckResearchIssueCodeSchema,
   generateDeckResearchQualitySchema,
   generateDeckRequestSchema,
   generateDeckStoredJobPayloadSchema,
+  referenceExtractionResultSchema,
+  type GenerateDeckRequest,
+} from "@orbit/shared/deck";
+import {
+  aiDeckGenerationStageMessageSchema,
   jobErrorSchema,
   jobSchema,
   jobStatusSchema,
-  referenceExtractionResultSchema,
   type AiDeckGenerationStageMessage,
-  type GenerateDeckRequest,
   type Job,
   type JobError,
-} from "@orbit/shared";
+} from "@orbit/shared/jobs";
 import type { DataSource } from "typeorm";
 import { z } from "zod";
 

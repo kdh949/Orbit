@@ -1,14 +1,14 @@
 import {
   createGroupedElementFramePatch,
   normalizeElementFrameDraft,
-} from "@orbit/editor-core";
+} from "@orbit/editor-core/patches";
 import type {
   Deck,
   DeckElement,
   DeckPatch,
   GroupElementProps,
   Slide,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 
 export function createSelectionNudgePatch(args: {
   deck: Deck;

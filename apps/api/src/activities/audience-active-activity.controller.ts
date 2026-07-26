@@ -3,9 +3,9 @@ import { Controller, Get, Param, Req } from "@nestjs/common";
 
 import {
   requireAudienceIdentity,
-  type SignedCookieRequest
+  type SignedCookieRequest,
 } from "../presentation-sessions/audience-request-security";
-import { PresentationSessionsService } from "../presentation-sessions/presentation-sessions.service";
+import { PresentationSessionAccessService } from "../presentation-sessions/presentation-session-access.service";
 import { ActivityResultsService } from "./activity-results.service";
 
 @Controller("api/v1/audience-sessions/:sessionId")
@@ -14,23 +14,23 @@ export class AudienceActiveActivityController {
 
   constructor(
     private readonly activityResultsService: ActivityResultsService,
-    private readonly presentationSessionsService: PresentationSessionsService
+    private readonly presentationSessionAccess: PresentationSessionAccessService,
   ) {}
 
   @Get("active-activity")
   async getActiveActivity(
     @Param("sessionId") sessionId: string,
-    @Req() request: SignedCookieRequest
+    @Req() request: SignedCookieRequest,
   ) {
     const identity = requireAudienceIdentity(this.config, request, sessionId);
-    await this.presentationSessionsService.getAudienceAccess(
+    await this.presentationSessionAccess.assertAudienceAccess(
       sessionId,
-      identity.projectId
+      identity.projectId,
     );
     return this.activityResultsService.getAudienceActiveActivity(
       identity.projectId,
       sessionId,
-      identity.audienceId
+      identity.audienceId,
     );
   }
 }

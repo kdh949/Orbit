@@ -5,7 +5,7 @@ import { build } from "vite";
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const workerEntry = resolve(
   appRoot,
-  "src/features/rehearsal/speech/browserSemanticCueNliWorker.ts"
+  "src/runtime/speech/semantic/nli/browserSemanticCueNliWorker.ts"
 );
 
 await build({

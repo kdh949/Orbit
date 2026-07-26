@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 import app.main as api_module
+import app.routers.documents as documents_router
 from app.config import load_config
 from app.extraction import (
     ExtractedSection,
@@ -76,14 +77,18 @@ def test_documents_parse_connects_extraction_cleanup_and_indexing(monkeypatch) -
             },
         )()
 
-    monkeypatch.setattr(api_module, "extract_file", fake_extract_file)
-    monkeypatch.setattr(api_module, "clean_reference_text", fake_clean_reference_text)
+    monkeypatch.setattr(documents_router, "extract_file", fake_extract_file)
     monkeypatch.setattr(
-        api_module,
+        documents_router, "clean_reference_text", fake_clean_reference_text
+    )
+    monkeypatch.setattr(
+        documents_router,
         "extract_presentation_keywords",
         fake_extract_presentation_keywords,
     )
-    monkeypatch.setattr(api_module, "index_reference_text", fake_index_reference_text)
+    monkeypatch.setattr(
+        documents_router, "index_reference_text", fake_index_reference_text
+    )
     api_module.app.state.config = load_config(VALID_ENV)
 
     client = TestClient(api_module.app)
@@ -193,14 +198,18 @@ def test_documents_parse_returns_ordered_success_and_failure_results(monkeypatch
             },
         )()
 
-    monkeypatch.setattr(api_module, "extract_file", fake_extract_file)
-    monkeypatch.setattr(api_module, "clean_reference_text", fake_clean_reference_text)
+    monkeypatch.setattr(documents_router, "extract_file", fake_extract_file)
     monkeypatch.setattr(
-        api_module,
+        documents_router, "clean_reference_text", fake_clean_reference_text
+    )
+    monkeypatch.setattr(
+        documents_router,
         "extract_presentation_keywords",
         fake_extract_presentation_keywords,
     )
-    monkeypatch.setattr(api_module, "index_reference_text", fake_index_reference_text)
+    monkeypatch.setattr(
+        documents_router, "index_reference_text", fake_index_reference_text
+    )
     api_module.app.state.config = load_config(VALID_ENV)
 
     client = TestClient(api_module.app)

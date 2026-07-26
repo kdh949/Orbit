@@ -2,7 +2,7 @@ import {
   distanceToTargetRange,
   slidePracticeMetricTargets,
   type SlidePracticeReportRecord,
-} from "@orbit/shared";
+} from "@orbit/shared/slide-practice";
 
 export type PracticeTrendMetric = "fillerRate" | "pace" | "loudness" | "pauseRatio";
 export type PracticeTrendMode = "current" | "comparison" | "trend";

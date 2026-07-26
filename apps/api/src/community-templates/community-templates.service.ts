@@ -3,7 +3,7 @@ import {
   CommunityTemplateSanitizationError,
   materializeCommunityTemplate,
   sanitizeCommunityTemplate,
-} from "@orbit/editor-core";
+} from "@orbit/editor-core/community-templates";
 import {
   communityTemplateApiErrorCodeSchema,
   communityTemplateApiErrorSchema,
@@ -33,7 +33,7 @@ import {
   updateCommunityTemplateResponseSchema,
   useCommunityTemplateRequestSchema,
   useCommunityTemplateResponseSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/community-templates";
 import type {
   CommunityTemplateApiErrorCode,
   CommunityTemplateCard,
@@ -49,7 +49,7 @@ import type {
   UpdateCommunityTemplateRequest,
   UseCommunityTemplateRequest,
   UseCommunityTemplateResponse,
-} from "@orbit/shared";
+} from "@orbit/shared/community-templates";
 import {
   ForbiddenException,
   ConflictException,

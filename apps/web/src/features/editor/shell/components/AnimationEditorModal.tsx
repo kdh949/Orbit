@@ -1,4 +1,9 @@
-import type { DeckAnimation, Keyword, Slide, DeckElement } from "@orbit/shared";
+import type {
+  DeckAnimation,
+  Keyword,
+  Slide,
+  DeckElement,
+} from "@orbit/shared/deck";
 import {
   IconPlus as Plus,
   IconTrash as Trash2,
@@ -7,7 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-import type { SlideAnimationDiagnostics } from "../../../../../../../packages/editor-core/src/index";
+import type { SlideAnimationDiagnostics } from "@orbit/editor-core/patches";
 import { IdBadge } from "./EditorIdBadge";
 import {
   KeywordHighlightedNotes,

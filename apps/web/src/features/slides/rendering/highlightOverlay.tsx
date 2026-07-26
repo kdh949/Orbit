@@ -1,7 +1,7 @@
-import type { DeckElement } from "@orbit/shared";
+import type { DeckElement } from "@orbit/shared/deck";
 import { Group as KonvaGroup, Rect as KonvaRect } from "react-konva";
 import type { ComponentType } from "react";
-import type { ElementPresentationState } from "./ReadOnlySlideCanvas";
+import type { ElementPresentationState } from "../../../runtime/presentation/slideshow/elementPresentationState";
 
 type KonvaComponent = ComponentType<any>;
 

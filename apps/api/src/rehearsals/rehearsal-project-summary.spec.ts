@@ -2,7 +2,7 @@ import {
   rehearsalEvaluationSnapshotSchema,
   rehearsalReportSchema,
   type RehearsalReport,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import { describe, expect, it } from "vitest";
 import { buildRehearsalProjectSummary } from "./rehearsal-project-summary";
 

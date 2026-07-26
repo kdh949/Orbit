@@ -1,8 +1,5 @@
-import type {
-  PptxImportPreference,
-  Project,
-  ProjectListItem,
-} from "@orbit/shared";
+import type { PptxImportPreference } from "@orbit/shared/deck";
+import type { Project, ProjectListItem } from "@orbit/shared/projects";
 import { useQuery } from "@tanstack/react-query";
 import {
   IconArrowsSort,

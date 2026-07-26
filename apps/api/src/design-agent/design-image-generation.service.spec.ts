@@ -1,5 +1,5 @@
 import { createDemoDeck } from "@orbit/editor-core";
-import { deckElementSchema } from "@orbit/shared";
+import { deckElementSchema } from "@orbit/shared/deck";
 import { describe, expect, it, vi } from "vitest";
 import type { DecksService } from "../decks/decks.service";
 import type { FilesService } from "../files/files.service";

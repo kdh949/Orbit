@@ -1,5 +1,5 @@
+import { demoIds } from "@orbit/shared/common";
 import {
-  demoIds,
   createProjectRequestSchema,
   deleteProjectResponseSchema,
   projectMembersResponseSchema,
@@ -9,7 +9,7 @@ import {
   projectSchema,
   updateProjectPinResponseSchema,
   updateProjectTagsResponseSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/projects";
 import type {
   CreateProjectRequest,
   DeleteProjectResponse,
@@ -22,7 +22,7 @@ import type {
   ProjectApiErrorCode,
   UpdateProjectPinResponse,
   UpdateProjectTagsResponse,
-} from "@orbit/shared";
+} from "@orbit/shared/projects";
 import { randomUUID } from "crypto";
 import {
   ForbiddenException,
@@ -809,4 +809,4 @@ import {
   projectPageResponseSchema,
   type ProjectPageRequest,
   type ProjectPageResponse,
-} from "@orbit/shared";
+} from "@orbit/shared/projects";

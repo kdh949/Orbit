@@ -4,7 +4,7 @@ import type {
   DeckElement,
   Slide,
   TextElementProps,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 
 import {
   convertCustomShapeNodesToAbsolute,

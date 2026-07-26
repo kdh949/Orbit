@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "id": "ai-deck",
+  "summary": "AI Deck 요청, staged generation, preview, publication, quality pipeline",
+  "ownedPaths": [
+    "apps/web/src/features/ai-ppt/**",
+    "apps/api/src/generate-deck/**",
+    "apps/worker/src/generate-deck/**",
+    "services/python-worker/app/ai/deck_generation/**",
+    "services/python-worker/app/ai/generate_deck.py",
+    "packages/shared/src/deck/generate-deck.schema.ts",
+    "packages/shared/src/jobs/ai-deck-generation-stage.schema.ts"
+  ],
+  "entrypoints": [
+    {
+      "area": "web",
+      "path": "apps/web/src/features/ai-ppt/AiDeckGenerationPage.tsx"
+    },
+    {
+      "area": "api",
+      "path": "apps/api/src/generate-deck/generate-deck.module.ts"
+    },
+    {
+      "area": "worker",
+      "path": "apps/worker/src/generate-deck/execution-stage.processor.ts"
+    },
+    {
+      "area": "python",
+      "path": "services/python-worker/app/ai/generate_deck.py"
+    }
+  ],
+  "contracts": [
+    "docs/contracts/ai-deck.md",
+    "docs/contracts/common.md",
+    "packages/shared/src/deck/generate-deck.schema.ts",
+    "packages/shared/src/deck/ai-deck-preview.schema.ts",
+    "packages/shared/src/jobs/ai-deck-generation-stage.schema.ts"
+  ],
+  "tests": [
+    "apps/web/src/features/ai-ppt/AiDeckGenerationPage.test.tsx",
+    "apps/api/src/generate-deck/generate-deck.service.spec.ts",
+    "apps/worker/src/generate-deck/execution-stage.processor.spec.ts",
+    "services/python-worker/tests/test_generate_deck_contract.py"
+  ],
+  "fastChecks": [
+    "pnpm turbo run typecheck --filter=@orbit/web --env-mode=loose",
+    "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/features/ai-ppt/AiDeckGenerationPage.test.tsx",
+    "pnpm turbo run typecheck --filter=@orbit/api --env-mode=loose",
+    "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/generate-deck/generate-deck.service.spec.ts",
+    "pnpm turbo run typecheck --filter=@orbit/worker --env-mode=loose",
+    "pnpm turbo run test --filter=@orbit/worker --env-mode=loose -- src/generate-deck/execution-stage.processor.spec.ts",
+    "cd services/python-worker && uv run pytest tests/test_generate_deck_facade.py"
+  ],
+  "fullCheckTriggers": [
+    "generation request·response schema 변경",
+    "stage checkpoint 또는 queue payload 변경",
+    "publication·preview compatibility 변경",
+    "Python planning·composition 결과 shape 변경"
+  ],
+  "boundaries": [
+    "provider 결과는 shared schema 검증 후 저장한다",
+    "stage retry와 reconciliation은 멱등성을 유지한다",
+    "prompt, reference 원문, credential을 로그에 남기지 않는다"
+  ]
+}

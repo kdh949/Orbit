@@ -4,7 +4,7 @@ import {
   designAgentWorkerResponseSchema,
   type DesignAgentWorkerRequest,
   type DesignAgentWorkerResponse,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import { BadGatewayException, Injectable } from "@nestjs/common";
 
 @Injectable()

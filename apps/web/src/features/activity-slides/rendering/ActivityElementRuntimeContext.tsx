@@ -1,15 +1,11 @@
 import { createContext, type ReactNode, useContext } from "react";
 
-export type ActivityPasscodeRuntimeState =
-  | { status: "private"; displayPasscode: string }
-  | { status: "public" }
-  | { status: "not-prepared" }
-  | { status: "legacy-unavailable" };
+import type { ActivityElementRuntime } from "../../../runtime/presentation/activityElementRuntime";
 
-export type ActivityElementRuntime = {
-  audienceUrl: string | null;
-  passcodeState: ActivityPasscodeRuntimeState;
-};
+export type {
+  ActivityElementRuntime,
+  ActivityPasscodeRuntimeState,
+} from "../../../runtime/presentation/activityElementRuntime";
 
 const ActivityElementRuntimeContext =
   createContext<ActivityElementRuntime | null>(null);

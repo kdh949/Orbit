@@ -1,4 +1,4 @@
-import type { CommunityTemplateSourceProject } from "@orbit/shared";
+import type { CommunityTemplateSourceProject } from "@orbit/shared/community-templates";
 import { lazy, Suspense } from "react";
 
 const ProjectSlidePreview = lazy(

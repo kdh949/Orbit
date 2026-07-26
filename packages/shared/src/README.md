@@ -15,6 +15,25 @@ canonical coaching result나 Job payload/result에 포함하지 않는다.
 - 계약이 바뀌면 `docs/contracts.md`도 같이 갱신한다.
 - 특정 앱 내부에서만 쓰는 타입은 여기에 두지 않는다.
 
+## Public entrypoints
+
+새 consumer는 기능에 맞는 subpath를 우선 사용한다. 기존 `@orbit/shared`
+root export는 단계적 migration을 위한 호환 경로로 유지한다.
+
+| import | 소유 계약 |
+| --- | --- |
+| `@orbit/shared/activities` | Activity 정의, runtime, 결과, retention |
+| `@orbit/shared/coaching` | Coaching, brief, goal, evaluation |
+| `@orbit/shared/common` | Canonical JSON, demo ID, 공통 시간 |
+| `@orbit/shared/deck` | Deck, patch, AI generation, PPTX |
+| `@orbit/shared/files` | File metadata와 upload 계약 |
+| `@orbit/shared/jobs` | 공통 Job과 AI Deck stage |
+| `@orbit/shared/presentation` | Presentation session과 companion |
+| `@orbit/shared/pronunciation` | 발음 lexicon과 alias matching |
+| `@orbit/shared/realtime` | WebSocket과 companion event |
+| `@orbit/shared/rehearsals` | Rehearsal run, STT, report, transcript |
+| `@orbit/shared/slide-practice` | Slide practice와 filler 분석 |
+
 ## 파일별 역할
 
 | 파일 | 역할 |

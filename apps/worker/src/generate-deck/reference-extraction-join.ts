@@ -1,13 +1,15 @@
 import {
-  aiDeckGenerationStageMessageSchema,
   generateDeckRequestSchema,
+  type ReferenceExtractionFile,
+} from "@orbit/shared/deck";
+import {
+  aiDeckGenerationStageMessageSchema,
   jobErrorSchema,
   jobSchema,
   type AiDeckGenerationStageMessage,
   type Job,
   type JobError,
-  type ReferenceExtractionFile,
-} from "@orbit/shared";
+} from "@orbit/shared/jobs";
 import type { DataSource } from "typeorm";
 import { z } from "zod";
 

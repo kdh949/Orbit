@@ -1,5 +1,5 @@
-import { applyDeckPatch } from "@orbit/editor-core";
-import type { Deck, DeckElement, DeckPatch } from "@orbit/shared";
+import { applyDeckPatch } from "@orbit/editor-core/patches";
+import type { Deck, DeckElement, DeckPatch } from "@orbit/shared/deck";
 
 import {
   getEditorValidationItems,

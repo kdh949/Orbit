@@ -1,4 +1,4 @@
-import type { ImageElementProps } from "@orbit/shared";
+import type { ImageElementProps } from "@orbit/shared/deck";
 import {
   Group as KonvaGroup,
   Image as KonvaImageComponent,

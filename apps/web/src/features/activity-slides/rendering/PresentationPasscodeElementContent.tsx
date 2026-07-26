@@ -1,7 +1,7 @@
 import type {
   DeckElementPaint,
-  PresentationPasscodeElementProps
-} from "@orbit/shared";
+  PresentationPasscodeElementProps,
+} from "@orbit/shared/deck";
 import {
   Group as KonvaGroup,
   Rect as KonvaRect,

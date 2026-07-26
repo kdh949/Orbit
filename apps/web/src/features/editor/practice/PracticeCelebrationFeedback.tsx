@@ -1,4 +1,4 @@
-import type { SlidePracticeReportRecord } from "@orbit/shared";
+import type { SlidePracticeReportRecord } from "@orbit/shared/slide-practice";
 import { useState } from "react";
 
 import greatStampUrl from "../../../assets/orbit-great-stamp.webp";

@@ -1,4 +1,4 @@
-import type { SlideTransition } from "@orbit/shared";
+import type { SlideTransition } from "@orbit/shared/deck";
 
 import { AnimationPanelSection } from "./AnimationPanelSection";
 import { AnimationRangeField } from "./AnimationRangeField";

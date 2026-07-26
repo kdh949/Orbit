@@ -1,4 +1,4 @@
-import type { BrowserSemanticCueNliDevice } from "./browserSemanticCueNliWorkerProtocol";
+import type { BrowserSemanticCueNliDevice } from "../../../runtime/speech/semantic/nli/browserSemanticCueNliWorkerProtocol";
 
 export type SemanticCueNliBenchmarkInput = {
   device: BrowserSemanticCueNliDevice;

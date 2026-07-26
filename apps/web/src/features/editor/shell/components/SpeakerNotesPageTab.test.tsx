@@ -1,4 +1,4 @@
-import type { PptxNotesPreview } from "@orbit/shared";
+import type { PptxNotesPreview } from "@orbit/shared/deck";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";

@@ -1,4 +1,4 @@
-import type { Deck } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
 import type Konva from "konva";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";

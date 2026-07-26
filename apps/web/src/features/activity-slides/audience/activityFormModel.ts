@@ -1,8 +1,8 @@
 import type {
   ActivityAnswer,
   ActivityDefinition,
-  ActivityResponse
-} from "@orbit/shared";
+  ActivityResponse,
+} from "@orbit/shared/activities";
 
 export type SatisfactionDraft = {
   displayName: string;

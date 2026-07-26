@@ -1,0 +1,29 @@
+/* Keep AI proposals reachable when the editor has less vertical room, such as
+ * a desktop browser at 125% zoom. The composer remains available while the
+ * expandable AI content owns the panel's single scroll region. */
+.orbit-shell.editor-professional .editor-ai-assistant-panel .ai-chat-panel {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  min-width: 0;
+}
+
+.orbit-shell.editor-professional
+  .editor-ai-assistant-panel
+  .ai-chat-scroll-content {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.orbit-shell.editor-professional
+  .editor-ai-assistant-panel
+  .ai-chat-scroll-content
+  .ai-chat-history {
+  flex: none;
+  min-height: auto;
+  overflow: visible;
+}

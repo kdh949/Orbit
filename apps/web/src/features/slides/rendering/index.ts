@@ -1,8 +1,8 @@
 export {
   ReadOnlySlideCanvas,
-  type ElementPresentationState,
   type SlideRuntimeHighlight
 } from "./ReadOnlySlideCanvas";
+export type { ElementPresentationState } from "../../../runtime/presentation/slideshow/elementPresentationState";
 export {
   SlideBackground,
   buildSlideBackgroundStyle,
@@ -24,7 +24,7 @@ export {
   getRenderableSlideElements,
   normalizeRenderableElement,
   usesSourceSlideSnapshot
-} from "./elementNormalization";
+} from "../../../runtime/presentation/slideshow/elementNormalization";
 export {
   clearProjectSlideImageCache,
   collectSlideAssetUrls,

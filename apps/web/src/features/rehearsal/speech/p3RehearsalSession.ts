@@ -1,20 +1,19 @@
+import type { SemanticCue, SemanticCueImportance } from "@orbit/shared/deck";
+import type { PronunciationLexiconEntry } from "@orbit/shared/pronunciation";
 import type {
   RehearsalRunMeta,
   RehearsalSemanticCueDecision,
   SemanticCapabilityEvent,
-  SemanticCue,
-  SemanticCueImportance,
   SemanticMeasurementMode,
-  PronunciationLexiconEntry,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 
 import type {
   LiveSttBiasPhrase,
   LiveSttPort,
   LiveSttResult
-} from "../stt/liveSttPort";
-import { createDefaultPhraseExtractor } from "./phraseExtractor";
-import { buildSpeechTrackingBiasPhrases } from "./speechBiasPhrases";
+} from "../../../runtime/speech/stt/liveSttPort";
+import { createDefaultPhraseExtractor } from "../../../runtime/speech/tracking/phraseExtractor";
+import { buildSpeechTrackingBiasPhrases } from "../../../runtime/speech/tracking/speechBiasPhrases";
 import {
   createRehearsalLogCollector,
   type RehearsalLogCollector
@@ -23,25 +22,25 @@ import {
   defaultSpeechTrackingConfig,
   type AdviceEventType,
   type SpeechTrackingConfigOverride
-} from "./speechTrackingConfig";
-import type { SpeechTrackerKeyword } from "./speechTracker";
-import { createSpeechTracker, type SpeechTracker } from "./speechTracker";
+} from "../../../runtime/speech/tracking/speechTrackingConfig";
+import type { SpeechTrackerKeyword } from "../../../runtime/speech/tracking/speechTracker";
+import { createSpeechTracker, type SpeechTracker } from "../../../runtime/speech/tracking/speechTracker";
 import {
   createSemanticDebugState,
   semanticDebugErrorMessage,
   type SemanticUtteranceDebugState
-} from "./semanticSpeechDebug";
-import type { SemanticMatchDecisionReason } from "./semanticUtteranceDecision";
-import type { SemanticUtteranceMatcher } from "./semanticUtteranceMatcher";
-import type { SemanticCueDebugEvent } from "./semanticCueDebugEvents";
-import type { SemanticCueRuntime } from "./semanticCueRuntime";
-import { createSemanticEvidenceWindow } from "./semanticEvidenceWindow";
+} from "../../../runtime/speech/semantic/semanticSpeechDebug";
+import type { SemanticMatchDecisionReason } from "../../../runtime/speech/semantic/semanticUtteranceDecision";
+import type { SemanticUtteranceMatcher } from "../../../runtime/speech/semantic/semanticUtteranceMatcher";
+import type { SemanticCueDebugEvent } from "../../../runtime/speech/semantic/cue/semanticCueDebugEvents";
+import type { SemanticCueRuntime } from "../../../runtime/speech/semantic/cue/semanticCueRuntime";
+import { createSemanticEvidenceWindow } from "../../../runtime/speech/semantic/cue/semanticEvidenceWindow";
 import {
   createSemanticCapabilityState,
   type SemanticCapabilityStatuses,
   type SemanticCapabilityTransition
-} from "./semanticCapabilityState";
-import type { SpeechTrackerSnapshot, SpeechTrackingEvent } from "./speechTrackingEvents";
+} from "../../../runtime/speech/semantic/cue/semanticCapabilityState";
+import type { SpeechTrackerSnapshot, SpeechTrackingEvent } from "../../../runtime/speech/tracking/speechTrackingEvents";
 
 export type P3RehearsalSessionSlide = {
   slideId: string;

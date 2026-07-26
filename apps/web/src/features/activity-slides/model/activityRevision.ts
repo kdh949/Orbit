@@ -1,7 +1,7 @@
 import {
   presentationActivityEventSchema,
-  type PresentationActivityEvent
-} from "@orbit/shared";
+  type PresentationActivityEvent,
+} from "@orbit/shared/realtime";
 
 export type ActivityRevisionState<T> = {
   revision: number;

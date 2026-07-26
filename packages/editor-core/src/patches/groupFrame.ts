@@ -4,8 +4,8 @@ import type {
   DeckElement,
   DeckPatch,
   GroupElementProps,
-  Slide
-} from "@orbit/shared";
+  Slide,
+} from "@orbit/shared/deck";
 
 import {
   normalizeElementFrameDraft,

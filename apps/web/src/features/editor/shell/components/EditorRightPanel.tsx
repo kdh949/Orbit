@@ -5,7 +5,7 @@ import type {
   SemanticCue,
   Slide,
   SpeakerNotesSuggestionMode,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import {
   IconAdjustmentsHorizontal as Properties,
   IconChevronRight as ChevronRight,

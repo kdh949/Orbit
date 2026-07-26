@@ -1,4 +1,4 @@
-import type { PublishCommunityTemplateRequest } from "@orbit/shared";
+import type { PublishCommunityTemplateRequest } from "@orbit/shared/community-templates";
 import type { FormEvent } from "react";
 
 import {

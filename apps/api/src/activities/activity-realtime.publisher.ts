@@ -5,9 +5,9 @@ import {
 import {
   activeActivityChangedEventSchema,
   activityResultsUpdatedEventSchema,
-  activityStateChangedEventSchema
-} from "@orbit/shared";
-import type { ActivityRuntimeStatus } from "@orbit/shared";
+  activityStateChangedEventSchema,
+} from "@orbit/shared/realtime";
+import type { ActivityRuntimeStatus } from "@orbit/shared/activities";
 import { Injectable } from "@nestjs/common";
 import type { Server } from "socket.io";
 

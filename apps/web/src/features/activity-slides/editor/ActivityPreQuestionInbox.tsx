@@ -1,8 +1,8 @@
 import type {
   ActivityPresenterResult,
-  ActivitySlide,
-  ModerateActivityTextRequest
-} from "@orbit/shared";
+  ModerateActivityTextRequest,
+} from "@orbit/shared/activities";
+import type { ActivitySlide } from "@orbit/shared/deck";
 import { IconMessageQuestion, IconRefresh } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 

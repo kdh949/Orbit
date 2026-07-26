@@ -2,8 +2,8 @@ import { createActivitySlide, createDemoDeck } from "@orbit/editor-core";
 import {
   activityPresenterResultSchema,
   activityRunSchema,
-  type ActivitySessionResultItem
-} from "@orbit/shared";
+  type ActivitySessionResultItem,
+} from "@orbit/shared/activities";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";

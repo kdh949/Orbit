@@ -1,19 +1,21 @@
 import {
   activitySlideSchema,
   activityResultsSlideSchema,
-  deckSchema
-} from "@orbit/shared";
+  deckSchema,
+} from "@orbit/shared/deck";
 import type {
   ActivityDefinition,
+  ActivityTemplate,
+} from "@orbit/shared/activities";
+import type {
   ActivityAppearance,
   ActivityResultsSlide,
   ActivitySlide,
-  ActivityTemplate,
   Deck,
   DeckElement,
   DeckPatch,
-  Slide
-} from "@orbit/shared";
+  Slide,
+} from "@orbit/shared/deck";
 
 import {
   createActivityDesignPreset,

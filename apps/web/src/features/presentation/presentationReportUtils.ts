@@ -1,7 +1,5 @@
-import type {
-  ActivitySessionResultItem,
-  PresentationRunStatus,
-} from "@orbit/shared";
+import type { ActivitySessionResultItem } from "@orbit/shared/activities";
+import type { PresentationRunStatus } from "@orbit/shared/presentation";
 
 export function isPresentationAnalysisPending(status?: PresentationRunStatus) {
   return (

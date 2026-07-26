@@ -1,4 +1,4 @@
-import type { DeckSlideAction, Slide } from "@orbit/shared";
+import type { DeckSlideAction, Slide } from "@orbit/shared/deck";
 
 import { deriveKeywordOccurrences } from "./keywordOccurrences";
 

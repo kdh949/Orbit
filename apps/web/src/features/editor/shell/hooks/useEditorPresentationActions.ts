@@ -1,8 +1,8 @@
-import type { Deck } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
 import type { MutableRefObject } from "react";
 import { useState } from "react";
 
-import { storePreparedRehearsalSlideSnapshots } from "../../../rehearsal/rehearsalSlideSnapshots";
+import { storePreparedRehearsalSlideSnapshots } from "../../../../runtime/presentation/rehearsalSlideSnapshots";
 import { withSaveErrorCode } from "../api/deckPersistenceApi";
 import { shouldApplyManualSaveResult } from "../utils/deckState";
 import { toEditorErrorMessage } from "../utils/editorFileValidation";

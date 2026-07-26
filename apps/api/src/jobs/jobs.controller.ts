@@ -1,4 +1,5 @@
-import { demoIds, publicCreatableJobTypeSchema } from "@orbit/shared";
+import { demoIds } from "@orbit/shared/common";
+import { publicCreatableJobTypeSchema } from "@orbit/shared/jobs";
 import { Body, Controller, Get, NotFoundException, Param, Post, Req } from "@nestjs/common";
 import { z } from "zod";
 import { AuthService } from "../auth/auth.service";

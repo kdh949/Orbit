@@ -6,25 +6,25 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { Deck } from "@orbit/shared/deck";
+import type { PresentationRun } from "@orbit/shared/presentation";
+import type { Project } from "@orbit/shared/projects";
 import type {
-  Deck,
-  PresentationRun,
-  Project,
   RehearsalProjectSummary,
   RehearsalRun,
   RehearsalRunComparison,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import {
   fetchReportProjects,
   fetchProjectRehearsalSummary,
   fetchRehearsalRunComparison,
   loadProjectReportRunSources,
-} from "./reportApi";
+} from "../reports/reportApi";
 import { fetchProjectDeck } from "./keywords/keywordEditorApi";
-import { RehearsalRunNav } from "./RehearsalRunNav";
+import { RehearsalRunNav } from "../reports/RehearsalRunNav";
 import { RehearsalProjectSummaryDashboard } from "./RehearsalProjectSummaryDashboard";
 import { buildRehearsalRunComparisonViewModel } from "./rehearsalRunComparisonModel";
-import { getRehearsalReportPath } from "./RehearsalWorkspace";
+import { getRehearsalReportPath } from "./rehearsalRoutes";
 import {
   OrbitButton,
   OrbitEmptyState,
@@ -35,7 +35,7 @@ import {
   getPresentationReportPath,
   navigateTo,
   sortRehearsalRunsByCreatedAt,
-} from "./rehearsalUtils";
+} from "../reports/reportUtils";
 import "./rehearsal-project-report.css";
 import "./rehearsal-project-overview.css";
 

@@ -1,4 +1,7 @@
-import type { SavedDesignPackOwnerType, SavedDesignPackPreferences } from "@orbit/shared";
+import type {
+  SavedDesignPackOwnerType,
+  SavedDesignPackPreferences,
+} from "@orbit/shared/deck";
 import { Column, Entity, Index, PrimaryColumn } from "typeorm";
 
 @Entity({ name: "saved_design_packs" })

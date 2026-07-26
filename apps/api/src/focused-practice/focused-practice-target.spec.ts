@@ -1,4 +1,5 @@
-import { deckSchema, rehearsalEvaluationSnapshotSchema } from "@orbit/shared";
+import { deckSchema } from "@orbit/shared/deck";
+import { rehearsalEvaluationSnapshotSchema } from "@orbit/shared/rehearsals";
 import { describe, expect, it } from "vitest";
 
 import {

@@ -2,7 +2,7 @@ import type { OrbitConfig } from "@orbit/config";
 import {
   ForbiddenException,
   UnauthorizedException,
-  UnsupportedMediaTypeException
+  UnsupportedMediaTypeException,
 } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 
@@ -15,15 +15,15 @@ vi.mock("@orbit/config", async (importOriginal) => {
       WEB_ORIGIN: "http://localhost:5173",
       SESSION_SECRET: "activity-test-session-secret",
       COOKIE_SECRET: "activity-test-cookie-secret",
-      AUTH_COOKIE_SECURE: false
-    })
+      AUTH_COOKIE_SECURE: false,
+    }),
   };
 });
 
 import { AudienceActivityController } from "./audience-activity.controller";
 import {
   audienceAccessCookieName,
-  createAudienceAccessToken
+  createAudienceAccessToken,
 } from "../presentation-sessions/audience-access-cookie";
 
 describe("AudienceActivityController", () => {
@@ -32,35 +32,25 @@ describe("AudienceActivityController", () => {
     const controller = new AudienceActivityController(
       responses as never,
       { getAudienceActivity: vi.fn() } as never,
-      { getAudienceAccess: vi.fn() } as never
+      { assertAudienceAccess: vi.fn() } as never,
     );
     const config = Reflect.get(controller, "config") as OrbitConfig;
 
     await expect(
-      controller.upsertResponse(
-        "session_1",
-        "activity_1",
-        {},
-        {
-          headers: {
-            origin: config.WEB_ORIGIN,
-            "content-type": "application/jsonp"
-          }
-        } as never
-      )
+      controller.upsertResponse("session_1", "activity_1", {}, {
+        headers: {
+          origin: config.WEB_ORIGIN,
+          "content-type": "application/jsonp",
+        },
+      } as never),
     ).rejects.toBeInstanceOf(UnsupportedMediaTypeException);
     await expect(
-      controller.upsertResponse(
-        "session_1",
-        "activity_1",
-        {},
-        {
-          headers: {
-            origin: "https://invalid.example",
-            "content-type": "application/json"
-          }
-        } as never
-      )
+      controller.upsertResponse("session_1", "activity_1", {}, {
+        headers: {
+          origin: "https://invalid.example",
+          "content-type": "application/json",
+        },
+      } as never),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(responses.upsert).not.toHaveBeenCalled();
   });
@@ -69,14 +59,16 @@ describe("AudienceActivityController", () => {
     const responses = { upsert: vi.fn() };
     const results = { getAudienceActivity: vi.fn() };
     const sessions = {
-      getAudienceAccess: vi.fn().mockRejectedValue(
-        new UnauthorizedException("Audience access required")
-      )
+      assertAudienceAccess: vi
+        .fn()
+        .mockRejectedValue(
+          new UnauthorizedException("Audience access required"),
+        ),
     };
     const controller = new AudienceActivityController(
       responses as never,
       results as never,
-      sessions as never
+      sessions as never,
     );
     const config = Reflect.get(controller, "config") as OrbitConfig;
     const access = {
@@ -86,32 +78,42 @@ describe("AudienceActivityController", () => {
       accessMode: "public" as const,
       startsAt: "2026-07-17T00:00:00.000Z",
       expiresAt: "2027-07-31T00:00:00.000Z",
-      activeActivityRunId: null
+      activeActivityRunId: null,
     };
-    const token = createAudienceAccessToken(config, access, "test-agent", "audience_1");
+    const token = createAudienceAccessToken(
+      config,
+      access,
+      "test-agent",
+      "audience_1",
+    );
     const readRequest = {
       headers: { "user-agent": "test-agent" },
-      signedCookies: { [audienceAccessCookieName]: token }
+      signedCookies: { [audienceAccessCookieName]: token },
     } as never;
     const writeRequest = {
       headers: {
         "user-agent": "test-agent",
         origin: config.WEB_ORIGIN,
-        "content-type": "application/json"
+        "content-type": "application/json",
       },
-      signedCookies: { [audienceAccessCookieName]: token }
+      signedCookies: { [audienceAccessCookieName]: token },
     } as never;
 
     await expect(
-      controller.getActivity("session_1", "activity_1", readRequest)
+      controller.getActivity("session_1", "activity_1", readRequest),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     await expect(
-      controller.upsertResponse("session_1", "activity_1", {
-        clientMutationId: "mutation_1",
-        answers: [{ questionId: "question_1", type: "rating", value: 5 }]
-      }, writeRequest)
+      controller.upsertResponse(
+        "session_1",
+        "activity_1",
+        {
+          clientMutationId: "mutation_1",
+          answers: [{ questionId: "question_1", type: "rating", value: 5 }],
+        },
+        writeRequest,
+      ),
     ).rejects.toBeInstanceOf(UnauthorizedException);
-    expect(sessions.getAudienceAccess).toHaveBeenCalledTimes(2);
+    expect(sessions.assertAudienceAccess).toHaveBeenCalledTimes(2);
     expect(results.getAudienceActivity).not.toHaveBeenCalled();
     expect(responses.upsert).not.toHaveBeenCalled();
   });

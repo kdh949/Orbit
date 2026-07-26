@@ -1,4 +1,4 @@
-import type { PresentationCompanionOutputState } from "@orbit/shared";
+import type { PresentationCompanionOutputState } from "@orbit/shared/realtime";
 import { describe, expect, it } from "vitest";
 import {
   consumeCompanionOutputState,

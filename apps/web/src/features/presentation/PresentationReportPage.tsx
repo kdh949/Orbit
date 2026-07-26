@@ -1,7 +1,5 @@
-import type {
-  ActivitySessionResultItem,
-  PresentationRunStatus,
-} from "@orbit/shared";
+import type { ActivitySessionResultItem } from "@orbit/shared/activities";
+import type { PresentationRunStatus } from "@orbit/shared/presentation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   IconArrowLeft,
@@ -19,12 +17,12 @@ import {
   OrbitFailureState,
   OrbitStatus,
 } from "../../components/ui";
-import { ReportDetailFrame } from "../rehearsal/RehearsalReportDocument";
-import { RehearsalReportTestView } from "../rehearsal/RehearsalReportTestView";
-import { RehearsalRunNav } from "../rehearsal/RehearsalRunNav";
-import { loadProjectReportRunSources } from "../rehearsal/reportApi";
-import { formatRunDate, navigateTo } from "../rehearsal/rehearsalUtils";
-import "../rehearsal/rehearsal-report-detail.css";
+import { ReportDetailFrame } from "../reports/RehearsalReportDocument";
+import { RehearsalReportTestView } from "../reports/RehearsalReportTestView";
+import { RehearsalRunNav } from "../reports/RehearsalRunNav";
+import { loadProjectReportRunSources } from "../reports/reportApi";
+import { formatRunDate, navigateTo } from "../reports/reportUtils";
+import "../reports/rehearsal-report-detail.css";
 import {
   getPresentationReport,
   getPresentationRun,

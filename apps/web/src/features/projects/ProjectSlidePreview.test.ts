@@ -1,4 +1,4 @@
-import type { Slide } from "@orbit/shared";
+import type { Slide } from "@orbit/shared/deck";
 import { describe, expect, it } from "vitest";
 import { buildWorkspaceThumbnailSlide } from "./workspaceThumbnail";
 

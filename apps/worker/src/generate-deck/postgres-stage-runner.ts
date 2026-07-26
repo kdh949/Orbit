@@ -1,4 +1,4 @@
-import type { Job } from "@orbit/shared";
+import type { Job } from "@orbit/shared/jobs";
 import type { StoragePort } from "@orbit/storage";
 import type { DataSource } from "typeorm";
 

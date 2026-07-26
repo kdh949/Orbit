@@ -1,4 +1,4 @@
-import type { DeckAnimation, DeckElement } from "@orbit/shared";
+import type { DeckAnimation, DeckElement } from "@orbit/shared/deck";
 
 type KeywordAnimationUsage = {
   animationIds: string[];

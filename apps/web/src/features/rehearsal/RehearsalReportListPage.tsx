@@ -1,4 +1,6 @@
-import type { PresentationRun, Project, RehearsalRun } from "@orbit/shared";
+import type { PresentationRun } from "@orbit/shared/presentation";
+import type { Project } from "@orbit/shared/projects";
+import type { RehearsalRun } from "@orbit/shared/rehearsals";
 import {
   IconChevronLeft,
   IconChevronRight,
@@ -15,8 +17,8 @@ import {
 import { fetchProjects } from "../projects/ProjectAssetWorkspace";
 import {
   loadProjectReportRunSources,
-} from "./reportApi";
-import { formatRunDate, navigateTo } from "./rehearsalUtils";
+} from "../reports/reportApi";
+import { formatRunDate, navigateTo } from "../reports/reportUtils";
 import "../projects/orbit-project-hub.css";
 import "./rehearsal-report-list.css";
 

@@ -2,8 +2,8 @@ import type {
   Deck,
   Slide,
   SpeakerNotesSuggestionMode,
-  SpeakerNotesSuggestionResult
-} from "@orbit/shared";
+  SpeakerNotesSuggestionResult,
+} from "@orbit/shared/deck";
 import type { MutableRefObject } from "react";
 import { useEffect, useMemo, useState } from "react";
 

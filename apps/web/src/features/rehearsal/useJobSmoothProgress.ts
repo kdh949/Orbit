@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Job } from "@orbit/shared";
+import type { Job } from "@orbit/shared/jobs";
 
 /**
  * job.progress를 추적하되, STT dead zone(30%→65%) 구간에서는

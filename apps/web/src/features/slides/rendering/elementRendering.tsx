@@ -7,8 +7,8 @@ import type {
   ShapeElementProps,
   TableElementProps,
   Slide,
-  TextElementProps
-} from "@orbit/shared";
+  TextElementProps,
+} from "@orbit/shared/deck";
 import type Konva from "konva";
 import {
   Arrow as KonvaArrowComponent,
@@ -22,7 +22,7 @@ import {
   Text as KonvaText
 } from "react-konva";
 import type { ComponentType } from "react";
-import type { ElementPresentationState } from "./ReadOnlySlideCanvas";
+import type { ElementPresentationState } from "../../../runtime/presentation/slideshow/elementPresentationState";
 
 import { ImageElementContent } from "./ImageElementContent";
 import { ActivityQrElementContent } from "../../activity-slides/rendering/ActivityQrElementContent";

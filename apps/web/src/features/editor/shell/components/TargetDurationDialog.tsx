@@ -1,4 +1,4 @@
-import type { Deck } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
 import { useEffect, useMemo, useState } from "react";
 
 import { OrbitButton, OrbitDialog } from "../../../../components/ui";

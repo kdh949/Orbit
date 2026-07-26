@@ -1,9 +1,8 @@
+import { type Deck, type Slide } from "@orbit/shared/deck";
 import {
   slideQuestionGuideTextHashInput,
-  type Deck,
-  type Slide,
   type SlideQuestionGuide,
-} from "@orbit/shared";
+} from "@orbit/shared/slide-practice";
 import {
   IconCheck,
   IconChevronDown,
@@ -14,7 +13,7 @@ import {
 import { type ReactNode, useEffect, useState } from "react";
 
 import { OrbitButton } from "../../../components/ui";
-import { fetchLiveSttRuntimeConfig } from "../../rehearsal/stt/liveSttRuntimeConfig";
+import { fetchLiveSttRuntimeConfig } from "../../../runtime/speech/stt/liveSttRuntimeConfig";
 import {
   createSlideQuestionGuide,
   getSlideQuestionGuide,

@@ -1,7 +1,6 @@
 import {
   createAddAnimationPatch,
   createAddAnimationWithKeywordTriggerPatch,
-  createAnimationTimeline,
   createDefaultAnimation,
   createDeleteAnimationPatch,
   createDeleteAnimationTimelineRootPatch,
@@ -12,17 +11,20 @@ import {
   createUpdateSlideTransitionPatch,
   createUpsertAdvanceSlideKeywordActionPatch,
   findKeywordByTerm,
+} from "@orbit/editor-core/patches";
+import {
+  createAnimationTimeline,
   getAnimationTimelineRoot
-} from "../../../../../../../packages/editor-core/src/index";
-import { createKeywordOccurrenceId } from "@orbit/shared";
+} from "@orbit/editor-core/playback";
+import { createKeywordOccurrenceId } from "@orbit/shared/deck";
 import type {
   Deck,
   DeckAnimation,
   DeckPatch,
   Keyword,
   Slide,
-  SlideTransition
-} from "@orbit/shared";
+  SlideTransition,
+} from "@orbit/shared/deck";
 import type { MutableRefObject } from "react";
 
 import type { EditorShellUiUpdater } from "../editorShellUiStore";

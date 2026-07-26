@@ -1,5 +1,5 @@
-import type { LiveSttPartialTranscriptEvent } from "@orbit/shared";
-import type { LiveSttBiasTerm } from "./liveStt";
+import type { LiveSttPartialTranscriptEvent } from "@orbit/shared/rehearsals";
+import type { LiveSttBiasTerm } from "../../runtime/speech/stt/liveSttAdapter";
 
 export type RehearsalCommandDefinition = {
   action: string;

@@ -1,8 +1,8 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from "typeorm";
 import type {
   RehearsalEvaluationSnapshot,
-  RehearsalSemanticEvaluationMode
-} from "@orbit/shared";
+  RehearsalSemanticEvaluationMode,
+} from "@orbit/shared/rehearsals";
 import { ProjectEntity } from "../projects/project.entity";
 
 export type RehearsalRunStatus =

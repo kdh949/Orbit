@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "activeDocs": [
+    "README.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "apps/api/AGENTS.md",
+    "apps/api/CLAUDE.md",
+    "apps/web/AGENTS.md",
+    "apps/web/CLAUDE.md",
+    "apps/web/DESIGN.md",
+    "apps/worker/AGENTS.md",
+    "apps/worker/CLAUDE.md",
+    "docs/contracts.md",
+    "docs/contracts/ai-deck.md",
+    "docs/contracts/common.md",
+    "docs/contracts/deck-editor.md",
+    "docs/contracts/pptx.md",
+    "docs/contracts/rehearsal.md",
+    "docs/demo-standards.md",
+    "docs/git-rules.md",
+    "docs/architecture/local-first-stack.md",
+    "docs/architecture/tech-stack-versions.md",
+    "docs/conventions/environment.md",
+    "docs/conventions/logging.md",
+    "docs/agent/benchmark.md",
+    "docs/runbooks/local-development.md",
+    "docs/testing/test-matrix.md",
+    "docs/deployment.md",
+    "docs/spikes/on-device-stt.md",
+    "docs/orbit-design-system.md",
+    "packages/editor-core/AGENTS.md",
+    "packages/editor-core/CLAUDE.md",
+    "packages/shared/AGENTS.md",
+    "packages/shared/CLAUDE.md",
+    "services/python-worker/AGENTS.md",
+    "services/python-worker/CLAUDE.md"
+  ],
+  "workflowClaimDocs": [
+    "README.md",
+    "docs/testing/test-matrix.md"
+  ],
+  "canonicalSources": [
+    "apps/web/src/components/ui",
+    "apps/web/src/styles/tokens.css",
+    "docs/agent/domains",
+    "packages/shared/src",
+    "docs/contracts.md",
+    "docs/contracts"
+  ],
+  "forbiddenReferences": [
+    {
+      "value": "apps/web/src/design-system",
+      "replacement": "apps/web/src/components/ui 또는 apps/web/src/styles/tokens.css"
+    }
+  ],
+  "historicalRoots": [
+    "docs/plans",
+    "docs/ideas",
+    "docs/qa",
+    "docs/yb",
+    "tasks"
+  ]
+}

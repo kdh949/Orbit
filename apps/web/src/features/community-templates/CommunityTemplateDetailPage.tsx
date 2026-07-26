@@ -1,11 +1,11 @@
+import { demoIds } from "@orbit/shared/common";
 import {
-  demoIds,
   type CommunityTemplateCard,
   type CommunityTemplateComment,
   type CommunityTemplateDetail,
   type CommunityTemplateCategory,
   type CommunityTemplateReportReason,
-} from "@orbit/shared";
+} from "@orbit/shared/community-templates";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   IconArrowLeft,

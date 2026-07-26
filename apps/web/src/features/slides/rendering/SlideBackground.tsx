@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { Deck, Slide } from "@orbit/shared";
+import type { Deck, Slide } from "@orbit/shared/deck";
 import { resolveEditorAssetUrl } from "../../editor/shared/editorAssetUrl";
 
 export function SlideBackground(props: {

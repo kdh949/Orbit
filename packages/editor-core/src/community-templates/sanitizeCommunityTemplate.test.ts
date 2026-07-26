@@ -1,4 +1,4 @@
-import { deckSchema } from "@orbit/shared";
+import { deckSchema } from "@orbit/shared/deck";
 import { describe, expect, it } from "vitest";
 
 import {

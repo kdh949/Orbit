@@ -1,9 +1,10 @@
 import { createActivitySlide, createDemoDeck } from "@orbit/editor-core";
-import { deckElementSchema } from "@orbit/shared";
+import { deckElementSchema } from "@orbit/shared/deck";
 import fs from "node:fs";
 import path from "node:path";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { readCssBundle } from "../../../../styles/readCssBundle.test-utils";
 import {
   AiChatPanel,
   createInitialAiChatState,
@@ -20,6 +21,10 @@ vi.mock("../../design-agent/components/DesignProposalCompareCard", () => ({
 const editorShellCssPath = path.join(
   process.cwd(),
   "src/features/editor/editor-shell.css"
+);
+const editorAiChatScrollCssPath = path.join(
+  process.cwd(),
+  "src/features/editor/styles/editor-ai-chat-scroll.css"
 );
 
 describe("AiChatPanel", () => {
@@ -92,7 +97,8 @@ describe("AiChatPanel", () => {
   });
 
   it("keeps assistant suggestion and mode controls compact", () => {
-    const css = fs.readFileSync(editorShellCssPath, "utf8");
+    const css = readCssBundle(editorShellCssPath);
+    const scrollCss = fs.readFileSync(editorAiChatScrollCssPath, "utf8");
 
     expect(css).toMatch(
       /\.editor-ai-assistant-panel\s*\.ai-chat-suggestions\s*\{[^}]*gap:\s*var\(--redesign-space-2\);[^}]*padding:\s*0 var\(--redesign-space-4\) var\(--redesign-space-3\);/s
@@ -112,7 +118,7 @@ describe("AiChatPanel", () => {
     expect(css).toMatch(
       /\.editor-ai-assistant-panel\s*\.ai-chat-message\.user\s*\.ai-chat-message-stack\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*78%;/s
     );
-    expect(css).toMatch(
+    expect(scrollCss).toMatch(
       /\.editor-ai-assistant-panel\s*\.ai-chat-scroll-content\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s
     );
   });

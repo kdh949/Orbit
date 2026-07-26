@@ -2,7 +2,7 @@ import {
   createAddElementPatch,
   createElementId,
   createUpdateElementPropsPatch
-} from "../../../../../../../packages/editor-core/src/index";
+} from "@orbit/editor-core/patches";
 import type {
   Deck,
   DeckCanvas,
@@ -10,8 +10,8 @@ import type {
   DeckPatch,
   DesignImageGenerationResult,
   PptxImportPreference,
-  PptxImportQuality
-} from "@orbit/shared";
+  PptxImportQuality,
+} from "@orbit/shared/deck";
 import type { ChangeEvent, MutableRefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 

@@ -1,7 +1,7 @@
 import type {
   SpeakerNotesSuggestionMode,
   SpeakerNotesSuggestionResult,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import {
   IconAlertTriangle as AlertTriangle,
   IconSparkles as Sparkles

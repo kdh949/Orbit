@@ -1,18 +1,19 @@
-import { applyDeckPatch, createDemoDeck } from "@orbit/editor-core";
 import {
+  applyDeckPatch,
   createAddAnimationWithKeywordTriggerPatch,
+  createDemoDeck,
   createDefaultAnimation,
   createUpdateAnimationKeywordTriggerPatch,
   createUpsertAdvanceSlideKeywordActionPatch
-} from "../../../../../../packages/editor-core/src/index";
-import { demoIds } from "@orbit/shared";
+} from "@orbit/editor-core";
+import { demoIds } from "@orbit/shared/common";
 import type {
   Deck,
   DeckPatch,
   DeckElement,
-  Job,
-  SemanticCue
-} from "@orbit/shared";
+  SemanticCue,
+} from "@orbit/shared/deck";
+import type { Job } from "@orbit/shared/jobs";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { forwardRef } from "react";

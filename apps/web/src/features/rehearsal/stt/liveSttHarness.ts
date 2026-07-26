@@ -1,4 +1,4 @@
-import type { LiveSttBiasPhrase, LiveSttPort, LiveSttResult } from "./liveSttPort";
+import type { LiveSttBiasPhrase, LiveSttPort, LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
 
 export type LiveSttHarnessScenario = {
   id: string;

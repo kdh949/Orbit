@@ -1,5 +1,5 @@
 import { createDemoDeck } from "@orbit/editor-core";
-import { deckSchema } from "@orbit/shared";
+import { deckSchema } from "@orbit/shared/deck";
 import type { Request } from "express";
 import { describe, expect, it, vi } from "vitest";
 

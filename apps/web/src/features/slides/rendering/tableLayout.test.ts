@@ -1,4 +1,4 @@
-import type { TableElementProps } from "@orbit/shared";
+import type { TableElementProps } from "@orbit/shared/deck";
 import { describe, expect, it } from "vitest";
 
 import { getTableCellOverlayGeometry, getTableLayout } from "./tableLayout";

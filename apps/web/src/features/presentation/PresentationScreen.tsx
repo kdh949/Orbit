@@ -1,18 +1,21 @@
-import type { Deck, DeckElement, Slide } from "@orbit/shared";
+import type { Deck, DeckElement, Slide } from "@orbit/shared/deck";
 import { Presentation } from "lucide-react";
 import type { ReactNode } from "react";
 import { ActivityPresenterPanel } from "../activity-slides";
-import { RehearsalPanel } from "../rehearsal/panel/RehearsalPanel";
-import { createRehearsalScriptPrompterRows } from "../rehearsal/panel/rehearsalScriptPrompter";
-import type { RehearsalTimingSnapshot, TimingAdviceState } from "../rehearsal/panel/rehearsalTiming";
-import { RehearsalScriptTeleprompter } from "../rehearsal/presenter/RehearsalScriptTeleprompter";
+import { RehearsalPanel } from "../presenter-shell/panel/RehearsalPanel";
+import { createRehearsalScriptPrompterRows } from "../presenter-shell/panel/rehearsalScriptPrompter";
+import type {
+  RehearsalTimingSnapshot,
+  TimingAdviceState,
+} from "../presenter-shell/panel/rehearsalTiming";
+import { RehearsalScriptTeleprompter } from "../presenter-shell/presenter/RehearsalScriptTeleprompter";
 import {
   AnimationFlowNavigator,
   type AnimationFlowNavigation,
-} from "../rehearsal/presenter/AnimationFlowNavigator";
-import { SlideshowRenderer } from "../rehearsal/presenter/SlideshowRenderer";
+} from "../presenter-shell/presenter/AnimationFlowNavigator";
+import { SlideshowRenderer } from "../presenter-shell/presenter/SlideshowRenderer";
 import type { ActivityPasscodeRuntimeState } from "../activity-slides/rendering/ActivityElementRuntimeContext";
-import type { SpeechTrackerSnapshot } from "../rehearsal/speech/speechTrackingEvents";
+import type { SpeechTrackerSnapshot } from "../../runtime/speech/tracking/speechTrackingEvents";
 import {
   PresenterStageSection,
   PresenterTimerCard,

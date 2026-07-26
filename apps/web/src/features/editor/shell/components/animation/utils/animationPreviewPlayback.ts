@@ -1,15 +1,15 @@
-import type { Deck, Slide } from "@orbit/shared";
+import type { Deck, Slide } from "@orbit/shared/deck";
 
 import {
   createBaseElementStates,
   computeSettledElementStates,
   createSlideshowAnimationPlan,
   type PlannedSlideshowAnimation
-} from "../../../../../rehearsal/presenter/slideshowStepModel";
+} from "../../../../../../runtime/presentation/slideshow/slideshowStepModel";
 import {
   createSlideshowTransitionStartStates,
   getSlideshowTransitionDurationMs
-} from "../../../../../rehearsal/presenter/useSlideshowTransitions";
+} from "../../../../../../runtime/presentation/slideshow/useSlideshowTransitions";
 import type { ElementPresentationState } from "../../../../../slides/rendering";
 
 export type EditorAnimationPreviewPlan = {

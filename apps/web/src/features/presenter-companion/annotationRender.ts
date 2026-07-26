@@ -1,4 +1,4 @@
-import type { PresentationCompanionStroke } from "@orbit/shared";
+import type { PresentationCompanionStroke } from "@orbit/shared/realtime";
 
 const annotationColorTokens = {
   "ink-black": "--redesign-color-on-surface",

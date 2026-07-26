@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { readCssBundle } from "../../styles/readCssBundle.test-utils";
 import { PresenterStageSection, PresenterTimerCard } from "./PresenterScaffold";
 
 const presenterScaffoldSourcePath = fileURLToPath(
@@ -38,7 +39,7 @@ describe("PresenterStageSection", () => {
 
   it("measures the slide viewport without including the navigation controls", () => {
     const source = fs.readFileSync(presenterScaffoldSourcePath, "utf8");
-    const styles = fs.readFileSync(presenterStylesPath, "utf8");
+    const styles = readCssBundle(presenterStylesPath);
     const stageWrapStart = source.indexOf('className="rehearsal-stage-wrap"');
     const controlsStart = source.indexOf(
       'className="rehearsal-slide-controls"',

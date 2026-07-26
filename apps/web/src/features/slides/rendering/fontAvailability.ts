@@ -1,4 +1,8 @@
-import { generateDeckFontCatalog, type Deck, type Slide } from "@orbit/shared";
+import {
+  generateDeckFontCatalog,
+  type Deck,
+  type Slide,
+} from "@orbit/shared/deck";
 
 export type ImportedFontAvailabilityDiagnostic = {
   affectedSlideCount: number;

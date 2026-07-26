@@ -1,7 +1,7 @@
 import {
   moderateActivityTextResponseSchema,
-  type ModerateActivityTextRequest
-} from "@orbit/shared";
+  type ModerateActivityTextRequest,
+} from "@orbit/shared/activities";
 import { ConflictException, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { InjectPinoLogger, PinoLogger } from "nestjs-pino";
 

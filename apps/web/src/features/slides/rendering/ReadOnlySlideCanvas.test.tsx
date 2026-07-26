@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { forwardRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { p0AnimationDeck } from "../../rehearsal/presenter/__fixtures__/animationDeck";
-import { computeSettledElementStates } from "../../rehearsal/presenter/slideshowStepModel";
+import { p0AnimationDeck } from "../../../runtime/presentation/slideshow/__fixtures__/animationDeck";
+import { computeSettledElementStates } from "../../../runtime/presentation/slideshow/slideshowStepModel";
 import {
   buildSlideBackgroundStyle,
   getActiveHighlightElementIds,

@@ -4,7 +4,7 @@ import {
   legacyRehearsalVolumeAnalysis,
   type RehearsalReport,
   type RehearsalSemanticCueOutcome,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import { describe, expect, it } from "vitest";
 
 import { buildRehearsalReportViewModel } from "./rehearsalReportViewModel";

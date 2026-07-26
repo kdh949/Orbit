@@ -11,7 +11,7 @@ import {
   attachAudienceStreamToWindow,
   registerAudienceStreamBridge,
   type AudienceStreamBridgeWindow,
-} from "../../rehearsal/presenter/audienceStreamBridge";
+} from "../../../runtime/presentation/audienceStreamBridge";
 import {
   calculateLatencySummary,
   collectCompanionSpikePoints,

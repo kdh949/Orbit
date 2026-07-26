@@ -1,4 +1,4 @@
-import type { Slide } from "@orbit/shared";
+import type { Slide } from "@orbit/shared/deck";
 
 export function buildWorkspaceThumbnailSlide(slide: Slide): Slide {
   if (!slide.style.backgroundImage) {

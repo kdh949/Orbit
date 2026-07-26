@@ -4,13 +4,13 @@ import {
   defaultAutoAdvancePolicy,
   defaultPauseDetectorConfig,
   normalizeAutoAdvanceThreshold
-} from "../advance/autoAdvanceConfig";
+} from "../../../runtime/presentation/advance/autoAdvanceConfig";
 import {
   type HybridCoverageConfig,
   defaultSpeechTrackingConfig
-} from "../speech/speechTrackingConfig";
-import type { LiveSttEngineId } from "../stt/liveSttPort";
-import { defaultLiveSttEngineId } from "../stt/liveSttEngineRegistry";
+} from "../../../runtime/speech/tracking/speechTrackingConfig";
+import type { LiveSttEngineId } from "../../../runtime/speech/stt/liveSttPort";
+import { defaultLiveSttEngineId } from "../../../runtime/speech/stt/liveSttEngineRegistry";
 
 export const presenterGlobalSettingsStorageKey = "orbit:presenter:global:v1";
 export const presenterDeckSettingsStorageKeyPrefix = "orbit:presenter:deck:";

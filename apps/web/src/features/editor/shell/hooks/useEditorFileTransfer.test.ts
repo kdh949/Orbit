@@ -1,8 +1,8 @@
-import type { Deck, DeckPatch } from "@orbit/shared";
+import type { Deck, DeckPatch } from "@orbit/shared/deck";
 import {
   createDemoDeck,
   createElementId
-} from "../../../../../../../packages/editor-core/src/index";
+} from "@orbit/editor-core";
 import { describe, expect, it, vi } from "vitest";
 
 import {

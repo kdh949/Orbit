@@ -1,4 +1,9 @@
-import type { Deck, DeckAnimation, DeckElement, Slide } from "@orbit/shared";
+import type {
+  Deck,
+  DeckAnimation,
+  DeckElement,
+  Slide,
+} from "@orbit/shared/deck";
 
 import { ElementSummary, InfoCard, KeywordSummary } from "./EditorDebugCards";
 

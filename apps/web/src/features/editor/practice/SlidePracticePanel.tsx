@@ -1,9 +1,8 @@
+import { type Deck, type Slide } from "@orbit/shared/deck";
 import {
   slideQuestionGuideTextHashInput,
-  type Deck,
-  type Slide,
   type SlidePracticeReport,
-} from "@orbit/shared";
+} from "@orbit/shared/slide-practice";
 import { useEffect, useRef } from "react";
 
 import { OrbitButton } from "../../../components/ui";

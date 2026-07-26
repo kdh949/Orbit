@@ -3,10 +3,10 @@ import {
   generateDeckResponseSchema,
   generateDeckValidationSchema,
   slideSchema,
-  type AiDeckGenerationStage,
   type GenerateDeckResponse,
   type GenerateDeckJobResult,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
+import { type AiDeckGenerationStage } from "@orbit/shared/jobs";
 import { z } from "zod";
 
 export const aiDeckExecutionStageSchema = z.enum([

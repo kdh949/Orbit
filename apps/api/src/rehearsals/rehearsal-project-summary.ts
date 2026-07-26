@@ -8,7 +8,7 @@ import {
   type RehearsalProjectSummary,
   type RehearsalProjectTimingOverrun,
   type RehearsalReport,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 
 const TIMING_OVERRUN_RATIO = 1.2;
 

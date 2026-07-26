@@ -1,4 +1,4 @@
-import type { CustomShapeElementProps } from "@orbit/shared";
+import type { CustomShapeElementProps } from "@orbit/shared/deck";
 
 import type { CanvasPoint } from "../custom-shape/geometry";
 

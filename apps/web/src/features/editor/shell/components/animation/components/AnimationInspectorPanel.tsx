@@ -199,4 +199,4 @@ export function AnimationInspectorPanel(props: AnimationEditorPanelProps) {
 import {
   createAnimationTimeline,
   getAnimationTimelineRoot
-} from "@orbit/editor-core";
+} from "@orbit/editor-core/playback";

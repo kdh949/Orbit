@@ -1,7 +1,7 @@
 import {
   presentationCompanionMaxPrompterRowLength,
   presentationCompanionMaxPrompterRows,
-} from "@orbit/shared";
+} from "@orbit/shared/realtime";
 import { describe, expect, it } from "vitest";
 import {
   createCompanionPrompterProjection,

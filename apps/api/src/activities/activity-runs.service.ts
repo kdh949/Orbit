@@ -5,16 +5,16 @@ import {
   ensureActivityRunResponseSchema,
   getCurrentActivityRunResponseSchema,
   supersedeActivityRunResponseSchema,
-  updateActivityRunStatusResponseSchema
-} from "@orbit/shared";
+  updateActivityRunStatusResponseSchema,
+} from "@orbit/shared/activities";
 import type {
   ActivityDefinition,
   ActivityRun,
   ActivityRuntimeStatus,
-  Deck,
   SupersedeActivityRunRequest,
-  UpdateActivityRunStatusRequest
-} from "@orbit/shared";
+  UpdateActivityRunStatusRequest,
+} from "@orbit/shared/activities";
+import type { Deck } from "@orbit/shared/deck";
 import {
   ConflictException,
   HttpException,

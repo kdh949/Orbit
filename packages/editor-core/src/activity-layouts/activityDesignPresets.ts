@@ -1,10 +1,10 @@
-import { deckElementSchema } from "@orbit/shared";
+import { deckElementSchema } from "@orbit/shared/deck";
 import type {
   ActivityAppearance,
   Deck,
   DeckElement,
-  Slide
-} from "@orbit/shared";
+  Slide,
+} from "@orbit/shared/deck";
 
 export const activityDesignPresetIds = [
   "spotlight",

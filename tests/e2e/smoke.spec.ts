@@ -129,9 +129,13 @@ test.describe("ORBIT-2 ORBIT-10 ORBIT-36 ORBIT-58 smoke", () => {
 
     await page.goto("/");
 
-    await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByRole("heading", { name: "로그인" })).toBeVisible();
-    await expect(page.getByText("Orbit 작업 공간")).toBeVisible();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(
+      page.getByRole("heading", {
+        name: "생각을 발표로 바꾸는 가장 빠른 캔버스",
+      }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
   });
 
   test("authenticates and opens the migrated project workspace", async ({
@@ -140,8 +144,12 @@ test.describe("ORBIT-2 ORBIT-10 ORBIT-36 ORBIT-58 smoke", () => {
     await authenticateE2ePage(page, "asset-upload");
     await page.goto("/project");
 
-    await expect(page.getByRole("heading", { name: "프로젝트 불러오기" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /빈 프레젠테이션 만들기/ })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "빈 프로젝트", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "PPTX 업로드", exact: true }),
+    ).toBeVisible();
   });
 
   test("opens the migrated rehearsal preflight and starts voice-less practice", async ({
@@ -186,6 +194,10 @@ test.describe("ORBIT-2 ORBIT-10 ORBIT-36 ORBIT-58 smoke", () => {
 
     page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "발표 종료" }).click();
+    await expect(
+      page.getByRole("heading", { name: "발표를 마쳤어요" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "리포트 보기" }).click();
 
     await expect(page).toHaveURL(
       new RegExp(`/presentation/${projectId}/report/[^?]+\\?runId=`),

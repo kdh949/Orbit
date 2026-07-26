@@ -1,7 +1,7 @@
 import type {
   CustomShapeElementProps,
-  CustomShapeNode
-} from "@orbit/shared";
+  CustomShapeNode,
+} from "@orbit/shared/deck";
 import type Konva from "konva";
 import {
   Circle as KonvaCircle,

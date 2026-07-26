@@ -1,4 +1,4 @@
-import type { ProjectMember } from "@orbit/shared";
+import type { ProjectMember } from "@orbit/shared/projects";
 import { IconCheck, IconTrash, IconUserPlus, IconUsers } from "@tabler/icons-react";
 import {
   OrbitButton,

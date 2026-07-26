@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { readCssBundle } from "./readCssBundle.test-utils";
 
 const webRoot = process.cwd();
 const systemFontPattern = /-apple-system|BlinkMacSystemFont|Apple SD Gothic Neo|SFMono-Regular|SF Mono|Menlo|SUIT Variable|ui-monospace|ui-sans-serif|system-ui/;
@@ -17,12 +18,12 @@ describe("ORBIT web fonts", () => {
 
   it("does not fall back to platform-specific UI fonts", () => {
     const sources = [
-      "src/styles.css",
-      "src/styles/tokens.css",
-      "src/styles/foundations.css",
-      "src/features/editor/editor-shell.css",
-      "semantic-cue-lab.html"
-    ].map((file) => fs.readFileSync(path.join(webRoot, file), "utf8"));
+      readCssBundle(path.join(webRoot, "src/styles.css")),
+      fs.readFileSync(path.join(webRoot, "src/styles/tokens.css"), "utf8"),
+      fs.readFileSync(path.join(webRoot, "src/styles/foundations.css"), "utf8"),
+      readCssBundle(path.join(webRoot, "src/features/editor/editor-shell.css")),
+      fs.readFileSync(path.join(webRoot, "semantic-cue-lab.html"), "utf8")
+    ];
     for (const source of sources) expect(source).not.toMatch(systemFontPattern);
   });
 });

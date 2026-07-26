@@ -5,7 +5,7 @@ import {
   type LiveSttResult,
   type LiveSttSessionConfig,
   type LiveSttUnsubscribe
-} from "./liveSttPort";
+} from "../../../runtime/speech/stt/liveSttPort";
 
 describe("liveSttHarness", () => {
   it("phrase recall, keyword hit rate, latency를 계산한다", () => {

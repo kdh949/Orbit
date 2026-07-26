@@ -1,27 +1,29 @@
 import {
-  createAddElementPatch,
-  createAddSlidePatch,
   createActivityResultsSlide,
   createActivitySlide,
+} from "@orbit/editor-core/activities";
+import {
+  createAddElementPatch,
+  createAddSlidePatch,
   createElementId,
+  createElementFramePatch,
   createGroupedElementFramePatch,
   createSlideId,
-  createTableOperationPatch,
   getGroupChildElements,
   getGroupedSelectionBounds,
+  normalizeElementFrameDraft,
+} from "@orbit/editor-core/patches";
+import {
+  createTableOperationPatch,
   getTableOperationCapability,
   getTableStructureCapability,
   type TableOperation,
   type TableCellRange,
-} from "../../../../../../../packages/editor-core/src/index";
-import {
-  createElementFramePatch,
-  normalizeElementFrameDraft,
-} from "../../../../../../../packages/editor-core/src/patches/elementFrame";
+} from "@orbit/editor-core/table";
+import type { ActivityTemplate } from "@orbit/shared/activities";
 import type {
   Chart,
   CustomShapeNode,
-  ActivityTemplate,
   Deck,
   DeckElement,
   DeckElementRole,
@@ -31,7 +33,7 @@ import type {
   Slide,
   TableCellProps,
   TableElementProps,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import { useEffect, useRef, type MutableRefObject } from "react";
 
 import { resolveRedesignPalette } from "../../../../styles/redesignPalette";

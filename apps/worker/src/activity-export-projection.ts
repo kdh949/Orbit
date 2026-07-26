@@ -5,13 +5,15 @@ import {
   activityRetentionSnapshotSchema,
   buildActivityAggregates,
   calculateActivityResponseRate,
-  deckSchema,
   type ActivityAnswer,
   type ActivityPresenterResult,
+} from "@orbit/shared/activities";
+import {
+  deckSchema,
   type Deck,
   type DeckElement,
   type TextElementProps,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import type { DataSource } from "typeorm";
 
 type QueryExecutor = Pick<DataSource, "query">;

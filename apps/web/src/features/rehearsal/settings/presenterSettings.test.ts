@@ -3,9 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   defaultAutoAdvancePolicy,
   defaultPauseDetectorConfig
-} from "../advance/autoAdvanceConfig";
-import { defaultLiveSttEngineId } from "../stt/liveSttEngineRegistry";
-import { defaultSpeechTrackingConfig } from "../speech/speechTrackingConfig";
+} from "../../../runtime/presentation/advance/autoAdvanceConfig";
+import { defaultLiveSttEngineId } from "../../../runtime/speech/stt/liveSttEngineRegistry";
+import { defaultSpeechTrackingConfig } from "../../../runtime/speech/tracking/speechTrackingConfig";
 import {
   defaultPresenterSettings,
   loadPresenterSettings,

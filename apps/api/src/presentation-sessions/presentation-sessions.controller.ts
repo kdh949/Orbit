@@ -1,10 +1,10 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UnauthorizedException } from "@nestjs/common";
+import { deckIdSchema } from "@orbit/shared/deck";
 import {
   createPresentationSessionRequestSchema,
-  deckIdSchema,
   presentationSessionPurposeSchema,
-  updatePresentationSessionAccessRequestSchema
-} from "@orbit/shared";
+  updatePresentationSessionAccessRequestSchema,
+} from "@orbit/shared/presentation";
 import type { Request } from "express";
 
 import { authSessionCookieName } from "../auth/auth.constants";

@@ -1,5 +1,5 @@
-import { createDemoDeck } from "../../../../../../../packages/editor-core/src/index";
-import type { Deck, DeckElement } from "@orbit/shared";
+import { createDemoDeck } from "@orbit/editor-core";
+import type { Deck, DeckElement } from "@orbit/shared/deck";
 import { describe, expect, it } from "vitest";
 
 import { getImageCropActionState } from "./imageCropSession";

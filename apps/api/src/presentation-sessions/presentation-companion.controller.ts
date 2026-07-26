@@ -2,7 +2,7 @@ import { loadOrbitConfig } from "@orbit/config";
 import {
   presentationCompanionExchangeResponseSchema,
   presentationCompanionPairingResponseSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/presentation";
 import {
   Controller,
   Delete,

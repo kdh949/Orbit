@@ -3,9 +3,9 @@ import {
   deckExportJobResultSchema,
   deckSchema,
   templateBlueprintSchema,
-  type Job,
   type TemplateBlueprint,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
+import { type Job } from "@orbit/shared/jobs";
 import type { StoragePort } from "@orbit/storage";
 import { randomUUID } from "crypto";
 import type { DataSource } from "typeorm";

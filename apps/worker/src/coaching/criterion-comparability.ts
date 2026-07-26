@@ -1,8 +1,8 @@
 import type {
   EvaluationCriterion,
   PracticeGoalResolution,
-  RehearsalEvaluationSnapshot,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
+import type { RehearsalEvaluationSnapshot } from "@orbit/shared/rehearsals";
 
 type StoredIncomparabilityReason = Extract<
   PracticeGoalResolution["reasonCode"],

@@ -1,4 +1,4 @@
-import type { Deck, DeckPatch } from "@orbit/shared";
+import type { Deck, DeckPatch } from "@orbit/shared/deck";
 
 export type SlideTargetDuration = {
   estimatedSeconds: number;

@@ -1,9 +1,9 @@
 # Orbit Web UI Rules
 
 These rules govern the integrated **Redesign System** described in
-`apps/web/DESIGN.md`. The legacy `apps/web/src/design-system/` implementation
-has been replaced; product UI must use the canonical tokens and primitives
-listed below instead of introducing a parallel token or component system.
+`apps/web/DESIGN.md`. The legacy design-system implementation has been
+replaced; product UI must use the canonical tokens and primitives listed below
+instead of introducing a parallel token or component system.
 
 ## UI architecture
 
@@ -11,6 +11,9 @@ listed below instead of introducing a parallel token or component system.
 - Keep each primitive in its own component and style files, and expose its public API through `apps/web/src/components/ui/index.ts`.
 - Product-level reusable patterns belong in `apps/web/src/components/patterns`.
 - Feature-specific components belong in their own `apps/web/src/features/<feature-name>` folder (e.g. `features/rehearsal`, `features/editor`), matching the existing feature layout.
+- Browser runtime shared by multiple features belongs in
+  `apps/web/src/runtime/<capability>`. Runtime modules may use browser APIs and
+  workspace packages but must not import from `apps/web/src/features`.
 - `components/ui` must never import from `features`.
 
 ## Styling
@@ -26,8 +29,9 @@ listed below instead of introducing a parallel token or component system.
 
 ## TypeScript
 
-- Do not use `any`.
-- Do not use `as unknown as`.
+- Do not add `any` or `as unknown as` to new production code.
+- Existing violations are outside the scope of unrelated changes; do not expand
+  them and do not refactor them unless the task explicitly targets typing debt.
 - Prefer explicit props over complex generics.
 - Extend native element props with `ComponentPropsWithoutRef`.
 - Keep API and domain types inside their feature.
@@ -37,7 +41,14 @@ listed below instead of introducing a parallel token or component system.
 - UI refactoring must not change API calls, Zustand state, routing, or report schema.
 - Do not mix visual redesign and business-logic changes in the same task.
 - Keep each change buildable.
-- Run the existing lint, typecheck, and build scripts before finishing.
+- When the domain is registered, prefer
+  `pnpm verify:scope web:<domain> --dry-run` followed by the same command
+  without `--dry-run`.
+- Run targeted tests through Turbo so workspace dependencies are built first:
+  `pnpm turbo run test --filter=@orbit/web -- <test-path>`.
+- Run `pnpm turbo run typecheck --filter=@orbit/web`.
+- Run the Web build when changing routes, Vite configuration, assets, workers,
+  or package/public import resolution.
 
 ## Accessibility
 

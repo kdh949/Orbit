@@ -1,8 +1,9 @@
-import { createKeywordOccurrenceId, type Keyword } from "@orbit/shared";
+import { createKeywordOccurrenceId, type Keyword } from "@orbit/shared/deck";
 import fs from "node:fs";
 import path from "node:path";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { readCssBundle } from "../../../../styles/readCssBundle.test-utils";
 
 import {
   KeywordDetail,
@@ -136,7 +137,7 @@ describe("KeywordHighlightedNotes", () => {
   });
 
   it("uses natural text spacing and preserves line breaks in the editor stylesheet", () => {
-    const css = fs.readFileSync(editorShellCssPath, "utf8");
+    const css = readCssBundle(editorShellCssPath);
 
     expect(css).toMatch(
       /\.script-copy\s*\{[^}]*white-space:\s*pre-wrap;[^}]*word-break:\s*keep-all;/s

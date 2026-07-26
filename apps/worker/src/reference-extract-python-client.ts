@@ -2,7 +2,7 @@ import {
   referenceExtractionResultSchema,
   type ReferenceExtractionFile,
   type ReferenceExtractionResult,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 
 const referenceExtractTimeoutMs = 120_000;
 

@@ -1,5 +1,5 @@
 import { loadOrbitConfig } from "@orbit/config";
-import { rehearsalSemanticEvidenceCacheKey } from "@orbit/shared";
+import { rehearsalSemanticEvidenceCacheKey } from "@orbit/shared/rehearsals";
 import { Injectable, OnModuleDestroy } from "@nestjs/common";
 import Redis from "ioredis";
 

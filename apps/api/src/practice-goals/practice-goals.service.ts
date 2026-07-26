@@ -2,13 +2,15 @@ import {
   practiceGoalSchema,
   practiceGoalSetSchema,
   practicePlanResponseSchema,
-  rehearsalEvaluationSnapshotSchema,
-  rehearsalReportSchema,
   type EvaluationCriterion,
   type PracticeGoal,
+} from "@orbit/shared/coaching";
+import {
+  rehearsalEvaluationSnapshotSchema,
+  rehearsalReportSchema,
   type RehearsalEvaluationSnapshot,
   type RehearsalReport,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import { Injectable } from "@nestjs/common";
 import { DataSource } from "typeorm";
 

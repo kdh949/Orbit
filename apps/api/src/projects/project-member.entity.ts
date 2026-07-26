@@ -1,5 +1,8 @@
 import { Column, Entity, Index, PrimaryColumn } from "typeorm";
-import type { ProjectMemberRole, ProjectMemberStatus } from "@orbit/shared";
+import type {
+  ProjectMemberRole,
+  ProjectMemberStatus,
+} from "@orbit/shared/projects";
 
 @Entity({ name: "project_members" })
 @Index("idx_project_members_user_status", ["userId", "status"])

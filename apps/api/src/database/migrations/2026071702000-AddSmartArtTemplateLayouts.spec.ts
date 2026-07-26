@@ -1,4 +1,4 @@
-import type { DeckCanvas } from "@orbit/shared";
+import type { DeckCanvas } from "@orbit/shared/deck";
 import type { QueryRunner } from "typeorm";
 import { describe, expect, it } from "vitest";
 import { buildSmartArtOperations } from "../../design-agent/design-agent.service";

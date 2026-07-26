@@ -1,6 +1,7 @@
 
 import { useId, useMemo, useState } from "react";
-import type { Deck, RehearsalReport } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
+import type { RehearsalReport } from "@orbit/shared/rehearsals";
 import { RehearsalSlideCanvasPreview } from "./RehearsalSlideCanvasPreview";
 
 type Props = {

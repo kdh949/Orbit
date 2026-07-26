@@ -13,7 +13,7 @@ import {
   type CommunityTemplateDiscoverQuery,
   type CreateCommunityTemplateReportRequest,
   type UpdateCommunityTemplateRequest,
-} from "@orbit/shared";
+} from "@orbit/shared/community-templates";
 
 const basePath = "/api/v1/community-templates";
 

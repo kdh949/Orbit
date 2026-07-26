@@ -1,4 +1,5 @@
-import type { ActivityTemplate, Deck } from "@orbit/shared";
+import type { ActivityTemplate } from "@orbit/shared/activities";
+import type { Deck } from "@orbit/shared/deck";
 import {
   IconChevronLeft as ChevronLeft,
   IconLayoutGrid as Grid,

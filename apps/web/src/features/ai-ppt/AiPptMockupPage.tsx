@@ -4,10 +4,11 @@ import type {
   GenerateDeckMediaPolicy,
   GenerateDeckRequest,
   GenerateDeckReferencePolicy,
-  Job,
   AiDeckDesignSelectionResponse,
-} from "@orbit/shared";
-import { demoIds, recommendGenerateDeckFonts } from "@orbit/shared";
+} from "@orbit/shared/deck";
+import type { Job } from "@orbit/shared/jobs";
+import { demoIds } from "@orbit/shared/common";
+import { recommendGenerateDeckFonts } from "@orbit/shared/deck";
 import {
   IconArrowRight,
   IconBolt,

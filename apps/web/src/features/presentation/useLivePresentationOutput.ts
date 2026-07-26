@@ -1,24 +1,22 @@
-import type {
-  Deck,
-  PresentationCompanionAnnotationSnapshot,
-} from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
+import type { PresentationCompanionAnnotationSnapshot } from "@orbit/shared/realtime";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   observeAudienceStreamInWindow,
   type ActiveAudienceStream,
   type AudienceStreamBridgeWindow,
-} from "../rehearsal/presenter/audienceStreamBridge";
+} from "../../runtime/presentation/audienceStreamBridge";
 import {
   createLivePresentationHostIdentity,
   type PresenterRemoteCommand,
   type ScreenShareEndedReason,
-} from "../rehearsal/presenter/presentationChannel";
+} from "../../runtime/presentation/channel/presentationChannel";
 import type {
   AudienceOutputMode,
   PresenterSlideshowState,
-} from "../rehearsal/presenter/presenterStateStore";
-import { useAudienceScreenShare } from "../rehearsal/presenter/useAudienceScreenShare";
-import { usePresentationChannelPublisher } from "../rehearsal/presenter/usePresentationChannelPublisher";
+} from "../../runtime/presentation/channel/presenterStateStore";
+import { useAudienceScreenShare } from "../presenter-shell/presenter/useAudienceScreenShare";
+import { usePresentationChannelPublisher } from "../../runtime/presentation/channel/usePresentationChannelPublisher";
 import { usePresenterCompanionAuthority } from "../presenter-companion/usePresenterCompanionAuthority";
 import { usePresenterCompanionWebRtc } from "../presenter-companion/usePresenterCompanionWebRtc";
 import type { CompanionPrompterProjection } from "../presenter-companion/companionPrompterProjection";

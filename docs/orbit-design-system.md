@@ -249,18 +249,19 @@ Semantic color는 작은 status와 validation에만 쓴다. 큰 배경 면으로
 
 ## 현재 시스템 채택 규칙
 
-- `apps/web/src/main.tsx`에서 디자인 시스템 CSS를 전역으로 로드한다.
+- `apps/web/src/main.tsx`에서 token, foundation, global CSS를 순서대로 로드한다.
 - 기존 화면의 `--surface-*`, `--text-*`, `--border-*`, `--action-*`, radius semantic token은 ORBIT token compatibility layer를 통해 해석한다.
-- 신규 화면은 `apps/web/src/design-system/index.ts`에서 primitive와 TypeScript token을 가져온다.
+- 신규 화면은 `apps/web/src/components/ui/index.ts`에서 primitive를 가져오고 `apps/web/src/styles/tokens.css`의 CSS 변수를 사용한다.
 - scoped legacy stylesheet가 자체 색상 변수를 선언하는 경우에는 화면별 마이그레이션에서 제거한다. 기능 변경과 시각 마이그레이션은 분리한다.
-- 디자인 시스템 source of truth는 이 문서, `tokens.ts`, `orbit-design-system.css`, `components.tsx` 네 곳이며 변경 시 함께 갱신한다.
+- 디자인 시스템 source of truth는 이 문서, `apps/web/src/styles/tokens.css`, `apps/web/src/styles/foundations.css`, `apps/web/src/components/ui`다.
 
 ## 구현 위치
 
-- CSS tokens and preview styles: `apps/web/src/design-system/orbit-design-system.css`
-- TypeScript tokens: `apps/web/src/design-system/tokens.ts`
-- Reusable primitives: `apps/web/src/design-system/components.tsx`
-- Public import surface: `apps/web/src/design-system/index.ts`
+- CSS tokens: `apps/web/src/styles/tokens.css`
+- Global foundations: `apps/web/src/styles/foundations.css`
+- Reusable primitives and component styles: `apps/web/src/components/ui`
+- Public import surface: `apps/web/src/components/ui/index.ts`
+- Browser preview implementation: `apps/web/src/features/design-system/RedesignSystemPage.tsx`
 - Browser preview: `/design-system`
 - Production public/auth: `/`, `/login`, `/signup`
 - Production workspace/project: `/`, `/project`, `/createdeck`, `/project/:projectId/request`

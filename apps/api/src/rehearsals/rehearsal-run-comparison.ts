@@ -4,7 +4,7 @@ import {
   type RehearsalReport,
   type RehearsalRunComparison,
   type RehearsalSemanticCueOutcome,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 
 const TIMING_OVERRUN_RATIO = 1.2;
 const DELIVERY_FILLER_THRESHOLD = 2;

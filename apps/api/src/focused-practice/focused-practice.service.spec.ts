@@ -1,4 +1,4 @@
-import type { FocusedPracticeAttempt } from "@orbit/shared";
+import type { FocusedPracticeAttempt } from "@orbit/shared/coaching";
 import { ConflictException } from "@nestjs/common";
 import type { DataSource } from "typeorm";
 import { describe, expect, it, vi } from "vitest";

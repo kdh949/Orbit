@@ -1,4 +1,4 @@
-import type { Project } from "@orbit/shared";
+import type { Project } from "@orbit/shared/projects";
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 

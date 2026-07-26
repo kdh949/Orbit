@@ -1,7 +1,7 @@
-import type { Deck } from "@orbit/shared";
-import { deckSchema } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
+import { deckSchema } from "@orbit/shared/deck";
 
-import { createDemoDeck } from "../index";
+import { createDemoDeck } from "../fixtures";
 
 export const privateTemplateMarker = "PRIVATE_TEMPLATE_MARKER_9f31";
 export const privateTemplateUrl = "https://private.example/internal";

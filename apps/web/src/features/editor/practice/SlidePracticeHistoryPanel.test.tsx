@@ -1,4 +1,4 @@
-import type { SlidePracticeReportRecord } from "@orbit/shared";
+import type { SlidePracticeReportRecord } from "@orbit/shared/slide-practice";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 

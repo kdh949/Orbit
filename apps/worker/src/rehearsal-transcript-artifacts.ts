@@ -1,5 +1,5 @@
-import { rehearsalTranscriptArtifactSchema } from "@orbit/shared";
-import type { SlideTranscriptSnapshot } from "@orbit/shared";
+import { rehearsalTranscriptArtifactSchema } from "@orbit/shared/rehearsals";
+import type { SlideTranscriptSnapshot } from "@orbit/shared/rehearsals";
 import type { StoragePort } from "@orbit/storage";
 import { createHash } from "node:crypto";
 import type { DataSource } from "typeorm";

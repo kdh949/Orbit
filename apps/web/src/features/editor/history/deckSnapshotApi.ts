@@ -5,7 +5,7 @@ import {
   type DeckSnapshot,
   type DeckSnapshotDetail,
   type RestoreDeckSnapshotResponse,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 
 type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 

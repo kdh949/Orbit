@@ -1,4 +1,8 @@
-import type { DeckSnapshot, DeckSnapshotDetail, DeckSnapshotReason } from "@orbit/shared";
+import type {
+  DeckSnapshot,
+  DeckSnapshotDetail,
+  DeckSnapshotReason,
+} from "@orbit/shared/deck";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   IconArrowLeft,
@@ -16,7 +20,7 @@ import {
   OrbitStatus,
   type OrbitStatusTone,
 } from "../../../components/ui";
-import { fetchProjectDeck } from "../../rehearsal/keywords/keywordEditorApi";
+import { fetchProjectDeck } from "../shell/api/deckPersistenceApi";
 import { ReadOnlySlideCanvas } from "../../slides/rendering";
 import { fetchDeckSnapshot, fetchDeckSnapshots, restoreDeckSnapshot } from "./deckSnapshotApi";
 import "./deck-version-history.css";
@@ -102,7 +106,7 @@ export function DeckVersionHistoryPage(props: { projectId: string }) {
     return <HistoryState error title="버전 기록을 불러오지 못했어요." />;
   }
 
-  const currentDeck = deckQuery.data?.deck;
+  const currentDeck = deckQuery.data;
   const snapshots = snapshotsQuery.data ?? [];
   const currentVersion = currentDeck?.version;
   const currentSnapshotId = resolveCurrentSnapshotId(snapshots, currentVersion);

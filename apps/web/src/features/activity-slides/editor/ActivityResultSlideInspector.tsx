@@ -1,10 +1,12 @@
 import type {
   ActivityResultDefinition,
-  ActivityResultsSlide,
   ActivitySessionResultItem,
+} from "@orbit/shared/activities";
+import type {
+  ActivityResultsSlide,
   ActivitySlide,
-  Deck
-} from "@orbit/shared";
+  Deck,
+} from "@orbit/shared/deck";
 import { useQuery } from "@tanstack/react-query";
 import { IconChartBar } from "@tabler/icons-react";
 import { useMemo, useState } from "react";

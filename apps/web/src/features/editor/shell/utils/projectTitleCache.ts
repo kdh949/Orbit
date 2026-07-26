@@ -1,4 +1,5 @@
-import type { Deck, Project } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
+import type { Project } from "@orbit/shared/projects";
 import type { QueryClient } from "@tanstack/react-query";
 
 export function syncProjectTitleQueryCache(

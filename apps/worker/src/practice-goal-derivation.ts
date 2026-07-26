@@ -1,7 +1,5 @@
 import {
   practiceGoalSetSchema,
-  rehearsalEvaluationSnapshotSchema,
-  rehearsalReportSchema,
   reportObservationSchema,
   type CriterionResult,
   type EvaluationCriterion,
@@ -10,10 +8,14 @@ import {
   type PracticeGoalSet,
   type RehearsalFocusItem,
   type RehearsalFocusProfileSnapshot,
+  type ReportObservation,
+} from "@orbit/shared/coaching";
+import {
+  rehearsalEvaluationSnapshotSchema,
+  rehearsalReportSchema,
   type RehearsalEvaluationSnapshot,
   type RehearsalReport,
-  type ReportObservation,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import { createHash } from "node:crypto";
 import type { DataSource } from "typeorm";
 

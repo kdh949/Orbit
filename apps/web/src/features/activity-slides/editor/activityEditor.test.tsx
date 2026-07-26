@@ -1,6 +1,6 @@
 import { createActivityResultsSlide, createActivitySlide, createDemoDeck } from "@orbit/editor-core";
-import { deckSchema } from "@orbit/shared";
-import type { ActivitySessionResultItem } from "@orbit/shared";
+import { deckSchema } from "@orbit/shared/deck";
+import type { ActivitySessionResultItem } from "@orbit/shared/activities";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { forwardRef } from "react";

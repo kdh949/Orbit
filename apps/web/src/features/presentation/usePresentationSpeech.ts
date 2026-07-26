@@ -1,15 +1,15 @@
-import type { Slide } from "@orbit/shared";
+import type { Slide } from "@orbit/shared/deck";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   createSpeechTracker,
   type SpeechTracker,
-} from "../rehearsal/speech/speechTracker";
-import type { SpeechTrackerSnapshot } from "../rehearsal/speech/speechTrackingEvents";
-import { createLiveSttPort } from "../rehearsal/stt/liveSttEngineRegistry";
-import type { LiveSttPort } from "../rehearsal/stt/liveSttPort";
-import { normalizeLiveSttBiasPhrases } from "../rehearsal/stt/liveSttPort";
-import { fetchLiveSttRuntimeConfig } from "../rehearsal/stt/liveSttRuntimeConfig";
+} from "../../runtime/speech/tracking/speechTracker";
+import type { SpeechTrackerSnapshot } from "../../runtime/speech/tracking/speechTrackingEvents";
+import { createLiveSttPort } from "../../runtime/speech/stt/liveSttEngineRegistry";
+import type { LiveSttPort } from "../../runtime/speech/stt/liveSttPort";
+import { normalizeLiveSttBiasPhrases } from "../../runtime/speech/stt/liveSttPort";
+import { fetchLiveSttRuntimeConfig } from "../../runtime/speech/stt/liveSttRuntimeConfig";
 
 type PresentationSpeechState = {
   error: string | null;

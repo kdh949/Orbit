@@ -1,4 +1,4 @@
-import type { AiDeckGenerationStageMessage } from "@orbit/shared";
+import type { AiDeckGenerationStageMessage } from "@orbit/shared/jobs";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 

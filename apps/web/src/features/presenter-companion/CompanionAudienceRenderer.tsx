@@ -1,10 +1,8 @@
-import type {
-  CompanionDeckSnapshot,
-  PresentationCompanionOutputState,
-} from "@orbit/shared";
+import type { CompanionDeckSnapshot } from "@orbit/shared/presentation";
+import type { PresentationCompanionOutputState } from "@orbit/shared/realtime";
 import { useEffect, useMemo, useState } from "react";
-import { AudienceOutputRenderer } from "../rehearsal/presenter/AudienceOutputRenderer";
-import type { PresenterSlideshowState } from "../rehearsal/presenter/presenterStateStore";
+import { AudienceOutputRenderer } from "../presenter-shell/presenter/AudienceOutputRenderer";
+import type { PresenterSlideshowState } from "../../runtime/presentation/channel/presenterStateStore";
 import {
   materializeCompanionDeck,
   resolveCompanionTriggerAnimationIds,

@@ -1,4 +1,5 @@
-import type { Deck, RehearsalReport } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
+import type { RehearsalReport } from "@orbit/shared/rehearsals";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
@@ -16,7 +17,7 @@ import {
 } from "./RehearsalReportTestMetricDetails";
 import { resolveOverallSpeakingRate } from "./rehearsalReportOverallSpeakingRate";
 import { buildRehearsalTimingAssessment } from "./rehearsalReportTimingAssessment";
-import { navigateTo } from "./rehearsalUtils";
+import { navigateTo } from "../reports/reportUtils";
 
 type Props = {
   audioPlaybackAvailable: boolean;

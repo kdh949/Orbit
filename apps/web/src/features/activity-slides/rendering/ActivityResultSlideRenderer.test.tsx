@@ -6,8 +6,8 @@ import {
 import {
   activityPresenterResultSchema,
   activityRunSchema,
-  deckSchema
-} from "@orbit/shared";
+} from "@orbit/shared/activities";
+import { deckSchema } from "@orbit/shared/deck";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 

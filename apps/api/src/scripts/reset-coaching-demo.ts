@@ -1,13 +1,12 @@
 import { loadOrbitConfig, type OrbitConfig } from "@orbit/config";
+import { type RehearsalEvaluationPlan } from "@orbit/shared/coaching";
+import { deckSchema, type Deck } from "@orbit/shared/deck";
 import {
   createRehearsalEvaluationSnapshot,
-  deckSchema,
   legacyRehearsalReportMetricsDefaults,
   rehearsalReportSchema,
-  type Deck,
-  type RehearsalEvaluationPlan,
   type RehearsalReport,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import { createHash } from "node:crypto";
 import type { EntityManager } from "typeorm";
 import AppDataSource from "../database/data-source";

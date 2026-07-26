@@ -6,7 +6,7 @@ import {
   type PresentationCompanionAnnotationCommand,
   type PresentationCompanionAnnotationSnapshot,
   type PresentationCompanionStroke,
-} from "@orbit/shared";
+} from "@orbit/shared/realtime";
 
 export type AnnotationSurfaceState = {
   appliedOperations: Record<string, number>;

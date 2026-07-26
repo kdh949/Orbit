@@ -1,4 +1,5 @@
-import { applyDeckPatch, createDemoDeck } from "@orbit/editor-core";
+import { createDemoDeck } from "@orbit/editor-core/fixtures";
+import { applyDeckPatch } from "@orbit/editor-core/patches";
 import {
   appendDeckPatchAckResponseSchema,
   appendDeckPatchRequestSchema,
@@ -12,10 +13,10 @@ import {
   type Deck,
   type DeckApiErrorCode,
   type DeckPatch,
-  type Job,
   type PptxImportQuality,
-  type PptxNotesPreview
-} from "@orbit/shared";
+  type PptxNotesPreview,
+} from "@orbit/shared/deck";
+import { type Job } from "@orbit/shared/jobs";
 
 import type {
   PatchProducer,

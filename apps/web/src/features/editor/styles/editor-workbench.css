@@ -1,0 +1,1169 @@
+/* Photoshop-style workbench --------------------------------------------------
+ * The property inspector owns the right dock. AI is a separate floating tool,
+ * while the primary creation tools live in a dedicated vertical rail. */
+.orbit-shell.editor-professional .inspector-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  min-height: 40px;
+  padding: 0 var(--redesign-space-1) 0 var(--redesign-space-3);
+  border-bottom: 1px solid var(--redesign-color-outline-variant);
+  background: var(--redesign-color-surface-container);
+}
+
+.orbit-shell.editor-professional .inspector-title,
+.orbit-shell.editor-professional .inspector-actions,
+.orbit-shell.editor-professional .ai-coach-dock-header > div {
+  align-items: center;
+  display: flex;
+}
+
+.orbit-shell.editor-professional .inspector-title {
+  gap: var(--redesign-space-2);
+  color: var(--redesign-color-on-surface-variant);
+}
+
+.orbit-shell.editor-professional .inspector-title strong {
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 720;
+  letter-spacing: 0.02em;
+}
+
+.orbit-shell.editor-professional .inspector-actions {
+  gap: 2px;
+}
+
+.orbit-shell.editor-professional .ai-coach-toggle,
+.orbit-shell.editor-professional .ai-coach-dock-header button {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--redesign-radius);
+  background: transparent;
+  color: var(--redesign-color-on-surface-variant);
+}
+
+.orbit-shell.editor-professional .ai-coach-toggle:hover,
+.orbit-shell.editor-professional .ai-coach-toggle.active,
+.orbit-shell.editor-professional .ai-coach-dock-header button:hover {
+  border-color: var(--redesign-color-primary-outline);
+  background: var(--redesign-color-primary-subtle);
+  color: var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional .ai-pane:not(.collapsed) {
+  grid-template-rows: 40px minmax(0, 1fr);
+  overflow: visible;
+}
+
+.orbit-shell.editor-professional .inspector-panel-slot {
+  padding: 0;
+}
+
+.orbit-shell.editor-professional .inspector-panel-slot .editor-design-panel {
+  padding: var(--redesign-space-3);
+}
+
+.orbit-shell.editor-professional .ai-coach-dock {
+  position: absolute;
+  top: 8px;
+  right: calc(100% + 8px);
+  z-index: 24;
+  display: grid;
+  grid-template-rows: 40px minmax(0, 1fr);
+  width: 320px;
+  height: calc(100% - 16px);
+  overflow: hidden;
+  border: 1px solid var(--redesign-color-outline);
+  border-radius: var(--redesign-radius-md);
+  background: var(--redesign-color-surface-container-low);
+  box-shadow: var(--redesign-shadow-overlay);
+}
+
+.orbit-shell.editor-professional .ai-coach-dock-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 var(--redesign-space-1) 0 var(--redesign-space-3);
+  border-bottom: 1px solid var(--redesign-color-outline-variant);
+  background: var(--redesign-color-surface-container);
+}
+
+.orbit-shell.editor-professional .ai-coach-dock-header > div {
+  gap: var(--redesign-space-2);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional .ai-coach-dock-header strong {
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 720;
+}
+
+.orbit-shell.editor-professional .ai-coach-dock .editor-ai-coach-panel {
+  display: grid;
+  gap: var(--redesign-space-2);
+  grid-template-rows: 36px minmax(0, 1fr);
+  min-height: 0;
+  padding: var(--redesign-space-2);
+}
+
+.orbit-shell.editor-professional .ai-coach-dock .assistant-subtabs {
+  min-height: 36px;
+  padding: 2px;
+}
+
+.orbit-shell.editor-professional .ai-coach-dock .assistant-subtabs button {
+  min-height: 30px;
+}
+
+.orbit-shell.editor-professional .ai-coach-dock .assistant-panel-subview {
+  min-height: 0;
+  overflow: auto;
+}
+
+@media (min-width: 861px) {
+  .orbit-shell.editor-professional .editor-panel,
+  .orbit-shell.editor-professional .editor-panel:has(.selection-quickbar) {
+    grid-template-columns:
+      44px
+      min(var(--slides-pane-width, 184px), 196px)
+      minmax(0, 1fr)
+      min(var(--right-pane-width, 316px), 324px);
+    grid-template-rows: minmax(0, 1fr) auto;
+    padding-top: 0;
+    transition: grid-template-rows var(--redesign-duration-normal) var(--redesign-ease-standard);
+  }
+
+  .orbit-shell.editor-professional .editor-panel:has(.stage-speaker-notes-panel.maximized) {
+    grid-template-rows: minmax(0, 0fr) minmax(0, 1fr);
+  }
+
+  .orbit-shell.editor-professional .editor-panel.right-panel-closed,
+  .orbit-shell.editor-professional .editor-panel.right-panel-closed:has(.selection-quickbar) {
+    grid-template-columns:
+      44px
+      min(var(--slides-pane-width, 184px), 196px)
+      minmax(0, 1fr)
+      var(--right-pane-collapsed-width, 44px);
+  }
+
+
+
+
+
+  .orbit-shell.editor-professional .stage-top-controls,
+  .orbit-shell.editor-professional .stage-top-controls:has(.selection-quickbar) {
+    display: contents;
+  }
+
+  .orbit-shell.editor-professional .editor-toolbar {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    grid-column: 1;
+    grid-row: 1 / 3;
+    justify-content: flex-start;
+    min-height: 0;
+    padding: var(--redesign-space-1) var(--redesign-space-1);
+    border-right: 1px solid var(--redesign-color-outline);
+    background: var(--redesign-color-inverse-surface);
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  .orbit-shell.editor-professional .slides-pane {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    margin-top: 0;
+    background: var(--redesign-color-surface-container);
+  }
+
+  .orbit-shell.editor-professional .animation-side-pane {
+    grid-column: 3;
+    grid-row: 1 / 3;
+    margin-top: 0;
+  }
+
+
+
+
+
+  .orbit-shell.editor-professional .ai-pane {
+    grid-column: 4;
+    grid-row: 1 / 3;
+    margin-top: 0;
+  }
+
+
+
+
+
+
+
+
+
+  .orbit-shell.editor-professional .editor-panel:has(.selection-quickbar) .stage-pane > .canvas-scroll {
+    padding-top: var(--redesign-space-20);
+  }
+}
+
+/* Final workbench geometry. Keep the canvas quickbar separate from the
+ * similarly named property groups rendered inside the right inspector. */
+@media (min-width: 861px) {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+@media (max-width: 860px) {
+  .orbit-shell.editor-professional .ai-coach-dock {
+    position: fixed;
+    top: auto;
+    right: 12px;
+    bottom: 66px;
+    left: 12px;
+    width: auto;
+    height: min(440px, 62vh);
+  }
+}
+
+@media (min-width: 861px) and (max-width: 1279px) {
+  .orbit-shell .editor-document-title strong {
+    max-width: 260px;
+  }
+
+  .orbit-shell .editor-context-top-button span,
+  .orbit-shell .presence-avatar-trigger {
+    display: none;
+  }
+
+  .orbit-shell .top-actions {
+    flex: 0 0 auto;
+  }
+
+  .orbit-shell .share-top-button,
+  .orbit-shell .editor-rehearsal-button,
+  .orbit-shell .editor-present-button {
+    white-space: nowrap;
+  }
+
+  .orbit-shell .editor-panel {
+    grid-template-columns:
+      min(var(--slides-pane-width, 196px), 196px)
+      minmax(0, 1fr)
+      min(var(--right-pane-width, 280px), 280px);
+  }
+
+  .orbit-shell .editor-panel.right-panel-closed {
+    grid-template-columns:
+      min(var(--slides-pane-width, 196px), 196px)
+      minmax(0, 1fr)
+      var(--right-pane-collapsed-width, 52px);
+  }
+
+  .orbit-shell .editor-panel.animation-panel-open {
+    grid-template-columns:
+      min(var(--slides-pane-width, 196px), 196px)
+      min(var(--animation-pane-width, 280px), 280px)
+      minmax(0, 1fr)
+      min(var(--right-pane-width, 280px), 280px);
+  }
+
+  .orbit-shell .editor-panel.animation-panel-open.right-panel-closed {
+    grid-template-columns:
+      min(var(--slides-pane-width, 196px), 196px)
+      min(var(--animation-pane-width, 280px), 280px)
+      minmax(0, 1fr)
+      var(--right-pane-collapsed-width, 52px);
+  }
+}
+
+.orbit-shell .stage-speaker-notes-panel .script-panel-header {
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Editor bottom dock: presenter notes, one-slide practice, grounded Q&A, and
+ * creator-private practice history share the existing resizable notes area. */
+.orbit-shell .editor-bottom-dock-header {
+  align-items: stretch;
+  border-bottom: 1px solid var(--redesign-color-outline-variant);
+  display: flex;
+  min-height: 42px;
+  padding: 0 var(--redesign-space-3);
+}
+
+.orbit-shell .editor-bottom-dock.collapsed .editor-bottom-dock-header {
+  border-bottom: 0;
+  min-height: 53px;
+}
+
+.orbit-shell .editor-bottom-dock-tabs {
+  align-items: stretch;
+  display: flex;
+  flex: 1 1 auto;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.orbit-shell .editor-bottom-dock-tabs button,
+.orbit-shell .editor-bottom-dock-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--redesign-color-on-surface-variant);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+}
+
+.orbit-shell .editor-bottom-dock-tabs button {
+  border-bottom: 2px solid transparent;
+  gap: var(--redesign-space-2);
+  min-height: 42px;
+  padding: 0 var(--redesign-space-3);
+  white-space: nowrap;
+}
+
+.orbit-shell .editor-bottom-dock-tabs button:hover,
+.orbit-shell .editor-bottom-dock-tabs button:focus-visible,
+.orbit-shell .editor-bottom-dock-toggle:hover,
+.orbit-shell .editor-bottom-dock-toggle:focus-visible {
+  background: var(--redesign-color-surface-container-low);
+  color: var(--redesign-color-on-surface);
+  outline: none;
+}
+
+.orbit-shell .editor-bottom-dock-tabs button.active {
+  border-bottom-color: var(--redesign-color-secondary);
+  color: var(--redesign-color-on-surface);
+  font-weight: 700;
+}
+
+.orbit-shell .editor-bottom-dock-tabs button:disabled,
+.orbit-shell .editor-bottom-dock-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.orbit-shell .editor-bottom-dock-toggle {
+  justify-content: center;
+  margin-left: auto;
+  width: 42px;
+}
+
+.orbit-shell .editor-bottom-dock.expanded .editor-bottom-dock-toggle svg {
+  transform: rotate(180deg);
+}
+
+.orbit-shell .editor-bottom-dock-content {
+  min-height: 0;
+  overflow: auto;
+}
+
+.orbit-shell .editor-bottom-dock-content > [role="tabpanel"] {
+  min-height: 100%;
+}
+
+.orbit-shell .editor-bottom-dock-content > [hidden] {
+  display: none;
+}
+
+.orbit-shell .editor-bottom-dock-notes {
+  border: 0;
+  border-radius: 0;
+  box-shadow: var(--redesign-shadow-none);
+  margin: 0;
+  max-width: none;
+  min-height: 100%;
+}
+
+.orbit-shell .editor-bottom-dock-notes > #speaker-notes-content {
+  min-height: 0;
+  overflow: visible;
+}
+
+.orbit-shell .editor-practice-panel,
+.orbit-shell .editor-question-guide-panel {
+  display: grid;
+  gap: var(--redesign-space-3);
+  padding: var(--redesign-space-4) var(--redesign-space-5) var(--redesign-space-6);
+}
+
+.orbit-shell .editor-question-guide-panel {
+  align-content: start;
+  gap: var(--redesign-space-3);
+  min-height: 0;
+  padding: 0;
+}
+
+.orbit-shell .editor-practice-controls,
+.orbit-shell .editor-question-guide-actions {
+  align-items: center;
+  display: flex;
+  gap: var(--redesign-space-4);
+}
+
+.orbit-shell .editor-question-guide-actions {
+  justify-content: flex-end;
+}
+
+.orbit-shell .editor-question-guide-runtime-error,
+.orbit-shell .editor-practice-runtime-error {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--redesign-space-3);
+  justify-content: space-between;
+}
+
+.orbit-shell .editor-question-guide-runtime-error .editor-practice-message,
+.orbit-shell .editor-practice-runtime-error .editor-practice-message {
+  margin: 0;
+}
+
+.orbit-shell .editor-practice-controls > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.orbit-shell .editor-practice-controls p,
+.orbit-shell .editor-practice-message {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  margin: 3px 0 0;
+}
+
+.orbit-shell .editor-practice-timer {
+  font-size: var(--redesign-type-title-lg-size);
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+}
+
+.orbit-shell .editor-practice-start,
+.orbit-shell .editor-practice-stop {
+  border: 0;
+  border-radius: var(--redesign-radius-lg);
+  color: var(--redesign-color-light-surface);
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 38px;
+  padding: 0 var(--redesign-space-4);
+}
+
+.orbit-shell .editor-practice-start {
+  background: var(--redesign-color-secondary);
+}
+
+.orbit-shell .editor-question-guide-actions .editor-question-guide-generate-button {
+  min-height: 34px;
+  padding-inline: var(--redesign-space-3);
+  font-size: var(--redesign-type-body-sm-size);
+  font-weight: 650;
+}
+
+.orbit-shell .editor-practice-stop {
+  background: var(--redesign-color-error);
+}
+
+.orbit-shell .editor-practice-start:disabled,
+.orbit-shell .editor-question-guide-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.orbit-shell .editor-practice-transcript,
+.orbit-shell .editor-practice-result,
+.orbit-shell .editor-question-guide-content > article,
+.orbit-shell .editor-question-remediation {
+  background: var(--redesign-color-surface-container-low);
+  border: 1px solid var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius-xl);
+  padding: var(--redesign-space-3) var(--redesign-space-4);
+}
+
+.orbit-shell .editor-practice-transcript {
+  line-height: 1.6;
+  min-height: 52px;
+}
+
+.orbit-shell .editor-practice-transcript .interim {
+  color: var(--redesign-color-on-surface-variant);
+  margin-left: var(--redesign-space-1);
+}
+
+.orbit-shell .editor-practice-style {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--redesign-space-3);
+}
+
+.orbit-shell .editor-practice-style strong {
+  background: var(--redesign-color-secondary-container);
+  border-radius: var(--redesign-radius-full);
+  color: var(--redesign-color-on-secondary-container);
+  flex: 0 0 auto;
+  padding: var(--redesign-space-1) var(--redesign-space-2);
+}
+
+.orbit-shell .editor-practice-metrics {
+  display: grid;
+  gap: var(--redesign-space-2);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: var(--redesign-space-3) 0 0;
+}
+
+.orbit-shell .editor-practice-metrics div {
+  display: grid;
+  gap: 2px;
+}
+
+.orbit-shell .editor-practice-metrics dt {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell .editor-practice-metrics dd {
+  font-weight: 700;
+  margin: 0;
+}
+
+.orbit-shell .editor-practice-fillers,
+.orbit-shell .editor-practice-quality,
+.orbit-shell .editor-question-caveat {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  margin: var(--redesign-space-3) 0 0;
+}
+
+.orbit-shell .editor-practice-history {
+  display: grid;
+  gap: var(--redesign-space-4);
+  padding: var(--redesign-space-4) var(--redesign-space-5) var(--redesign-space-6);
+}
+
+.orbit-shell .editor-practice-report-tab > .editor-practice-history {
+  border-top: 1px solid var(--redesign-color-outline-variant);
+}
+
+.orbit-shell .editor-practice-history-list {
+  display: grid;
+  gap: var(--redesign-space-2);
+}
+
+.orbit-shell .editor-practice-history-item {
+  align-items: center;
+  appearance: none;
+  background: var(--redesign-color-surface-container-lowest);
+  border: 1px solid var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius-xl);
+  color: var(--redesign-color-on-surface);
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: var(--redesign-space-4);
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr);
+  padding: var(--redesign-space-3) var(--redesign-space-3);
+  text-align: left;
+  width: 100%;
+}
+
+.orbit-shell .editor-practice-history-item:hover {
+  background: var(--redesign-color-surface-container-low);
+  border-color: var(--redesign-color-outline);
+}
+
+.orbit-shell .editor-practice-history-item:focus-visible {
+  box-shadow: var(--redesign-focus-ring);
+  outline: none;
+}
+
+.orbit-shell .editor-practice-history-item.selected {
+  background: var(--redesign-color-secondary-container);
+  border-color: var(--redesign-color-secondary);
+}
+
+.orbit-shell .editor-practice-history-summary {
+  display: grid;
+  gap: 3px;
+}
+
+.orbit-shell .editor-practice-history-summary > span,
+.orbit-shell .editor-practice-history-detail header span,
+.orbit-shell .editor-practice-history-hint {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell .editor-practice-history-metrics {
+  display: grid;
+  gap: var(--redesign-space-2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.orbit-shell .editor-practice-history-metrics > span {
+  display: grid;
+  gap: 2px;
+}
+
+.orbit-shell .editor-practice-history-metrics small {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell .editor-practice-history-detail {
+  border-top: 1px solid var(--redesign-color-outline-variant);
+  display: grid;
+  gap: var(--redesign-space-3);
+  padding-top: var(--redesign-space-4);
+}
+
+.orbit-shell .editor-practice-history-detail.latest {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.orbit-shell .editor-practice-history-detail > header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.orbit-shell .editor-practice-history-hint {
+  margin: 0;
+  text-align: center;
+}
+
+.orbit-shell .editor-question-stale {
+  background: var(--redesign-color-warning-subtle);
+  border: 1px solid var(--redesign-color-warning);
+  border-radius: var(--redesign-radius-lg);
+  color: var(--redesign-color-on-warning-container);
+  margin: 0;
+  padding: var(--redesign-space-2) var(--redesign-space-3);
+}
+
+.orbit-shell .editor-question-guide-content {
+  display: grid;
+  gap: var(--redesign-space-2);
+  min-height: 0;
+}
+
+.orbit-shell .editor-question-guide-content h4 {
+  margin: 0 0 var(--redesign-space-3);
+}
+
+.orbit-shell .editor-question-concepts {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--redesign-space-2);
+  margin-bottom: var(--redesign-space-3);
+}
+
+.orbit-shell .editor-question-concepts span {
+  background: var(--redesign-color-info-container);
+  border-radius: var(--redesign-radius-full);
+  color: var(--redesign-color-info);
+  padding: var(--redesign-space-1) var(--redesign-space-2);
+}
+
+.orbit-shell .editor-question-guide-content.carousel {
+  grid-template-columns: 1fr;
+  outline: none;
+}
+
+.orbit-shell .editor-question-guide-content.carousel:focus-visible {
+  border-radius: var(--redesign-radius-xl);
+  box-shadow: var(--redesign-focus-ring);
+}
+
+.orbit-shell .editor-question-guide-content.carousel > article {
+  margin-inline: auto;
+  max-width: 960px;
+  padding: var(--redesign-space-3);
+  text-align: left;
+  width: 100%;
+}
+
+.orbit-shell .editor-question-guide-content.carousel > article > h4 {
+  font-size: var(--redesign-type-body-md-size);
+  font-weight: 700;
+  line-height: 1.5;
+  margin: 0 0 var(--redesign-space-2);
+  max-width: 760px;
+}
+
+.orbit-shell .editor-question-carousel-toolbar {
+  align-items: center;
+  border-bottom: 1px solid var(--redesign-color-outline-variant);
+  display: grid;
+  gap: var(--redesign-space-3);
+  grid-template-columns: minmax(150px, 1fr) auto minmax(150px, 1fr);
+  min-height: 36px;
+  padding: 0 0 var(--redesign-space-1);
+}
+
+.orbit-shell .editor-question-carousel-progress {
+  align-items: center;
+  display: flex;
+  gap: var(--redesign-space-3);
+  min-width: 0;
+}
+
+.orbit-shell .editor-question-carousel-progress > strong {
+  color: var(--redesign-color-primary);
+  font-size: var(--redesign-type-body-md-size);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.orbit-shell .editor-question-carousel-dots {
+  align-items: center;
+  display: flex;
+  gap: var(--redesign-space-2);
+}
+
+.orbit-shell .editor-question-carousel-dots i {
+  background: var(--redesign-color-outline);
+  border-radius: 50%;
+  display: block;
+  height: 6px;
+  width: 6px;
+}
+
+.orbit-shell .editor-question-carousel-dots i.active {
+  background: var(--redesign-color-primary);
+}
+
+.orbit-shell .editor-question-guide-content .editor-question-carousel-nav {
+  align-items: center;
+  display: flex;
+  gap: var(--redesign-space-1);
+  justify-content: center;
+}
+
+.orbit-shell .editor-question-guide-content .editor-question-carousel-nav > button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--redesign-radius-md);
+  color: var(--redesign-color-on-surface-variant);
+  display: inline-flex;
+  font-size: var(--redesign-type-body-sm-size);
+  font-weight: 650;
+  gap: 2px;
+  min-height: 32px;
+  justify-content: center;
+  padding: 0 var(--redesign-space-2);
+}
+
+.orbit-shell .editor-question-guide-content .editor-question-carousel-nav > button:hover:not(:disabled) {
+  background: var(--redesign-color-surface-container-high);
+  border-color: var(--redesign-color-outline-variant);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell .editor-question-guide-content .editor-question-carousel-nav > button:focus-visible {
+  box-shadow: var(--redesign-focus-ring);
+  outline: none;
+}
+
+.orbit-shell .editor-question-guide-content .editor-question-carousel-nav > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.orbit-shell .editor-question-carousel-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.orbit-shell .editor-question-answer {
+  border-top: 1px solid var(--redesign-color-outline-variant);
+  margin-top: var(--redesign-space-2);
+  padding-top: var(--redesign-space-2);
+}
+
+.orbit-shell .editor-question-answer > header {
+  align-items: center;
+  display: flex;
+  gap: var(--redesign-space-3);
+  justify-content: space-between;
+}
+
+.orbit-shell .editor-question-answer-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--redesign-space-2);
+}
+
+.orbit-shell .editor-question-answer-heading > strong {
+  font-size: var(--redesign-type-body-md-size);
+}
+
+.orbit-shell .editor-question-answer-heading > span {
+  background: var(--redesign-color-primary-subtle);
+  border: 1px solid var(--redesign-color-primary-outline);
+  border-radius: var(--redesign-radius-full);
+  color: var(--redesign-color-primary-emphasis);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 700;
+  padding: 2px var(--redesign-space-2);
+}
+
+.orbit-shell .editor-question-answer-toggle {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--redesign-color-outline);
+  border-radius: var(--redesign-radius-md);
+  color: var(--redesign-color-on-surface);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: var(--redesign-type-body-sm-size);
+  font-weight: 650;
+  gap: var(--redesign-space-1);
+  min-height: 32px;
+  padding: 0 var(--redesign-space-2);
+}
+
+.orbit-shell .editor-question-answer-toggle:hover {
+  background: var(--redesign-color-surface-container-high);
+}
+
+.orbit-shell .editor-question-answer-toggle:focus-visible {
+  box-shadow: var(--redesign-focus-ring);
+  outline: none;
+}
+
+.orbit-shell .editor-question-answer > div > p {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-body-sm-size);
+  line-height: 1.55;
+  margin: var(--redesign-space-2) 0 0;
+  max-width: 820px;
+}
+
+.orbit-shell .editor-question-answer > div > p.editor-question-answer-empty {
+  color: var(--redesign-color-on-surface-variant);
+  font-style: normal;
+}
+
+.orbit-shell .editor-question-guide-content.carousel .editor-question-concepts {
+  justify-content: flex-start;
+  margin-bottom: 0;
+}
+
+.orbit-shell .editor-question-guide-content.carousel .editor-question-concepts strong {
+  font-size: var(--redesign-type-body-md-size);
+}
+
+.orbit-shell .editor-question-guide-content.carousel .editor-question-concepts span {
+  background: var(--redesign-color-primary-subtle);
+  border: 1px solid var(--redesign-color-primary-outline);
+  color: var(--redesign-color-primary-emphasis);
+  font-size: var(--redesign-type-body-sm-size);
+}
+
+.orbit-shell .editor-question-key-points {
+  border-top: 1px solid var(--redesign-color-outline-variant);
+  margin-top: var(--redesign-space-2);
+  padding-top: var(--redesign-space-2);
+}
+
+.orbit-shell .editor-question-key-points > strong {
+  display: block;
+  font-size: var(--redesign-type-body-md-size);
+  margin-bottom: var(--redesign-space-2);
+}
+
+.orbit-shell .editor-question-key-points ul {
+  display: grid;
+  gap: var(--redesign-space-2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.orbit-shell .editor-question-key-points li {
+  align-items: flex-start;
+  background: var(--redesign-color-surface-container-low);
+  border: 1px solid var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius-lg);
+  color: var(--redesign-color-on-surface);
+  display: flex;
+  font-size: var(--redesign-type-body-sm-size);
+  gap: var(--redesign-space-2);
+  line-height: 1.45;
+  min-height: 44px;
+  padding: var(--redesign-space-2) var(--redesign-space-3);
+}
+
+.orbit-shell .editor-question-key-points li svg {
+  color: var(--redesign-color-primary);
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.orbit-shell .editor-question-guide-content.carousel .editor-question-caveat,
+.orbit-shell .editor-question-guide-content.carousel .editor-question-sources {
+  font-size: var(--redesign-type-body-md-size);
+  line-height: 1.55;
+}
+
+.orbit-shell .editor-question-guide-content.carousel .editor-question-remediation {
+  font-size: var(--redesign-type-body-md-size);
+  line-height: 1.6;
+  text-align: left;
+}
+
+.orbit-shell .editor-question-sources {
+  border-top: 1px solid var(--redesign-color-outline-variant);
+  margin-top: var(--redesign-space-4);
+  padding-top: var(--redesign-space-3);
+}
+
+.orbit-shell .editor-question-sources ul {
+  display: grid;
+  gap: var(--redesign-space-1);
+  margin: var(--redesign-space-2) 0 0;
+  padding-left: var(--redesign-space-5);
+  text-align: left;
+}
+
+.orbit-shell .editor-question-sources a {
+  color: var(--redesign-color-on-secondary-container);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.orbit-shell .editor-dock-empty {
+  color: var(--redesign-color-on-surface-variant);
+  margin: 0;
+  padding: var(--redesign-space-7) var(--redesign-space-5);
+  text-align: center;
+}
+
+@media (max-width: 860px) {
+  .orbit-shell .editor-bottom-dock-tabs button { padding-inline: var(--redesign-space-2); }
+  .orbit-shell .editor-bottom-dock-tabs button span { display: none; }
+  .orbit-shell .editor-practice-controls { align-items: stretch; flex-wrap: wrap; }
+  .orbit-shell .editor-question-guide-content { grid-template-columns: 1fr; }
+  .orbit-shell .editor-question-carousel-toolbar {
+    grid-template-columns: 1fr auto;
+  }
+  .orbit-shell .editor-question-carousel-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: stretch;
+  }
+  .orbit-shell .editor-question-carousel-action {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .orbit-shell .editor-question-key-points ul { grid-template-columns: 1fr; }
+  .orbit-shell .editor-practice-history-item { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 620px) {
+  .orbit-shell .editor-question-guide-content.carousel > article {
+    padding: var(--redesign-space-3);
+  }
+
+  .orbit-shell .editor-question-guide-content.carousel > article > h4 {
+    font-size: var(--redesign-type-title-lg-size);
+  }
+
+  .orbit-shell .editor-question-carousel-dots { display: none; }
+
+  .orbit-shell .editor-question-answer > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .orbit-shell .editor-question-answer-toggle {
+    align-self: stretch;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 860px) {
+  .orbit-shell .editor-panel,
+  .orbit-shell .editor-panel.right-panel-closed,
+  .orbit-shell .editor-panel:has(.selection-quickbar),
+  .orbit-shell .editor-panel.right-panel-closed:has(.selection-quickbar) {
+    padding-top: var(--redesign-space-16);
+  }
+
+  .orbit-shell .editor-panel:has(> .stage-pane > .stage-top-controls > .selection-quickbar),
+  .orbit-shell .editor-panel.right-panel-closed:has(> .stage-pane > .stage-top-controls > .selection-quickbar) {
+    padding-top: var(--redesign-space-30);
+  }
+
+  .orbit-shell .stage-pane {
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .orbit-shell .canvas-scroll {
+    padding: var(--redesign-space-4) var(--redesign-space-3);
+  }
+
+  .orbit-shell .konva-wrap {
+    min-height: 100%;
+    place-items: center;
+  }
+
+  .orbit-shell .editor-panel.right-panel-closed .ai-pane.collapsed {
+    background: var(--redesign-color-surface-container-lowest);
+    border: 1px solid var(--redesign-color-outline-variant);
+    border-radius: var(--redesign-radius-lg);
+    bottom: 70px;
+    box-shadow: var(--redesign-shadow-raised);
+    display: grid;
+    height: 52px;
+    left: auto;
+    max-height: 52px;
+    min-height: 52px;
+    padding: 0;
+    position: fixed;
+    right: 12px;
+    width: 52px;
+    z-index: 32;
+  }
+
+  .orbit-shell .ai-pane.collapsed .collapsed-right-rail {
+    align-content: center;
+    gap: 0;
+    padding: var(--redesign-space-2);
+  }
+
+  .orbit-shell .ai-pane.collapsed .collapsed-right-rail span {
+    display: none;
+  }
+
+  .orbit-shell .editor-panel:has(.stage-speaker-notes-panel.expanded) .ai-pane.collapsed {
+    bottom: calc(min(var(--speaker-notes-panel-height, 240px), 66.6667vh) + 16px);
+  }
+
+  .orbit-shell .ai-pane:not(.collapsed) {
+    grid-template-columns: minmax(0, 1fr) 44px;
+    grid-template-rows: 44px minmax(0, 1fr);
+    max-height: min(360px, 42vh);
+    padding: 0 var(--redesign-space-3) var(--redesign-space-3);
+  }
+
+  .orbit-shell .ai-pane:not(.collapsed) .ai-header {
+    align-items: center;
+    display: flex;
+    grid-column: 2;
+    grid-row: 1;
+    justify-content: center;
+  }
+
+  .orbit-shell .ai-pane:not(.collapsed) .ai-header h2 {
+    display: none;
+  }
+
+  .orbit-shell .ai-pane:not(.collapsed) .ai-header > div {
+    border: 0;
+  }
+
+  .orbit-shell .ai-pane:not(.collapsed) .right-panel-tabs {
+    grid-column: 1;
+    grid-row: 1;
+    order: initial;
+  }
+
+  .orbit-shell .ai-pane:not(.collapsed) .assistant-panel-slot {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .orbit-shell .ai-pane:not(.collapsed) .right-pane-resizer {
+    display: none;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 860px) {
+  .orbit-shell .stage-speaker-notes-panel.expanded .script-panel-header,
+  .orbit-shell .stage-speaker-notes-panel .script-panel-actions {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .orbit-shell .stage-speaker-notes-panel .script-panel-actions .script-panel-action {
+    width: auto;
+  }
+}
+

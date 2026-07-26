@@ -3,7 +3,7 @@ import {
   legacyRehearsalSilenceAnalysis,
   legacyRehearsalVolumeAnalysis,
   type RehearsalReport,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 

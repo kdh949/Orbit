@@ -1,5 +1,5 @@
 import { createDemoDeck } from "@orbit/editor-core";
-import type { DeckElement, TableElementProps } from "@orbit/shared";
+import type { DeckElement, TableElementProps } from "@orbit/shared/deck";
 import { describe, expect, it } from "vitest";
 
 import {

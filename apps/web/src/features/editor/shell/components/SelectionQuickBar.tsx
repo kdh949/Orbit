@@ -11,7 +11,7 @@ import type {
   Slide,
   TableElementProps,
   TextElementProps,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import {
   IconAlignBoxCenterBottom as AlignBottom,
   IconAlignBoxCenterMiddle as AlignMiddle,
@@ -43,7 +43,9 @@ import {
   measureTextContentBounds,
 } from "../../canvas/text/textLayout";
 import {
-  getTableOperationCapability, type SlideAnimationDiagnostics, } from "../../../../../../../packages/editor-core/src/index";
+  type SlideAnimationDiagnostics
+} from "@orbit/editor-core/patches";
+import { getTableOperationCapability } from "@orbit/editor-core/table";
 import { resolveRedesignPalette } from "../../../../styles/redesignPalette";
 import { IdBadge } from "./EditorIdBadge";
 import type { ElementLayerOrderAction } from "../utils/elementLayerOrder";

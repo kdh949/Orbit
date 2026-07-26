@@ -4,11 +4,141 @@
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "auth": [
+        "dist/auth/index.d.ts"
+      ],
+      "activities": [
+        "dist/activity/index.d.ts"
+      ],
+      "coaching": [
+        "dist/coaching/index.d.ts"
+      ],
+      "common": [
+        "dist/common/index.d.ts"
+      ],
+      "community-templates": [
+        "dist/community-templates/index.d.ts"
+      ],
+      "config": [
+        "dist/config/index.d.ts"
+      ],
+      "deck": [
+        "dist/deck/index.d.ts"
+      ],
+      "files": [
+        "dist/files/index.d.ts"
+      ],
+      "jobs": [
+        "dist/jobs/index.d.ts"
+      ],
+      "presentation": [
+        "dist/presentation/index.d.ts"
+      ],
+      "projects": [
+        "dist/projects/index.d.ts"
+      ],
+      "pronunciation": [
+        "dist/pronunciation/index.d.ts"
+      ],
+      "realtime": [
+        "dist/realtime/index.d.ts"
+      ],
+      "rehearsals": [
+        "dist/rehearsals/index.d.ts"
+      ],
+      "slide-practice": [
+        "dist/slide-practice/index.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts",
+      "require": "./dist/index.js"
+    },
+    "./auth": {
+      "types": "./dist/auth/index.d.ts",
+      "import": "./src/auth/index.ts",
+      "require": "./dist/auth/index.js"
+    },
+    "./activities": {
+      "types": "./dist/activity/index.d.ts",
+      "import": "./src/activity/index.ts",
+      "require": "./dist/activity/index.js"
+    },
+    "./coaching": {
+      "types": "./dist/coaching/index.d.ts",
+      "import": "./src/coaching/index.ts",
+      "require": "./dist/coaching/index.js"
+    },
+    "./common": {
+      "types": "./dist/common/index.d.ts",
+      "import": "./src/common/index.ts",
+      "require": "./dist/common/index.js"
+    },
+    "./community-templates": {
+      "types": "./dist/community-templates/index.d.ts",
+      "import": "./src/community-templates/index.ts",
+      "require": "./dist/community-templates/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "import": "./src/config/index.ts",
+      "require": "./dist/config/index.js"
+    },
+    "./deck": {
+      "types": "./dist/deck/index.d.ts",
+      "import": "./src/deck/index.ts",
+      "require": "./dist/deck/index.js"
+    },
+    "./files": {
+      "types": "./dist/files/index.d.ts",
+      "import": "./src/files/index.ts",
+      "require": "./dist/files/index.js"
+    },
+    "./jobs": {
+      "types": "./dist/jobs/index.d.ts",
+      "import": "./src/jobs/index.ts",
+      "require": "./dist/jobs/index.js"
+    },
+    "./presentation": {
+      "types": "./dist/presentation/index.d.ts",
+      "import": "./src/presentation/index.ts",
+      "require": "./dist/presentation/index.js"
+    },
+    "./projects": {
+      "types": "./dist/projects/index.d.ts",
+      "import": "./src/projects/index.ts",
+      "require": "./dist/projects/index.js"
+    },
+    "./pronunciation": {
+      "types": "./dist/pronunciation/index.d.ts",
+      "import": "./src/pronunciation/index.ts",
+      "require": "./dist/pronunciation/index.js"
+    },
+    "./realtime": {
+      "types": "./dist/realtime/index.d.ts",
+      "import": "./src/realtime/index.ts",
+      "require": "./dist/realtime/index.js"
+    },
+    "./rehearsals": {
+      "types": "./dist/rehearsals/index.d.ts",
+      "import": "./src/rehearsals/index.ts",
+      "require": "./dist/rehearsals/index.js"
+    },
+    "./slide-practice": {
+      "types": "./dist/slide-practice/index.d.ts",
+      "import": "./src/slide-practice/index.ts",
+      "require": "./dist/slide-practice/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rm -rf dist",
     "dev": "tsc -p tsconfig.json --watch",
-    "lint": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -20,4 +150,3 @@
     "vitest": "^3.2.4"
   }
 }
-

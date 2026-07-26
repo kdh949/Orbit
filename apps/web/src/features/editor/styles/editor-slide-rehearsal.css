@@ -1,0 +1,44 @@
+/* Single-slide rehearsal keeps the original high-contrast voice panel. */
+.orbit-shell.editor-professional .editor-slide-rehearsal-bottom {
+  border-top-color: var(--redesign-color-primary);
+  background: var(--redesign-color-surface-container-lowest);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-bottom-header {
+  border-bottom-color: var(--redesign-color-outline-variant);
+  background: var(--redesign-color-surface-container-low);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-bottom
+  > .rehearsal-teleprompter-band {
+  background: var(--redesign-color-surface-container-lowest);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-bottom
+  .rehearsal-teleprompter-line {
+  color: color-mix(in srgb, var(--redesign-color-on-surface) 34%, transparent);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-bottom
+  .rehearsal-teleprompter-line-covered,
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-bottom
+  .rehearsal-teleprompter-line-paraphrased {
+  color: color-mix(in srgb, var(--redesign-color-on-surface) 22%, transparent);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-bottom
+  .rehearsal-teleprompter-line-next {
+  color: color-mix(in srgb, var(--redesign-color-on-surface) 68%, transparent);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-bottom
+  .rehearsal-teleprompter-current {
+  color: var(--redesign-color-on-surface);
+}

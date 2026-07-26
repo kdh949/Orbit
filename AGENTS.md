@@ -10,6 +10,8 @@
 
 이 파일은 ORBIT 저장소에서 에이전트가 반드시 지켜야 하는 최상위 작업 규칙이다.
 상세 설명과 예시는 `docs/` 문서를 따른다.
+작업 파일과 가장 가까운 하위 `AGENTS.md`가 있으면 해당 범위의 구현·검증 규칙을
+함께 적용한다.
 
 ## 목적과 우선순위
 
@@ -21,7 +23,7 @@
 ## 저장소 구조와 앱 경계
 
 - Web 작업은 기본적으로 `apps/web`, 필요한 경우 `packages/shared`, `packages/editor-core`, `packages/realtime` 안에서 처리한다.
-- Web redesign의 공통 primitive 컴포넌트는 `apps/web/src/components/ui`에 컴포넌트별 파일로 두고 `index.ts`에서 공개한다. 조합형 공통 패턴은 `apps/web/src/components/patterns`, 기능 전용 UI는 `apps/web/src/features/<feature-name>`에 둔다. redesign 토큰은 `apps/web/src/styles/tokens.css`를 사용하며 기존 `apps/web/src/design-system`과 섞지 않는다.
+- Web redesign의 공통 primitive 컴포넌트는 `apps/web/src/components/ui`에 컴포넌트별 파일로 두고 `index.ts`에서 공개한다. 조합형 공통 패턴은 `apps/web/src/components/patterns`, 기능 전용 UI는 `apps/web/src/features/<feature-name>`에 둔다. redesign 토큰은 `apps/web/src/styles/tokens.css`를 사용하며 삭제된 legacy 디자인 시스템을 다시 만들지 않는다.
 - API 작업은 기본적으로 `apps/api`, 필요한 경우 `packages/shared`, `packages/config`, `packages/storage`, `packages/job-queue`, `packages/realtime` 안에서 처리한다.
 - Worker 작업은 기본적으로 `apps/worker`, 필요한 경우 `packages/shared`, `packages/job-queue`, `packages/storage`, `packages/ai` 안에서 처리한다.
 - Python worker 작업은 기본적으로 `services/python-worker` 안에서 처리한다.
@@ -51,6 +53,8 @@
 
 ## Git, 브랜치, PR 규칙
 
+- 별도 언급이 없으면 GitHub 원격 조회, push, PR, review, merge는 `kdh949/Orbit`만 대상으로 한다.
+- 다른 fork, upstream, 조직 저장소는 사용자가 명시적으로 요청한 경우에만 조회하거나 변경한다.
 - 기본 브랜치 전략은 GitHub Flow를 사용한다.
 - `main`에 직접 커밋하지 않는다.
 - 모든 작업은 브랜치에서 진행하고 PR로 병합한다.
@@ -92,16 +96,31 @@
 - 버그 수정 시 가능하면 재발 방지 테스트를 추가한다.
 - 테스트를 실행하지 못한 경우 이유와 남은 검증 범위를 작업 결과에 남긴다.
 
-## 권장 검증 명령
+## 검증 선택
 
-변경 범위에 맞춰 필요한 명령을 실행한다.
+기본 검증은 가장 가까운 하위 `AGENTS.md`의 targeted 명령을 사용한다. 공통 계약,
+root build 설정, lockfile처럼 여러 workspace에 영향을 주는 변경만 전체 검증으로
+승격한다.
+
+등록된 domain 작업은 `pnpm agent:context <domain>`으로 범위를 확인하고
+`pnpm verify:scope <area>:<domain>`으로 검증한다. 여러 workspace에 걸친 변경은
+`pnpm verify:affected`를 사용하며, 실행 전 `--dry-run`으로 승격 여부를 확인할 수
+있다. 상세 규칙은 `docs/agent/verification.md`를 따른다.
+
+전체 TypeScript 검증이 필요한 경우:
 
 ```bash
 pnpm build
-pnpm lint
+pnpm format:check
+pnpm typecheck
 pnpm test
+```
+
+환경·Compose 계약을 변경한 경우:
+
+```bash
 node infra/scripts/check-env.mjs
-docker compose config
+docker compose config --quiet
 ```
 
 Python worker를 변경한 경우:
@@ -135,10 +154,4 @@ pnpm db:migration:revert
 - 공통 계약: `docs/contracts.md`
 - Demo ID 기준: `docs/demo-standards.md`
 - Git과 PR 규칙: `docs/git-rules.md`
-- 로컬 우선 아키텍처: `docs/architecture/local-first-stack.md`
-- 기술스택 버전: `docs/architecture/tech-stack-versions.md`
-- 환경변수 규칙: `docs/conventions/environment.md`
-- 서버 로그 규칙: `docs/conventions/logging.md`
 - 로컬 개발 Runbook: `docs/runbooks/local-development.md`
-- AWS 배포 기준: `docs/deployment.md`
-- STT spike: `docs/spikes/on-device-stt.md`

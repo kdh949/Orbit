@@ -1,15 +1,15 @@
+import { runtimeConfigResponseSchema } from "@orbit/shared/config";
 import {
   presentationCompanionBootstrapSchema,
   presentationCompanionActivityProjectionSchema,
   presentationCompanionExchangeResponseSchema,
   presentationCompanionPairingResponseSchema,
   presentationCompanionStatusSchema,
-  runtimeConfigResponseSchema,
   type PresentationCompanionBootstrap,
   type PresentationCompanionActivityProjection,
   type PresentationCompanionPairingResponse,
   type PresentationCompanionStatus,
-} from "@orbit/shared";
+} from "@orbit/shared/presentation";
 
 type Fetcher = typeof fetch;
 

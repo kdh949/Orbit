@@ -1,29 +1,29 @@
 import type { StoragePort } from "@orbit/storage";
 import {
+  slidePracticeAnalysisJobPayloadSchema,
+  slidePracticeAnalysisJobResultSchema,
+} from "@orbit/shared/coaching";
+import { deckPatchSchema, deckSchema } from "@orbit/shared/deck";
+import { jobSchema, type Job } from "@orbit/shared/jobs";
+import {
   analyzeKoreanFillers,
   buildSlidePracticeCoachingEvidence,
   classifyVoiceStyle,
   countSpokenSyllables,
   createUnmeasuredVoiceStyleResult,
-  deckPatchSchema,
-  deckSchema,
   findSlidePracticeCoachingIssues,
-  jobSchema,
-  slidePracticeAnalysisJobPayloadSchema,
-  slidePracticeAnalysisJobResultSchema,
   slidePracticeCoachingSelectionContentSchema,
   slidePracticeContentHashVersion,
   slidePracticeContentHashSchema,
   slidePracticeReportSchema,
   slidePracticeServerAudioResponseSchema,
   voiceBaselineMetricsSchema,
-  type Job,
   type SlidePracticeCoaching,
   type SlidePracticeCoachingEvidenceCandidate,
   type SlidePracticeCoachingIssueCode,
   type SlidePracticeReport,
-} from "@orbit/shared";
-import { applyDeckPatch } from "@orbit/editor-core";
+} from "@orbit/shared/slide-practice";
+import { applyDeckPatch } from "@orbit/editor-core/patches";
 import { createHash, randomUUID } from "node:crypto";
 import type { DataSource } from "typeorm";
 import { z } from "zod";

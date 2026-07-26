@@ -1,10 +1,8 @@
 import type { DataSource } from "typeorm";
 import { createHash } from "node:crypto";
-import {
-  canonicalJson,
-  deckSchema,
-  slideQuestionGuideTextHashInput,
-} from "@orbit/shared";
+import { canonicalJson } from "@orbit/shared/common";
+import { deckSchema } from "@orbit/shared/deck";
+import { slideQuestionGuideTextHashInput } from "@orbit/shared/slide-practice";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { processSlideQuestionGuideGenerationJob } from "./slide-question-guide-generation.processor";

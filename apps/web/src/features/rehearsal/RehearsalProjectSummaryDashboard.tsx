@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { lazy, Suspense, type CSSProperties } from "react";
-import type { RehearsalProjectSummary } from "@orbit/shared";
+import type { RehearsalProjectSummary } from "@orbit/shared/rehearsals";
 import { DurationLineChart, MetricTrendChart } from "./ReportProgressCharts";
 import {
   buildRehearsalProjectSummaryDashboardModel,

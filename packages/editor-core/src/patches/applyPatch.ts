@@ -2,7 +2,7 @@ import {
   deckChangeRecordSchema,
   deckPatchSchema,
   deckSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import type {
   Deck,
   DeckAnimation,
@@ -10,7 +10,7 @@ import type {
   DeckPatchOperation,
   DeckSlideAction,
   Slide,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 
 import type {
   ApplyDeckPatchError,

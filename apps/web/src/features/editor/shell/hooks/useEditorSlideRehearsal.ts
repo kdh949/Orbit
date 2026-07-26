@@ -1,23 +1,23 @@
-import type { Slide } from "@orbit/shared";
+import type { Slide } from "@orbit/shared/deck";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { LiveSttAudioLevelEvent } from "../../../rehearsal/liveStt";
+import type { LiveSttAudioLevelEvent } from "../../../../runtime/speech/stt/liveSttAdapter";
 import {
   createSpeechTracker,
   type SpeechTracker
-} from "../../../rehearsal/speech/speechTracker";
+} from "../../../../runtime/speech/tracking/speechTracker";
 import type {
   SpeechTrackerSnapshot
-} from "../../../rehearsal/speech/speechTrackingEvents";
-import { createLiveSttPort } from "../../../rehearsal/stt/liveSttEngineRegistry";
+} from "../../../../runtime/speech/tracking/speechTrackingEvents";
+import { createLiveSttPort } from "../../../../runtime/speech/stt/liveSttEngineRegistry";
 import {
   type LiveSttBiasPhrase,
   type LiveSttEngineId,
   type LiveSttPort,
   normalizeLiveSttBiasPhrases
-} from "../../../rehearsal/stt/liveSttPort";
-import { fetchLiveSttRuntimeConfig } from "../../../rehearsal/stt/liveSttRuntimeConfig";
-import { normalizeLiveTranscriptText } from "../../../rehearsal/stt/liveTranscriptText";
+} from "../../../../runtime/speech/stt/liveSttPort";
+import { fetchLiveSttRuntimeConfig } from "../../../../runtime/speech/stt/liveSttRuntimeConfig";
+import { normalizeLiveTranscriptText } from "../../../../runtime/speech/stt/liveTranscriptText";
 
 export type EditorSlideRehearsalStatus =
   | "idle"

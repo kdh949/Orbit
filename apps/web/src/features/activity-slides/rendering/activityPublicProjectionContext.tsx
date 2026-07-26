@@ -1,7 +1,7 @@
 import type {
   ActivityPublicResult,
   ActivityRuntimeStatus,
-} from "@orbit/shared";
+} from "@orbit/shared/activities";
 import {
   createContext,
   type ReactNode,

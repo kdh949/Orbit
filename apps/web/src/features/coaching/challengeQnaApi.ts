@@ -1,4 +1,9 @@
-import { challengeQnaAnswerAttemptSchema, challengeQnaSessionSchema, type ChallengeQnaAnswerAttempt, type ChallengeQnaSession } from "@orbit/shared";
+import {
+  challengeQnaAnswerAttemptSchema,
+  challengeQnaSessionSchema,
+  type ChallengeQnaAnswerAttempt,
+  type ChallengeQnaSession,
+} from "@orbit/shared/coaching";
 import { normalizeCoachingAudioMimeType } from "./coachingAudioMimeType";
 
 export type ChallengeQuestionView = {

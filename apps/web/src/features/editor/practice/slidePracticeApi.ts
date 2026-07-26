@@ -8,7 +8,7 @@ import {
   type SlidePracticeReportListResponse,
   type VoiceBaselineMetrics,
   type VoiceBaselineRecord,
-} from "@orbit/shared";
+} from "@orbit/shared/slide-practice";
 import { normalizeCoachingAudioMimeType } from "../../coaching/coachingAudioMimeType";
 
 const pendingReportStoreName = "pending-reports";

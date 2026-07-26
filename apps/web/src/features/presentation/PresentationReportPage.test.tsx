@@ -1,4 +1,4 @@
-import type { ActivitySessionResultItem } from "@orbit/shared";
+import type { ActivitySessionResultItem } from "@orbit/shared/activities";
 import { describe, expect, it } from "vitest";
 
 import {

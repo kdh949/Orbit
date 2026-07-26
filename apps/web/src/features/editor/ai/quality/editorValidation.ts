@@ -1,5 +1,10 @@
-import type { Deck, DeckElement, Slide, TextElementProps } from "@orbit/shared";
-import { getSemanticQaIssues } from "@orbit/shared";
+import type {
+  Deck,
+  DeckElement,
+  Slide,
+  TextElementProps,
+} from "@orbit/shared/deck";
+import { getSemanticQaIssues } from "@orbit/shared/deck";
 import {
   getKonvaFontStyle,
   getPrimaryTextRun,

@@ -1,5 +1,5 @@
 import { loadOrbitConfig } from "@orbit/config";
-import { realtimeTranscriptionClientSecretResponseSchema } from "@orbit/shared";
+import { realtimeTranscriptionClientSecretResponseSchema } from "@orbit/shared/rehearsals";
 import {
   BadGatewayException,
   Inject,

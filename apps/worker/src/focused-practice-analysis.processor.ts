@@ -3,9 +3,8 @@ import {
   focusedPracticeAnalysisJobPayloadSchema,
   focusedPracticeAnalysisJobResultSchema,
   focusedPracticeGoalOutcomeSchema,
-  jobSchema,
-  type Job,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
+import { jobSchema, type Job } from "@orbit/shared/jobs";
 import type { DataSource } from "typeorm";
 import { createHash } from "node:crypto";
 import { z } from "zod";

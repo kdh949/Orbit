@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { applyDeckPatch } from "@orbit/editor-core";
+import { applyDeckPatch } from "@orbit/editor-core/patches";
 import {
   applyDesignAgentProposalResponseSchema,
   createDesignAgentMessageResponseSchema,
@@ -20,7 +20,7 @@ import {
   type Slide,
   type SmartArtItem,
   type SmartArtRequest,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import {
   BadRequestException,
   ConflictException,

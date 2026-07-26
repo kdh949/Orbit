@@ -1,6 +1,6 @@
-import { createDemoDeck } from "@orbit/editor-core";
-import { demoIds } from "@orbit/shared";
-import type { Deck, Keyword } from "@orbit/shared";
+import { createDemoDeck } from "@orbit/editor-core/fixtures";
+import { demoIds } from "@orbit/shared/common";
+import type { Deck, Keyword } from "@orbit/shared/deck";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";

@@ -3,7 +3,7 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from "@nestjs/common";
-import { demoIds } from "@orbit/shared";
+import { demoIds } from "@orbit/shared/common";
 import { DataSource, EntityManager, QueryFailedError, Repository } from "typeorm";
 import { describe, expect, it, vi } from "vitest";
 import { ProjectEntity } from "./project.entity";

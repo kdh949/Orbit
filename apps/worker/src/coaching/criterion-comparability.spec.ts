@@ -1,10 +1,12 @@
 import {
-  createRehearsalEvaluationSnapshot,
-  deckSchema,
   rehearsalEvaluationPlanSchema,
   type EvaluationCriterion,
+} from "@orbit/shared/coaching";
+import { deckSchema } from "@orbit/shared/deck";
+import {
+  createRehearsalEvaluationSnapshot,
   type RehearsalEvaluationSnapshot,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import { describe, expect, it } from "vitest";
 
 import { compareCriterionSources } from "./criterion-comparability";

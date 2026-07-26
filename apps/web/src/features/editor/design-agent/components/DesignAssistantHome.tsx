@@ -1,4 +1,4 @@
-import type { DesignAgentIntentPreset } from "@orbit/shared";
+import type { DesignAgentIntentPreset } from "@orbit/shared/deck";
 import {
   IconLayoutGrid,
   IconPlayerPlay,

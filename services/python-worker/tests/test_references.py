@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 import app.main as api_module
+from app.routers import references as references_router
 from app.references import (
     EMBEDDING_DIMENSION,
     EmbeddingResult,
@@ -288,7 +289,7 @@ def test_references_search_endpoint_keeps_project_boundary(monkeypatch) -> None:
         )
 
     monkeypatch.setattr(
-        api_module,
+        references_router,
         "search_reference_chunks",
         fake_search_reference_chunks,
     )

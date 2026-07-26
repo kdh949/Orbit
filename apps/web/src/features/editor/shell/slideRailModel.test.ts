@@ -1,4 +1,4 @@
-import { createDemoDeck } from "../../../../../../packages/editor-core/src";
+import { createDemoDeck } from "@orbit/editor-core";
 import { describe, expect, it } from "vitest";
 
 import {

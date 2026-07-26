@@ -1,5 +1,5 @@
-import { findDanglingKeywordOccurrenceActions } from "@orbit/editor-core";
-import type { Slide } from "@orbit/shared";
+import { findDanglingKeywordOccurrenceActions } from "@orbit/editor-core/keywords";
+import type { Slide } from "@orbit/shared/deck";
 
 export function shouldPromptSpeakerNotesDraftDiscard(input: {
   draft: string;

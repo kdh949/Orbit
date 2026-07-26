@@ -5,8 +5,8 @@ import {
   type GenerateDeckDiagnostics,
   type GenerateDeckRequest,
   type GenerateDeckValidation,
-  type Job,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
+import { type Job } from "@orbit/shared/jobs";
 import type { DataSource } from "typeorm";
 import { allValidationIssues } from "./semantic-quality";
 

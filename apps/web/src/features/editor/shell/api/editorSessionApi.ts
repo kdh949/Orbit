@@ -1,7 +1,8 @@
-import { demoIds, meResponseSchema } from "@orbit/shared";
+import { meResponseSchema } from "@orbit/shared/auth";
+import { demoIds } from "@orbit/shared/common";
 
 import { readResponseError } from "./deckPersistenceApi";
-import type { EditorSessionDebugState } from "../hooks/useProjectPresence";
+import type { EditorSessionDebugState } from "../editorSession.model";
 
 export interface HealthResponse {
   status: string;

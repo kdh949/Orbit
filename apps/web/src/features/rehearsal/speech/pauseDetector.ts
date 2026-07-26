@@ -1,4 +1,4 @@
-import type { PauseDetectorConfig } from "../advance/autoAdvanceConfig";
+import type { PauseDetectorConfig } from "../../../runtime/presentation/advance/autoAdvanceConfig";
 
 export type PauseDetectorEvent =
   | { type: "audio-level"; atMs: number; rmsDb: number }

@@ -1,10 +1,12 @@
-import type { PresentationRun, Project, RehearsalRun } from "@orbit/shared";
+import type { PresentationRun } from "@orbit/shared/presentation";
+import type { Project } from "@orbit/shared/projects";
+import type { RehearsalRun } from "@orbit/shared/rehearsals";
 import { describe, expect, it } from "vitest";
 import {
   buildProjectReportItems,
   getProjectReportHref,
 } from "./RehearsalReportListPage";
-import { getPresentationReportPath } from "./rehearsalUtils";
+import { getPresentationReportPath } from "../reports/reportUtils";
 
 const project = (projectId: string): Project => ({ createdAt: "2026-07-01T00:00:00.000Z", createdBy: "user_1", projectId, title: projectId, workspaceId: "workspace_1" });
 const run = (runId: string, createdAt: string): RehearsalRun => ({

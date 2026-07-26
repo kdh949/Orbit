@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 2,
+  "crossLanguageOverrides": {
+    "packages/shared/src/coaching/rehearsal-analyze.schema.ts": {
+      "consumers": ["python"],
+      "tests": ["services/python-worker/tests/test_rehearsal_analyze.py"]
+    }
+  }
+}

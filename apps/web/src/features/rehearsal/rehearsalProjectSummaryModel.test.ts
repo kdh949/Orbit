@@ -1,4 +1,4 @@
-import type { RehearsalProjectSummary } from "@orbit/shared";
+import type { RehearsalProjectSummary } from "@orbit/shared/rehearsals";
 import { describe, expect, it } from "vitest";
 import {
   buildRehearsalProjectSummaryDashboardModel,

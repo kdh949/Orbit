@@ -3,9 +3,7 @@ import {
   presentationCompanionRoomId,
   presentationPresenterRoomId,
 } from "@orbit/realtime";
-import type {
-  PresentationCompanionStatus,
-} from "@orbit/shared";
+import type { PresentationCompanionStatus } from "@orbit/shared/presentation";
 import { Injectable } from "@nestjs/common";
 import type { Server } from "socket.io";
 

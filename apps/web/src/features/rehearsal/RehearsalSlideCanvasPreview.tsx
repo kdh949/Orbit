@@ -1,4 +1,4 @@
-import type { Deck } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
 const ReadOnlySlideCanvas = lazy(async () => {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { deckSchema, generateDeckRequestSchema } from "@orbit/shared";
+import { deckSchema, generateDeckRequestSchema } from "@orbit/shared/deck";
 import {
   InMemoryJobQueue,
   aiDeckDesignLayoutQueueName,

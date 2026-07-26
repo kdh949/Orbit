@@ -1,18 +1,17 @@
 import { loadOrbitConfig } from "@orbit/config";
 import { enqueueSlideQuestionGuideGenerationJob } from "@orbit/job-queue";
+import { type Deck, type Slide } from "@orbit/shared/deck";
+import { jobSchema } from "@orbit/shared/jobs";
 import {
   autoCreateSlideQuestionGuidesRequestSchema,
   autoCreateSlideQuestionGuidesResponseSchema,
   createSlideQuestionGuideRequestSchema,
-  jobSchema,
   slideQuestionGuideJobResponseSchema,
   slideQuestionGuideListResponseSchema,
   slideQuestionGuideSchema,
   slideQuestionGuideDeckTextHashInput,
   slideQuestionGuideTextHashInput,
-  type Deck,
-  type Slide,
-} from "@orbit/shared";
+} from "@orbit/shared/slide-practice";
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { randomUUID } from "node:crypto";

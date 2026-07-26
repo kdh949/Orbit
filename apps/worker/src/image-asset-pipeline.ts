@@ -10,8 +10,8 @@ import {
   deckSchema,
   type DesignImageGenerationJobPayload,
   type Deck,
-  type Slide
-} from "@orbit/shared";
+  type Slide,
+} from "@orbit/shared/deck";
 import type { StoragePort } from "@orbit/storage";
 import { createHash, randomUUID } from "node:crypto";
 import type { DataSource } from "typeorm";

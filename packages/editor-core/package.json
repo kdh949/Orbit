@@ -4,11 +4,85 @@
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "activities": [
+        "dist/activities/index.d.ts"
+      ],
+      "community-templates": [
+        "dist/community-templates/index.d.ts"
+      ],
+      "fixtures": [
+        "dist/fixtures/index.d.ts"
+      ],
+      "keywords": [
+        "dist/keywords/index.d.ts"
+      ],
+      "patches": [
+        "dist/patches/index.d.ts"
+      ],
+      "playback": [
+        "dist/playback/index.d.ts"
+      ],
+      "table": [
+        "dist/table/index.d.ts"
+      ],
+      "text": [
+        "dist/text/index.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts",
+      "require": "./dist/index.js"
+    },
+    "./activities": {
+      "types": "./dist/activities/index.d.ts",
+      "import": "./src/activities/index.ts",
+      "require": "./dist/activities/index.js"
+    },
+    "./community-templates": {
+      "types": "./dist/community-templates/index.d.ts",
+      "import": "./src/community-templates/index.ts",
+      "require": "./dist/community-templates/index.js"
+    },
+    "./fixtures": {
+      "types": "./dist/fixtures/index.d.ts",
+      "import": "./src/fixtures/index.ts",
+      "require": "./dist/fixtures/index.js"
+    },
+    "./keywords": {
+      "types": "./dist/keywords/index.d.ts",
+      "import": "./src/keywords/index.ts",
+      "require": "./dist/keywords/index.js"
+    },
+    "./patches": {
+      "types": "./dist/patches/index.d.ts",
+      "import": "./src/patches/index.ts",
+      "require": "./dist/patches/index.js"
+    },
+    "./playback": {
+      "types": "./dist/playback/index.d.ts",
+      "import": "./src/playback/index.ts",
+      "require": "./dist/playback/index.js"
+    },
+    "./table": {
+      "types": "./dist/table/index.d.ts",
+      "import": "./src/table/index.ts",
+      "require": "./dist/table/index.js"
+    },
+    "./text": {
+      "types": "./dist/text/index.d.ts",
+      "import": "./src/text/index.ts",
+      "require": "./dist/text/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rm -rf dist",
     "dev": "tsc -p tsconfig.json --watch",
-    "lint": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -20,4 +94,3 @@
     "vitest": "^3.2.4"
   }
 }
-

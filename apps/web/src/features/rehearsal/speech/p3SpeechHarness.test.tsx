@@ -1,9 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { RehearsalPanel } from "../panel/RehearsalPanel";
-import type { RehearsalTimingSnapshot, TimingAdviceState } from "../panel/rehearsalTiming";
-import type { LiveSttPort, LiveSttResult } from "../stt/liveSttPort";
+import { RehearsalPanel } from "../../presenter-shell/panel/RehearsalPanel";
+import type {
+  RehearsalTimingSnapshot,
+  TimingAdviceState,
+} from "../../presenter-shell/panel/rehearsalTiming";
+import type { LiveSttPort, LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
 import {
   p3AsrLikeFinalTranscript,
   p3CleanFinalTranscript,
@@ -14,7 +17,7 @@ import {
   buildBiasPhrasesForSlide,
   createP3RehearsalSession
 } from "./p3RehearsalSession";
-import { createSpeechTracker } from "./speechTracker";
+import { createSpeechTracker } from "../../../runtime/speech/tracking/speechTracker";
 
 describe("P3 speech fixture harness", () => {
   it("drives sentence and keyword state from deterministic final transcripts", async () => {

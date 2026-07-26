@@ -1,9 +1,9 @@
-import { normalizeRichTextProps } from "@orbit/editor-core";
+import { normalizeRichTextProps } from "@orbit/editor-core/text";
 import type {
   TextElementParagraph,
   TextElementProps,
   TextElementRun,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 
 export type ContentEditableLogicalRange = { end: number; start: number };
 

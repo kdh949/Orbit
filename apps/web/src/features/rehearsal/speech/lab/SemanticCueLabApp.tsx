@@ -1,28 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { semanticCueSchema, type SemanticCue } from "@orbit/shared";
+import { semanticCueSchema, type SemanticCue } from "@orbit/shared/deck";
 
-import { getE5EmbeddingService } from "../e5EmbeddingService";
-import { createBrowserTransformersSemanticCueNliProvider } from "../browserSemanticCueNliProvider";
+import { getE5EmbeddingService } from "../../../../runtime/speech/semantic/e5EmbeddingService";
+import { createBrowserTransformersSemanticCueNliProvider } from "../../../../runtime/speech/semantic/nli/browserSemanticCueNliProvider";
 import {
   createSemanticCueEmbeddingIndex,
   type SemanticCueEmbeddingIndex
-} from "../semanticCueEmbeddingIndex";
-import type { SemanticCueNliProvider } from "../semanticCueNliProvider";
+} from "../../../../runtime/speech/semantic/cue/semanticCueEmbeddingIndex";
+import type { SemanticCueNliProvider } from "../../../../runtime/speech/semantic/nli/semanticCueNliProvider";
 import {
   createSemanticCueRuntime,
   type SemanticCueRuntimeResult
-} from "../semanticCueRuntime";
+} from "../../../../runtime/speech/semantic/cue/semanticCueRuntime";
 import {
   semanticCueRuntimeConfig,
   type SemanticCueRuntimeConfig
-} from "../semanticCueRuntimeConfig";
+} from "../../../../runtime/speech/semantic/cue/semanticCueRuntimeConfig";
 import {
   defaultSemanticCueCombinerConfig,
   type SemanticCueCombinerConfig
-} from "../semanticCueScoreCombiner";
-import { createLiveSttPort } from "../../stt/liveSttEngineRegistry";
-import type { LiveSttEngineId, LiveSttPort } from "../../stt/liveSttPort";
+} from "../../../../runtime/speech/semantic/cue/semanticCueScoreCombiner";
+import { createLiveSttPort } from "../../../../runtime/speech/stt/liveSttEngineRegistry";
+import type { LiveSttEngineId, LiveSttPort } from "../../../../runtime/speech/stt/liveSttPort";
 import { semanticCueLabPresets } from "./semanticCueLabPresets";
 
 const NLI_MODEL_ID = "MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli";

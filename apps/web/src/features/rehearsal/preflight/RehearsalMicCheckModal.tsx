@@ -5,7 +5,7 @@ import {
   readRehearsalMicrophoneDeviceId,
   writeRehearsalMicrophoneDeviceId,
 } from "../../presenter-shell/microphoneSettings";
-import "./rehearsal-mic-check-modal.css";
+import "../../presenter-shell/rehearsal-mic-check-modal.css";
 
 type MicrophonePermission = "checking" | "granted" | "prompt" | "denied" | "unsupported";
 const microphoneVoiceTimeoutMs = 8000;

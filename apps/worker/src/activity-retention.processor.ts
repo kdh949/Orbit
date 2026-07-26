@@ -7,8 +7,8 @@ import {
   buildActivityAggregates,
   calculateActivityResponseRate,
   type ActivityAnswer,
-  type Job,
-} from "@orbit/shared";
+} from "@orbit/shared/activities";
+import { type Job } from "@orbit/shared/jobs";
 import type { DataSource, EntityManager } from "typeorm";
 
 type SessionRow = {

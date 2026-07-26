@@ -12,7 +12,7 @@ import {
   readRehearsalMicrophoneDeviceId,
   writeRehearsalMicrophoneDeviceId,
 } from "../presenter-shell/microphoneSettings";
-import "../rehearsal/preflight/rehearsal-mic-check-modal.css";
+import "../presenter-shell/rehearsal-mic-check-modal.css";
 
 type PermissionState =
   | "checking"

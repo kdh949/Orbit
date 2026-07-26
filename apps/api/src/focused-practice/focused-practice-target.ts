@@ -1,10 +1,10 @@
 import {
   normalizeFocusedPracticeSentenceText,
   splitFocusedPracticeSentences,
-  type Deck,
   type FocusedPracticeTargetScope,
-  type RehearsalEvaluationSnapshot,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
+import { type Deck } from "@orbit/shared/deck";
+import { type RehearsalEvaluationSnapshot } from "@orbit/shared/rehearsals";
 import { createHash } from "node:crypto";
 
 export type FocusedPracticeTargetResolution = {

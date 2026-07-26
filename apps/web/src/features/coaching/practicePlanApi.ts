@@ -1,4 +1,7 @@
-import { practicePlanResponseSchema, type PracticePlanResponse } from "@orbit/shared";
+import {
+  practicePlanResponseSchema,
+  type PracticePlanResponse,
+} from "@orbit/shared/coaching";
 
 type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 

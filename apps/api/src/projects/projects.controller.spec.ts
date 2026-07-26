@@ -1,5 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
-import { demoIds } from "@orbit/shared";
+import { demoIds } from "@orbit/shared/common";
 import { describe, expect, it, vi } from "vitest";
 import { ProjectsController } from "./projects.controller";
 import { ProjectsService } from "./projects.service";

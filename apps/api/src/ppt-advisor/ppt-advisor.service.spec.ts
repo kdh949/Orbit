@@ -1,4 +1,4 @@
-import type { PptAdvisorRequest } from "@orbit/shared";
+import type { PptAdvisorRequest } from "@orbit/shared/deck";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PptAdvisorService } from "./ppt-advisor.service";
 

@@ -2,7 +2,7 @@ import {
   type CommunityTemplateCategory,
   type CommunityTemplateDiscoverCard,
   type CommunityTemplateSort,
-} from "@orbit/shared";
+} from "@orbit/shared/community-templates";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   IconAdjustmentsHorizontal,

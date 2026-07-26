@@ -1,5 +1,5 @@
 import type { OrbitConfig } from "@orbit/config";
-import { companionAccessScopeSchema } from "@orbit/shared";
+import { companionAccessScopeSchema } from "@orbit/shared/presentation";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import type { CookieOptions } from "express";
 import { z } from "zod";

@@ -1,11 +1,11 @@
-import { validateSlideAnimations } from "../../../../../../../packages/editor-core/src/index";
+import { validateSlideAnimations } from "@orbit/editor-core/patches";
 import type {
   CustomShapeElementProps,
   Deck,
   DeckAnimation,
   DeckElement,
-  Slide
-} from "@orbit/shared";
+  Slide,
+} from "@orbit/shared/deck";
 import type { ComponentProps } from "react";
 
 import { getCustomShapeAbsoluteNodes } from "../../canvas/custom-shape/geometry";

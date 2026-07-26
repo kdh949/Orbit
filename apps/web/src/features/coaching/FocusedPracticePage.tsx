@@ -1,4 +1,9 @@
-import type { Deck, FocusedPracticeAttempt, FocusedPracticeTargetScope, PracticePlanResponse } from "@orbit/shared";
+import type {
+  FocusedPracticeAttempt,
+  FocusedPracticeTargetScope,
+  PracticePlanResponse,
+} from "@orbit/shared/coaching";
+import type { Deck } from "@orbit/shared/deck";
 import {
   IconArrowLeft,
   IconArrowRight,

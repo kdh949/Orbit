@@ -2,9 +2,9 @@ import type {
   ActivityPresenterResult,
   ActivityRun,
   ActivityRuntimeStatus,
-  ActivitySlide,
-  ModerateActivityTextRequest
-} from "@orbit/shared";
+  ModerateActivityTextRequest,
+} from "@orbit/shared/activities";
+import type { ActivitySlide } from "@orbit/shared/deck";
 import {
   IconChartBar,
   IconExternalLink,

@@ -1,9 +1,9 @@
-import type { Deck, GroupElementProps, Slide } from "@orbit/shared";
-import type { ElementPresentationState } from "./ReadOnlySlideCanvas";
+import type { Deck, GroupElementProps, Slide } from "@orbit/shared/deck";
+import type { ElementPresentationState } from "../../../runtime/presentation/slideshow/elementPresentationState";
 import {
   normalizeRenderableElement,
   usesSourceSlideSnapshot
-} from "./elementNormalization";
+} from "../../../runtime/presentation/slideshow/elementNormalization";
 
 export function getHighlightOverlayElements(args: {
   activeHighlightElementIds: Set<string>;

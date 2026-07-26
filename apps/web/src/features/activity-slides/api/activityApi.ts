@@ -1,5 +1,4 @@
 import {
-  audiencePresentationAccessResponseSchema,
   ensureActivityRunResponseSchema,
   getCurrentActivityRunResponseSchema,
   getPresentationSessionResultsResponseSchema,
@@ -7,26 +6,31 @@ import {
   getActivityPublicResultResponseSchema,
   getAudienceActiveActivityResponseSchema,
   getAudienceActivityResponseSchema,
+  moderateActivityTextResponseSchema,
+  supersedeActivityRunResponseSchema,
+  updateActivityRunStatusResponseSchema,
+  upsertActivityResponseResponseSchema,
+} from "@orbit/shared/activities";
+import {
+  audiencePresentationAccessResponseSchema,
   getAudiencePresentationPublicInfoResponseSchema,
   getCurrentPresentationSessionResponseSchema,
   listPresentationSessionsResponseSchema,
-  moderateActivityTextResponseSchema,
   presenterAccessResponseSchema,
   presentationSessionResponseSchema,
   presentationSessionWithAudienceUrlResponseSchema,
-  supersedeActivityRunResponseSchema,
-  updateActivityRunStatusResponseSchema,
-  upsertActivityResponseResponseSchema
-} from "@orbit/shared";
+} from "@orbit/shared/presentation";
 import type {
-  CreatePresentationSessionRequest,
-  JoinAudiencePresentationRequest,
   ModerateActivityTextRequest,
   SupersedeActivityRunRequest,
   UpdateActivityRunStatusRequest,
-  UpsertActivityResponseRequest
-} from "@orbit/shared";
-import type { DeletePresentationSessionResultsRequest } from "@orbit/shared";
+  UpsertActivityResponseRequest,
+} from "@orbit/shared/activities";
+import type {
+  CreatePresentationSessionRequest,
+  JoinAudiencePresentationRequest,
+} from "@orbit/shared/presentation";
+import type { DeletePresentationSessionResultsRequest } from "@orbit/shared/activities";
 export const activityApi = {
   getCurrentSession(projectId: string, deckId: string) {
     return request(
