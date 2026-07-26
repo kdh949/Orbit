@@ -38,6 +38,9 @@ instead of introducing a parallel token or component system.
 - UI refactoring must not change API calls, Zustand state, routing, or report schema.
 - Do not mix visual redesign and business-logic changes in the same task.
 - Keep each change buildable.
+- When the domain is registered, prefer
+  `pnpm verify:scope web:<domain> --dry-run` followed by the same command
+  without `--dry-run`.
 - Run targeted tests through Turbo so workspace dependencies are built first:
   `pnpm turbo run test --filter=@orbit/web -- <test-path>`.
 - Run `pnpm turbo run typecheck --filter=@orbit/web`.

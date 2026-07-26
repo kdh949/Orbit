@@ -41,9 +41,12 @@
     "services/python-worker/tests/test_generate_deck_contract.py"
   ],
   "fastChecks": [
-    "pnpm turbo run test --filter=@orbit/web -- src/features/ai-ppt/AiDeckGenerationPage.test.tsx",
-    "pnpm turbo run test --filter=@orbit/api -- src/generate-deck/generate-deck.service.spec.ts",
-    "pnpm turbo run test --filter=@orbit/worker -- src/generate-deck/execution-stage.processor.spec.ts",
+    "pnpm turbo run typecheck --filter=@orbit/web --env-mode=loose",
+    "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/features/ai-ppt/AiDeckGenerationPage.test.tsx",
+    "pnpm turbo run typecheck --filter=@orbit/api --env-mode=loose",
+    "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/generate-deck/generate-deck.service.spec.ts",
+    "pnpm turbo run typecheck --filter=@orbit/worker --env-mode=loose",
+    "pnpm turbo run test --filter=@orbit/worker --env-mode=loose -- src/generate-deck/execution-stage.processor.spec.ts",
     "cd services/python-worker && uv run pytest tests/test_generate_deck_facade.py"
   ],
   "fullCheckTriggers": [

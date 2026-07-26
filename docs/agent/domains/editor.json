@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "editor",
+  "aliases": ["decks"],
   "summary": "Deck 편집 shell, canvas command, patch, 저장, history",
   "ownedPaths": [
     "apps/web/src/features/editor/**",
@@ -33,9 +34,12 @@
     "apps/api/src/decks/decks.service.spec.ts"
   ],
   "fastChecks": [
-    "pnpm turbo run test --filter=@orbit/web -- src/features/editor/shell/EditorShell.test.tsx",
-    "pnpm turbo run test --filter=@orbit/editor-core -- src/patches/applyPatch.test.ts",
-    "pnpm turbo run test --filter=@orbit/api -- src/decks/decks.service.spec.ts"
+    "pnpm turbo run typecheck --filter=@orbit/web --env-mode=loose",
+    "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/features/editor/shell/EditorShell.test.tsx",
+    "pnpm turbo run typecheck --filter=@orbit/editor-core --env-mode=loose",
+    "pnpm turbo run test --filter=@orbit/editor-core --env-mode=loose -- src/patches/applyPatch.test.ts",
+    "pnpm turbo run typecheck --filter=@orbit/api --env-mode=loose",
+    "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/decks/decks.service.spec.ts"
   ],
   "fullCheckTriggers": [
     "Deck 또는 Patch schema 변경",

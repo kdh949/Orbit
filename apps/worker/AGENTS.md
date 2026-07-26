@@ -30,6 +30,9 @@ These rules apply to `apps/worker`.
 
 - Every retry, recovery, idempotency, or terminal-state change requires a
   regression test for duplicate execution and partial failure.
+- When the domain is registered, prefer
+  `pnpm verify:scope worker:<domain> --dry-run` followed by the same command
+  without `--dry-run`.
 - Run the narrowest processor test first:
 
 ```bash

@@ -38,6 +38,9 @@ These rules apply to `apps/api`.
 
 - Add or update a focused `*.spec.ts` when changing service, controller,
   repository, or authorization behavior.
+- When the domain is registered, prefer
+  `pnpm verify:scope api:<domain> --dry-run` followed by the same command
+  without `--dry-run`.
 - Prefer the narrowest test file first:
 
 ```bash
