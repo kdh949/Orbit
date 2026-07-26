@@ -53,7 +53,7 @@ from app.ai.pptx_design_importer import (
     ImportedDesignAsset,
     PptxDesignImportResult,
 )
-from app.ai.pptx_ooxml_generation import (
+from app.ai.pptx.facade import (
     PptxImportPreference,
     PptxOoxmlGenerationError,
     PptxOoxmlGenerationResult,
