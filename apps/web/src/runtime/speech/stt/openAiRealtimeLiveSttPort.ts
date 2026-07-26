@@ -1,6 +1,6 @@
-import { realtimeTranscriptionClientSecretResponseSchema } from "@orbit/shared";
-import type { LiveSttAudioLevelEvent } from "../liveStt";
-import { calculatePcmAudioLevel } from "../liveSttAudioLevel";
+import { realtimeTranscriptionClientSecretResponseSchema } from "@orbit/shared/rehearsals";
+import type { LiveSttAudioLevelEvent } from "./liveSttAdapter";
+import { calculatePcmAudioLevel } from "./liveSttAudioLevel";
 import {
   LiveSttError,
   normalizeLiveSttBiasPhrases,
@@ -9,13 +9,13 @@ import {
   type LiveSttPort,
   type LiveSttResult,
   type LiveSttSessionConfig,
-  type LiveSttUnsubscribe
-} from "../../../runtime/speech/stt/liveSttPort";
+  type LiveSttUnsubscribe,
+} from "./liveSttPort";
 
 type OpenAiRealtimeDataChannel = {
   addEventListener: (
     type: "error" | "message" | "open",
-    listener: (event: Event) => void
+    listener: (event: Event) => void,
   ) => void;
   close: () => void;
   readyState?: RTCDataChannelState;
@@ -23,12 +23,19 @@ type OpenAiRealtimeDataChannel = {
 };
 
 type OpenAiRealtimePeerConnection = {
-  addTrack: (track: MediaStreamTrack, ...streams: MediaStream[]) => RTCRtpSender;
+  addTrack: (
+    track: MediaStreamTrack,
+    ...streams: MediaStream[]
+  ) => RTCRtpSender;
   close: () => void;
   createDataChannel: (label: string) => OpenAiRealtimeDataChannel;
   createOffer: () => Promise<RTCSessionDescriptionInit>;
-  setLocalDescription: (description: RTCSessionDescriptionInit) => Promise<void>;
-  setRemoteDescription: (description: RTCSessionDescriptionInit) => Promise<void>;
+  setLocalDescription: (
+    description: RTCSessionDescriptionInit,
+  ) => Promise<void>;
+  setRemoteDescription: (
+    description: RTCSessionDescriptionInit,
+  ) => Promise<void>;
 };
 
 type AudioLevelMeter = {
@@ -39,7 +46,7 @@ type OpenAiRealtimeLiveSttPortOptions = {
   projectId: string;
   createAudioLevelMeter?: (
     stream: MediaStream,
-    onAudioLevel?: (event: LiveSttAudioLevelEvent) => void
+    onAudioLevel?: (event: LiveSttAudioLevelEvent) => void,
   ) => AudioLevelMeter;
   createPeerConnection?: () => OpenAiRealtimePeerConnection;
   commitIntervalMs?: number;
@@ -57,7 +64,7 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
     onDevice: false,
     streaming: true,
     keywordBiasing: false,
-    languages: ["ko"]
+    languages: ["ko"],
   };
 
   readonly projectId: string;
@@ -70,9 +77,11 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
   private readonly createPeerConnection: () => OpenAiRealtimePeerConnection;
   private readonly createAudioLevelMeter: (
     stream: MediaStream,
-    onAudioLevel?: (event: LiveSttAudioLevelEvent) => void
+    onAudioLevel?: (event: LiveSttAudioLevelEvent) => void,
   ) => AudioLevelMeter;
-  private readonly resultSubscribers = new Set<(result: LiveSttResult) => void>();
+  private readonly resultSubscribers = new Set<
+    (result: LiveSttResult) => void
+  >();
   private readonly errorSubscribers = new Set<(error: LiveSttError) => void>();
   private readonly partialTextByEventKey = new Map<
     RealtimeTranscriptEventKey,
@@ -98,7 +107,8 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
     this.commitIntervalMs =
       options.commitIntervalMs ?? OPENAI_REALTIME_AUDIO_COMMIT_INTERVAL_MS;
     this.pendingAudioRmsDbThreshold =
-      options.pendingAudioRmsDbThreshold ?? OPENAI_REALTIME_PENDING_AUDIO_RMS_DB;
+      options.pendingAudioRmsDbThreshold ??
+      OPENAI_REALTIME_PENDING_AUDIO_RMS_DB;
     this.createPeerConnection =
       options.createPeerConnection ?? createDefaultPeerConnection;
     this.createAudioLevelMeter =
@@ -110,7 +120,7 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
     if (!audioTrack) {
       throw new LiveSttError(
         "start_failed",
-        "OpenAI Realtime STT를 시작할 마이크 오디오 트랙을 찾지 못했습니다."
+        "OpenAI Realtime STT를 시작할 마이크 오디오 트랙을 찾지 못했습니다.",
       );
     }
 
@@ -125,7 +135,7 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
       this.peerConnection = peerConnection;
       this.audioLevelMeter = this.createAudioLevelMeter(
         config.audioSource,
-        this.handleAudioLevel
+        this.handleAudioLevel,
       );
 
       peerConnection.addTrack(audioTrack, config.audioSource);
@@ -139,7 +149,7 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
       if (!offer.sdp) {
         throw new LiveSttError(
           "start_failed",
-          "OpenAI Realtime SDP offer를 만들지 못했습니다."
+          "OpenAI Realtime SDP offer를 만들지 못했습니다.",
         );
       }
 
@@ -150,22 +160,22 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
           body: offer.sdp,
           headers: {
             Authorization: `Bearer ${token.clientSecret}`,
-            "Content-Type": "application/sdp"
+            "Content-Type": "application/sdp",
           },
-          method: "POST"
-        }
+          method: "POST",
+        },
       );
 
       if (!sdpResponse.ok) {
         throw new LiveSttError(
           "start_failed",
-          `OpenAI Realtime SDP handshake failed: ${sdpResponse.status}`
+          `OpenAI Realtime SDP handshake failed: ${sdpResponse.status}`,
         );
       }
 
       await peerConnection.setRemoteDescription({
         type: "answer",
-        sdp: await sdpResponse.text()
+        sdp: await sdpResponse.text(),
       });
     } catch (error) {
       await this.stop();
@@ -218,12 +228,12 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
   private async fetchClientSecret() {
     const response = await this.fetcher(
       `/api/v1/projects/${encodeURIComponent(
-        this.projectId
+        this.projectId,
       )}/realtime-transcription/client-secret`,
       {
         credentials: "include",
-        method: "POST"
-      }
+        method: "POST",
+      },
     );
 
     if (!response.ok) {
@@ -231,25 +241,27 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
         "start_failed",
         await readResponseError(
           response,
-          `OpenAI Realtime client secret request failed: ${response.status}`
-        )
+          `OpenAI Realtime client secret request failed: ${response.status}`,
+        ),
       );
     }
 
     return realtimeTranscriptionClientSecretResponseSchema.parse(
-      await response.json()
+      await response.json(),
     );
   }
 
   private readonly handleDataChannelMessage = (event: Event) => {
     try {
-      this.handleRealtimeEvent(JSON.parse(String((event as MessageEvent).data)));
+      this.handleRealtimeEvent(
+        JSON.parse(String((event as MessageEvent).data)),
+      );
     } catch {
       this.emitError(
         new LiveSttError(
           "runtime_error",
-          "OpenAI Realtime 이벤트를 해석하지 못했습니다."
-        )
+          "OpenAI Realtime 이벤트를 해석하지 못했습니다.",
+        ),
       );
     }
   };
@@ -260,7 +272,10 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
 
   private readonly handleDataChannelError = () => {
     this.emitError(
-      new LiveSttError("runtime_error", "OpenAI Realtime data channel 오류입니다.")
+      new LiveSttError(
+        "runtime_error",
+        "OpenAI Realtime data channel 오류입니다.",
+      ),
     );
   };
 
@@ -304,16 +319,16 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
     try {
       dataChannel.send(
         JSON.stringify({
-          type: "input_audio_buffer.commit"
-        })
+          type: "input_audio_buffer.commit",
+        }),
       );
       this.hasPendingAudioForCommit = false;
     } catch {
       this.emitError(
         new LiveSttError(
           "runtime_error",
-          "OpenAI Realtime audio buffer commit에 실패했습니다."
-        )
+          "OpenAI Realtime audio buffer commit에 실패했습니다.",
+        ),
       );
     }
   }
@@ -328,7 +343,9 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
       return;
     }
 
-    if (event.type === "conversation.item.input_audio_transcription.completed") {
+    if (
+      event.type === "conversation.item.input_audio_transcription.completed"
+    ) {
       this.handleTranscriptCompleted(event);
     }
   }
@@ -344,7 +361,7 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
     this.partialTextByEventKey.set(key, next);
     this.emitTranscript(next, false, {
       utteranceId: getRealtimeTranscriptUtteranceId(event),
-      resultRevision: this.incrementResultRevision(key)
+      resultRevision: this.incrementResultRevision(key),
     });
   }
 
@@ -353,11 +370,11 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
     const transcript =
       typeof event.transcript === "string"
         ? event.transcript
-        : this.partialTextByEventKey.get(key) ?? "";
+        : (this.partialTextByEventKey.get(key) ?? "");
     this.partialTextByEventKey.delete(key);
     this.emitTranscript(transcript, true, {
       utteranceId: getRealtimeTranscriptUtteranceId(event),
-      resultRevision: this.incrementResultRevision(key)
+      resultRevision: this.incrementResultRevision(key),
     });
   }
 
@@ -373,7 +390,7 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
     identity: {
       utteranceId: string | null;
       resultRevision: number;
-    }
+    },
   ) {
     const transcript = text.trim();
     if (!transcript || this.startedAtMs === null) {
@@ -388,8 +405,8 @@ export class OpenAiRealtimeLiveSttPort implements LiveSttPort {
         ? {}
         : {
             utteranceId: identity.utteranceId,
-            resultRevision: identity.resultRevision
-          })
+            resultRevision: identity.resultRevision,
+          }),
     });
   }
 
@@ -416,21 +433,22 @@ function createDefaultPeerConnection(): OpenAiRealtimePeerConnection {
   if (typeof RTCPeerConnection === "undefined") {
     throw new LiveSttError(
       "unsupported_runtime",
-      "이 브라우저는 OpenAI Realtime WebRTC 연결을 지원하지 않습니다."
+      "이 브라우저는 OpenAI Realtime WebRTC 연결을 지원하지 않습니다.",
     );
   }
 
   return new RTCPeerConnection() as OpenAiRealtimePeerConnection;
 }
 
-const defaultFetch: typeof fetch = (input, init) => globalThis.fetch(input, init);
+const defaultFetch: typeof fetch = (input, init) =>
+  globalThis.fetch(input, init);
 
 const OPENAI_REALTIME_AUDIO_COMMIT_INTERVAL_MS = 1500;
 const OPENAI_REALTIME_PENDING_AUDIO_RMS_DB = -75;
 
 function createAnalyserAudioLevelMeter(
   stream: MediaStream,
-  onAudioLevel?: (event: LiveSttAudioLevelEvent) => void
+  onAudioLevel?: (event: LiveSttAudioLevelEvent) => void,
 ): AudioLevelMeter {
   if (!onAudioLevel || typeof window === "undefined" || !window.AudioContext) {
     return noopAudioLevelMeter;
@@ -454,12 +472,12 @@ function createAnalyserAudioLevelMeter(
       source.disconnect();
       analyser.disconnect();
       void audioContext.close().catch(() => undefined);
-    }
+    },
   };
 }
 
 const noopAudioLevelMeter: AudioLevelMeter = {
-  stop() {}
+  stop() {},
 };
 
 function getRealtimeTranscriptEventKey(event: Record<string, unknown>) {
@@ -473,7 +491,7 @@ function getRealtimeTranscriptEventKey(event: Record<string, unknown>) {
 }
 
 function getRealtimeTranscriptUtteranceId(
-  event: Record<string, unknown>
+  event: Record<string, unknown>,
 ): string | null {
   if (typeof event.item_id !== "string" || event.item_id.length === 0) {
     return null;
@@ -489,7 +507,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isDataChannelOpen(dataChannel: OpenAiRealtimeDataChannel) {
-  return dataChannel.readyState === undefined || dataChannel.readyState === "open";
+  return (
+    dataChannel.readyState === undefined || dataChannel.readyState === "open"
+  );
 }
 
 async function readResponseError(response: Response, fallbackMessage: string) {
@@ -512,6 +532,6 @@ function toLiveSttError(error: unknown, fallbackMessage: string) {
 
   return new LiveSttError(
     "start_failed",
-    error instanceof Error ? error.message : fallbackMessage
+    error instanceof Error ? error.message : fallbackMessage,
   );
 }

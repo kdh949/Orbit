@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculatePcmAudioLevel,
-  liveSttAudioLevelFloorDb
+  liveSttAudioLevelFloorDb,
 } from "./liveSttAudioLevel";
 
 describe("calculatePcmAudioLevel", () => {
@@ -14,13 +14,13 @@ describe("calculatePcmAudioLevel", () => {
       peak: 0,
       rmsDb: liveSttAudioLevelFloorDb,
       peakDb: liveSttAudioLevelFloorDb,
-      isLikelySilence: true
+      isLikelySilence: true,
     });
   });
 
   it("calculates RMS, peak, and dB values for audible PCM", () => {
     const level = calculatePcmAudioLevel(
-      new Float32Array([0, 0.5, -0.5, 1, -1])
+      new Float32Array([0, 0.5, -0.5, 1, -1]),
     );
 
     expect(level.type).toBe("audio-level");

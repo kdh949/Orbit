@@ -1,11 +1,11 @@
-import type { LiveSttAudioLevelEvent } from "./liveStt";
+import type { LiveSttAudioLevelEvent } from "./liveSttAdapter";
 
 export const defaultLiveSttSilenceThresholdDb = -55;
 export const liveSttAudioLevelFloorDb = -100;
 
 export function calculatePcmAudioLevel(
   samples: Float32Array,
-  options: { silenceThresholdDb?: number } = {}
+  options: { silenceThresholdDb?: number } = {},
 ): LiveSttAudioLevelEvent {
   const silenceThresholdDb =
     options.silenceThresholdDb ?? defaultLiveSttSilenceThresholdDb;
@@ -29,7 +29,7 @@ export function calculatePcmAudioLevel(
 function createAudioLevelEvent(
   rms: number,
   peak: number,
-  silenceThresholdDb: number
+  silenceThresholdDb: number,
 ): LiveSttAudioLevelEvent {
   const rmsDb = amplitudeToDecibels(rms);
   const peakDb = amplitudeToDecibels(peak);
@@ -40,7 +40,7 @@ function createAudioLevelEvent(
     peak,
     rmsDb,
     peakDb,
-    isLikelySilence: rmsDb <= silenceThresholdDb
+    isLikelySilence: rmsDb <= silenceThresholdDb,
   };
 }
 

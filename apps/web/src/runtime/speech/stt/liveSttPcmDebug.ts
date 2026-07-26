@@ -14,7 +14,7 @@ export type LiveSttDebugPcmRecording = {
 };
 
 export function isLiveSttPcmDebugEnabled(
-  storage: Pick<Storage, "getItem"> | null = readBrowserLocalStorage()
+  storage: Pick<Storage, "getItem"> | null = readBrowserLocalStorage(),
 ) {
   try {
     return storage?.getItem(liveSttPcmDebugStorageKey) === "1";
@@ -25,7 +25,7 @@ export function isLiveSttPcmDebugEnabled(
 
 export function createLiveSttPcmDebugRecorder(
   sampleRate: number,
-  now: () => Date = () => new Date()
+  now: () => Date = () => new Date(),
 ) {
   const normalizedSampleRate = normalizeSampleRate(sampleRate);
   const maxSamples = normalizedSampleRate * maxDebugPcmDurationSeconds;
@@ -48,7 +48,10 @@ export function createLiveSttPcmDebugRecorder(
 
       let offset = 0;
       while (offset < samples.length) {
-        const writable = Math.min(samples.length - offset, maxSamples - writeIndex);
+        const writable = Math.min(
+          samples.length - offset,
+          maxSamples - writeIndex,
+        );
         buffer.set(samples.subarray(offset, offset + writable), writeIndex);
         writeIndex = (writeIndex + writable) % maxSamples;
         offset += writable;
@@ -70,7 +73,7 @@ export function createLiveSttPcmDebugRecorder(
         sampleRate: normalizedSampleRate,
         durationMs: Math.round((samples.length / normalizedSampleRate) * 1000),
         peak: stats.peak,
-        rms: stats.rms
+        rms: stats.rms,
       };
     },
 
@@ -78,7 +81,7 @@ export function createLiveSttPcmDebugRecorder(
       writeIndex = 0;
       sampleCount = 0;
       buffer.fill(0);
-    }
+    },
   };
 }
 
@@ -103,7 +106,11 @@ export function encodePcm16Wav(samples: Float32Array, sampleRate: number) {
   view.setUint32(40, dataByteLength, true);
 
   for (let index = 0; index < samples.length; index += 1) {
-    view.setInt16(wavHeaderByteLength + index * 2, floatToPcm16(samples[index] ?? 0), true);
+    view.setInt16(
+      wavHeaderByteLength + index * 2,
+      floatToPcm16(samples[index] ?? 0),
+      true,
+    );
   }
 
   return new Blob([arrayBuffer], { type: "audio/wav" });
@@ -124,7 +131,7 @@ export function calculatePcmStats(samples: Float32Array) {
 
   return {
     peak,
-    rms: Math.sqrt(sumSquares / samples.length)
+    rms: Math.sqrt(sumSquares / samples.length),
   };
 }
 
@@ -149,7 +156,7 @@ function normalizeSampleRate(sampleRate: number) {
 function readBufferedSamples(
   buffer: Float32Array,
   writeIndex: number,
-  sampleCount: number
+  sampleCount: number,
 ) {
   if (sampleCount < buffer.length) {
     return buffer.slice(0, sampleCount);

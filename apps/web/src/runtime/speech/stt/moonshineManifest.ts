@@ -1,6 +1,5 @@
 export const defaultMoonshineModelId = "moonshine-korean-local";
-export const defaultMoonshineManifestUrl =
-  `/models/live-stt/moonshine/${defaultMoonshineModelId}/manifest.json`;
+export const defaultMoonshineManifestUrl = `/models/live-stt/moonshine/${defaultMoonshineModelId}/manifest.json`;
 
 export type MoonshineModelManifest = {
   provider: "moonshine";
@@ -41,27 +40,29 @@ export async function loadMoonshineModelManifest(
   options: {
     manifestUrl?: string;
     fetcher?: typeof fetch;
-  } = {}
+  } = {},
 ) {
   const manifestUrl = options.manifestUrl ?? defaultMoonshineManifestUrl;
   const fetcher = options.fetcher ?? fetch;
   const response = await fetcher(manifestUrl, {
-    headers: { accept: "application/json" }
+    headers: { accept: "application/json" },
   });
 
   if (!response.ok) {
-    throw new Error(`Moonshine model manifest is unavailable: ${response.status}`);
+    throw new Error(
+      `Moonshine model manifest is unavailable: ${response.status}`,
+    );
   }
 
   return resolveMoonshineModelManifest(
     parseMoonshineModelManifest(await response.json()),
-    manifestUrl
+    manifestUrl,
   );
 }
 
 export function resolveMoonshineModelManifest(
   manifest: MoonshineModelManifest,
-  manifestUrl: string
+  manifestUrl: string,
 ): ResolvedMoonshineModelManifest {
   const baseUrl = resolveManifestUrl(manifest.baseUrl, manifestUrl);
 
@@ -76,14 +77,14 @@ export function resolveMoonshineModelManifest(
         : null,
       data: manifest.runtime.data
         ? resolveAssetUrl(manifest.runtime.data, baseUrl)
-        : null
+        : null,
     },
     model: {
       model: resolveAssetUrl(manifest.model.model, baseUrl),
       tokens: manifest.model.tokens
         ? resolveAssetUrl(manifest.model.tokens, baseUrl)
-        : null
-    }
+        : null,
+    },
   };
 }
 
@@ -115,17 +116,20 @@ function parseMoonshineModelManifest(value: unknown): MoonshineModelManifest {
     runtime: {
       worker: readString(runtime, "worker"),
       wasm: readOptionalString(runtime, "wasm"),
-      data: readOptionalString(runtime, "data")
+      data: readOptionalString(runtime, "data"),
     },
     model: {
       model: readString(model, "model"),
-      tokens: readOptionalString(model, "tokens")
-    }
+      tokens: readOptionalString(model, "tokens"),
+    },
   };
 }
 
 function resolveManifestUrl(path: string, manifestUrl: string) {
-  return new URL(path || ".", new URL(manifestUrl, readLocationHref())).toString();
+  return new URL(
+    path || ".",
+    new URL(manifestUrl, readLocationHref()),
+  ).toString();
 }
 
 function resolveAssetUrl(path: string, baseUrl: string) {
@@ -144,7 +148,9 @@ function readRecord(record: Record<string, unknown>, key: string) {
 function readString(record: Record<string, unknown>, key: string) {
   const value = record[key];
   if (typeof value !== "string" || !value.trim()) {
-    throw new Error(`Moonshine model manifest ${key} must be a non-empty string.`);
+    throw new Error(
+      `Moonshine model manifest ${key} must be a non-empty string.`,
+    );
   }
 
   return value;
@@ -166,7 +172,9 @@ function readOptionalString(record: Record<string, unknown>, key: string) {
 function readPositiveInteger(record: Record<string, unknown>, key: string) {
   const value = record[key];
   if (!Number.isInteger(value) || Number(value) <= 0) {
-    throw new Error(`Moonshine model manifest ${key} must be a positive integer.`);
+    throw new Error(
+      `Moonshine model manifest ${key} must be a positive integer.`,
+    );
   }
 
   return Number(value);

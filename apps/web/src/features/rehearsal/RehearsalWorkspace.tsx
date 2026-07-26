@@ -129,11 +129,11 @@ import {
   type LiveSttBiasSource,
   type LiveSttBiasTerm,
   type LiveSttDecodingMethod,
-} from "./liveStt";
+} from "../../runtime/speech/stt/liveSttAdapter";
 import {
   isLiveSttPcmDebugEnabled,
   type LiveSttDebugPcmRecording,
-} from "./liveSttPcmDebug";
+} from "../../runtime/speech/stt/liveSttPcmDebug";
 import {
   confirmRehearsalCommandCandidate,
   createRehearsalCommandConfirmationState,
@@ -324,7 +324,7 @@ export {
   type LiveSttAdapter,
   type LiveSttAudioLevelEvent,
   type LiveSttCallbacks,
-} from "./liveStt";
+} from "../../runtime/speech/stt/liveSttAdapter";
 export {
   SherpaLiveSttAdapter,
   SherpaOnnxLiveSttAdapter,

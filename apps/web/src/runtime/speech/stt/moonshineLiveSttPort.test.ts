@@ -1,13 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
-import { runLiveSttPortContractTests } from "../../../runtime/speech/stt/liveSttPortContract";
-import { MoonshineLiveSttPort, type MoonshineRuntime } from "./moonshineLiveSttPort";
+import { runLiveSttPortContractTests } from "./liveSttPortContract";
+import {
+  MoonshineLiveSttPort,
+  type MoonshineRuntime,
+} from "./moonshineLiveSttPort";
 
 runLiveSttPortContractTests("Moonshine", () => {
   const runtime = new FakeMoonshineRuntime();
   const port = new MoonshineLiveSttPort({
-    fetcher: vi.fn(async () => jsonResponse(manifestFixture())) as unknown as typeof fetch,
+    fetcher: vi.fn(async () =>
+      jsonResponse(manifestFixture()),
+    ) as unknown as typeof fetch,
     createRuntime: () => runtime,
-    now: () => 1000
+    now: () => 1000,
   });
 
   return {
@@ -15,7 +20,7 @@ runLiveSttPortContractTests("Moonshine", () => {
     audioSource: fakeMediaStream(),
     emitResult: (result) => runtime.emitResult(result),
     emitError: (error) => runtime.emitError(error),
-    readBiasPhrases: () => port.readBiasPhrasesForTest()
+    readBiasPhrases: () => port.readBiasPhrasesForTest(),
   };
 });
 
@@ -27,7 +32,7 @@ describe("MoonshineLiveSttPort", () => {
       onDevice: true,
       streaming: false,
       keywordBiasing: false,
-      languages: ["ko"]
+      languages: ["ko"],
     });
   });
 
@@ -35,25 +40,27 @@ describe("MoonshineLiveSttPort", () => {
     const port = new MoonshineLiveSttPort({
       fetcher: vi.fn(async () => ({
         ok: false,
-        status: 404
+        status: 404,
       })) as unknown as typeof fetch,
-      now: () => 1000
+      now: () => 1000,
     });
 
     await expect(
-      port.start({ language: "ko", audioSource: fakeMediaStream() })
+      port.start({ language: "ko", audioSource: fakeMediaStream() }),
     ).rejects.toMatchObject({
-      code: "model_unavailable"
+      code: "model_unavailable",
     });
   });
 });
 
 class FakeMoonshineRuntime implements MoonshineRuntime {
-  onResult: ((result: {
-    text: string;
-    isFinal?: boolean;
-    confidence?: number;
-  }) => void) | null = null;
+  onResult:
+    | ((result: {
+        text: string;
+        isFinal?: boolean;
+        confidence?: number;
+      }) => void)
+    | null = null;
   onError: ((error: Error) => void) | null = null;
 
   async start(config: Parameters<MoonshineRuntime["start"]>[0]) {
@@ -69,7 +76,7 @@ class FakeMoonshineRuntime implements MoonshineRuntime {
     this.onResult?.({
       text: result.text,
       isFinal: result.isFinal,
-      confidence: result.confidence
+      confidence: result.confidence,
     });
   }
 
@@ -87,11 +94,11 @@ function manifestFixture() {
     sampleRate: 16000,
     language: "ko",
     runtime: {
-      worker: "moonshine-worker.js"
+      worker: "moonshine-worker.js",
     },
     model: {
-      model: "moonshine.onnx"
-    }
+      model: "moonshine.onnx",
+    },
   };
 }
 
@@ -99,7 +106,7 @@ function jsonResponse(body: unknown) {
   return {
     ok: true,
     status: 200,
-    json: async () => body
+    json: async () => body,
   };
 }
 

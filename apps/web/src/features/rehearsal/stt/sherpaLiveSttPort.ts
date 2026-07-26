@@ -4,8 +4,8 @@ import {
   type LiveSttAudioLevelEvent,
   type LiveSttBiasContext,
   type LiveSttDecodingMethod
-} from "../liveStt";
-import type { LiveSttDebugPcmRecording } from "../liveSttPcmDebug";
+} from "../../../runtime/speech/stt/liveSttAdapter";
+import type { LiveSttDebugPcmRecording } from "../../../runtime/speech/stt/liveSttPcmDebug";
 import { SherpaOnnxLiveSttAdapter } from "../sherpaOnnxLiveSttAdapter";
 import {
   LiveSttError,
