@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   classifyFormatStatus,
+  isLegacyFormatFragment,
   isSupportedFormatPath,
   parseFormatCheckArguments,
   parseRenameSources,
@@ -95,6 +96,26 @@ test("base부터 포맷되지 않은 파일은 기존 부채로 분류한다", (
       baseFormatted: false,
     }),
     "legacy",
+  );
+});
+
+test("기존 포맷 부채에서 그대로 추출한 새 fragment는 부채를 승계한다", () => {
+  const legacySource = ".legacy { color: red; }\n\n.next { color: blue; }\n";
+  const extracted = ".next { color: blue; }\n";
+
+  assert.equal(isLegacyFormatFragment(extracted, [legacySource]), true);
+  assert.equal(
+    classifyFormatStatus({
+      currentFormatted: false,
+      baseExists: false,
+      baseFormatted: false,
+      extractedFromLegacy: true,
+    }),
+    "legacy",
+  );
+  assert.equal(
+    isLegacyFormatFragment(".next { color: green; }\n", [legacySource]),
+    false,
   );
 });
 

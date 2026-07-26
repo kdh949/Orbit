@@ -16,6 +16,7 @@ import type { ReactNode } from "react";
 import { forwardRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readCssBundle } from "../../styles/readCssBundle.test-utils";
 import { RehearsalReportDocument } from "../reports/RehearsalReportDocument";
 import {
   RehearsalFlowError,
@@ -902,7 +903,7 @@ describe("RehearsalWorkspace", () => {
   });
 
   it("uses the neutral scrim behind report generation progress", () => {
-    const css = fs.readFileSync(globalStylesPath, "utf8");
+    const css = readCssBundle(globalStylesPath);
 
     expect(css).toMatch(
       /\.rehearsal-completion-modal-backdrop \{[^}]*background: var\(--redesign-color-scrim\);/s,
