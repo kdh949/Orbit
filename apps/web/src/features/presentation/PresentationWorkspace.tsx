@@ -65,7 +65,7 @@ import {
   type DisplayManagerErrorCode,
   type DisplayScreenDescriptor,
   type SlideWindowRef,
-} from "../rehearsal/presenter/displayManager";
+} from "../../runtime/presentation/displayManager";
 import {
   createAudiencePresenterState,
   createSlideWindowDeckSnapshot,
@@ -80,7 +80,7 @@ import {
   requestPresentWindowFullscreen,
 } from "../rehearsal/presenter/PresentWindow";
 import { PresenterRemoteWindow } from "../rehearsal/presenter/PresenterRemoteWindow";
-import type { AudienceStreamBridgeWindow } from "../rehearsal/presenter/audienceStreamBridge";
+import type { AudienceStreamBridgeWindow } from "../../runtime/presentation/audienceStreamBridge";
 import { useLivePresentationOutput } from "./useLivePresentationOutput";
 import { PresenterCompanionSetup } from "../presenter-companion/PresenterCompanionSetup";
 import { PresenterCompanionStatus } from "../presenter-companion/PresenterCompanionStatus";

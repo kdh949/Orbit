@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -7,6 +7,7 @@ import test from "node:test";
 import {
   checkImportBoundaries,
   findPackageSourceImports,
+  findWebRuntimeFeatureImports,
 } from "./check-import-boundaries.mjs";
 
 function writeFixture(root, path, content) {
@@ -71,6 +72,44 @@ test("apps와 services의 위반을 파일과 줄 번호로 보고한다", () =>
         file: "services/example/index.ts",
         line: 1,
         code: "FORBIDDEN_PACKAGE_SOURCE_IMPORT",
+      },
+    ],
+  );
+});
+
+test("Web runtime에서 feature 내부로 향하는 import를 거부한다", () => {
+  const root = mkdtempSync(join(tmpdir(), "orbit-import-boundaries-"));
+  const runtimeFile = join(
+    root,
+    "apps/web/src/runtime/presentation/displayManager.ts",
+  );
+  writeFixture(
+    root,
+    "apps/web/src/runtime/presentation/displayManager.ts",
+    'import { helper } from "../../features/rehearsal/helper";\n' +
+      'import { shared } from "../shared";\n',
+  );
+
+  assert.deepEqual(
+    findWebRuntimeFeatureImports(
+      readFileSync(runtimeFile, "utf8"),
+      runtimeFile,
+      root,
+    ),
+    [
+      {
+        line: 1,
+        specifier: "../../features/rehearsal/helper",
+      },
+    ],
+  );
+
+  assert.deepEqual(
+    checkImportBoundaries(root).map(({ file, code }) => ({ file, code })),
+    [
+      {
+        file: "apps/web/src/runtime/presentation/displayManager.ts",
+        code: "FORBIDDEN_WEB_RUNTIME_FEATURE_IMPORT",
       },
     ],
   );

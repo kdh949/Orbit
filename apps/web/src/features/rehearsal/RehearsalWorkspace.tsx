@@ -183,7 +183,7 @@ import {
   type DisplayManagerErrorCode,
   type DisplayScreenDescriptor,
   type SlideWindowRef,
-} from "./presenter/displayManager";
+} from "../../runtime/presentation/displayManager";
 import { SingleScreenPresenter } from "./presenter/SingleScreenPresenter";
 import { SlideshowRenderer } from "./presenter/SlideshowRenderer";
 import {
@@ -206,7 +206,7 @@ import {
   createCompanionPrompterProjection,
   getCompanionPrompterTrackingStatus,
 } from "../presenter-companion/companionPrompterProjection";
-import type { AudienceStreamBridgeWindow } from "./presenter/audienceStreamBridge";
+import type { AudienceStreamBridgeWindow } from "../../runtime/presentation/audienceStreamBridge";
 import { usePresenterKeyboard } from "./presenter/usePresenterKeyboard";
 import { AutoAdvanceSettings } from "./advance/AutoAdvanceSettings";
 import { AutoAdvanceStatus } from "./advance/AutoAdvanceStatus";

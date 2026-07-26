@@ -7,7 +7,7 @@ import {
   observeAudienceStreamInWindow,
   type ActiveAudienceStream,
   type AudienceStreamBridgeWindow,
-} from "../rehearsal/presenter/audienceStreamBridge";
+} from "../../runtime/presentation/audienceStreamBridge";
 import {
   createLivePresentationHostIdentity,
   type PresenterRemoteCommand,

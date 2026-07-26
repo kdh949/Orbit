@@ -69,6 +69,8 @@ cross-language contract 영향 가능성이 있으므로 Python 전체 검증도
 
 앱과 서비스는 workspace package의 내부 `packages/*/src/**`를 상대경로로 직접
 참조하지 않고 `@orbit/*` 공개 entrypoint를 사용한다.
+Web의 `runtime/**`은 feature-neutral한 browser capability 계층이므로
+`features/**` 내부 구현을 역참조하지 않는다.
 
 ```bash
 pnpm lint:boundaries
@@ -79,6 +81,8 @@ pnpm test:import-boundaries
 `dist/index.js`를, Vite 같은 ESM bundler에는 공개 TypeScript entrypoint를
 제공한다. package 내부 파일을 옮길 때 app import가 함께 깨지는 우회를 만들지
 않도록 새 직접 참조는 `lint:boundaries`에서 실패한다.
+같은 검사에서 `apps/web/src/runtime/** → apps/web/src/features/**` 상대 import도
+실패한다.
 
 ## Source cycle
 

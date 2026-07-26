@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { extname, join, relative, resolve, sep } from "node:path";
+import { dirname, extname, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const codeExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
@@ -53,6 +53,41 @@ export function findPackageSourceImports(content) {
   return findings;
 }
 
+export function findWebRuntimeFeatureImports(content, filePath, rootDirectory) {
+  const root = resolve(rootDirectory);
+  const runtimeRoot = resolve(root, "apps/web/src/runtime");
+  const featureRoot = resolve(root, "apps/web/src/features");
+  const absoluteFile = resolve(filePath);
+  const relativeRuntimePath = relative(runtimeRoot, absoluteFile);
+
+  if (
+    relativeRuntimePath.startsWith("..") ||
+    relativeRuntimePath === "" ||
+    !codeExtensions.has(extname(absoluteFile))
+  ) {
+    return [];
+  }
+
+  const findings = [];
+  for (const match of content.matchAll(stringLiteralPattern)) {
+    const specifier = match[1];
+    if (!specifier.startsWith(".")) {
+      continue;
+    }
+    const target = resolve(dirname(absoluteFile), specifier);
+    const relativeFeaturePath = relative(featureRoot, target);
+    if (relativeFeaturePath.startsWith("..") || relativeFeaturePath === "") {
+      continue;
+    }
+    const offset = match.index ?? 0;
+    findings.push({
+      line: content.slice(0, offset).split("\n").length,
+      specifier,
+    });
+  }
+  return findings;
+}
+
 export function checkImportBoundaries(rootDirectory, options = {}) {
   const root = resolve(rootDirectory);
   const sourceRoots = options.sourceRoots ?? ["apps", "services"];
@@ -60,13 +95,19 @@ export function checkImportBoundaries(rootDirectory, options = {}) {
 
   for (const sourceRoot of sourceRoots) {
     for (const file of listCodeFiles(resolve(root, sourceRoot))) {
-      for (const finding of findPackageSourceImports(
-        readFileSync(file, "utf8"),
-      )) {
+      const content = readFileSync(file, "utf8");
+      for (const finding of findPackageSourceImports(content)) {
         findings.push({
           ...finding,
           file: toRepoPath(root, file),
           code: "FORBIDDEN_PACKAGE_SOURCE_IMPORT",
+        });
+      }
+      for (const finding of findWebRuntimeFeatureImports(content, file, root)) {
+        findings.push({
+          ...finding,
+          file: toRepoPath(root, file),
+          code: "FORBIDDEN_WEB_RUNTIME_FEATURE_IMPORT",
         });
       }
     }
