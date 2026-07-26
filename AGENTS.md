@@ -8,6 +8,8 @@
 - 대상 파일을 찾은 직후 `pnpm agent:context --path <target-file>`을 실행한다.
 - 등록 도메인은 `pnpm agent:context --list`, 검증은
   `pnpm verify:scope <area>:<domain> --dry-run`으로 먼저 좁힌다.
+- 일반 검색은 `pnpm agent:search "<query>"`를 사용하고 과거 자료가 필요할 때만
+  `--historical`을 추가한다.
 - Web/API/Worker/Python처럼 영역이 분명하면 해당 디렉터리에서 시작한다.
 - 요청 밖 리팩터링, 파일 이동, 대량 포맷팅, 외부 서비스 변경을 하지 않는다.
 
@@ -68,6 +70,7 @@
 
 - Agent dispatch와 검증: `docs/agent/workspace-dispatch.md`,
   `docs/agent/verification.md`
+- Agent 검색 범위: `docs/agent/search.md`
 - 계약: `docs/contracts.md`
 - Git/PR: `docs/git-rules.md`
 - 환경/로그: `docs/conventions/environment.md`, `docs/conventions/logging.md`

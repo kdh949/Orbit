@@ -24,6 +24,7 @@
     "docs/conventions/environment.md",
     "docs/conventions/logging.md",
     "docs/agent/benchmark.md",
+    "docs/agent/search.md",
     "docs/runbooks/local-development.md",
     "docs/testing/test-matrix.md",
     "docs/deployment.md",
@@ -36,10 +37,7 @@
     "services/python-worker/AGENTS.md",
     "services/python-worker/CLAUDE.md"
   ],
-  "workflowClaimDocs": [
-    "README.md",
-    "docs/testing/test-matrix.md"
-  ],
+  "workflowClaimDocs": ["README.md", "docs/testing/test-matrix.md"],
   "canonicalSources": [
     "apps/web/src/components/ui",
     "apps/web/src/styles/tokens.css",
@@ -54,11 +52,5 @@
       "replacement": "apps/web/src/components/ui 또는 apps/web/src/styles/tokens.css"
     }
   ],
-  "historicalRoots": [
-    "docs/plans",
-    "docs/ideas",
-    "docs/qa",
-    "docs/yb",
-    "tasks"
-  ]
+  "historicalRoots": ["docs/plans", "docs/ideas", "docs/qa", "docs/yb", "tasks"]
 }
