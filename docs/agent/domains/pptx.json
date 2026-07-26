@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "id": "pptx",
+  "summary": "PPTX OOXML 생성, sync, asset 저장, import·render pipeline",
+  "ownedPaths": [
+    "apps/api/src/pptx-ooxml-generations/**",
+    "apps/worker/src/pptx-ooxml-*.ts",
+    "services/python-worker/app/ai/pptx_*.py",
+    "packages/shared/src/deck/pptx-*.ts"
+  ],
+  "entrypoints": [
+    {
+      "area": "api",
+      "path": "apps/api/src/pptx-ooxml-generations/pptx-ooxml-generations.module.ts"
+    },
+    {
+      "area": "worker",
+      "path": "apps/worker/src/pptx-ooxml-sync.processor.ts"
+    },
+    {
+      "area": "python",
+      "path": "services/python-worker/app/ai/pptx_ooxml_generation.py"
+    }
+  ],
+  "contracts": [
+    "packages/shared/src/deck/pptx-ooxml-generation.schema.ts",
+    "packages/shared/src/deck/pptx-ooxml-storage.schema.ts"
+  ],
+  "tests": [
+    "apps/api/src/pptx-ooxml-generations/pptx-ooxml-generations.service.spec.ts",
+    "apps/worker/src/pptx-ooxml-sync.processor.spec.ts",
+    "services/python-worker/tests/test_pptx_ooxml_generation.py",
+    "services/python-worker/tests/test_pptx_ooxml_sync_api.py"
+  ],
+  "fastChecks": [
+    "pnpm --filter @orbit/api test -- src/pptx-ooxml-generations/pptx-ooxml-generations.service.spec.ts",
+    "pnpm --filter @orbit/worker test -- src/pptx-ooxml-sync.processor.spec.ts",
+    "cd services/python-worker && uv run pytest tests/test_pptx_ooxml_sync_api.py"
+  ],
+  "fullCheckTriggers": [
+    "OOXML Job payload 또는 storage schema 변경",
+    "TypeScript와 Python sync response 변경",
+    "PPTX package security·resource limit 변경",
+    "render 또는 import compatibility fallback 변경"
+  ],
+  "boundaries": [
+    "archive traversal, package size, render resource limit 검사를 유지한다",
+    "임시 파일은 성공·실패 모두 정리한다",
+    "기존 public function과 exception mapping을 facade에서 유지한다"
+  ]
+}
