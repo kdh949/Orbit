@@ -6,7 +6,6 @@
     "build": "nest build",
     "clean": "rm -rf dist",
     "dev": "nest start --watch",
-    "lint": "tsc -p tsconfig.json --noEmit",
     "migration:generate": "corepack pnpm --filter @orbit/shared build && corepack pnpm --filter @orbit/config build && typeorm-ts-node-commonjs -d src/database/data-source.ts migration:generate",
     "migration:revert": "corepack pnpm --filter @orbit/shared build && corepack pnpm --filter @orbit/config build && typeorm-ts-node-commonjs -d src/database/data-source.ts migration:revert",
     "migration:run": "corepack pnpm --filter @orbit/shared build && corepack pnpm --filter @orbit/config build && typeorm-ts-node-commonjs -d src/database/data-source.ts migration:run",
