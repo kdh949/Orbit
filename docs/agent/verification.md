@@ -62,7 +62,9 @@ pnpm verify:changed --tier 2 \
 ```
 
 경로를 생략하면 기준 ref와 merge base 이후의 committed, staged, unstaged,
-untracked 파일을 합쳐 계산한다. `--base`로 기준 ref를 바꿀 수 있다.
+untracked 파일을 합쳐 계산한다. 영향 계산에는 삭제 경로와 rename 원본·대상을
+모두 포함하고, 포맷 검사는 현재 존재하는 대상 경로만 사용한다. `--base`로 기준
+ref를 바꿀 수 있다.
 
 | Tier | 목적                                                 | 기본 실행 시점        |
 | ---- | ---------------------------------------------------- | --------------------- |
@@ -76,9 +78,12 @@ untracked 파일을 합쳐 계산한다. `--base`로 기준 ref를 바꿀 수 �
 중단한다. STT leaf 변경은 인접한 `koreanTextSimilarity.test.ts`만 선택하고
 `RehearsalWorkspace.test.tsx`, API, Worker, Python test를 선택하지 않는다.
 
-cross-language contract는 `docs/agent/contract-consumers.json`에 실제 consumer와
-exact test를 등록한다. 등록된 계약만 Tier 3 test를 선택하며, 존재하지 않는 test
-경로는 canonical guard에서 실패한다.
+TypeScript contract consumer와 test는 import graph의 direct·transitive reverse
+dependency에서 계산한다. Python처럼 import graph가 언어 경계를 넘지 못하는
+consumer만 `docs/agent/contract-consumers.json`에 exact test override로 등록한다.
+존재하지 않는 override test 경로는 canonical guard에서 실패한다. exact leaf 또는
+contract test가 8개를 초과하거나 `index.ts`, `public.ts` 같은 public barrel이
+바뀌면 개별 명령을 열거하지 않고 workspace test 또는 affected 검증으로 승격한다.
 
 ## Affected verification
 
@@ -108,6 +113,20 @@ Python source, test, `pyproject.toml`, `uv.lock`이 바뀌면 Ruff, mypy, pytest
 추가한다. Python 문서만 바뀐 경우에는 추가하지 않는다. consumer matrix에 등록된
 shared 계약은 exact consumer test를 추가한다. matrix에 없는 shared schema, Job,
 realtime 계약은 안전을 위해 전체 TypeScript와 Python 검증으로 승격한다.
+
+## PR verification
+
+로컬 PR merge gate는 공개 검증 기본값을 주입한 하나의 명령으로 실행한다.
+
+```bash
+pnpm verify:pr
+pnpm verify:pr --base develop
+```
+
+실행 순서는 canonical guard, 현재 존재하는 변경 파일의 format check, affected
+build·typecheck·test와 필요한 Python 검증이다. root `pnpm test`도 같은 공개
+기본값을 사용하므로 별도 `.env` 없이 실행할 수 있다. PR에 포함되지 않은 사용자
+소유 untracked 파일은 gate 대상에서 제외한다.
 
 ## Canonical Agent guard
 
