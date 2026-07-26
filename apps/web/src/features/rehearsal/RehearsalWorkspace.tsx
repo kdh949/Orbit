@@ -35,20 +35,8 @@ import {
   useState,
 } from "react";
 import { JobProgressDisplay } from "./JobProgressDisplay";
-import {
-  createRecordingSession,
-  runRehearsalPauseSequence,
-  type RecordingSession,
-} from "./recording/recordingSession";
-import {
-  RehearsalFlowError,
-  cancelRehearsalRun,
-  createRehearsalRunForUpload,
-  fetchOrCreateRehearsalDeck,
-  fetchRehearsalReport,
-  prepareRehearsalEvaluationRun,
-  runRehearsalUploadFlow,
-} from "./api/rehearsalApi";
+import { runRehearsalPauseSequence } from "./recording/recordingSession";
+import { fetchOrCreateRehearsalDeck } from "./api/rehearsalApi";
 import {
   getRehearsalFinishPath,
   getRehearsalPresenterWindowPath,
@@ -77,11 +65,6 @@ import {
   rehearsalDeckInvalidMessage,
 } from "./rehearsalErrorHandling";
 import { useJobSmoothProgress } from "./useJobSmoothProgress";
-import {
-  clearPreparedRehearsalSlideSnapshots,
-  readPreparedRehearsalSlideSnapshots,
-} from "./rehearsalSlideSnapshots";
-import { requestRehearsalMicrophoneStream } from "../presenter-shell/microphoneSettings";
 import {
   closePresenterCompanionSession,
   ensurePresenterCompanionSession,
@@ -285,13 +268,8 @@ import type {
   SpeechTrackingEvent,
 } from "../../runtime/speech/tracking/speechTrackingEvents";
 import { PracticeGoalReminder } from "../coaching/PracticeGoalReminder";
-import { fetchPresentationBrief } from "../coaching/presentationBriefApi";
 import { ActivityPresenterPanel } from "../activity-slides";
 import { RehearsalFailureScreen } from "./completion/RehearsalFailureScreen";
-import {
-  isReusableRehearsalMediaStream,
-  setMediaStreamTracksEnabled,
-} from "./recording/rehearsalMediaStream";
 import {
   downloadLiveSttDebugPcm,
   getLiveAudioLevelLabel,
@@ -307,6 +285,8 @@ import {
   resetRehearsalTimerState,
   type RehearsalPrompterRows,
 } from "./rehearsalWorkspaceModel";
+import { useRehearsalMediaSession } from "./hooks/useRehearsalMediaSession";
+import { useRehearsalRunLifecycle } from "./hooks/useRehearsalRunLifecycle";
 
 type RehearsalPhase =
   | "idle"
@@ -345,36 +325,6 @@ type RehearsalPracticeSummary = {
   projectId: string;
   targetSeconds: number;
 };
-
-async function resolveRehearsalCoachingContext(
-  projectId: string,
-  sourceGoalSetId?: string,
-) {
-  try {
-    const brief = await fetchPresentationBrief(projectId);
-    if (brief) {
-      return {
-        briefRef: {
-          mode: "briefed" as const,
-          briefId: brief.briefId,
-          expectedRevision: brief.revision,
-        },
-        evaluatorLensRef: brief.evaluatorLensRef,
-        sourceGoalSetId: sourceGoalSetId ?? null,
-      };
-    }
-  } catch {
-    // Brief 조회 실패 시에도 일반 모드 리허설은 계속할 수 있다.
-  }
-  return {
-    briefRef: { mode: "generic" as const },
-    evaluatorLensRef: {
-      lensId: "general-novice" as const,
-      revision: 1 as const,
-    },
-    sourceGoalSetId: sourceGoalSetId ?? null,
-  };
-}
 
 function getCurrentRehearsalPresenterWindowPath(
   sessionId: string,
@@ -588,13 +538,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   const [editingTimeField, setEditingTimeField] = useState<
     "elapsed" | "duration" | null
   >(null);
-  const sessionRef = useRef<RecordingSession | null>(null);
-  const activeRunRef = useRef<RehearsalRun | null>(null);
-  const preparedSlideSnapshotsRef = useRef<
-    Array<{ fileId: string; slideId: string }> | undefined
-  >(undefined);
-  const streamRef = useRef<MediaStream | null>(null);
-  const liveDemoStreamRef = useRef<MediaStream | null>(null);
   const liveSttPortRef = useRef<LiveSttPort | null>(props.liveSttPort ?? null);
   const liveSttSubscriptionCleanupRef = useRef<(() => void) | null>(null);
   const liveSttRetryCoordinatorRef = useRef(
@@ -620,8 +563,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     null,
   );
   const pendingP3SlideIndexRef = useRef<number | null>(null);
-  const finishAfterReportRef = useRef(false);
-  const recordingSubmissionVersionRef = useRef(0);
   const companionSessionRef = useRef<PresenterCompanionSessionIdentity | null>(
     null,
   );
@@ -675,6 +616,24 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   const slideNavigationGateRef = useRef<ReturnType<
     typeof createSlideAssetNavigationGate
   > | null>(null);
+  const mediaSession = useRehearsalMediaSession();
+  const runLifecycle = useRehearsalRunLifecycle({
+    getLiveTranscript: () =>
+      renderLiveTranscriptBuffer(liveSessionTranscriptBufferRef.current),
+    getRunMeta: async () =>
+      pendingP3RunMetaRef.current
+        ? await pendingP3RunMetaRef.current
+        : p3RunMetaRef.current,
+    getSlideTranscriptSnapshots: () => slideTranscriptSnapshotsRef.current,
+    onCompletionModalChange: setIsCompletionModalOpen,
+    onError: setError,
+    onJobChange: setJob,
+    onLiveError: setLiveError,
+    onPhaseChange: setPhase,
+    onRunChange: setRun,
+    snapshotPreparationId: props.snapshotPreparationId,
+    sourceGoalSetId: props.sourceGoalSetId,
+  });
 
   if (slideNavigationGateRef.current === null) {
     slideNavigationGateRef.current = createSlideAssetNavigationGate({
@@ -753,17 +712,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     [],
   );
 
-  useEffect(
-    () => () => {
-      const pendingRun = activeRunRef.current;
-      if (pendingRun && ["created", "uploading"].includes(pendingRun.status)) {
-        void cancelRehearsalRun(pendingRun.runId).catch(() => undefined);
-      }
-      activeRunRef.current = null;
-    },
-    [],
-  );
-
   useEffect(() => {
     if (props.initialDeck) {
       return;
@@ -790,8 +738,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
 
     return () => {
       isCancelled = true;
-      stopMediaStream(streamRef.current);
-      stopMediaStream(liveDemoStreamRef.current);
     };
   }, [props.fallbackDeck, props.initialDeck, props.projectId]);
 
@@ -1045,8 +991,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
         void liveSttPortRef.current?.stop();
       }
       void liveSttPortRef.current?.dispose();
-      stopMediaStream(streamRef.current);
-      stopMediaStream(liveDemoStreamRef.current);
     };
   }, []);
 
@@ -1446,7 +1390,8 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
         ? buildLiveSttBiasContext(currentSlide, {
             nearbySlides: getNearbySlides(deck, currentSlideIndex),
             pronunciationLexicon:
-              activeRunRef.current?.evaluationSnapshot?.pronunciationLexicon,
+              runLifecycle.getActiveRun()?.evaluationSnapshot
+                ?.pronunciationLexicon,
           })
         : null;
     liveBiasContextRef.current = nextBiasContext;
@@ -1480,16 +1425,14 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     if (!deck || (!options.allowDuringReport && !canRecord)) return;
     const activeDeck = deck;
     const activeSlide = activeDeck.slides[currentSlideIndexRef.current] ?? null;
-    recordingSubmissionVersionRef.current += 1;
+    runLifecycle.beginRecordingAttempt();
     setPracticeWithoutVoiceAt(null);
     stopLiveDemo();
 
     setError("");
-    cancelPendingEvaluationRun();
     setRun(null);
     setJob(null);
     setHasLocalCompletion(false);
-    finishAfterReportRef.current = false;
     setIsCompletionModalOpen(false);
     setLiveError("");
     setLiveAudioLevel(null);
@@ -1509,31 +1452,19 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
 
     let stream: MediaStream | null = null;
     try {
-      stream = await requestRehearsalMicrophoneStream(navigator.mediaDevices);
-      const evaluationSnapshot = await prepareEvaluationSnapshot(activeDeck);
-      const session = createRecordingSession(stream, {
+      stream = await mediaSession.acquireStream("recording");
+      const evaluationSnapshot =
+        await runLifecycle.prepareEvaluationSnapshot(activeDeck);
+      mediaSession.startRecordingSession(stream, {
         onError: (recordingError) => {
-          stopMediaStream(stream);
-          if (streamRef.current === stream) {
-            streamRef.current = null;
-          }
-          sessionRef.current = null;
-          cancelPendingEvaluationRun();
+          runLifecycle.cancelPendingEvaluationRun();
           setError(recordingError.message);
           setPhase("failed");
         },
         onStop: (audioFile) => {
-          stopMediaStream(stream);
-          if (streamRef.current === stream) {
-            streamRef.current = null;
-          }
-          sessionRef.current = null;
-          void submitRecording(activeDeck, audioFile);
+          void runLifecycle.submitRecording(activeDeck, audioFile);
         },
       });
-      streamRef.current = stream;
-      sessionRef.current = session;
-      session.start();
       resetSlideTranscriptSnapshots(activeDeck, currentSlideIndexRef.current);
       setPhase("recording");
       setIsTimerRunning(true);
@@ -1541,12 +1472,8 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
       rehearsalRuntimeStatusRef.current = "running";
       void startP3Tracking(stream, evaluationSnapshot);
     } catch (cause) {
-      stopMediaStream(stream);
-      if (streamRef.current === stream) {
-        streamRef.current = null;
-      }
-      sessionRef.current = null;
-      cancelPendingEvaluationRun();
+      mediaSession.releaseStream("recording");
+      runLifecycle.cancelPendingEvaluationRun();
       const hasValidationError = logRehearsalValidationFailure(cause, {
         projectId: activeDeck.projectId,
         deckId: activeDeck.deckId,
@@ -1601,14 +1528,10 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     let stream: MediaStream | null = null;
     setIsLiveDemoActive(true);
     try {
-      stream = await requestRehearsalMicrophoneStream(navigator.mediaDevices);
-      liveDemoStreamRef.current = stream;
+      stream = await mediaSession.acquireStream("live-demo");
       const started = await startP3Tracking(stream);
       if (!started) {
-        stopMediaStream(stream);
-        if (liveDemoStreamRef.current === stream) {
-          liveDemoStreamRef.current = null;
-        }
+        mediaSession.releaseStream("live-demo");
         setIsLiveDemoActive(false);
         setRehearsalRuntimeStatus("idle");
         rehearsalRuntimeStatusRef.current = "idle";
@@ -1618,10 +1541,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
         rehearsalRuntimeStatusRef.current = "running";
       }
     } catch (cause) {
-      stopMediaStream(stream);
-      if (liveDemoStreamRef.current === stream) {
-        liveDemoStreamRef.current = null;
-      }
+      mediaSession.releaseStream("live-demo");
       setIsLiveDemoActive(false);
       setRehearsalRuntimeStatus("idle");
       rehearsalRuntimeStatusRef.current = "idle";
@@ -1631,12 +1551,12 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   }
 
   async function retryInitialRecordingLiveStt() {
-    const stream = streamRef.current;
+    const stream = mediaSession.getStream("recording");
     const coordinator = liveSttRetryCoordinatorRef.current;
     if (
       !canRetryInitialRecordingLiveStt({
         hasActiveSession: p3SessionRef.current !== null,
-        hasReusableStream: isReusableRehearsalMediaStream(stream),
+        hasReusableStream: mediaSession.hasReusableStream("recording"),
         isRecording: phase === "recording",
         isRetrying: isLiveSttRetrying || coordinator.isRetrying(),
         liveStatus,
@@ -1652,11 +1572,11 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
       return await coordinator.retry((isCurrent) =>
         startP3Tracking(
           stream,
-          activeRunRef.current?.evaluationSnapshot ?? undefined,
+          runLifecycle.getActiveRun()?.evaluationSnapshot ?? undefined,
           () =>
             isCurrent() &&
-            streamRef.current === stream &&
-            isReusableRehearsalMediaStream(stream),
+            mediaSession.getStream("recording") === stream &&
+            mediaSession.hasReusableStream("recording"),
         ),
       );
     } finally {
@@ -1686,8 +1606,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     } else {
       void liveSttPortRef.current?.stop();
     }
-    stopMediaStream(liveDemoStreamRef.current);
-    liveDemoStreamRef.current = null;
+    mediaSession.releaseStream("live-demo");
     setLiveAudioLevel(null);
     setIsLiveDemoActive(false);
     setIsTimerRunning(false);
@@ -1736,10 +1655,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     setLiveStatus((current) =>
       current === "listening" || current === "starting" ? "stopped" : current,
     );
-    sessionRef.current?.stop();
-    stopMediaStream(streamRef.current);
-    streamRef.current = null;
-    sessionRef.current = null;
+    mediaSession.stopRecording();
     setRehearsalRuntimeStatus("idle");
     rehearsalRuntimeStatusRef.current = "idle";
   }
@@ -1766,7 +1682,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     const pauseResult = await runRehearsalPauseSequence({
       pauseRecording: isRecordingPause
         ? async () => {
-            await sessionRef.current?.pause();
+            await mediaSession.pauseRecording();
           }
         : undefined,
       pauseSpeech: async () => {
@@ -1786,8 +1702,8 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     });
 
     if (pauseResult.status === "paused") {
-      setMediaStreamTracksEnabled(
-        isRecordingPause ? streamRef.current : liveDemoStreamRef.current,
+      mediaSession.setStreamEnabled(
+        isRecordingPause ? "recording" : "live-demo",
         false,
       );
       setLiveAudioLevel(null);
@@ -1820,23 +1736,25 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
 
     const p3Session = p3SessionRef.current;
     let stream =
-      phase === "recording" ? streamRef.current : liveDemoStreamRef.current;
+      phase === "recording"
+        ? mediaSession.getStream("recording")
+        : mediaSession.getStream("live-demo");
     setRehearsalRuntimeStatus("resuming");
     rehearsalRuntimeStatusRef.current = "resuming";
     try {
       if (phase === "recording" || p3Session) {
-        if (!isReusableRehearsalMediaStream(stream)) {
+        if (
+          !mediaSession.hasReusableStream(
+            phase === "recording" ? "recording" : "live-demo",
+          )
+        ) {
           if (phase === "recording") {
             throw new LiveSttError(
               "start_failed",
               "녹음 마이크 연결이 종료되어 음성 인식을 다시 시작하지 못했습니다.",
             );
           }
-          stream = await requestRehearsalMicrophoneStream(
-            navigator.mediaDevices,
-          );
-          stopMediaStream(liveDemoStreamRef.current);
-          liveDemoStreamRef.current = stream;
+          stream = await mediaSession.acquireStream("live-demo");
         }
         if (!stream) {
           throw new LiveSttError(
@@ -1845,9 +1763,12 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
           );
         }
 
-        setMediaStreamTracksEnabled(stream, true);
+        mediaSession.setStreamEnabled(
+          phase === "recording" ? "recording" : "live-demo",
+          true,
+        );
         if (phase === "recording") {
-          await sessionRef.current?.resume();
+          await mediaSession.resumeRecording();
         }
       }
 
@@ -1877,8 +1798,11 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
       setScriptAutoFollowKey((current) => current + 1);
     } catch (cause) {
       const error = toLiveSttError(cause);
-      await sessionRef.current?.pause().catch(() => undefined);
-      setMediaStreamTracksEnabled(stream, false);
+      await mediaSession.pauseRecording().catch(() => undefined);
+      mediaSession.setStreamEnabled(
+        phase === "recording" ? "recording" : "live-demo",
+        false,
+      );
       if (phase === "recording") {
         setError(error.message);
       } else {
@@ -2534,7 +2458,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     const analysis = evaluateLiveTranscript(
       slide,
       matchingTranscript,
-      activeRunRef.current?.evaluationSnapshot?.pronunciationLexicon,
+      runLifecycle.getActiveRun()?.evaluationSnapshot?.pronunciationLexicon,
     );
     const confirmedCommand = confirmRehearsalCommandCandidate(
       liveCommandConfirmationRef.current,
@@ -2788,7 +2712,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     const nextBiasContext = buildLiveSttBiasContext(slide, {
       nearbySlides: getNearbySlides(deckSnapshot, slideIndex),
       pronunciationLexicon:
-        activeRunRef.current?.evaluationSnapshot?.pronunciationLexicon,
+        runLifecycle.getActiveRun()?.evaluationSnapshot?.pronunciationLexicon,
     });
     liveBiasContextRef.current = nextBiasContext;
     return nextBiasContext;
@@ -2797,159 +2721,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   function cleanupLiveSttSubscriptions() {
     liveSttSubscriptionCleanupRef.current?.();
     liveSttSubscriptionCleanupRef.current = null;
-  }
-
-  async function submitRecording(activeDeck: Deck, audioFile: File) {
-    const submissionVersion = recordingSubmissionVersionRef.current;
-    const isCurrentSubmission = () =>
-      recordingSubmissionVersionRef.current === submissionVersion;
-
-    setPhase("uploading");
-    setError("");
-
-    try {
-      let uploadRun = activeRunRef.current;
-      if (!uploadRun) {
-        const recovered = await createRehearsalRunForUpload(
-          activeDeck.projectId,
-          activeDeck.deckId,
-          activeDeck.version,
-          fetch,
-          await resolveRehearsalCoachingContext(
-            activeDeck.projectId,
-            props.sourceGoalSetId,
-          ),
-          preparedSlideSnapshotsRef.current,
-        );
-        uploadRun = recovered.run;
-        if (!isCurrentSubmission()) {
-          void cancelRehearsalRun(uploadRun.runId).catch(() => undefined);
-          return;
-        }
-        if (recovered.evaluationSnapshotMismatch) {
-          setLiveError(
-            "발표 자료가 변경되어 이번 회차는 전달 방식만 분석하고 의미 평가는 제외합니다.",
-          );
-        }
-        activeRunRef.current = uploadRun;
-        setRun(uploadRun);
-        clearPreparedRehearsalSlideSnapshots(props.snapshotPreparationId);
-      }
-
-      const runMeta = pendingP3RunMetaRef.current
-        ? await pendingP3RunMetaRef.current
-        : p3RunMetaRef.current;
-      const result = await runRehearsalUploadFlow({
-        runId: uploadRun.runId,
-        audioFile,
-        runMeta,
-        liveTranscript: renderLiveTranscriptBuffer(
-          liveSessionTranscriptBufferRef.current,
-        ),
-        slideTranscriptSnapshots: slideTranscriptSnapshotsRef.current,
-        onJobUpdate: (nextJob) => {
-          if (!isCurrentSubmission()) {
-            return;
-          }
-          setJob(nextJob);
-          setPhase("processing");
-        },
-      });
-      if (!isCurrentSubmission()) {
-        return;
-      }
-      setRun(result.run);
-      activeRunRef.current = result.run;
-      setJob(result.job);
-
-      if (result.job.status === "failed") {
-        setPhase("failed");
-        setIsCompletionModalOpen(false);
-        setError(
-          result.job.error?.message ||
-            result.job.message ||
-            "리허설 분석에 실패했습니다.",
-        );
-        return;
-      }
-
-      await loadReportForRun(result.run.runId, result.run, isCurrentSubmission);
-      if (!isCurrentSubmission()) {
-        return;
-      }
-      setPhase("succeeded");
-      setIsCompletionModalOpen(true);
-      if (finishAfterReportRef.current) {
-        finishAfterReportRef.current = false;
-      }
-    } catch (cause) {
-      if (!isCurrentSubmission()) {
-        return;
-      }
-      setError(toRehearsalFlowMessage(cause));
-      setIsCompletionModalOpen(false);
-      setPhase("failed");
-    }
-  }
-
-  async function prepareEvaluationSnapshot(activeDeck: Deck) {
-    const coachingContext = await resolveRehearsalCoachingContext(
-      activeDeck.projectId,
-      props.sourceGoalSetId,
-    );
-    const slideSnapshots =
-      preparedSlideSnapshotsRef.current ??
-      readPreparedRehearsalSlideSnapshots({
-        deckId: activeDeck.deckId,
-        deckVersion: activeDeck.version,
-        preparationId: props.snapshotPreparationId,
-        projectId: activeDeck.projectId,
-      });
-    preparedSlideSnapshotsRef.current = slideSnapshots;
-    const prepared = await prepareRehearsalEvaluationRun(
-      activeDeck,
-      fetch,
-      coachingContext,
-      slideSnapshots,
-    );
-    activeRunRef.current = prepared.run;
-    setRun(prepared.run);
-    if (prepared.run) {
-      clearPreparedRehearsalSlideSnapshots(props.snapshotPreparationId);
-    }
-    if (prepared.serverEvaluation.state === "unavailable") {
-      setLiveError(
-        "서버 의미 평가에 연결할 수 없습니다. 로컬 리허설은 계속되며 서버 리포트는 저장 전 다시 확인합니다.",
-      );
-    }
-    return prepared.evaluationSnapshot;
-  }
-
-  function cancelPendingEvaluationRun() {
-    const pendingRun = activeRunRef.current;
-    if (!pendingRun || !["created", "uploading"].includes(pendingRun.status)) {
-      return;
-    }
-
-    activeRunRef.current = null;
-    void cancelRehearsalRun(pendingRun.runId).catch(() => undefined);
-  }
-
-  async function loadReportForRun(
-    runId: string,
-    fallbackRun: RehearsalRun,
-    shouldApply: () => boolean = () => true,
-  ) {
-    try {
-      const response = await fetchRehearsalReport(runId);
-      if (shouldApply()) {
-        setRun(response.run);
-      }
-    } catch {
-      if (shouldApply()) {
-        setRun(fallbackRun);
-      }
-    }
   }
 
   const goPrevious = () => {
@@ -3018,7 +2789,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
 
     if (phase === "recording") {
       setHasLocalCompletion(true);
-      finishAfterReportRef.current = true;
+      runLifecycle.requestFinishAfterReport();
       setIsCompletionModalOpen(true);
       stopRecording();
       return;
@@ -3026,7 +2797,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
 
     if (phase === "uploading" || phase === "processing") {
       setHasLocalCompletion(true);
-      finishAfterReportRef.current = true;
+      runLifecycle.requestFinishAfterReport();
       setIsCompletionModalOpen(true);
       return;
     }
@@ -3432,7 +3203,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   const sanitizedLiveError = sanitizeLiveSttErrorMessage(liveError);
   const canRetryRecordingLiveStt = canRetryInitialRecordingLiveStt({
     hasActiveSession: p3SessionRef.current !== null,
-    hasReusableStream: isReusableRehearsalMediaStream(streamRef.current),
+    hasReusableStream: mediaSession.hasReusableStream("recording"),
     isRecording: phase === "recording",
     isRetrying:
       isLiveSttRetrying || liveSttRetryCoordinatorRef.current.isRetrying(),
@@ -3545,7 +3316,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     persistCurrentPracticeSummary();
 
     if (phase === "uploading" || phase === "processing") {
-      finishAfterReportRef.current = true;
+      runLifecycle.requestFinishAfterReport();
       return;
     }
 
@@ -4804,10 +4575,6 @@ function navigateToPath(path: string) {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
-function stopMediaStream(stream: MediaStream | null) {
-  stream?.getTracks().forEach((track) => track.stop());
-}
-
 function toMicrophoneErrorMessage(cause: unknown) {
   if (cause instanceof DOMException && cause.name === "NotAllowedError") {
     return "마이크 접근 권한이 거부되었습니다.";
@@ -4818,20 +4585,6 @@ function toMicrophoneErrorMessage(cause: unknown) {
   }
 
   return "마이크를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.";
-}
-
-function toRehearsalFlowMessage(cause: unknown) {
-  if (cause instanceof RehearsalFlowError) {
-    if (cause.stage === "storage-put") {
-      return "업로드가 중단되었습니다. 네트워크와 스토리지 연결을 확인해 주세요.";
-    }
-
-    if (cause.stage === "complete" || cause.stage === "job-poll") {
-      return cause.message || "음성 인식 또는 코칭 분석 작업에 실패했습니다.";
-    }
-  }
-
-  return toErrorMessage(cause);
 }
 
 function toLiveSttError(cause: unknown) {
