@@ -1,4 +1,4 @@
-import type { PresentationChannelIdentity } from "./presentationChannel";
+import type { PresentationChannelIdentity } from "./presentationChannelIdentity";
 
 export const audienceStreamBridgeKey = "__orbitAudienceStreamBridgeV1";
 
@@ -65,9 +65,7 @@ export function registerAudienceStreamBridge(args: {
   }
 
   let activeStream: ActiveAudienceStream | null = null;
-  const observers = new Set<
-    (active: ActiveAudienceStream | null) => void
-  >();
+  const observers = new Set<(active: ActiveAudienceStream | null) => void>();
   const notifyObservers = () => {
     for (const observer of observers) observer(activeStream);
   };

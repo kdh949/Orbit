@@ -32,9 +32,9 @@ describe("audienceStreamBridge", () => {
       }),
     ).toEqual({ ok: true });
     expect(onAttach).toHaveBeenCalledWith(stream);
-    expect(
-      detachAudienceStreamFromWindow({ identity, targetWindow }),
-    ).toEqual({ ok: true });
+    expect(detachAudienceStreamFromWindow({ identity, targetWindow })).toEqual({
+      ok: true,
+    });
     expect(onDetach).toHaveBeenCalledTimes(1);
   });
 

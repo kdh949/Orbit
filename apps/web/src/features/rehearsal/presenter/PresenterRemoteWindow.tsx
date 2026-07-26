@@ -42,7 +42,7 @@ import { usePresenterKeyboard } from "./usePresenterKeyboard";
 import { getPresenterAidPolicy } from "./presenterAidPolicy";
 import { AudienceOutputControls } from "./AudienceOutputControls";
 import { useAudienceScreenShare } from "./useAudienceScreenShare";
-import type { AudienceStreamBridgeWindow } from "./audienceStreamBridge";
+import type { AudienceStreamBridgeWindow } from "../../../runtime/presentation/audienceStreamBridge";
 
 type ChannelLike = Pick<BroadcastChannel, "close" | "postMessage"> & {
   onmessage: ((event: MessageEvent) => void) | null;

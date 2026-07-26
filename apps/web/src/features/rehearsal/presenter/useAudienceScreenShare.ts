@@ -3,7 +3,7 @@ import {
   attachAudienceStreamToWindow,
   detachAudienceStreamFromWindow,
   type AudienceStreamBridgeWindow,
-} from "./audienceStreamBridge";
+} from "../../../runtime/presentation/audienceStreamBridge";
 import type { AudienceOutputMode } from "./presenterStateStore";
 import type { PresentationChannelIdentity } from "./presentationChannel";
 import {

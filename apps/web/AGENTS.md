@@ -11,6 +11,9 @@ instead of introducing a parallel token or component system.
 - Keep each primitive in its own component and style files, and expose its public API through `apps/web/src/components/ui/index.ts`.
 - Product-level reusable patterns belong in `apps/web/src/components/patterns`.
 - Feature-specific components belong in their own `apps/web/src/features/<feature-name>` folder (e.g. `features/rehearsal`, `features/editor`), matching the existing feature layout.
+- Browser runtime shared by multiple features belongs in
+  `apps/web/src/runtime/<capability>`. Runtime modules may use browser APIs and
+  workspace packages but must not import from `apps/web/src/features`.
 - `components/ui` must never import from `features`.
 
 ## Styling

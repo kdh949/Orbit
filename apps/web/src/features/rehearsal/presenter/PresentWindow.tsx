@@ -25,11 +25,11 @@ import {
 import {
   registerAudienceStreamBridge,
   type AudienceStreamBridgeRegistration,
-} from "./audienceStreamBridge";
+} from "../../../runtime/presentation/audienceStreamBridge";
 import {
   slideWindowFullscreenRequestType,
   type SlideWindowFullscreenRequestMessage,
-} from "./displayManager";
+} from "../../../runtime/presentation/displayManager";
 import type { PresenterSlideshowState } from "./presenterStateStore";
 import type { ActivityElementRuntime } from "../../activity-slides/rendering/ActivityElementRuntimeContext";
 import {

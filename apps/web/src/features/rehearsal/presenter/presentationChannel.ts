@@ -12,13 +12,11 @@ import type {
   PresenterSlideshowState,
 } from "./presenterStateStore";
 import type { ActivityElementRuntime } from "../../activity-slides/rendering/ActivityElementRuntimeContext";
+import type { PresentationChannelIdentity } from "../../../runtime/presentation/presentationChannelIdentity";
 
 export const presentationChannelPrefix = "orbit:presenter-screen";
 
-export type PresentationChannelIdentity = {
-  deckId: string;
-  sessionId: string;
-};
+export type { PresentationChannelIdentity } from "../../../runtime/presentation/presentationChannelIdentity";
 
 export type LivePresentationHostIdentity = {
   localChannel: PresentationChannelIdentity;

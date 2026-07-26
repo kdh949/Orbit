@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import type {
   DisplayManagerErrorCode,
   DisplayScreenDescriptor,
-} from "./displayManager";
+} from "../../../runtime/presentation/displayManager";
 import type { PresentationChannelStatus } from "./usePresentationChannelPublisher";
 
 export type SlideDisplayMode = "current-window" | "slide-window";

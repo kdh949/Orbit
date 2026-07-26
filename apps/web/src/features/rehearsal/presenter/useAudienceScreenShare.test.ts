@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { audienceStreamBridgeKey } from "./audienceStreamBridge";
+import { audienceStreamBridgeKey } from "../../../runtime/presentation/audienceStreamBridge";
 import { createAudienceScreenShareController } from "./useAudienceScreenShare";
 
 const identity = { deckId: "deck_1", sessionId: "session_1" };

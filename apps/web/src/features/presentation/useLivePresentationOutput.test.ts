@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AudienceStreamBridgeWindow } from "../rehearsal/presenter/audienceStreamBridge";
+import type { AudienceStreamBridgeWindow } from "../../runtime/presentation/audienceStreamBridge";
 import { resolveAudienceStreamObservationTarget } from "./useLivePresentationOutput";
 
 describe("resolveAudienceStreamObservationTarget", () => {
