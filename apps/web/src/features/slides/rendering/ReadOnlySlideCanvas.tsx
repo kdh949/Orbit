@@ -13,6 +13,7 @@ import {
 } from "./elementNormalization";
 import { resolveGroupedElementPresentationStates } from "./groupPresentationState";
 import { getHighlightOverlayElements } from "./highlightOverlayElements";
+import type { ElementPresentationState } from "./presentationState";
 import { SlideBackground } from "./SlideBackground";
 import { getActiveHighlightElementIds, HighlightOverlay } from "./highlightOverlay";
 
@@ -22,18 +23,6 @@ const Group = KonvaGroup as unknown as KonvaComponent;
 const Layer = KonvaLayer as unknown as KonvaComponent;
 const Stage = KonvaStage as unknown as KonvaComponent;
 const inactiveHighlightElementIds = new Set<string>();
-
-export type ElementPresentationState = {
-  opacity?: number;
-  rotation?: number;
-  scaleX?: number;
-  scaleY?: number;
-  visible?: boolean;
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-};
 
 export type SlideRuntimeHighlight = {
   active: boolean;

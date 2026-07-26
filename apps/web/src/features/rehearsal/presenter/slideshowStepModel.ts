@@ -5,7 +5,7 @@ import {
   type PlannedAnimationTimelineEffect
 } from "@orbit/editor-core";
 import type { Deck, DeckAnimation, DeckElement, Slide } from "@orbit/shared";
-import type { ElementPresentationState } from "../../slides/rendering/ReadOnlySlideCanvas";
+import type { ElementPresentationState } from "../../slides/rendering/presentationState";
 import { normalizeRenderableElement } from "../../slides/rendering/elementNormalization";
 
 export type SlideshowModelInput = {

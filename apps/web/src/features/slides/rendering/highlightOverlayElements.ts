@@ -1,5 +1,5 @@
 import type { Deck, GroupElementProps, Slide } from "@orbit/shared";
-import type { ElementPresentationState } from "./ReadOnlySlideCanvas";
+import type { ElementPresentationState } from "./presentationState";
 import {
   normalizeRenderableElement,
   usesSourceSlideSnapshot

@@ -2,7 +2,7 @@ import type {
   PresentationCompanionAnnotationAck,
   PresentationCompanionAnnotationCommand,
 } from "@orbit/shared";
-import type { CompanionAnnotationCommandInput } from "./useCompanionSocket";
+import type { CompanionAnnotationCommandInput } from "./companionSocket.contract";
 
 export const companionAnnotationQueueLimit = 256;
 export const companionAnnotationAckTimeoutMs = 1_500;

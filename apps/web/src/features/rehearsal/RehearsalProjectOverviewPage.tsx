@@ -24,7 +24,7 @@ import { fetchProjectDeck } from "./keywords/keywordEditorApi";
 import { RehearsalRunNav } from "./RehearsalRunNav";
 import { RehearsalProjectSummaryDashboard } from "./RehearsalProjectSummaryDashboard";
 import { buildRehearsalRunComparisonViewModel } from "./rehearsalRunComparisonModel";
-import { getRehearsalReportPath } from "./RehearsalWorkspace";
+import { getRehearsalReportPath } from "./rehearsalRoutes";
 import {
   OrbitButton,
   OrbitEmptyState,

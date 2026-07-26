@@ -68,6 +68,7 @@ import { JobProgressDisplay } from "./JobProgressDisplay";
 import { RehearsalReportDocument } from "./RehearsalReportDocument";
 import { RehearsalRunNav } from "./RehearsalRunNav";
 import { RehearsalRunComparisonOverview } from "./RehearsalRunComparisonOverview";
+import { getRehearsalReportPath } from "./rehearsalRoutes";
 import { RehearsalScriptTeleprompter } from "./presenter/RehearsalScriptTeleprompter";
 import "./rehearsal-preflight.css";
 import "./rehearsal-report-detail.css";
@@ -324,6 +325,7 @@ export {
   resampleFloat32Audio,
 } from "./sherpaOnnxLiveSttAdapter";
 export { getRehearsalTeleprompterScrollBehavior } from "./presenter/RehearsalScriptTeleprompter";
+export { getRehearsalReportPath } from "./rehearsalRoutes";
 
 type Fetcher = (
   input: RequestInfo | URL,
@@ -881,10 +883,6 @@ export function resolveRehearsalReportLoadState(
   }
 
   return { error: "", status: "not-ready" };
-}
-
-export function getRehearsalReportPath(projectId: string, runId: string) {
-  return `/rehearsal/${encodeURIComponent(projectId)}/report/${encodeURIComponent(runId)}`;
 }
 
 export async function fetchProjectRehearsalRuns(
