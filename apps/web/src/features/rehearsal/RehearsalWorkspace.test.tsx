@@ -131,7 +131,7 @@ const editorTopbarSourcePath = fileURLToPath(
   new URL("../editor/shell/components/EditorTopbar.tsx", import.meta.url),
 );
 const editorShellSourcePath = fileURLToPath(
-  new URL("../editor/shell/EditorShell.tsx", import.meta.url),
+  new URL("../editor/shell/EditorShellController.tsx", import.meta.url),
 );
 const rehearsalPanelSourcePath = fileURLToPath(
   new URL("../presenter-shell/panel/RehearsalPanel.tsx", import.meta.url),

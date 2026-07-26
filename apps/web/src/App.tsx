@@ -158,7 +158,7 @@ export type Route =
 export const deckRenderPayloadStorageKey = "orbit.deckRenderPayload.v1";
 
 const EditorShell = lazy(() =>
-  import("./features/editor/shell/EditorShell").then((module) => ({
+  import("./features/editor/shell/public").then((module) => ({
     default: module.EditorShell,
   })),
 );
