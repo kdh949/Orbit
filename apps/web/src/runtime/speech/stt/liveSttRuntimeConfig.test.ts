@@ -15,8 +15,8 @@ describe("fetchLiveSttRuntimeConfig", () => {
           slidePracticeEnabled: false,
           slideQuestionGuidesEnabled: false,
           ipadPresenterCompanionEnabled: true,
-        })
-      )
+        }),
+      ),
     );
 
     await expect(fetchLiveSttRuntimeConfig(fetcher as never)).resolves.toEqual({
@@ -30,7 +30,7 @@ describe("fetchLiveSttRuntimeConfig", () => {
     });
     expect(fetcher).toHaveBeenCalledWith("/api/v1/runtime-config", {
       credentials: "include",
-      method: "GET"
+      method: "GET",
     });
   });
 
@@ -45,13 +45,15 @@ describe("fetchLiveSttRuntimeConfig", () => {
           slidePracticeEnabled: false,
           slideQuestionGuidesEnabled: false,
           ipadPresenterCompanionEnabled: true,
-        })
-      )
+        }),
+      ),
     );
 
-    await expect(fetchLiveSttRuntimeConfig(fetcher as never)).rejects.toMatchObject({
+    await expect(
+      fetchLiveSttRuntimeConfig(fetcher as never),
+    ).rejects.toMatchObject({
       code: "start_failed",
-      message: "Live STT runtime config 응답이 올바르지 않습니다."
+      message: "Live STT runtime config 응답이 올바르지 않습니다.",
     } satisfies Partial<LiveSttError>);
   });
 });

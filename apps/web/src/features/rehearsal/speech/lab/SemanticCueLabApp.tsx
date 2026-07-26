@@ -22,7 +22,7 @@ import {
   type SemanticCueCombinerConfig
 } from "../semanticCueScoreCombiner";
 import { createLiveSttPort } from "../../stt/liveSttEngineRegistry";
-import type { LiveSttEngineId, LiveSttPort } from "../../stt/liveSttPort";
+import type { LiveSttEngineId, LiveSttPort } from "../../../../runtime/speech/stt/liveSttPort";
 import { semanticCueLabPresets } from "./semanticCueLabPresets";
 
 const NLI_MODEL_ID = "MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli";

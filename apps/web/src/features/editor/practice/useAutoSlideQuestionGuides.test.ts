@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   waitForJob: vi.fn()
 }))
 
-vi.mock("../../rehearsal/stt/liveSttRuntimeConfig", () => ({
+vi.mock("../../../runtime/speech/stt/liveSttRuntimeConfig", () => ({
   fetchLiveSttRuntimeConfig: mocks.runtimeConfig
 }))
 vi.mock("./slideQuestionGuideApi", () => ({

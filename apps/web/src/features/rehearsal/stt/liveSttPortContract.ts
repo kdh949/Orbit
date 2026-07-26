@@ -4,7 +4,7 @@ import {
   type LiveSttBiasPhrase,
   type LiveSttPort,
   type LiveSttResult
-} from "./liveSttPort";
+} from "../../../runtime/speech/stt/liveSttPort";
 
 type ContractHarness = {
   port: LiveSttPort;

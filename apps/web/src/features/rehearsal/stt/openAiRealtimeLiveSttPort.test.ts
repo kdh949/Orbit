@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { LiveSttAudioLevelEvent } from "../liveStt";
-import type { LiveSttResult } from "./liveSttPort";
+import type { LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
 import { OpenAiRealtimeLiveSttPort } from "./openAiRealtimeLiveSttPort";
 
 describe("OpenAiRealtimeLiveSttPort", () => {

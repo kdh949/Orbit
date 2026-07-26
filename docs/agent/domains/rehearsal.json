@@ -4,6 +4,7 @@
   "summary": "리허설 실행, 녹음, 실시간·보고서 STT, 발화 추적, 리포트",
   "ownedPaths": [
     "apps/web/src/features/rehearsal/**",
+    "apps/web/src/runtime/speech/stt/**",
     "apps/api/src/rehearsals/**",
     "apps/worker/src/rehearsal-*.ts",
     "services/python-worker/app/rehearsal.py",
@@ -35,6 +36,7 @@
   ],
   "tests": [
     "apps/web/src/features/rehearsal/RehearsalWorkspace.test.tsx",
+    "apps/web/src/runtime/speech/stt/liveSttPort.test.ts",
     "apps/api/src/rehearsals/rehearsals.service.spec.ts",
     "apps/worker/src/rehearsal-stt.processor.spec.ts",
     "services/python-worker/tests/test_rehearsal_analyze.py"

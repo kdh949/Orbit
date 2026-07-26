@@ -1,4 +1,4 @@
-import { normalizeLiveTranscriptText } from "../stt/liveTranscriptText";
+import { normalizeLiveTranscriptText } from "../../../runtime/speech/stt/liveTranscriptText";
 import {
   E5_EMBEDDING_DIMENSIONS,
   E5_MODEL_ID,

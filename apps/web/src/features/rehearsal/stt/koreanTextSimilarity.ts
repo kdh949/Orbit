@@ -1,5 +1,5 @@
-import { normalizeLiveTranscriptText } from "./liveTranscriptText";
-import type { LiveSttBiasPhrase } from "./liveSttPort";
+import { normalizeLiveTranscriptText } from "../../../runtime/speech/stt/liveTranscriptText";
+import type { LiveSttBiasPhrase } from "../../../runtime/speech/stt/liveSttPort";
 
 export const KOREAN_BIAS_SIMILARITY_THRESHOLD = 0.75;
 

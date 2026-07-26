@@ -7,7 +7,7 @@ import {
   type LiveSttResult,
   type LiveSttSessionConfig,
   type LiveSttUnsubscribe
-} from "./liveSttPort";
+} from "../../../runtime/speech/stt/liveSttPort";
 
 export class RerankingLiveSttPort implements LiveSttPort {
   private biasPhrases: LiveSttBiasPhrase[] = [];

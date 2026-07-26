@@ -1,6 +1,6 @@
 import { demoIds } from "@orbit/shared";
 import type { LiveSttAudioLevelEvent } from "../liveStt";
-import { type LiveSttEngineId, type LiveSttPort } from "./liveSttPort";
+import { type LiveSttEngineId, type LiveSttPort } from "../../../runtime/speech/stt/liveSttPort";
 import { MoonshineLiveSttPort } from "./moonshineLiveSttPort";
 import { OpenAiRealtimeLiveSttPort } from "./openAiRealtimeLiveSttPort";
 import { RerankingLiveSttPort } from "./rerankingLiveSttPort";

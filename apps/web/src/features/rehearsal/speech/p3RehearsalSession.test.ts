@@ -1,7 +1,7 @@
 import type { SemanticCapabilityEvent, SemanticCue } from "@orbit/shared";
 import { describe, expect, it, vi } from "vitest";
 
-import { LiveSttError, type LiveSttPort, type LiveSttResult } from "../stt/liveSttPort";
+import { LiveSttError, type LiveSttPort, type LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
 import {
   defaultAutoAdvanceConfig,
   defaultAutoAdvancePolicy,

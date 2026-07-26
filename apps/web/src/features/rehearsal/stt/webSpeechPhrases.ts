@@ -3,7 +3,7 @@ import type {
   BrowserSpeechRecognitionGlobal,
   BrowserSpeechRecognitionPhrase
 } from "./browserSpeechRecognition";
-import type { LiveSttBiasPhrase } from "./liveSttPort";
+import type { LiveSttBiasPhrase } from "../../../runtime/speech/stt/liveSttPort";
 
 export const WEB_SPEECH_MIN_BOOST = 1;
 export const WEB_SPEECH_MAX_BOOST = 5;

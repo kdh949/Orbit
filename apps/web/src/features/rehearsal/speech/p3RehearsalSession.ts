@@ -12,7 +12,7 @@ import type {
   LiveSttBiasPhrase,
   LiveSttPort,
   LiveSttResult
-} from "../stt/liveSttPort";
+} from "../../../runtime/speech/stt/liveSttPort";
 import { createDefaultPhraseExtractor } from "./phraseExtractor";
 import { buildSpeechTrackingBiasPhrases } from "./speechBiasPhrases";
 import {

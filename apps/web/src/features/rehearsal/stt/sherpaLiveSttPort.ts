@@ -18,7 +18,7 @@ import {
   type LiveSttResult,
   type LiveSttSessionConfig,
   type LiveSttUnsubscribe
-} from "./liveSttPort";
+} from "../../../runtime/speech/stt/liveSttPort";
 
 type SherpaLiveSttPortOptions = {
   adapter?: LiveSttAdapter;

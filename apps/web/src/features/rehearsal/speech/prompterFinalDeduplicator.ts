@@ -1,4 +1,4 @@
-import type { LiveSttResult } from "../stt/liveSttPort";
+import type { LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
 import { normalizeSpeechText } from "./phraseExtractor";
 
 const DEFAULT_DEDUPE_WINDOW_MS = 2_000;

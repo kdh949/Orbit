@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { RehearsalPanel } from "../panel/RehearsalPanel";
 import type { RehearsalTimingSnapshot, TimingAdviceState } from "../panel/rehearsalTiming";
-import type { LiveSttPort, LiveSttResult } from "../stt/liveSttPort";
+import type { LiveSttPort, LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
 import {
   p3AsrLikeFinalTranscript,
   p3CleanFinalTranscript,

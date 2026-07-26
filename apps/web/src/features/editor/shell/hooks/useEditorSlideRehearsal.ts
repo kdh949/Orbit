@@ -15,9 +15,9 @@ import {
   type LiveSttEngineId,
   type LiveSttPort,
   normalizeLiveSttBiasPhrases
-} from "../../../rehearsal/stt/liveSttPort";
-import { fetchLiveSttRuntimeConfig } from "../../../rehearsal/stt/liveSttRuntimeConfig";
-import { normalizeLiveTranscriptText } from "../../../rehearsal/stt/liveTranscriptText";
+} from "../../../../runtime/speech/stt/liveSttPort";
+import { fetchLiveSttRuntimeConfig } from "../../../../runtime/speech/stt/liveSttRuntimeConfig";
+import { normalizeLiveTranscriptText } from "../../../../runtime/speech/stt/liveTranscriptText";
 
 export type EditorSlideRehearsalStatus =
   | "idle"
