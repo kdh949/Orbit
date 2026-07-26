@@ -1,10 +1,11 @@
-import { applyDeckPatch, createDemoDeck } from "@orbit/editor-core";
 import {
+  applyDeckPatch,
   createAddAnimationWithKeywordTriggerPatch,
+  createDemoDeck,
   createDefaultAnimation,
   createUpdateAnimationKeywordTriggerPatch,
   createUpsertAdvanceSlideKeywordActionPatch
-} from "../../../../../../packages/editor-core/src/index";
+} from "@orbit/editor-core";
 import { demoIds } from "@orbit/shared";
 import type {
   Deck,

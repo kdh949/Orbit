@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 
-import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { format, resolveConfig } from "prettier";
 
 const repositoryRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -114,7 +116,7 @@ function resolveBaseRef(explicitBase) {
 }
 
 export function collectChangedPaths(baseRef) {
-  const mergeBase = git(["merge-base", baseRef, "HEAD"]).trim();
+  const mergeBase = resolveMergeBase(baseRef);
   const pathGroups = [
     git(["diff", "--name-only", "--diff-filter=ACMR", "-z", mergeBase, "HEAD"]),
     git(["diff", "--name-only", "--diff-filter=ACMR", "-z"]),
@@ -125,26 +127,93 @@ export function collectChangedPaths(baseRef) {
   return pathGroups.flatMap(splitNullSeparated);
 }
 
-function runPrettier(files) {
-  for (let index = 0; index < files.length; index += 100) {
-    const batch = files.slice(index, index + 100);
-    const result = spawnSync(
-      "pnpm",
-      ["exec", "prettier", "--check", ...batch],
-      {
-        cwd: repositoryRoot,
-        stdio: "inherit",
-      },
-    );
-    if (result.status !== 0) {
-      return result.status ?? 1;
+export function resolveMergeBase(baseRef) {
+  return git(["merge-base", baseRef, "HEAD"]).trim();
+}
+
+export function classifyFormatStatus({
+  currentFormatted,
+  baseExists,
+  baseFormatted,
+}) {
+  if (currentFormatted) {
+    return "formatted";
+  }
+  if (!baseExists || baseFormatted) {
+    return "regression";
+  }
+  return "legacy";
+}
+
+async function isFormatted(path, content) {
+  const absolutePath = join(repositoryRoot, path);
+  const config = (await resolveConfig(absolutePath)) ?? {};
+  const formatted = await format(content, {
+    ...config,
+    filepath: absolutePath,
+  });
+  return formatted === content;
+}
+
+function readBaseContent(mergeBase, path) {
+  try {
+    return git(["show", `${mergeBase}:${path}`], { quiet: true });
+  } catch {
+    return undefined;
+  }
+}
+
+async function checkFormatting(files, mergeBase) {
+  const regressions = [];
+  const legacy = [];
+
+  for (const path of files) {
+    const currentContent = readFileSync(join(repositoryRoot, path), "utf8");
+    const currentFormatted = await isFormatted(path, currentContent);
+    const baseContent = currentFormatted
+      ? undefined
+      : readBaseContent(mergeBase, path);
+    const baseFormatted =
+      baseContent === undefined ? false : await isFormatted(path, baseContent);
+    const status = classifyFormatStatus({
+      currentFormatted,
+      baseExists: baseContent !== undefined,
+      baseFormatted,
+    });
+
+    if (status === "regression") {
+      regressions.push(path);
+    } else if (status === "legacy") {
+      legacy.push(path);
     }
   }
+
+  if (legacy.length > 0) {
+    console.warn(
+      `[format-check] 기존 포맷 부채 ${legacy.length}개 파일은 경고만 남깁니다.`,
+    );
+    for (const path of legacy) {
+      console.warn(`  - ${path}`);
+    }
+  }
+
+  if (regressions.length > 0) {
+    console.error(
+      `[format-check] 새 포맷 회귀 ${regressions.length}개 파일을 발견했습니다.`,
+    );
+    for (const path of regressions) {
+      console.error(`  - ${path}`);
+    }
+    return 1;
+  }
+
+  console.log("[format-check] 변경 파일 포맷 검사 통과");
   return 0;
 }
 
-function main() {
+async function main() {
   const baseRef = resolveBaseRef(parseBaseArgument(process.argv.slice(2)));
+  const mergeBase = resolveMergeBase(baseRef);
   const files = selectFormatFiles(collectChangedPaths(baseRef), (path) =>
     existsSync(join(repositoryRoot, path)),
   );
@@ -157,9 +226,16 @@ function main() {
   console.log(
     `[format-check] ${files.length}개 변경 파일 검사. base=${baseRef}`,
   );
-  return runPrettier(files);
+  return checkFormatting(files, mergeBase);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  process.exitCode = main();
+  try {
+    process.exitCode = await main();
+  } catch (error) {
+    console.error(
+      `[format-check] ${error instanceof Error ? error.message : String(error)}`,
+    );
+    process.exitCode = 1;
+  }
 }

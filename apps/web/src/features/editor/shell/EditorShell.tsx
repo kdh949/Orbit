@@ -7,7 +7,7 @@ import {
   getElementAnimations,
   deriveKeywordActionUsage,
   validateSlideAnimations
-} from "../../../../../../packages/editor-core/src/index";
+} from "@orbit/editor-core";
 import { demoIds, slideQuestionGuideTextHashInput, type Slide } from "@orbit/shared";
 import { getRenderableSlideElements } from "../canvas/EditorCanvas";
 import { getImageCropActionState } from "../canvas/image/imageCropSession";

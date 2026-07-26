@@ -1,6 +1,6 @@
 import type { Slide } from "@orbit/shared";
 
-import { deriveKeywordOccurrences } from "../../../../../../packages/editor-core/src/index";
+import { deriveKeywordOccurrences } from "@orbit/editor-core";
 import {
   normalizeSpeechText,
   splitSpeakerNotesIntoSentences

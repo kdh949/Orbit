@@ -65,8 +65,25 @@ Python source, test, `pyproject.toml`, `uv.lock`이 바뀌면 Ruff, mypy, pytest
 추가한다. Python 문서만 바뀐 경우에는 추가하지 않는다. shared schema 변경은
 cross-language contract 영향 가능성이 있으므로 Python 전체 검증도 추가한다.
 
+## Import boundary
+
+앱과 서비스는 workspace package의 내부 `packages/*/src/**`를 상대경로로 직접
+참조하지 않고 `@orbit/*` 공개 entrypoint를 사용한다.
+
+```bash
+pnpm lint:boundaries
+pnpm test:import-boundaries
+```
+
+`@orbit/shared`와 `@orbit/editor-core`는 Node의 CommonJS 소비자에는 빌드된
+`dist/index.js`를, Vite 같은 ESM bundler에는 공개 TypeScript entrypoint를
+제공한다. package 내부 파일을 옮길 때 app import가 함께 깨지는 우회를 만들지
+않도록 새 직접 참조는 `lint:boundaries`에서 실패한다.
+
 ## Format check
 
-`pnpm format:check`도 같은 기준으로 변경 파일만 검사한다. 저장소 전체의 기존
-포맷 부채를 한 PR에서 수정하지 않으면서 새 변경에 포맷 회귀를 추가하지 않기 위한
-정책이다. 기준 ref는 `FORMAT_CHECK_BASE` 또는 `--base`로 바꿀 수 있다.
+`pnpm format:check`도 같은 기준으로 변경 파일만 검사한다. 새 파일이 포맷되지
+않았거나 기준 ref에서 포맷되었던 파일이 현재 포맷되지 않으면 실패한다. 기준
+ref부터 포맷되지 않았던 파일은 기존 부채로 경고만 남긴다. 따라서 작은 변경 때문에
+대형 legacy 파일 전체를 다시 쓰지 않으면서 새 포맷 회귀는 차단한다. 기준 ref는
+`FORMAT_CHECK_BASE` 또는 `--base`로 바꿀 수 있다.

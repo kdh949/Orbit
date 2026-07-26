@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { isSupportedFormatPath, selectFormatFiles } from "./format-check.mjs";
+import {
+  classifyFormatStatus,
+  isSupportedFormatPath,
+  selectFormatFiles,
+} from "./format-check.mjs";
 
 test("Prettier가 지원하는 변경 소스와 문서를 선택한다", () => {
   assert.equal(isSupportedFormatPath("apps/web/src/App.tsx"), true);
@@ -33,4 +37,45 @@ test("변경 경로를 중복 제거하고 존재하는 파일만 정렬한다",
   );
 
   assert.deepEqual(selected, ["apps/web/src/App.tsx", "README.md"]);
+});
+
+test("현재 파일이 포맷되었으면 base 상태와 무관하게 통과한다", () => {
+  assert.equal(
+    classifyFormatStatus({
+      currentFormatted: true,
+      baseExists: false,
+      baseFormatted: false,
+    }),
+    "formatted",
+  );
+});
+
+test("새 파일과 기존 정상 파일의 포맷 회귀는 실패한다", () => {
+  assert.equal(
+    classifyFormatStatus({
+      currentFormatted: false,
+      baseExists: false,
+      baseFormatted: false,
+    }),
+    "regression",
+  );
+  assert.equal(
+    classifyFormatStatus({
+      currentFormatted: false,
+      baseExists: true,
+      baseFormatted: true,
+    }),
+    "regression",
+  );
+});
+
+test("base부터 포맷되지 않은 파일은 기존 부채로 분류한다", () => {
+  assert.equal(
+    classifyFormatStatus({
+      currentFormatted: false,
+      baseExists: true,
+      baseFormatted: false,
+    }),
+    "legacy",
+  );
 });

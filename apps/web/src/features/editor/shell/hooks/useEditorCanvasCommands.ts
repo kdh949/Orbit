@@ -4,6 +4,7 @@ import {
   createActivityResultsSlide,
   createActivitySlide,
   createElementId,
+  createElementFramePatch,
   createGroupedElementFramePatch,
   createSlideId,
   createTableOperationPatch,
@@ -11,13 +12,10 @@ import {
   getGroupedSelectionBounds,
   getTableOperationCapability,
   getTableStructureCapability,
+  normalizeElementFrameDraft,
   type TableOperation,
   type TableCellRange,
-} from "../../../../../../../packages/editor-core/src/index";
-import {
-  createElementFramePatch,
-  normalizeElementFrameDraft,
-} from "../../../../../../../packages/editor-core/src/patches/elementFrame";
+} from "@orbit/editor-core";
 import type {
   Chart,
   CustomShapeNode,

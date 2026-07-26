@@ -7,7 +7,7 @@ import {
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-import type { SlideAnimationDiagnostics } from "../../../../../../../packages/editor-core/src/index";
+import type { SlideAnimationDiagnostics } from "@orbit/editor-core";
 import { IdBadge } from "./EditorIdBadge";
 import {
   KeywordHighlightedNotes,
