@@ -26,8 +26,9 @@ instead of introducing a parallel token or component system.
 
 ## TypeScript
 
-- Do not use `any`.
-- Do not use `as unknown as`.
+- Do not add `any` or `as unknown as` to new production code.
+- Existing violations are outside the scope of unrelated changes; do not expand
+  them and do not refactor them unless the task explicitly targets typing debt.
 - Prefer explicit props over complex generics.
 - Extend native element props with `ComponentPropsWithoutRef`.
 - Keep API and domain types inside their feature.
@@ -37,7 +38,10 @@ instead of introducing a parallel token or component system.
 - UI refactoring must not change API calls, Zustand state, routing, or report schema.
 - Do not mix visual redesign and business-logic changes in the same task.
 - Keep each change buildable.
-- Run the existing lint, typecheck, and build scripts before finishing.
+- Run targeted tests for the changed feature and
+  `pnpm turbo run typecheck --filter=@orbit/web`.
+- Run the Web build when changing routes, Vite configuration, assets, workers,
+  or package/public import resolution.
 
 ## Accessibility
 
