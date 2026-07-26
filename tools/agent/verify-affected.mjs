@@ -97,32 +97,54 @@ function command(argv, options = {}) {
 }
 
 export function createAffectedVerificationPlan(classification, baseRef) {
+  const hasExactContractImpacts =
+    !classification.full && (classification.contractImpacts?.length ?? 0) > 0;
   const commands = classification.full
     ? [
         command(["pnpm", "turbo", "run", "build", "--env-mode=loose"]),
         command(["pnpm", "turbo", "run", "typecheck", "--env-mode=loose"]),
         command(["pnpm", "turbo", "run", "test", "--env-mode=loose"]),
       ]
-    : [
-        command(
-          [
-            "pnpm",
-            "turbo",
-            "run",
-            "build",
-            "typecheck",
-            "test",
-            "--affected",
-            "--env-mode=loose",
-          ],
-          {
-            env: {
-              TURBO_SCM_BASE: baseRef,
-              TURBO_SCM_HEAD: "HEAD",
+    : hasExactContractImpacts
+      ? [
+          command(
+            [
+              "pnpm",
+              "turbo",
+              "run",
+              "build",
+              "typecheck",
+              "--affected",
+              "--env-mode=loose",
+            ],
+            {
+              env: {
+                TURBO_SCM_BASE: baseRef,
+                TURBO_SCM_HEAD: "HEAD",
+              },
             },
-          },
-        ),
-      ];
+          ),
+        ]
+      : [
+          command(
+            [
+              "pnpm",
+              "turbo",
+              "run",
+              "build",
+              "typecheck",
+              "test",
+              "--affected",
+              "--env-mode=loose",
+            ],
+            {
+              env: {
+                TURBO_SCM_BASE: baseRef,
+                TURBO_SCM_HEAD: "HEAD",
+              },
+            },
+          ),
+        ];
 
   const selectedCommands = new Set(
     commands.map((item) => item.argv.join("\0")),

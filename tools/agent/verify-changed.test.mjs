@@ -31,6 +31,7 @@ test("Web leaf 변경은 인접 test와 Web typecheck만 선택한다", () => {
 
   assert.match(rendered, /leaf\.test\.ts/);
   assert.match(rendered, /@orbit\/web/);
+  assert.match(rendered, /format:check --path/);
   assert.doesNotMatch(rendered, /RehearsalWorkspace/);
   assert.doesNotMatch(rendered, /@orbit\/api/);
   assert.doesNotMatch(rendered, /uv run pytest/);

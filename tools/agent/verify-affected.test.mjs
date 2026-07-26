@@ -72,7 +72,7 @@ test("consumer matrix에 등록된 계약은 exact consumer test만 추가한다
   assert.deepEqual(
     plan.commands.map((item) => `${item.cwd}:${item.argv.join(" ")}`),
     [
-      ".:pnpm turbo run build typecheck test --affected --env-mode=loose",
+      ".:pnpm turbo run build typecheck --affected --env-mode=loose",
       ".:pnpm turbo run test --filter=@orbit/shared --env-mode=loose -- src/coaching/example.schema.test.ts",
       "services/python-worker:uv run pytest tests/test_example.py",
     ],

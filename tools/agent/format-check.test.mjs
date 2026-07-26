@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   classifyFormatStatus,
   isSupportedFormatPath,
+  parseFormatCheckArguments,
   parseRenameSources,
   selectFormatFiles,
 } from "./format-check.mjs";
@@ -92,5 +93,22 @@ test("base부터 포맷되지 않은 파일은 기존 부채로 분류한다", (
       baseFormatted: false,
     }),
     "legacy",
+  );
+});
+
+test("명시한 경로만 format check 대상으로 파싱한다", () => {
+  assert.deepEqual(
+    parseFormatCheckArguments([
+      "--base",
+      "develop",
+      "--path",
+      "apps/web/src/App.tsx",
+      "--path",
+      "docs/current.md",
+    ]),
+    {
+      base: "develop",
+      paths: ["apps/web/src/App.tsx", "docs/current.md"],
+    },
   );
 });

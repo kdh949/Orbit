@@ -4,8 +4,9 @@ import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { createPathContext } from "./context.mjs";
+import { createPathContext, loadDomainCatalog } from "./context.mjs";
 import { collectChangedPaths, resolveBaseRef } from "./lib/git-changes.mjs";
+import { buildImportGraph, reverseImportGraph } from "./lib/import-graph.mjs";
 import {
   commandForTestPath,
   contractImpactsForPaths,
@@ -33,6 +34,10 @@ function addCommand(commands, command, reason) {
   }
 }
 
+function shellQuote(value) {
+  return `'${value.replaceAll("'", `'\\''`)}'`;
+}
+
 export function createChangedVerificationPlan(
   paths,
   contexts,
@@ -47,13 +52,16 @@ export function createChangedVerificationPlan(
     commands: [],
   }));
 
-  for (const command of [
-    "pnpm lint:boundaries",
-    "pnpm lint:cycles",
-    "pnpm format:check",
-  ]) {
+  for (const command of ["pnpm lint:boundaries", "pnpm lint:cycles"]) {
     addCommand(tiers[0].commands, command, "모든 변경의 repository guard");
   }
+  addCommand(
+    tiers[0].commands,
+    `pnpm format:check ${uniquePaths
+      .flatMap((path) => ["--path", shellQuote(path)])
+      .join(" ")}`,
+    "지정한 변경 파일만 포맷 검사",
+  );
   for (const context of contexts) {
     for (const command of context.verification.tier1) {
       addCommand(tiers[1].commands, command, `${context.path} 인접 test`);
@@ -206,7 +214,15 @@ function run() {
       process.stdout.write("[verify:changed] 검사할 변경 파일이 없습니다.\n");
       return;
     }
-    const contexts = paths.map((path) => createPathContext(root, path));
+    const catalog = loadDomainCatalog(root);
+    const graph = buildImportGraph(root, {
+      includeTests: true,
+      sourceRoots: ["apps", "packages", "services", "src", "tests", "tools"],
+    });
+    const reverseGraph = reverseImportGraph(graph);
+    const contexts = paths.map((path) =>
+      createPathContext(root, path, { catalog, graph, reverseGraph }),
+    );
     const matrix = loadContractConsumerMatrix(root, options.matrixPath);
     const plan = createChangedVerificationPlan(paths, contexts, matrix, {
       maxTier: options.maxTier,

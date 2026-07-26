@@ -64,15 +64,27 @@ export function selectFormatFiles(paths, fileExists = () => true) {
     .sort((left, right) => left.localeCompare(right));
 }
 
-function parseBaseArgument(args) {
-  const baseIndex = args.indexOf("--base");
-  if (baseIndex === -1) {
-    return undefined;
+export function parseFormatCheckArguments(args) {
+  const options = { base: undefined, paths: [] };
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === "--base") {
+      if (!args[index + 1]) {
+        throw new Error("--base 다음에 Git ref가 필요합니다.");
+      }
+      options.base = args[index + 1];
+      index += 1;
+    } else if (argument === "--path") {
+      if (!args[index + 1]) {
+        throw new Error("--path 다음에 파일 경로가 필요합니다.");
+      }
+      options.paths.push(args[index + 1]);
+      index += 1;
+    } else {
+      throw new Error(`지원하지 않는 인자입니다: ${argument}`);
+    }
   }
-  if (!args[baseIndex + 1]) {
-    throw new Error("--base 다음에 Git ref가 필요합니다.");
-  }
-  return args[baseIndex + 1];
+  return options;
 }
 
 function resolveBaseRef(explicitBase) {
@@ -214,11 +226,14 @@ async function checkFormatting(files, mergeBase, renameSources) {
 }
 
 async function main() {
-  const baseRef = resolveBaseRef(parseBaseArgument(process.argv.slice(2)));
+  const options = parseFormatCheckArguments(process.argv.slice(2));
+  const baseRef = resolveBaseRef(options.base);
   const mergeBase = resolveMergeBase(baseRef);
   const renameSources = collectRenameSources(baseRef);
   const files = selectFormatFiles(
-    collectChangedPaths(baseRef, { root: repositoryRoot }),
+    options.paths.length > 0
+      ? options.paths
+      : collectChangedPaths(baseRef, { root: repositoryRoot }),
     (path) => existsSync(join(repositoryRoot, path)),
   );
 
@@ -228,7 +243,9 @@ async function main() {
   }
 
   console.log(
-    `[format-check] ${files.length}개 변경 파일 검사. base=${baseRef}`,
+    `[format-check] ${files.length}개 ${
+      options.paths.length > 0 ? "지정" : "변경"
+    } 파일 검사. base=${baseRef}`,
   );
   return checkFormatting(files, mergeBase, renameSources);
 }
