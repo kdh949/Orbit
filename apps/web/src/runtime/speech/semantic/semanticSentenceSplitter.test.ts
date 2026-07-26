@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createDefaultPhraseExtractor } from "../../../runtime/speech/tracking/phraseExtractor";
+import { createDefaultPhraseExtractor } from "../tracking/phraseExtractor";
 import { splitSpeakerNotesIntoSemanticSentences } from "./semanticSentenceSplitter";
 
 describe("splitSpeakerNotesIntoSemanticSentences", () => {

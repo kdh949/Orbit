@@ -1,5 +1,5 @@
 import type { Deck } from "@orbit/shared";
-import type { SemanticUtteranceDebugState } from "../speech/semanticSpeechDebug";
+import type { SemanticUtteranceDebugState } from "../../../runtime/speech/semantic/semanticSpeechDebug";
 import type { SpeechTrackerSnapshot } from "../../../runtime/speech/tracking/speechTrackingEvents";
 import type { SemanticCapabilityStatusItem } from "../panel/semanticCapabilityStatusModel";
 import { clampSlideshowStepIndex } from "../../../runtime/presentation/slideshow/slideshowStepModel";

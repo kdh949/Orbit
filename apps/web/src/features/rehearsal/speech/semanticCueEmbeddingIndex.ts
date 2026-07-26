@@ -1,6 +1,6 @@
 import type { SemanticCue } from "@orbit/shared";
 
-import type { E5EmbeddingService } from "./e5EmbeddingService";
+import type { E5EmbeddingService } from "../../../runtime/speech/semantic/e5EmbeddingService";
 
 export type SemanticCueEmbeddingIndexSnapshot = {
   slideId: string;

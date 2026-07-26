@@ -6,7 +6,7 @@ import {
   semanticSpeechDebugPanelStorageKey,
   shouldShowSemanticSpeechDebugPanel
 } from "./SemanticSpeechDebugPanel";
-import { createSemanticDebugState } from "../speech/semanticSpeechDebug";
+import { createSemanticDebugState } from "../../../runtime/speech/semantic/semanticSpeechDebug";
 
 describe("SemanticSpeechDebugPanel", () => {
   it("latest final transcript와 decision 적용 상태를 표시한다", () => {

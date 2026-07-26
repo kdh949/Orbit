@@ -30,9 +30,9 @@ import {
   createSemanticDebugState,
   semanticDebugErrorMessage,
   type SemanticUtteranceDebugState
-} from "./semanticSpeechDebug";
-import type { SemanticMatchDecisionReason } from "./semanticUtteranceDecision";
-import type { SemanticUtteranceMatcher } from "./semanticUtteranceMatcher";
+} from "../../../runtime/speech/semantic/semanticSpeechDebug";
+import type { SemanticMatchDecisionReason } from "../../../runtime/speech/semantic/semanticUtteranceDecision";
+import type { SemanticUtteranceMatcher } from "../../../runtime/speech/semantic/semanticUtteranceMatcher";
 import type { SemanticCueDebugEvent } from "./semanticCueDebugEvents";
 import type { SemanticCueRuntime } from "./semanticCueRuntime";
 import { createSemanticEvidenceWindow } from "./semanticEvidenceWindow";

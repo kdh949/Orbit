@@ -10,7 +10,9 @@ workspace package를 사용할 수 있지만 `features/**` 내부 구현을 impo
   Moonshine, Sherpa, reranking
 - `speech/tracking/`: 문장 추출, 발음 정규화, lexical matching, prompter와
   script progress, keyword occurrence
-- 이후 semantic speech와 media capability도 같은 의존 방향을 유지하며
+- `speech/semantic/`: E5 embedding, semantic sentence matching, utterance
+  decision과 debug state
+- 이후 semantic cue/NLI와 media capability도 같은 의존 방향을 유지하며
   이동한다.
 
 Feature는 runtime을 사용할 수 있고 runtime은 feature를 알지 못한다.

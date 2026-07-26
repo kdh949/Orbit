@@ -1,4 +1,4 @@
-import { calculateWordMultisetRecall } from "../../../runtime/speech/tracking/speechMatcher";
+import { calculateWordMultisetRecall } from "../tracking/speechMatcher";
 import type { SemanticUtteranceMatch } from "./semanticUtterance.types";
 
 export type UtteranceOutcomeKind = "covered" | "paraphrased" | "ad-lib" | "missed";

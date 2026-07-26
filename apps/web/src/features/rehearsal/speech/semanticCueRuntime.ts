@@ -34,7 +34,7 @@ import {
   type SemanticCueRuntimeConfig
 } from "./semanticCueRuntimeConfig";
 import type { SemanticCapabilityTransition } from "./semanticCapabilityState";
-import type { SemanticMatchDecisionReason } from "./semanticUtteranceDecision";
+import type { SemanticMatchDecisionReason } from "../../../runtime/speech/semantic/semanticUtteranceDecision";
 
 export type SemanticCueRuntime = {
   prepareSlide: (input: {
