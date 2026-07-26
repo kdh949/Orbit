@@ -287,17 +287,25 @@ export function validateBenchmarkSnapshot(snapshot) {
   if (typeof snapshot?.capturedAt !== "string" || snapshot.capturedAt === "") {
     issues.push("capturedAt이 필요합니다.");
   }
+  const gitHashPattern = /^[a-f0-9]{40,64}$/i;
   const hasGitIdentity =
-    typeof snapshot?.headCommit === "string" &&
-    snapshot.headCommit !== "" &&
-    typeof snapshot?.treeHash === "string" &&
-    snapshot.treeHash !== "";
+    gitHashPattern.test(snapshot?.headCommit ?? "") &&
+    gitHashPattern.test(snapshot?.treeHash ?? "");
   const hasArchiveIdentity = /^[a-f0-9]{64}$/i.test(
     snapshot?.sourceArchiveSha256 ?? "",
   );
   if (!hasGitIdentity && !hasArchiveIdentity) {
     issues.push(
       "Git commit/tree 또는 source archive SHA-256 identity가 필요합니다.",
+    );
+  }
+  if (
+    hasArchiveIdentity &&
+    !hasGitIdentity &&
+    (snapshot?.headCommit !== null || snapshot?.treeHash !== null)
+  ) {
+    issues.push(
+      "archive-only snapshot의 headCommit과 treeHash는 null이어야 합니다.",
     );
   }
   if ((snapshot?.headCommit === null) !== (snapshot?.treeHash === null)) {
@@ -353,6 +361,18 @@ export function validateBenchmarkSnapshot(snapshot) {
   }
   if (!Array.isArray(snapshot?.macroRuns)) {
     issues.push("macroRuns가 필요합니다.");
+  } else {
+    for (const run of snapshot.macroRuns) {
+      if (
+        run?.kind !== "macro-refactor" ||
+        !isNonNegativeInteger(run.elapsedSeconds) ||
+        !isNonNegativeInteger(run.reportedTokens) ||
+        !/^[a-f0-9]{64}$/i.test(run.sourceArchiveSha256 ?? "") ||
+        !/^[a-f0-9]{64}$/i.test(run.resultArchiveSha256 ?? "")
+      ) {
+        issues.push("macroRuns 항목이 유효하지 않습니다.");
+      }
+    }
   }
   if (!Array.isArray(snapshot?.manualBenchmark?.tasks)) {
     issues.push("manualBenchmark.tasks가 필요합니다.");

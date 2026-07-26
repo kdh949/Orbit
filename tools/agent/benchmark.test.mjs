@@ -148,3 +148,21 @@ test("Git metadata가 없는 source archive snapshot identity를 허용한다", 
   assert.equal(snapshot.treeHash, null);
   assert.deepEqual(validateBenchmarkSnapshot(snapshot), []);
 });
+
+test("archive snapshot에 검증되지 않은 commit label을 함께 기록하지 않는다", () => {
+  const snapshot = createBenchmarkSnapshot(createRepositoryFixture(), {
+    gitIdentity: {
+      headCommit: null,
+      treeHash: null,
+      workingTreeDirty: false,
+    },
+    sourceArchiveSha256: "d".repeat(64),
+  });
+  snapshot.headCommit = "unverified";
+
+  assert.ok(
+    validateBenchmarkSnapshot(snapshot).some((issue) =>
+      issue.includes("archive-only"),
+    ),
+  );
+});
