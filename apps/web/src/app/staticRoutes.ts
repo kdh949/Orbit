@@ -1,5 +1,19 @@
-import type { Route } from "../App";
 import type { OrbitMockupScreen } from "../features/mockups/OrbitMockupFlow";
+
+type StaticRoute =
+  | { name: "community" }
+  | { name: "create-deck" }
+  | { name: "deck-render" }
+  | { name: "design-system" }
+  | { name: "home" }
+  | { name: "login" }
+  | { name: "mockup"; screen: OrbitMockupScreen }
+  | { name: "profile" }
+  | { name: "project-list" }
+  | { name: "rehearsal-project-list" }
+  | { name: "report-list" }
+  | { name: "report-mockup" }
+  | { name: "signup" };
 
 const mockupRoutes = {
   "/mockup": "public",
@@ -37,23 +51,24 @@ const fixedRoutes = {
   "/report_mockup": { name: "report-mockup" },
   "/reports": { name: "report-list" },
   "/signup": { name: "signup" },
-} satisfies Record<string, Route>;
+} satisfies Record<string, StaticRoute>;
 
-export const staticRouteTable: Readonly<Record<string, Route>> = Object.freeze({
-  ...fixedRoutes,
-  ...(Object.fromEntries(
-    Object.entries(mockupRoutes).map(([path, screen]) => [
-      path,
-      { name: "mockup", screen },
-    ]),
-  ) as Record<string, Route>),
-});
+export const staticRouteTable: Readonly<Record<string, StaticRoute>> =
+  Object.freeze({
+    ...fixedRoutes,
+    ...(Object.fromEntries(
+      Object.entries(mockupRoutes).map(([path, screen]) => [
+        path,
+        { name: "mockup", screen },
+      ]),
+    ) as Record<string, StaticRoute>),
+  });
 
 export function resolveStaticRoute(
   pathname: string,
   search: string,
   options: { deckRenderEnabled: boolean },
-): Route | undefined {
+): StaticRoute | undefined {
   if (pathname === "/project") {
     return new URLSearchParams(search).get("intent") === "rehearsal"
       ? { name: "rehearsal-project-list" }
