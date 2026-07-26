@@ -32,12 +32,15 @@
   ],
   "primaryContracts": [
     "docs/contracts/rehearsal.md",
-    "packages/shared/src/rehearsals/rehearsal.schema.ts",
+    "packages/shared/src/rehearsals/rehearsal-core-contracts.ts",
+    "packages/shared/src/rehearsals/rehearsal-api-contracts.ts",
     "packages/shared/src/rehearsals/rehearsal-audio-analysis.schema.ts"
   ],
   "secondaryContracts": [
     "docs/contracts/common.md",
-    "packages/shared/src/rehearsals/rehearsal-semantic-evidence.schema.ts"
+    "packages/shared/src/rehearsals/rehearsal-semantic-evidence.schema.ts",
+    "packages/shared/src/rehearsals/trend-contracts.ts",
+    "packages/shared/src/rehearsals/project-summary-contracts.ts"
   ],
   "testOwners": [
     {
@@ -51,6 +54,18 @@
     {
       "source": "apps/worker/src/rehearsal-stt.processor.ts",
       "tests": ["apps/worker/src/rehearsal-stt.processor.spec.ts"]
+    },
+    {
+      "source": "packages/shared/src/rehearsals/rehearsal-api-contracts.ts",
+      "tests": [
+        "packages/shared/src/rehearsals/rehearsal-api-contracts.test.ts"
+      ]
+    },
+    {
+      "source": "packages/shared/src/rehearsals/project-summary-contracts.ts",
+      "tests": [
+        "packages/shared/src/rehearsals/project-summary-contracts.test.ts"
+      ]
     },
     {
       "source": "services/python-worker/app/rehearsal.py",

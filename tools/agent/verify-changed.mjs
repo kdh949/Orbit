@@ -43,6 +43,45 @@ function shellQuote(value) {
   return `'${value.replaceAll("'", `'\\''`)}'`;
 }
 
+export function batchWorkspaceTestCommands(commands) {
+  const groups = new Map();
+  const passthrough = [];
+  const patterns = [
+    {
+      match: /^pnpm turbo run test --filter=([^ ]+) --env-mode=loose -- (.+)$/,
+      prefix: (match) =>
+        `pnpm turbo run test --filter=${match[1]} --env-mode=loose --`,
+    },
+    {
+      match: /^cd services\/python-worker && uv run pytest (.+)$/,
+      prefix: () => "cd services/python-worker && uv run pytest",
+    },
+  ];
+
+  for (const item of commands) {
+    const pattern = patterns.find(({ match }) => match.test(item.command));
+    const match = pattern?.match.exec(item.command);
+    if (!pattern || !match) {
+      passthrough.push(item);
+      continue;
+    }
+    const prefix = pattern.prefix(match);
+    const testPath = match.at(-1);
+    const group = groups.get(prefix) ?? { prefix, paths: [], reasons: [] };
+    group.paths.push(testPath);
+    group.reasons.push(...item.reasons);
+    groups.set(prefix, group);
+  }
+
+  return [
+    ...passthrough,
+    ...[...groups.values()].map((group) => ({
+      command: `${group.prefix} ${[...new Set(group.paths)].sort().join(" ")}`,
+      reasons: [...new Set(group.reasons)],
+    })),
+  ];
+}
+
 export function isPublicBarrelPath(path) {
   return /(?:^|\/)(?:index|public)\.(?:[cm]?[jt]sx?)$/.test(path);
 }
@@ -164,6 +203,9 @@ export function createChangedVerificationPlan(
       `release trigger: ${releaseTriggers.join(", ")}`,
     );
   }
+
+  tiers[1].commands = batchWorkspaceTestCommands(tiers[1].commands);
+  tiers[3].commands = batchWorkspaceTestCommands(tiers[3].commands);
 
   return {
     maxTier,
