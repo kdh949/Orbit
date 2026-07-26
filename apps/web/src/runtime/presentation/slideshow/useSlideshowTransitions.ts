@@ -1,19 +1,19 @@
-import type { Deck, Slide } from "@orbit/shared";
+import type { Deck, Slide } from "@orbit/shared/deck";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ElementPresentationState } from "../../slides/rendering/presentationState";
+import type { ElementPresentationState } from "./elementPresentationState";
 import {
   computeSettledElementStates,
   createBaseElementStates,
-  createSlideshowAnimationPlan
+  createSlideshowAnimationPlan,
 } from "./slideshowStepModel";
 import {
   getSlideshowTransitionDurationMs,
-  type SlideshowTransitionAnimation
+  type SlideshowTransitionAnimation,
 } from "./slideshowTransitionTiming";
 
 export {
   createSlideshowEntryTransitionTimeline,
-  getSlideshowTransitionDurationMs
+  getSlideshowTransitionDurationMs,
 } from "./slideshowTransitionTiming";
 
 export function useSlideshowTransitions(args: {
@@ -27,24 +27,24 @@ export function useSlideshowTransitions(args: {
   const playInitialEntryAnimations = args.playInitialEntryAnimations ?? true;
   const triggerAnimationIds = useMemo(
     () => [...(args.triggerAnimationIds ?? [])],
-    [args.triggerAnimationIds]
+    [args.triggerAnimationIds],
   );
   const plan = useMemo(
     () =>
       createSlideshowAnimationPlan({
         slide: args.slide,
-        triggerAnimationIds
+        triggerAnimationIds,
       }),
-    [args.slide, triggerAnimationIds]
+    [args.slide, triggerAnimationIds],
   );
   const initialEntryPlan = useMemo(
     () =>
       createSlideshowAnimationPlan({
         slide: args.slide,
         transitionDurationMs: 0,
-        triggerAnimationIds
+        triggerAnimationIds,
       }),
-    [args.slide, triggerAnimationIds]
+    [args.slide, triggerAnimationIds],
   );
   const targetStates = useMemo(
     () =>
@@ -52,13 +52,13 @@ export function useSlideshowTransitions(args: {
         deck: args.deck,
         slide: args.slide,
         stepIndex: args.stepIndex,
-        triggerAnimationIds
+        triggerAnimationIds,
       }),
-    [args.deck, args.slide, args.stepIndex, triggerAnimationIds]
+    [args.deck, args.slide, args.stepIndex, triggerAnimationIds],
   );
   const baseStates = useMemo(
     () => createBaseElementStates(args.deck, args.slide),
-    [args.deck, args.slide]
+    [args.deck, args.slide],
   );
   const [displayFrame, setDisplayFrame] = useState(() => ({
     slideId: args.slide.slideId,
@@ -70,9 +70,9 @@ export function useSlideshowTransitions(args: {
         ? createSlideshowTransitionStartStates(
             targetStates,
             initialEntryPlan.entryAnimations,
-            baseStates
+            baseStates,
           )
-        : targetStates
+        : targetStates,
   }));
   const previousAddressRef = useRef<{
     slideId: string;
@@ -86,7 +86,7 @@ export function useSlideshowTransitions(args: {
     const previousSettledStates = settledStatesRef.current;
     previousAddressRef.current = {
       slideId: args.slide.slideId,
-      stepIndex: args.stepIndex
+      stepIndex: args.stepIndex,
     };
     settledStatesRef.current = targetStates;
 
@@ -100,17 +100,20 @@ export function useSlideshowTransitions(args: {
       playInitialEntryAnimations &&
       args.stepIndex === 0;
     const isSlideChange =
-      previousAddress !== null && previousAddress.slideId !== args.slide.slideId;
+      previousAddress !== null &&
+      previousAddress.slideId !== args.slide.slideId;
     const shouldPlaySlideEntry = isSlideChange && args.stepIndex === 0;
     const stepDelta =
       previousAddress === null ? 0 : args.stepIndex - previousAddress.stepIndex;
     const activePlan = isInitialEntry ? initialEntryPlan : plan;
-    const transitionAnimations = isInitialEntry || shouldPlaySlideEntry
-      ? activePlan.entryAnimations
-      : stepDelta === 1
-        ? plan.triggerSteps[args.stepIndex - 1]?.animations ?? []
-        : [];
-    const shouldPlayTransition = isInitialEntry || shouldPlaySlideEntry || stepDelta === 1;
+    const transitionAnimations =
+      isInitialEntry || shouldPlaySlideEntry
+        ? activePlan.entryAnimations
+        : stepDelta === 1
+          ? (plan.triggerSteps[args.stepIndex - 1]?.animations ?? [])
+          : [];
+    const shouldPlayTransition =
+      isInitialEntry || shouldPlaySlideEntry || stepDelta === 1;
 
     if (
       args.reducedMotion ||
@@ -124,7 +127,9 @@ export function useSlideshowTransitions(args: {
     const startStates = createSlideshowTransitionStartStates(
       targetStates,
       transitionAnimations,
-      isInitialEntry || shouldPlaySlideEntry ? baseStates : previousSettledStates
+      isInitialEntry || shouldPlaySlideEntry
+        ? baseStates
+        : previousSettledStates,
     );
     const durationMs = getSlideshowTransitionDurationMs(transitionAnimations);
     const startedAt = performance.now();
@@ -142,8 +147,8 @@ export function useSlideshowTransitions(args: {
           progress,
           startStates,
           targetStates,
-          transitionDurationMs: durationMs
-        })
+          transitionDurationMs: durationMs,
+        }),
       });
 
       if (progress < 1) {
@@ -170,7 +175,7 @@ export function useSlideshowTransitions(args: {
     initialEntryPlan,
     plan,
     playInitialEntryAnimations,
-    targetStates
+    targetStates,
   ]);
 
   return {
@@ -183,9 +188,9 @@ export function useSlideshowTransitions(args: {
       reducedMotion: args.reducedMotion,
       slideId: args.slide.slideId,
       stepIndex: args.stepIndex,
-      targetStates
+      targetStates,
     }),
-    settledElementStates: targetStates
+    settledElementStates: targetStates,
   };
 }
 
@@ -210,7 +215,7 @@ export function resolveSlideshowDisplayStates(args: {
     return createSlideshowTransitionStartStates(
       args.targetStates,
       args.entryAnimations,
-      args.baseStates
+      args.baseStates,
     );
   }
   return args.targetStates;
@@ -219,7 +224,7 @@ export function resolveSlideshowDisplayStates(args: {
 export function createSlideshowTransitionStartStates(
   targetStates: Record<string, ElementPresentationState>,
   animations: SlideshowTransitionAnimation[],
-  referenceStates: Record<string, ElementPresentationState> = targetStates
+  referenceStates: Record<string, ElementPresentationState> = targetStates,
 ) {
   const states = cloneElementStates(targetStates);
   const initializedElementIds = new Set<string>();
@@ -258,7 +263,9 @@ export function createSlideshowTransitionStartStates(
         break;
       case "rotate":
         state.rotation =
-          referenceState.rotation ?? targetStates[animation.elementId]?.rotation ?? 0;
+          referenceState.rotation ??
+          targetStates[animation.elementId]?.rotation ??
+          0;
         break;
     }
   }
@@ -280,7 +287,8 @@ export function interpolateSlideshowTransitionStates(args: {
 
   const states = cloneElementStates(args.startStates);
   const transitionDurationMs =
-    args.transitionDurationMs ?? getSlideshowTransitionDurationMs(args.animations);
+    args.transitionDurationMs ??
+    getSlideshowTransitionDurationMs(args.animations);
 
   for (const animation of args.animations) {
     const state = states[animation.elementId];
@@ -335,7 +343,8 @@ export function interpolateSlideshowTransitionStates(args: {
         }
         break;
       case "rotate":
-        state.rotation = (start.rotation ?? base.rotation ?? 0) + 360 * progress;
+        state.rotation =
+          (start.rotation ?? base.rotation ?? 0) + 360 * progress;
         if (progress >= 1) {
           state.rotation = base.rotation;
         }
@@ -349,27 +358,26 @@ export function interpolateSlideshowTransitionStates(args: {
 function applyDelay(
   animation: SlideshowTransitionAnimation,
   progress: number,
-  transitionDurationMs: number
+  transitionDurationMs: number,
 ) {
   const safeTransitionDurationMs = Math.max(1, transitionDurationMs);
   const elapsedMs = progress * safeTransitionDurationMs;
   const effectiveDelayMs = Math.min(
     animation.transitionDelayMs ?? animation.delayMs,
-    Math.max(0, safeTransitionDurationMs - 1)
+    Math.max(0, safeTransitionDurationMs - 1),
   );
-  const effectiveDurationMs = Math.max(
-    1,
-    animation.durationMs
-  );
-  const delayedProgress =
-    (elapsedMs - effectiveDelayMs) / effectiveDurationMs;
+  const effectiveDurationMs = Math.max(1, animation.durationMs);
+  const delayedProgress = (elapsedMs - effectiveDelayMs) / effectiveDurationMs;
 
   return Math.min(1, Math.max(0, delayedProgress));
 }
 
 function cloneElementStates(states: Record<string, ElementPresentationState>) {
   return Object.fromEntries(
-    Object.entries(states).map(([elementId, state]) => [elementId, { ...state }])
+    Object.entries(states).map(([elementId, state]) => [
+      elementId,
+      { ...state },
+    ]),
   );
 }
 

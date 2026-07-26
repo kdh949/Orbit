@@ -84,8 +84,8 @@ import {
   createInitialAdvanceControllerState,
   evaluateAdvanceController,
 } from "./advance/advanceController";
-import { p0AnimationDeck } from "./presenter/__fixtures__/animationDeck";
-import { getNextPresenterStepState } from "./presenter/presenterStepNavigation";
+import { p0AnimationDeck } from "../../runtime/presentation/slideshow/__fixtures__/animationDeck";
+import { getNextPresenterStepState } from "../../runtime/presentation/slideshow/presenterStepNavigation";
 import { normalizeLiveTranscriptText } from "./stt/liveTranscriptText";
 import { createPauseDetector } from "./speech/pauseDetector";
 import { matchKeywordOccurrenceTriggers } from "./speech/keywordOccurrenceRuntime";

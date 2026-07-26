@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { createActivitySlide, createDemoDeck } from "@orbit/editor-core";
-import { p0AnimationDeck } from "./__fixtures__/animationDeck";
+import { p0AnimationDeck } from "../../../runtime/presentation/slideshow/__fixtures__/animationDeck";
 import {
   AudienceOutputRenderer,
   attachAudienceVideoStream,

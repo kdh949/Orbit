@@ -4,7 +4,10 @@ export function useReducedMotion() {
   const [reducedMotion, setReducedMotion] = useState(() => readReducedMotion());
 
   useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
       return;
     }
 
@@ -23,7 +26,10 @@ export function useReducedMotion() {
 }
 
 function readReducedMotion() {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+  if (
+    typeof window === "undefined" ||
+    typeof window.matchMedia !== "function"
+  ) {
     return false;
   }
 

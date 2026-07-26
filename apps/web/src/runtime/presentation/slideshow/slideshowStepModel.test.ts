@@ -3,7 +3,7 @@ import { p0AnimationDeck } from "./__fixtures__/animationDeck";
 import {
   clampSlideshowStepIndex,
   computeSettledElementStates,
-  createSlideshowAnimationPlan
+  createSlideshowAnimationPlan,
 } from "./slideshowStepModel";
 
 const slide = p0AnimationDeck.slides[0]!;
@@ -15,23 +15,26 @@ describe("slideshowStepModel", () => {
       triggerAnimationIds: [
         "anim_image_zoom_in",
         "anim_group_fade_out",
-        "anim_chart_zoom_out"
-      ]
+        "anim_chart_zoom_out",
+      ],
     });
 
     expect(plan.maxStepIndex).toBe(2);
-    expect(plan.entryAnimations.map((animation) => animation.animationId)).toEqual([
+    expect(
+      plan.entryAnimations.map((animation) => animation.animationId),
+    ).toEqual([
       "anim_title_entry",
       "anim_body_appear",
       "anim_highlight_disappear",
       "anim_custom_rotate",
-      "anim_missing"
+      "anim_missing",
     ]);
     expect(plan.triggerSteps.map((step) => step.order)).toEqual([5, 8]);
-    expect(plan.triggerSteps[0]?.animations.map((animation) => animation.animationId)).toEqual([
-      "anim_image_zoom_in",
-      "anim_group_fade_out"
-    ]);
+    expect(
+      plan.triggerSteps[0]?.animations.map(
+        (animation) => animation.animationId,
+      ),
+    ).toEqual(["anim_image_zoom_in", "anim_group_fade_out"]);
     expect(plan.danglingAnimationIds).toEqual(["anim_missing"]);
   });
 
@@ -40,25 +43,25 @@ describe("slideshowStepModel", () => {
       "anim_image_zoom_in",
       "anim_group_fade_out",
       "anim_chart_zoom_out",
-      "anim_custom_rotate"
+      "anim_custom_rotate",
     ];
     const step0 = computeSettledElementStates({
       deck: p0AnimationDeck,
       slide,
       stepIndex: 0,
-      triggerAnimationIds
+      triggerAnimationIds,
     });
     const step1 = computeSettledElementStates({
       deck: p0AnimationDeck,
       slide,
       stepIndex: 1,
-      triggerAnimationIds
+      triggerAnimationIds,
     });
     const step3 = computeSettledElementStates({
       deck: p0AnimationDeck,
       slide,
       stepIndex: 3,
-      triggerAnimationIds
+      triggerAnimationIds,
     });
 
     expect(step0.el_title?.visible).toBe(true);
@@ -70,17 +73,21 @@ describe("slideshowStepModel", () => {
       visible: false,
       opacity: 0,
       scaleX: 0,
-      scaleY: 0
+      scaleY: 0,
     });
 
-    expect(step1.el_image).toMatchObject({ visible: true, scaleX: 1, scaleY: 1 });
+    expect(step1.el_image).toMatchObject({
+      visible: true,
+      scaleX: 1,
+      scaleY: 1,
+    });
     expect(step1.el_group).toMatchObject({ visible: false, opacity: 0 });
 
     expect(step3.el_chart).toMatchObject({
       visible: false,
       opacity: 0,
       scaleX: 0,
-      scaleY: 0
+      scaleY: 0,
     });
     expect(step3.el_custom?.rotation).toBe(0);
   });
@@ -97,15 +104,15 @@ describe("slideshowStepModel", () => {
           order: 12,
           durationMs: 300,
           delayMs: 0,
-          easing: "ease-out"
-        }
-      ]
+          easing: "ease-out",
+        },
+      ],
     } satisfies typeof slide;
     const states = computeSettledElementStates({
       deck: p0AnimationDeck,
       slide: slideWithChildAnimation,
       stepIndex: 1,
-      triggerAnimationIds: ["anim_group_label_fade_out"]
+      triggerAnimationIds: ["anim_group_label_fade_out"],
     });
 
     expect(states.el_group).toBeDefined();
@@ -124,7 +131,7 @@ describe("slideshowStepModel", () => {
           order: 1,
           durationMs: 300,
           delayMs: 0,
-          easing: "ease-out"
+          easing: "ease-out",
         },
         {
           animationId: "anim_highlight_reentry",
@@ -133,20 +140,20 @@ describe("slideshowStepModel", () => {
           order: 2,
           durationMs: 300,
           delayMs: 0,
-          easing: "ease-out"
-        }
-      ]
+          easing: "ease-out",
+        },
+      ],
     } satisfies typeof slide;
     const states = computeSettledElementStates({
       deck: p0AnimationDeck,
       slide: slideWithReentry,
       stepIndex: 2,
-      triggerAnimationIds: ["anim_highlight_exit", "anim_highlight_reentry"]
+      triggerAnimationIds: ["anim_highlight_exit", "anim_highlight_reentry"],
     });
 
     expect(states.el_highlight).toMatchObject({
       visible: true,
-      opacity: 0.55
+      opacity: 0.55,
     });
   });
 
@@ -170,9 +177,9 @@ describe("slideshowStepModel", () => {
           startMode: "after-previous" as const,
           durationMs: 300,
           delayMs: 50,
-          easing: "ease-out" as const
-        }
-      ]
+          easing: "ease-out" as const,
+        },
+      ],
     };
 
     const plan = createSlideshowAnimationPlan({ slide: slideWithOrphanAfter });
@@ -181,7 +188,7 @@ describe("slideshowStepModel", () => {
     expect(plan.entryDurationMs).toBe(1050);
     expect(plan.diagnostics).toContainEqual({
       animationId: "anim_after_transition",
-      code: "orphan-after-previous"
+      code: "orphan-after-previous",
     });
   });
 
@@ -198,14 +205,14 @@ describe("slideshowStepModel", () => {
           startMode: "after-previous" as const,
           durationMs: 300,
           delayMs: 50,
-          easing: "ease-out" as const
-        }
-      ]
+          easing: "ease-out" as const,
+        },
+      ],
     };
 
     const plan = createSlideshowAnimationPlan({
       slide: slideWithOrphanAfter,
-      transitionDurationMs: 0
+      transitionDurationMs: 0,
     });
 
     expect(plan.entryAnimations[0]?.timelineStartMs).toBe(50);

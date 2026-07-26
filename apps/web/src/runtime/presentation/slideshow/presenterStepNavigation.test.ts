@@ -8,11 +8,11 @@ describe("presenterStepNavigation", () => {
         currentSlideIndex: 0,
         currentStepIndex: 1,
         maxStepIndex: 2,
-        slideCount: 2
-      })
+        slideCount: 2,
+      }),
     ).toEqual({
       slideIndex: 0,
-      stepIndex: 2
+      stepIndex: 2,
     });
   });
 
@@ -22,11 +22,11 @@ describe("presenterStepNavigation", () => {
         currentSlideIndex: 0,
         currentStepIndex: 2,
         maxStepIndex: 2,
-        slideCount: 2
-      })
+        slideCount: 2,
+      }),
     ).toEqual({
       slideIndex: 1,
-      stepIndex: 0
+      stepIndex: 0,
     });
 
     expect(
@@ -34,11 +34,11 @@ describe("presenterStepNavigation", () => {
         currentSlideIndex: 1,
         currentStepIndex: 2,
         maxStepIndex: 2,
-        slideCount: 2
-      })
+        slideCount: 2,
+      }),
     ).toEqual({
       slideIndex: 1,
-      stepIndex: 2
+      stepIndex: 2,
     });
   });
 });

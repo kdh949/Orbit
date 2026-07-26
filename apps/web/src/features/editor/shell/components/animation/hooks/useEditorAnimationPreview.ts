@@ -1,8 +1,8 @@
 import type { Deck, Slide } from "@orbit/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { interpolateSlideshowTransitionStates } from "../../../../../rehearsal/presenter/useSlideshowTransitions";
-import { useReducedMotion } from "../../../../../rehearsal/presenter/useReducedMotion";
+import { interpolateSlideshowTransitionStates } from "../../../../../../runtime/presentation/slideshow/useSlideshowTransitions";
+import { useReducedMotion } from "../../../../../../runtime/presentation/slideshow/useReducedMotion";
 import type { ElementPresentationState } from "../../../../../slides/rendering";
 import { createEditorAnimationPreviewPlan } from "../utils/animationPreviewPlayback";
 

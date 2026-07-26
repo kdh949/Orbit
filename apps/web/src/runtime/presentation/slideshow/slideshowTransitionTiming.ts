@@ -1,5 +1,5 @@
 import { createAnimationTimeline } from "@orbit/editor-core/playback";
-import type { DeckAnimation } from "@orbit/shared";
+import type { DeckAnimation } from "@orbit/shared/deck";
 
 export type SlideshowTransitionAnimation = DeckAnimation & {
   timelineStartMs?: number;
@@ -8,19 +8,19 @@ export type SlideshowTransitionAnimation = DeckAnimation & {
 
 export function createSlideshowEntryTransitionTimeline(
   animations: DeckAnimation[],
-  transitionDurationMs = 0
+  transitionDurationMs = 0,
 ): SlideshowTransitionAnimation[] {
   const timeline = createAnimationTimeline({
     animations,
-    transitionDurationMs
+    transitionDurationMs,
   });
 
   return timeline.entryRoots.flatMap((root) =>
     root.effects.map((animation) => ({
       ...animation,
       timelineStartMs: animation.startMs,
-      transitionDelayMs: animation.startMs
-    }))
+      transitionDelayMs: animation.startMs,
+    })),
   );
 }
 
@@ -29,20 +29,20 @@ export function sequenceEntryAnimationsByOrder(animations: DeckAnimation[]) {
 }
 
 export function getSequencedEntryTransitionDurationMs(
-  animations: SlideshowTransitionAnimation[]
+  animations: SlideshowTransitionAnimation[],
 ) {
   return getSlideshowTransitionDurationMs(animations);
 }
 
 export function getSlideshowTransitionDurationMs(
-  animations: SlideshowTransitionAnimation[]
+  animations: SlideshowTransitionAnimation[],
 ) {
   return Math.max(
     0,
     ...animations.map(
       (animation) =>
         (animation.transitionDelayMs ?? animation.delayMs) +
-        Math.max(1, animation.durationMs)
-    )
+        Math.max(1, animation.durationMs),
+    ),
   );
 }

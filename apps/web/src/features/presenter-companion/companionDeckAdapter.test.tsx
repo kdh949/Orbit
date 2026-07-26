@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { forwardRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { p0AnimationDeck } from "../rehearsal/presenter/__fixtures__/animationDeck";
+import { p0AnimationDeck } from "../../runtime/presentation/slideshow/__fixtures__/animationDeck";
 import { CompanionAudienceRenderer } from "./CompanionAudienceRenderer";
 import {
   materializeCompanionDeck,

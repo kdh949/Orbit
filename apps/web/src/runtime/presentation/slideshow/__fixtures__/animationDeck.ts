@@ -1,4 +1,4 @@
-import { deckSchema, type Deck } from "@orbit/shared";
+import { deckSchema, type Deck } from "@orbit/shared/deck";
 
 export const p0AnimationDeck: Deck = deckSchema.parse({
   deckId: "deck_p0_animation",
@@ -10,7 +10,7 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
     preset: "wide-16-9",
     width: 1920,
     height: 1080,
-    aspectRatio: "16:9"
+    aspectRatio: "16:9",
   },
   theme: {
     name: "P0 Test",
@@ -23,7 +23,7 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
       secondary: "#10b981",
       surface: "#ffffff",
       muted: "#f3f4f6",
-      border: "#dbe3f0"
+      border: "#dbe3f0",
     },
     typography: {
       headingFontFamily: "Inter",
@@ -31,7 +31,7 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
       titleSize: 48,
       headingSize: 32,
       bodySize: 22,
-      captionSize: 14
+      captionSize: 14,
     },
     effects: {
       borderRadius: 8,
@@ -40,9 +40,9 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
         blur: 16,
         offsetX: 0,
         offsetY: 8,
-        opacity: 0.15
-      }
-    }
+        opacity: 0.15,
+      },
+    },
   },
   slides: [
     {
@@ -58,8 +58,8 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
           src: "/api/v1/projects/project_p0/assets/file_bg/content",
           alt: "테스트 배경",
           fit: "cover",
-          opacity: 0.35
-        }
+          opacity: 0.35,
+        },
       },
       speakerNotes: "첫 문장입니다. 마지막 문장입니다.",
       elements: [
@@ -75,9 +75,9 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
             text: "Slideshow Renderer",
             fontSize: 44,
             fontWeight: "bold",
-            color: "#0f172a"
+            color: "#0f172a",
           },
-          zIndex: 1
+          zIndex: 1,
         },
         {
           elementId: "el_body",
@@ -91,9 +91,9 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
             text: "읽기 전용 캔버스와 애니메이션 복원 상태를 검증합니다.",
             fontSize: 24,
             color: "#334155",
-            lineHeight: 1.35
+            lineHeight: 1.35,
           },
-          zIndex: 2
+          zIndex: 2,
         },
         {
           elementId: "el_highlight",
@@ -108,9 +108,9 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
             fill: "#dbeafe",
             stroke: "#60a5fa",
             strokeWidth: 2,
-            borderRadius: 18
+            borderRadius: 18,
           },
-          zIndex: 0
+          zIndex: 0,
         },
         {
           elementId: "el_image",
@@ -123,9 +123,9 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
           props: {
             src: "/api/v1/projects/project_p0/assets/file_image/content",
             alt: "렌더러 검증 이미지",
-            fit: "cover"
+            fit: "cover",
           },
-          zIndex: 3
+          zIndex: 3,
         },
         {
           elementId: "el_group",
@@ -136,9 +136,9 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
           width: 390,
           height: 160,
           props: {
-            childElementIds: ["el_group_rect", "el_group_label"]
+            childElementIds: ["el_group_rect", "el_group_label"],
           },
-          zIndex: 4
+          zIndex: 4,
         },
         {
           elementId: "el_group_rect",
@@ -152,9 +152,9 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
             fill: "#ecfdf5",
             stroke: "#10b981",
             strokeWidth: 2,
-            borderRadius: 20
+            borderRadius: 20,
           },
-          zIndex: 5
+          zIndex: 5,
         },
         {
           elementId: "el_group_label",
@@ -168,9 +168,9 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
             text: "Grouped content",
             fontSize: 22,
             fontWeight: "semibold",
-            color: "#065f46"
+            color: "#065f46",
           },
-          zIndex: 6
+          zIndex: 6,
         },
         {
           elementId: "el_chart",
@@ -186,7 +186,7 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
             data: [
               { label: "A", value: 3 },
               { label: "B", value: 7 },
-              { label: "C", value: 5 }
+              { label: "C", value: 5 },
             ],
             style: {
               colors: ["#2563eb", "#10b981", "#f59e0b"],
@@ -196,10 +196,10 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
               showGrid: true,
               xAxisTitle: "",
               yAxisTitle: "",
-              unit: ""
-            }
+              unit: "",
+            },
           },
-          zIndex: 7
+          zIndex: 7,
         },
         {
           elementId: "el_custom",
@@ -210,17 +210,18 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
           width: 120,
           height: 120,
           props: {
-            pathData: "M 10 60 C 40 10, 80 10, 110 60 C 80 110, 40 110, 10 60 Z",
+            pathData:
+              "M 10 60 C 40 10, 80 10, 110 60 C 80 110, 40 110, 10 60 Z",
             viewBoxWidth: 120,
             viewBoxHeight: 120,
             fill: "#fef3c7",
             stroke: "#f59e0b",
             strokeWidth: 4,
             closed: true,
-            nodes: []
+            nodes: [],
           },
-          zIndex: 8
-        }
+          zIndex: 8,
+        },
       ],
       keywords: [],
       animations: [
@@ -231,7 +232,7 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
           order: 1,
           durationMs: 400,
           delayMs: 0,
-          easing: "ease-out"
+          easing: "ease-out",
         },
         {
           animationId: "anim_body_appear",
@@ -240,7 +241,7 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
           order: 2,
           durationMs: 300,
           delayMs: 50,
-          easing: "ease-out"
+          easing: "ease-out",
         },
         {
           animationId: "anim_highlight_disappear",
@@ -249,7 +250,7 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
           order: 3,
           durationMs: 300,
           delayMs: 0,
-          easing: "linear"
+          easing: "linear",
         },
         {
           animationId: "anim_image_zoom_in",
@@ -258,7 +259,7 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
           order: 5,
           durationMs: 600,
           delayMs: 0,
-          easing: "ease-out"
+          easing: "ease-out",
         },
         {
           animationId: "anim_group_fade_out",
@@ -267,7 +268,7 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
           order: 5,
           durationMs: 300,
           delayMs: 100,
-          easing: "ease-in"
+          easing: "ease-in",
         },
         {
           animationId: "anim_chart_zoom_out",
@@ -276,7 +277,7 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
           order: 8,
           durationMs: 500,
           delayMs: 0,
-          easing: "ease-in-out"
+          easing: "ease-in-out",
         },
         {
           animationId: "anim_custom_rotate",
@@ -285,7 +286,7 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
           order: 9,
           durationMs: 500,
           delayMs: 0,
-          easing: "ease-out"
+          easing: "ease-out",
         },
         {
           animationId: "anim_missing",
@@ -294,16 +295,16 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
           order: 10,
           durationMs: 300,
           delayMs: 0,
-          easing: "ease-out"
-        }
-      ]
+          easing: "ease-out",
+        },
+      ],
     },
     {
       slideId: "slide_p0_2",
       order: 2,
       title: "Second slide",
       style: {
-        backgroundColor: "#ffffff"
+        backgroundColor: "#ffffff",
       },
       speakerNotes: "두 번째 슬라이드입니다.",
       elements: [
@@ -318,13 +319,13 @@ export const p0AnimationDeck: Deck = deckSchema.parse({
           props: {
             text: "Second",
             fontSize: 42,
-            color: "#111827"
+            color: "#111827",
           },
-          zIndex: 1
-        }
+          zIndex: 1,
+        },
       ],
       keywords: [],
-      animations: []
-    }
-  ]
+      animations: [],
+    },
+  ],
 });

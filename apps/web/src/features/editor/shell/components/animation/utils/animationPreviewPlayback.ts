@@ -5,11 +5,11 @@ import {
   computeSettledElementStates,
   createSlideshowAnimationPlan,
   type PlannedSlideshowAnimation
-} from "../../../../../rehearsal/presenter/slideshowStepModel";
+} from "../../../../../../runtime/presentation/slideshow/slideshowStepModel";
 import {
   createSlideshowTransitionStartStates,
   getSlideshowTransitionDurationMs
-} from "../../../../../rehearsal/presenter/useSlideshowTransitions";
+} from "../../../../../../runtime/presentation/slideshow/useSlideshowTransitions";
 import type { ElementPresentationState } from "../../../../../slides/rendering";
 
 export type EditorAnimationPreviewPlan = {
