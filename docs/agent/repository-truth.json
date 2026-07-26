@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "activeDocs": [
+    "README.md",
+    "AGENTS.md",
+    "apps/web/AGENTS.md",
+    "apps/web/DESIGN.md",
+    "docs/contracts.md",
+    "docs/demo-standards.md",
+    "docs/git-rules.md",
+    "docs/architecture/local-first-stack.md",
+    "docs/architecture/tech-stack-versions.md",
+    "docs/conventions/environment.md",
+    "docs/conventions/logging.md",
+    "docs/runbooks/local-development.md",
+    "docs/testing/test-matrix.md",
+    "docs/deployment.md",
+    "docs/spikes/on-device-stt.md",
+    "docs/orbit-design-system.md"
+  ],
+  "workflowClaimDocs": [
+    "README.md",
+    "docs/testing/test-matrix.md"
+  ],
+  "canonicalSources": [
+    "apps/web/src/components/ui",
+    "apps/web/src/styles/tokens.css",
+    "packages/shared/src",
+    "docs/contracts.md"
+  ],
+  "forbiddenReferences": [
+    {
+      "value": "apps/web/src/design-system",
+      "replacement": "apps/web/src/components/ui 또는 apps/web/src/styles/tokens.css"
+    }
+  ],
+  "historicalRoots": [
+    "docs/plans",
+    "docs/ideas",
+    "docs/qa",
+    "docs/yb",
+    "tasks",
+    "orbit-design-system"
+  ]
+}
