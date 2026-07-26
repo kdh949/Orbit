@@ -704,7 +704,7 @@ def test_large_repetitive_text_diff_uses_bounded_fallback() -> None:
     target = "ba" * 3_000
 
     with patch(
-        "app.ai.pptx_ooxml_generation.difflib.SequenceMatcher",
+        "app.ai.pptx_ooxml.text.difflib.SequenceMatcher",
         side_effect=AssertionError("unbounded matcher invoked"),
     ):
         assert text_equal_spans(source, target) == []
