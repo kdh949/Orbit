@@ -1,0 +1,1495 @@
+/* Script, QnA, and report share one compact tabbed preparation panel. */
+.orbit-shell.editor-professional .stage-speaker-notes-panel.expanded .script-panel-header {
+  gap: var(--redesign-space-2);
+  padding: 0 var(--redesign-space-2) 0 var(--redesign-space-3);
+}
+
+.orbit-shell.editor-professional .speaker-notes-tabs {
+  align-self: stretch;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+}
+
+.orbit-shell.editor-professional .speaker-notes-tabs button {
+  position: relative;
+  min-width: 72px;
+  padding: 0 var(--redesign-space-3);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 650;
+}
+
+.orbit-shell.editor-professional .speaker-notes-tabs button::after {
+  position: absolute;
+  right: 10px;
+  bottom: 0;
+  left: 10px;
+  height: 2px;
+  background: transparent;
+  content: "";
+}
+
+.orbit-shell.editor-professional .speaker-notes-tabs button:hover:not(:disabled) {
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional .speaker-notes-tabs button.active {
+  color: var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional .speaker-notes-tabs button.active::after {
+  background: var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional .speaker-notes-tabs button:focus-visible,
+.orbit-shell.editor-professional .speaker-notes-maximize-button:focus-visible,
+.orbit-shell.editor-professional .speaker-notes-collapse-button:focus-visible {
+  outline: 1px solid var(--redesign-color-primary);
+  outline-offset: -2px;
+}
+
+.orbit-shell.editor-professional .speaker-notes-tabs button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.orbit-shell.editor-professional .speaker-notes-header-actions {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  margin-left: auto;
+  margin-right: var(--redesign-space-1);
+}
+
+.orbit-shell.editor-professional .speaker-notes-maximize-button,
+.orbit-shell.editor-professional .speaker-notes-collapse-button {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--redesign-radius-sm);
+  background: transparent;
+  color: var(--redesign-color-on-surface-variant);
+}
+
+.orbit-shell.editor-professional .speaker-notes-maximize-button[aria-pressed="true"] {
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional .speaker-notes-maximize-button:hover:not(:disabled),
+.orbit-shell.editor-professional .speaker-notes-collapse-button:hover:not(:disabled) {
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional .speaker-notes-maximize-button:disabled,
+.orbit-shell.editor-professional .speaker-notes-collapse-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.orbit-shell.editor-professional .speaker-notes-action-row {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 40px;
+  padding: var(--redesign-space-1) var(--redesign-space-2);
+  border-bottom: 1px solid var(--redesign-color-outline-variant);
+  background: var(--redesign-color-surface-container-low);
+}
+
+.orbit-shell.editor-professional .speaker-notes-action-row .script-panel-actions {
+  padding: 0;
+}
+
+.orbit-shell.editor-professional .speaker-notes-empty-panel {
+  display: grid;
+  place-content: center;
+  min-height: 150px;
+  padding: var(--redesign-space-6);
+  color: var(--redesign-color-on-surface-variant);
+  text-align: center;
+}
+
+.orbit-shell.editor-professional .speaker-notes-empty-panel strong {
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell.editor-professional .speaker-notes-empty-panel p {
+  max-width: 360px;
+  margin: var(--redesign-space-1) 0 0;
+  font-size: var(--redesign-type-label-sm-size);
+  line-height: 1.55;
+}
+
+.orbit-shell.editor-professional .speaker-notes-feature-panel {
+  height: 100%;
+  min-height: 0;
+  padding: var(--redesign-space-2) var(--redesign-space-3) var(--redesign-space-3);
+  overflow: auto;
+  background: var(--redesign-color-surface-container-lowest);
+}
+
+.orbit-shell.editor-professional .speaker-notes-feature-panel .editor-dock-empty {
+  display: grid;
+  min-height: 140px;
+  place-content: center;
+  color: var(--redesign-color-on-surface-variant);
+  text-align: center;
+}
+
+.orbit-shell.editor-professional .speaker-notes-page-panel {
+  display: grid;
+  min-height: 180px;
+}
+
+.orbit-shell.editor-professional .speaker-notes-page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--redesign-space-3);
+  padding: var(--redesign-space-2) 0;
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional .speaker-notes-page-heading span {
+  padding: 2px var(--redesign-space-2);
+  border-radius: var(--redesign-radius-full);
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 650;
+}
+
+.orbit-shell.editor-professional .speaker-notes-page-preview {
+  display: grid;
+  min-height: 0;
+  margin: 0;
+  place-items: center;
+  overflow: auto;
+  border: 1px solid var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius-sm);
+  background: var(--redesign-color-surface-container-low);
+}
+
+.orbit-shell.editor-professional .speaker-notes-page-preview img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 52vh;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.orbit-shell.editor-professional .speaker-notes-page-status {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  min-height: 160px;
+  padding: var(--redesign-space-6);
+  color: var(--redesign-color-on-surface-variant);
+  text-align: center;
+}
+
+.orbit-shell.editor-professional .speaker-notes-page-status strong {
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-body-sm-size);
+}
+
+.orbit-shell.editor-professional .speaker-notes-page-status p {
+  max-width: 420px;
+  margin: var(--redesign-space-1) 0 0;
+  font-size: var(--redesign-type-label-sm-size);
+  line-height: 1.55;
+}
+
+.orbit-shell.editor-professional .speaker-notes-page-status .script-panel-action {
+  margin-top: var(--redesign-space-3);
+}
+
+.orbit-shell.editor-professional .speaker-notes-report-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.orbit-shell.editor-professional .speaker-notes-report-panel > .editor-dock-empty {
+  box-sizing: border-box;
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  padding: var(--redesign-space-4) var(--redesign-space-5);
+}
+
+/* Navigation controls stay visually lightweight in the editor chrome. */
+.orbit-shell.editor-professional .editor-home-button,
+.orbit-shell.editor-professional .collapse-slides-button,
+.orbit-shell.editor-professional .slides-pane.collapsed .collapse-slides-button {
+  border: 0;
+  border-color: transparent;
+}
+
+.orbit-shell.editor-professional .editor-home-button:hover:not(:disabled),
+.orbit-shell.editor-professional .collapse-slides-button:hover:not(:disabled) {
+  border: 0;
+  border-color: transparent;
+}
+
+/* Compact script workspace: actions live on the script surface and supporting
+ * information stays attached to the content instead of consuming full rows. */
+.orbit-shell.editor-professional .stage-speaker-notes-panel {
+  min-height: 40px;
+}
+
+.orbit-shell.editor-professional .stage-speaker-notes-panel.collapsed {
+  height: 40px;
+}
+
+.orbit-shell.editor-professional .stage-speaker-notes-panel.expanded {
+  grid-template-rows: 8px 42px minmax(0, 1fr);
+}
+
+.orbit-shell.editor-professional .stage-speaker-notes-panel.expanded.maximized {
+  height: 100%;
+  max-height: none;
+}
+
+.orbit-shell.editor-professional .speaker-notes-resize-handle {
+  height: 8px;
+}
+
+.orbit-shell.editor-professional .stage-speaker-notes-panel .script-panel-header,
+.orbit-shell.editor-professional .stage-speaker-notes-panel.expanded .script-panel-header {
+  min-height: 40px;
+  gap: 0;
+  padding: 0;
+}
+
+.orbit-shell.editor-professional .stage-speaker-notes-panel.collapsed .script-panel-header {
+  border-bottom: 0;
+}
+
+.orbit-shell.editor-professional .stage-speaker-notes-panel.collapsed .speaker-notes-toggle {
+  width: 100%;
+  padding: 0 var(--redesign-space-3);
+}
+
+.orbit-shell.editor-professional .speaker-notes-collapsed-label {
+  flex: 0 0 auto;
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 650;
+}
+
+.orbit-shell.editor-professional .speaker-notes-collapsed-preview {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 450;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-shell.editor-professional .speaker-notes-tabs {
+  gap: 0;
+}
+
+.orbit-shell.editor-professional .speaker-notes-tabs button {
+  min-width: 88px;
+  margin: 0;
+  padding: 0 var(--redesign-space-4);
+  font-size: var(--redesign-type-body-sm-size);
+  font-weight: 680;
+}
+
+.orbit-shell.editor-professional .speaker-notes-tabs button::after {
+  right: 16px;
+  left: 16px;
+}
+
+.orbit-shell.editor-professional .stage-speaker-notes-panel .script-panel-body {
+  display: grid;
+  gap: var(--redesign-space-2);
+  padding: var(--redesign-space-2) var(--redesign-space-3) var(--redesign-space-3);
+  background: var(--redesign-color-surface-container-low);
+}
+
+.orbit-shell.editor-professional .script-notes-surface,
+.orbit-shell.editor-professional .script-notes-editor-shell {
+  position: relative;
+  min-height: 84px;
+  padding: var(--redesign-space-3) var(--redesign-space-11) var(--redesign-space-2) var(--redesign-space-3);
+  border: 1px solid color-mix(
+    in srgb,
+    var(--redesign-color-outline) 58%,
+    var(--redesign-color-outline-variant)
+  );
+  border-radius: var(--redesign-radius-sm);
+  background: var(--redesign-color-surface-container);
+}
+
+.orbit-shell.editor-professional .script-notes-surface {
+  color: var(--redesign-color-on-surface);
+  cursor: text;
+}
+
+.orbit-shell.editor-professional .script-notes-surface .script-copy,
+.orbit-shell.editor-professional .script-notes-editor-shell .script-notes-editor {
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional .script-notes-surface:focus-visible {
+  outline: 1px solid var(--redesign-color-primary);
+  outline-offset: -1px;
+}
+
+.orbit-shell.editor-professional .script-notes-surface-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+}
+
+.orbit-shell.editor-professional .script-notes-surface-actions .script-panel-action {
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional .script-notes-surface-actions .script-panel-action.assistant {
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-primary) 16%,
+    var(--redesign-color-surface-container-high)
+  );
+  color: var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional .script-notes-editor-shell {
+  min-height: calc(var(--redesign-space-16) * 2 + var(--redesign-space-10));
+  padding-right: var(--redesign-space-18);
+}
+
+.orbit-shell.editor-professional .script-notes-editor-shell .script-notes-editor {
+  min-height: calc(var(--redesign-space-16) * 2);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: var(--redesign-shadow-none);
+  resize: vertical;
+}
+
+.orbit-shell.editor-professional .script-notes-editor-shell .script-notes-editor:focus {
+  border: 0;
+  outline: none;
+  box-shadow: var(--redesign-shadow-none);
+}
+
+.orbit-shell.editor-professional .script-notes-surface .speaker-notes-length-meter,
+.orbit-shell.editor-professional .script-notes-editor-shell .speaker-notes-length-meter {
+  display: flex;
+  align-items: center;
+  gap: var(--redesign-space-2);
+  margin-top: var(--redesign-space-2);
+  padding: var(--redesign-space-1) 0 0;
+  border-top: 1px solid var(--redesign-color-outline-variant);
+  border-radius: 0;
+  background: transparent;
+}
+
+.orbit-shell.editor-professional .script-notes-surface .speaker-notes-length-meter > div,
+.orbit-shell.editor-professional .script-notes-editor-shell .speaker-notes-length-meter > div {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--redesign-space-1);
+  white-space: nowrap;
+}
+
+.orbit-shell.editor-professional .script-notes-surface .speaker-notes-length-meter strong,
+.orbit-shell.editor-professional .script-notes-surface .speaker-notes-length-meter span,
+.orbit-shell.editor-professional .script-notes-editor-shell .speaker-notes-length-meter strong,
+.orbit-shell.editor-professional .script-notes-editor-shell .speaker-notes-length-meter span {
+  font-size: var(--redesign-type-label-sm-size);
+  line-height: 1.3;
+}
+
+.orbit-shell.editor-professional .script-notes-surface .speaker-notes-length-meter strong,
+.orbit-shell.editor-professional .script-notes-editor-shell .speaker-notes-length-meter strong {
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional .script-notes-surface .speaker-notes-length-meter span,
+.orbit-shell.editor-professional .script-notes-editor-shell .speaker-notes-length-meter span {
+  color: var(--redesign-color-on-surface-variant);
+}
+
+.orbit-shell.editor-professional .script-notes-surface .speaker-notes-length-track,
+.orbit-shell.editor-professional .script-notes-editor-shell .speaker-notes-length-track {
+  flex: 0 1 96px;
+  width: 96px;
+  height: 3px;
+  margin-left: auto;
+}
+
+.orbit-shell.editor-professional .script-keyword-section {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--redesign-space-2);
+  min-width: 0;
+  margin-top: 0;
+  padding-top: var(--redesign-space-2);
+  border-top: 1px solid var(--redesign-color-outline-variant);
+}
+
+.orbit-shell.editor-professional .script-keyword-heading {
+  flex: 0 0 auto;
+}
+
+.orbit-shell.editor-professional .script-keyword-heading strong {
+  color: var(--redesign-color-primary);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.orbit-shell.editor-professional .script-keyword-section .keyword-strip {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: var(--redesign-space-1);
+  min-width: 0;
+  margin: 0;
+  overflow: visible;
+}
+
+.orbit-shell.editor-professional .script-keyword-section .keyword-chip {
+  flex: 0 1 auto;
+  gap: var(--redesign-space-1);
+  max-width: 100%;
+  min-height: 28px;
+  padding: 0 var(--redesign-space-2);
+  border-color: color-mix(
+    in srgb,
+    var(--redesign-color-primary) 48%,
+    var(--redesign-color-outline-variant)
+  );
+  border-radius: var(--redesign-radius-sm);
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 650;
+}
+
+.orbit-shell.editor-professional .script-keyword-section .keyword-chip > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-shell.editor-professional .script-keyword-section .keyword-chip:hover,
+.orbit-shell.editor-professional .script-keyword-section .keyword-chip.selected {
+  border-color: var(--redesign-color-primary);
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-primary) 14%,
+    var(--redesign-color-surface-container-high)
+  );
+  color: var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional .script-keyword-section .keyword-chip-badge {
+  min-height: 18px;
+  padding: 0 var(--redesign-space-1);
+  border: 1px solid color-mix(
+    in srgb,
+    var(--redesign-color-secondary) 52%,
+    transparent
+  );
+  border-radius: var(--redesign-radius-sm);
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-secondary) 18%,
+    var(--redesign-color-surface-container-high)
+  );
+  color: var(--redesign-color-secondary);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 750;
+}
+
+.orbit-shell.editor-professional .script-keyword-section .keyword-chip-badge.required {
+  border-color: var(--redesign-color-primary);
+  background: var(--redesign-color-primary);
+  color: var(--redesign-color-on-primary);
+}
+
+.orbit-shell.editor-professional .script-keyword-section .keyword-empty {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 600;
+}
+
+.orbit-shell.editor-professional .script-notes-surface .keyword-mark {
+  padding: 0 2px;
+  background: color-mix(in srgb, var(--redesign-color-outline-variant) 72%, transparent);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional .script-notes-surface .keyword-mark:hover,
+.orbit-shell.editor-professional .script-notes-surface .keyword-mark.selected {
+  background: color-mix(in srgb, var(--redesign-color-outline) 28%, transparent);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional .script-notes-surface .keyword-mark.keyword-tone-required {
+  background: color-mix(in srgb, var(--redesign-color-primary) 12%, transparent);
+  color: var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional .script-notes-surface .keyword-mark.keyword-tone-required:hover,
+.orbit-shell.editor-professional .script-notes-surface .keyword-mark.keyword-tone-required.selected {
+  background: color-mix(in srgb, var(--redesign-color-primary) 22%, transparent);
+  color: var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional .script-notes-surface .keyword-mark.keyword-tone-next-slide {
+  background: color-mix(in srgb, var(--redesign-color-secondary) 16%, transparent);
+  color: var(--redesign-color-secondary);
+}
+
+.orbit-shell.editor-professional .script-notes-surface .keyword-mark.keyword-tone-next-slide:hover,
+.orbit-shell.editor-professional .script-notes-surface .keyword-mark.keyword-tone-next-slide.selected {
+  background: color-mix(in srgb, var(--redesign-color-secondary) 28%, transparent);
+  color: var(--redesign-color-secondary-fixed);
+}
+
+/* Slide navigator header follows the same flat chrome hierarchy as the
+ * topbar instead of presenting its collapse action as a separate tile. */
+.orbit-shell.editor-professional .slides-pane-header {
+  height: var(--editor-chrome-height);
+  min-height: var(--editor-chrome-height);
+  padding: 0 var(--redesign-space-2) 0 var(--redesign-space-3);
+}
+
+.orbit-shell.editor-professional .slides-pane.collapsed .slides-pane-header {
+  border-bottom: 0;
+}
+
+.orbit-shell.editor-professional .slides-pane-title {
+  gap: var(--redesign-space-1);
+}
+
+.orbit-shell.editor-professional .slides-pane-title strong {
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.orbit-shell.editor-professional .slides-pane-title span {
+  width: auto;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  background: transparent;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 600;
+}
+
+.orbit-shell.editor-professional .collapse-slides-button,
+.orbit-shell.editor-professional .slides-pane.collapsed .collapse-slides-button {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--redesign-radius-sm);
+  background: transparent;
+  color: var(--redesign-color-on-surface-variant);
+  box-shadow: var(--redesign-shadow-none);
+}
+
+.orbit-shell.editor-professional .collapse-slides-button:hover:not(:disabled) {
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-on-surface);
+}
+
+/* The inspector is a compact context panel; the interaction-heavy AI
+ * assistant receives the remaining vertical workspace. */
+.orbit-shell.editor-professional {
+  --collapsed-panel-control-size: 28px;
+  --collapsed-panel-control-inline-offset: 28px;
+  --collapsed-panel-control-block-offset: 24px;
+  --collapsed-panel-zoom-clearance: 68px;
+}
+
+.orbit-shell.editor-professional .slides-pane.collapsed .slides-pane-header {
+  top: var(--collapsed-panel-control-block-offset);
+  left: var(--collapsed-panel-control-inline-offset);
+  width: var(--collapsed-panel-control-size);
+  height: var(--collapsed-panel-control-size);
+  min-height: var(--collapsed-panel-control-size);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: var(--redesign-shadow-none);
+}
+
+.orbit-shell.editor-professional .ai-pane:not(.collapsed) {
+  grid-template-rows:
+    var(--editor-chrome-height)
+    clamp(148px, 26vh, 232px)
+    minmax(0, 1fr);
+}
+
+.orbit-shell.editor-professional .inspector-header {
+  height: var(--editor-chrome-height);
+  min-height: var(--editor-chrome-height);
+  padding: 0 var(--redesign-space-2) 0 var(--redesign-space-3);
+}
+
+.orbit-shell.editor-professional .inspector-title strong {
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.orbit-shell.editor-professional .inspector-panel-slot {
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.orbit-shell.editor-professional.redesign-dark .inspector-panel-slot .editor-design-panel {
+  gap: var(--redesign-space-2);
+  padding: var(--redesign-space-2) var(--redesign-space-3) var(--redesign-space-3);
+}
+
+.orbit-shell.editor-professional.redesign-dark .editor-design-panel .redesign-eyebrow,
+.orbit-shell.editor-professional.redesign-dark .editor-design-panel > p {
+  display: none;
+}
+
+.orbit-shell.editor-professional.redesign-dark .editor-design-panel h3 {
+  margin: 0 0 2px;
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell.editor-professional .inspector-animation-properties {
+  grid-template-rows: 32px minmax(0, 1fr);
+}
+
+.orbit-shell.editor-professional .inspector-animation-actions {
+  min-height: 32px;
+  padding: 0 var(--redesign-space-2) 0 var(--redesign-space-3);
+}
+
+.orbit-shell.editor-professional .inspector-animation-properties .animation-panel-selection-card,
+.orbit-shell.editor-professional .inspector-animation-properties .animation-panel-form-card,
+.orbit-shell.editor-professional .inspector-animation-properties .animation-panel-empty,
+.orbit-shell.editor-professional .inspector-animation-properties .animation-panel-section {
+  padding: var(--redesign-space-2) var(--redesign-space-2);
+}
+
+.orbit-shell.editor-professional .ai-coach-dock.ai-coach-persistent {
+  grid-template-rows: var(--editor-chrome-height) minmax(0, 1fr);
+}
+
+.orbit-shell.editor-professional .ai-coach-dock-header {
+  min-height: var(--editor-chrome-height);
+}
+
+.orbit-shell.editor-professional .ai-coach-dock-header strong {
+  font-size: var(--redesign-type-label-sm-size);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+@media (min-width: 861px) {
+  .orbit-shell.editor-professional .editor-panel.right-panel-closed,
+  .orbit-shell.editor-professional .editor-panel.right-panel-closed:has(.selection-quickbar) {
+    grid-template-columns:
+      clamp(160px, var(--slides-pane-width, 184px), 280px)
+      minmax(0, 1fr)
+      0;
+  }
+
+  .orbit-shell.editor-professional .editor-panel.animation-panel-open.right-panel-closed,
+  .orbit-shell.editor-professional .editor-panel.animation-panel-open.right-panel-closed:has(.selection-quickbar) {
+    grid-template-columns:
+      clamp(160px, var(--slides-pane-width, 184px), 280px)
+      minmax(0, 2fr)
+      minmax(240px, 1fr)
+      0;
+  }
+
+  .orbit-shell.editor-professional .editor-panel.slides-panel-collapsed.right-panel-closed,
+  .orbit-shell.editor-professional .editor-panel.slides-panel-collapsed.right-panel-closed:has(.selection-quickbar) {
+    grid-template-columns: 0 minmax(0, 1fr) 0;
+  }
+
+  .orbit-shell.editor-professional .editor-panel.slides-panel-collapsed.animation-panel-open.right-panel-closed,
+  .orbit-shell.editor-professional .editor-panel.slides-panel-collapsed.animation-panel-open.right-panel-closed:has(.selection-quickbar) {
+    grid-template-columns: 0 minmax(0, 2fr) minmax(240px, 1fr) 0;
+  }
+
+  .orbit-shell.editor-professional .ai-pane.collapsed {
+    position: relative;
+    width: 0;
+    min-width: 0;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .orbit-shell.editor-professional .ai-pane.collapsed .collapsed-right-rail {
+    position: absolute;
+    top: var(--collapsed-panel-control-block-offset);
+    right: var(--collapsed-panel-control-inline-offset);
+    z-index: 18;
+    display: block;
+    width: var(--collapsed-panel-control-size);
+    padding: 0;
+  }
+
+  .orbit-shell.editor-professional .ai-pane.collapsed .collapse-right-pane-button {
+    width: var(--collapsed-panel-control-size);
+    min-width: var(--collapsed-panel-control-size);
+    height: var(--collapsed-panel-control-size);
+    padding: 0;
+    border: 0;
+    border-radius: var(--redesign-radius-sm);
+    background: transparent;
+    color: var(--redesign-color-on-surface-variant);
+    box-shadow: var(--redesign-shadow-none);
+  }
+
+  .orbit-shell.editor-professional .ai-pane.collapsed .collapse-right-pane-button:hover {
+    background: var(--redesign-color-surface-container-high);
+    color: var(--redesign-color-on-surface);
+  }
+
+}
+
+/* Properties and AI share the right dock vertically. The inspector can still
+ * collapse into its symmetric icon rail, while AI collapses independently to
+ * its compact header so the property workspace can reclaim the height. */
+.orbit-shell.editor-professional .ai-pane:not(.collapsed).assistant-collapsed {
+  grid-template-rows:
+    var(--editor-chrome-height)
+    minmax(0, 1fr)
+    var(--editor-chrome-height);
+}
+
+.orbit-shell.editor-professional .ai-coach-dock.ai-coach-persistent.is-collapsed {
+  grid-template-rows: var(--editor-chrome-height);
+}
+
+.orbit-shell.editor-professional .ai-coach-dock .editor-ai-coach-panel[hidden] {
+  display: none;
+}
+
+.orbit-shell.editor-professional .ai-coach-dock-header .ai-coach-collapse-button {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--redesign-radius-sm);
+  background: transparent;
+  color: var(--redesign-color-on-surface-variant);
+  box-shadow: var(--redesign-shadow-none);
+}
+
+.orbit-shell.editor-professional .ai-coach-dock-header .ai-coach-collapse-button:hover {
+  border: 0;
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional .ai-coach-dock .ai-chat-panel {
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--redesign-space-2);
+  padding-bottom: 0;
+}
+
+.orbit-shell.editor-professional .ai-coach-dock .ai-chat-history {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Single-slide rehearsal keeps the editor canvas in place while replacing the
+ * supporting panes with live speech recognition and rehearsal guidance. */
+.orbit-shell.editor-professional .editor-icon-action.editor-rehearsal-button,
+.orbit-shell.editor-professional
+  .editor-icon-action.editor-rehearsal-button:hover:not(:disabled) {
+  border-color: var(--redesign-color-primary);
+  background: var(--redesign-color-primary);
+  color: var(--redesign-color-on-primary);
+  box-shadow: var(--redesign-glow-primary);
+}
+
+.orbit-shell.editor-professional
+  .editor-icon-action.editor-rehearsal-button.active,
+.orbit-shell.editor-professional
+  .editor-icon-action.editor-rehearsal-button[aria-pressed="true"] {
+  border-color: color-mix(
+    in srgb,
+    var(--redesign-color-primary) 76%,
+    var(--redesign-color-on-surface)
+  );
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-primary) 82%,
+    var(--redesign-color-on-surface)
+  );
+}
+
+.orbit-shell.editor-professional .ai-pane.rehearsal-mode:not(.collapsed),
+.orbit-shell.editor-professional
+  .ai-pane.rehearsal-mode:not(.collapsed).assistant-collapsed {
+  grid-template-rows: var(--editor-chrome-height) minmax(0, 1fr);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-header {
+  border-bottom-color: var(--redesign-color-primary-outline);
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-primary-container) 44%,
+    var(--redesign-color-surface-container-low)
+  );
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-header
+  .inspector-title
+  svg {
+  color: var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-panel {
+  min-height: 0;
+  overflow: auto;
+  background: var(--redesign-color-surface-container-low);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-side {
+  display: grid;
+  align-content: start;
+  gap: 0;
+  min-height: 100%;
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-side > section {
+  padding: var(--redesign-space-4);
+  border-bottom: 1px solid var(--redesign-color-outline-variant);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-summary {
+  display: grid;
+  gap: var(--redesign-space-2);
+  border-top: 2px solid var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-summary > strong {
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-body-sm-size);
+  line-height: 1.45;
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-summary > p,
+.orbit-shell.editor-professional .editor-slide-rehearsal-empty {
+  margin: 0;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  line-height: 1.5;
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-checkpoints header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--redesign-space-2);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-checkpoints
+  header
+  strong,
+.orbit-shell.editor-professional .editor-slide-rehearsal-notes > strong {
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-checkpoints
+  header
+  span {
+  color: var(--redesign-color-primary);
+  font-family: var(--redesign-font-family);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-checkpoints ul {
+  display: grid;
+  gap: var(--redesign-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-checkpoints li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--redesign-space-2);
+  min-height: 30px;
+  padding: 0 var(--redesign-space-1);
+  border-left: 2px solid transparent;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-checkpoints li.hit {
+  border-left-color: var(--redesign-color-primary);
+  background: var(--redesign-color-primary-container);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-checkpoints
+  li.hit
+  > svg {
+  color: var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-notes p {
+  display: -webkit-box;
+  margin: var(--redesign-space-2) 0 0;
+  overflow: hidden;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  line-height: 1.6;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 8;
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-bottom {
+  display: grid;
+  grid-template-rows: 40px minmax(0, 1fr);
+  min-height: 200px;
+  border-top: 2px solid var(--redesign-color-primary);
+  background: var(--redesign-color-surface-container-lowest);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-bottom-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--redesign-space-3);
+  padding: 0 var(--redesign-space-3);
+  border-bottom: 1px solid var(--redesign-color-outline-variant);
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-primary-container) 30%,
+    var(--redesign-color-surface-container-lowest)
+  );
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-heading,
+.orbit-shell.editor-professional .editor-slide-rehearsal-controls,
+.orbit-shell.editor-professional .editor-slide-rehearsal-meter {
+  display: flex;
+  align-items: center;
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-heading {
+  gap: var(--redesign-space-2);
+  min-width: 0;
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-message {
+  max-width: min(36vw, 520px);
+  overflow: hidden;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-heading strong {
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-heading
+  > span:last-child {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-heading
+  .editor-slide-rehearsal-script-progress {
+  padding-left: var(--redesign-space-2);
+  border-left: 1px solid var(--redesign-color-outline-variant);
+  color: var(--redesign-color-primary);
+  font-family: var(--redesign-font-family);
+  font-weight: 700;
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--redesign-radius-full);
+  background: var(--redesign-color-outline);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-live-dot.active {
+  background: var(--redesign-color-primary);
+  box-shadow: var(--redesign-glow-primary);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-controls {
+  gap: var(--redesign-space-2);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-time {
+  color: var(--redesign-color-on-surface-variant);
+  font-family: var(--redesign-font-family);
+  font-size: var(--redesign-type-label-sm-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-stop,
+.orbit-shell.editor-professional .editor-slide-rehearsal-restart {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--redesign-space-1);
+  min-height: 28px;
+  padding: 0 var(--redesign-space-2);
+  border: 1px solid var(--redesign-color-outline);
+  border-radius: var(--redesign-radius);
+  background: transparent;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-stop:hover,
+.orbit-shell.editor-professional .editor-slide-rehearsal-restart:hover {
+  border-color: var(--redesign-color-primary-outline);
+  background: var(--redesign-color-primary-subtle);
+  color: var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-restart:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-bottom
+  > .rehearsal-teleprompter-band {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  background: var(--redesign-color-on-surface);
+  color: var(--redesign-color-surface-container-lowest);
+  text-align: left;
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-bottom
+  .rehearsal-teleprompter-lyrics {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--redesign-space-14) clamp(var(--redesign-space-7), 7vw, var(--redesign-space-24));
+  scroll-padding-block: var(--redesign-space-14);
+  scrollbar-color: color-mix(in srgb, var(--redesign-color-surface-container-lowest) 34%, transparent)
+    transparent;
+  scrollbar-width: thin;
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-bottom
+  .rehearsal-teleprompter-lyrics:focus-visible {
+  outline: 2px solid var(--redesign-color-primary);
+  outline-offset: -4px;
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-bottom
+  .rehearsal-teleprompter-line {
+  margin: 0 0 var(--redesign-space-5);
+  color: color-mix(in srgb, var(--redesign-color-surface-container-lowest) 34%, transparent);
+  font-size: var(--redesign-type-body-md-size);
+  font-weight: 650;
+  line-height: 1.5;
+  text-align: center;
+  transition: color var(--redesign-duration-normal) var(--redesign-ease-standard),
+    font-size var(--redesign-duration-normal) var(--redesign-ease-standard),
+    opacity var(--redesign-duration-normal) var(--redesign-ease-standard);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-bottom
+  .rehearsal-teleprompter-line-covered,
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-bottom
+  .rehearsal-teleprompter-line-paraphrased {
+  color: color-mix(in srgb, var(--redesign-color-surface-container-lowest) 22%, transparent);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-bottom
+  .rehearsal-teleprompter-line-next {
+  color: color-mix(in srgb, var(--redesign-color-surface-container-lowest) 68%, transparent);
+  font-weight: 700;
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-bottom
+  .rehearsal-teleprompter-current {
+  color: var(--redesign-color-surface-container-lowest);
+  font-size: var(--redesign-type-title-lg-size);
+  font-weight: 780;
+  opacity: 1;
+  text-shadow: none;
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-bottom
+  .rehearsal-teleprompter-progress {
+  display: none;
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-controls {
+  position: absolute;
+  right: var(--redesign-space-3);
+  bottom: var(--redesign-space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--redesign-space-1);
+  padding: var(--redesign-space-1);
+  border: 1px solid var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius-full);
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-surface-container-lowest) 92%,
+    transparent
+  );
+  box-shadow: var(--redesign-shadow-raised);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-controls
+  button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0 var(--redesign-space-2);
+  border: 0;
+  border-radius: var(--redesign-radius-full);
+  background: transparent;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 700;
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-controls
+  button:hover:not(:disabled),
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-controls
+  button[aria-pressed="true"] {
+  background: var(--redesign-color-primary-subtle);
+  color: var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-controls
+  button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-bottom-body {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(220px, 0.8fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-prompter {
+  display: grid;
+  grid-template-rows: 32px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--redesign-color-outline-variant);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-prompter > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--redesign-space-3);
+  padding: 0 var(--redesign-space-3);
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-prompter
+  > header
+  strong {
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-prompter
+  > header
+  button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--redesign-color-primary);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 700;
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-script-viewport {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--redesign-space-1) var(--redesign-space-3) var(--redesign-space-3);
+  scroll-behavior: smooth;
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-viewport
+  .presenter-script-list {
+  gap: 2px;
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-viewport
+  .presenter-script-row {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: var(--redesign-space-2);
+  min-height: 38px;
+  padding: var(--redesign-space-2) var(--redesign-space-2);
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0;
+  color: var(--redesign-color-on-surface-variant);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-viewport
+  .presenter-script-row
+  > span {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--redesign-radius-full);
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-viewport
+  .presenter-script-row
+  p,
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-viewport
+  .presenter-script-row--current
+  p,
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-viewport
+  .presenter-script-row--covered
+  p {
+  color: inherit;
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-viewport
+  .presenter-script-row--current {
+  border-left-color: var(--redesign-color-primary);
+  background: var(--redesign-color-primary-container);
+  color: var(--redesign-color-on-primary-container);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-viewport
+  .presenter-script-row--current
+  > span {
+  background: var(--redesign-color-primary);
+  color: var(--redesign-color-on-primary);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-viewport
+  .presenter-script-row--next {
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-viewport
+  .presenter-script-row--covered {
+  color: var(--redesign-color-outline);
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-script-viewport
+  .presenter-script-row
+  em {
+  align-self: center;
+  padding: 2px var(--redesign-space-1);
+  border-radius: var(--redesign-radius-sm);
+  background: var(--redesign-color-surface-container-high);
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-live-transcript {
+  display: grid;
+  align-content: start;
+  grid-template-rows: 28px auto minmax(0, 1fr);
+  gap: var(--redesign-space-1);
+  min-width: 0;
+  min-height: 0;
+  padding: var(--redesign-space-2) var(--redesign-space-3);
+  background: var(--redesign-color-surface-container-low);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-live-label {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-meter {
+  gap: var(--redesign-space-2);
+  color: var(--redesign-color-primary);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-meter-track {
+  flex: 1;
+  height: 3px;
+  overflow: hidden;
+  background: var(--redesign-color-surface-container-highest);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-meter-fill {
+  display: block;
+  height: 100%;
+  background: var(--redesign-color-primary);
+  transition: width var(--redesign-duration-instant) linear;
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-transcript {
+  max-height: none;
+  margin: 0;
+  overflow: auto;
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-label-sm-size);
+  line-height: 1.55;
+}
+
+.orbit-shell.editor-professional
+  .editor-slide-rehearsal-transcript
+  > span:not(.editor-slide-rehearsal-error):not(
+    .editor-slide-rehearsal-placeholder
+  ) {
+  color: var(--redesign-color-on-surface-variant);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-placeholder {
+  color: var(--redesign-color-on-surface-variant);
+}
+
+.orbit-shell.editor-professional .editor-slide-rehearsal-error {
+  color: var(--redesign-color-error);
+}
+
+.orbit-shell.editor-professional
+  .editor-panel.slide-rehearsal-mode
+  .stage-pane
+  > .canvas-scroll {
+  background-image: none;
+  background-size: auto;
+}
+
+@media (min-width: 861px) {
+  .orbit-shell.editor-professional .editor-panel.slide-rehearsal-mode {
+    grid-template-rows: minmax(0, 1fr) clamp(200px, 28vh, 280px);
+  }
+}
+
+@media (min-width: 861px) {
+  .orbit-shell.editor-professional
+    .stage-pane
+    > .editor-slide-rehearsal-bottom {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 860px) {
+  .orbit-shell.editor-professional .editor-slide-rehearsal-bottom-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(120px, 1fr) auto;
+  }
+
+  .orbit-shell.editor-professional .editor-slide-rehearsal-prompter {
+    border-right: 0;
+    border-bottom: 1px solid var(--redesign-color-outline-variant);
+  }
+}
+
