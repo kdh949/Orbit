@@ -40,9 +40,9 @@
     "services/python-worker/tests/test_rehearsal_analyze.py"
   ],
   "fastChecks": [
-    "pnpm --filter @orbit/web test -- src/features/rehearsal/RehearsalWorkspace.test.tsx",
-    "pnpm --filter @orbit/api test -- src/rehearsals/rehearsals.service.spec.ts",
-    "pnpm --filter @orbit/worker test -- src/rehearsal-stt.processor.spec.ts",
+    "pnpm turbo run test --filter=@orbit/web -- src/features/rehearsal/RehearsalWorkspace.test.tsx",
+    "pnpm turbo run test --filter=@orbit/api -- src/rehearsals/rehearsals.service.spec.ts",
+    "pnpm turbo run test --filter=@orbit/worker -- src/rehearsal-stt.processor.spec.ts",
     "cd services/python-worker && uv run pytest tests/test_rehearsal_analyze.py"
   ],
   "fullCheckTriggers": [

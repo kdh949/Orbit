@@ -31,7 +31,7 @@ These rules apply to `packages/shared`.
 - Run the domain test before package-wide verification:
 
 ```bash
-pnpm --filter @orbit/shared test -- src/<domain>/<schema>.test.ts
+pnpm turbo run test --filter=@orbit/shared -- src/<domain>/<schema>.test.ts
 pnpm turbo run typecheck --filter=@orbit/shared
 pnpm turbo run build --filter=@orbit/shared
 ```

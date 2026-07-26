@@ -13,9 +13,9 @@
     "cleanup:kdh-home-projects": "corepack pnpm --filter @orbit/shared build && corepack pnpm --filter @orbit/config build && ts-node src/scripts/cleanup-kdh-home-projects.ts",
     "demo:coaching:reset": "corepack pnpm --filter @orbit/shared build && corepack pnpm --filter @orbit/config build && ts-node src/scripts/reset-coaching-demo.ts",
     "start": "node dist/main.js",
-    "test": "corepack pnpm --filter @orbit/shared build && corepack pnpm --filter @orbit/config build && corepack pnpm --filter @orbit/editor-core build && corepack pnpm --filter @orbit/storage build && corepack pnpm --filter @orbit/job-queue build && corepack pnpm --filter @orbit/realtime build && vitest run --passWithNoTests",
+    "test": "vitest run --passWithNoTests",
     "test:activity-load": "vitest run src/activities/activity-load.integration.spec.ts",
-    "typecheck": "corepack pnpm --filter @orbit/shared build && corepack pnpm --filter @orbit/config build && corepack pnpm --filter @orbit/editor-core build && corepack pnpm --filter @orbit/storage build && corepack pnpm --filter @orbit/job-queue build && corepack pnpm --filter @orbit/realtime build && tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.3",

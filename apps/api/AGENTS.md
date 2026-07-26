@@ -41,7 +41,7 @@ These rules apply to `apps/api`.
 - Prefer the narrowest test file first:
 
 ```bash
-pnpm --filter @orbit/api test -- src/<feature>/<file>.spec.ts
+pnpm turbo run test --filter=@orbit/api -- src/<feature>/<file>.spec.ts
 pnpm turbo run typecheck --filter=@orbit/api
 ```
 
