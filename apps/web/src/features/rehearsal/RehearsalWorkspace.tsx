@@ -15,7 +15,6 @@ import {
   type RehearsalRun,
   type RehearsalRunMeta,
   type SemanticCapabilityEvent,
-  type SlideTranscriptSnapshot,
 } from "@orbit/shared/rehearsals";
 import {
   AlertCircle,
@@ -73,7 +72,6 @@ import {
 import { type LiveSttAdapter } from "../../runtime/speech/stt/liveSttAdapter";
 import {
   confirmRehearsalCommandCandidate,
-  createRehearsalCommandConfirmationState,
   defaultRehearsalCommandConfig,
   detectRehearsalCommandCandidate,
   type RehearsalCommandCandidate,
@@ -93,14 +91,9 @@ import {
   applyLiveTranscriptEvent,
   confirmKeywordOccurrenceMatches,
   createKeywordOccurrenceAnimationCueEvent,
-  createLiveKeywordOccurrenceState,
-  createLiveTranscriptBuffer,
   evaluateLiveTranscript,
   getLiveKeywordOccurrenceStateForSlide,
   renderLiveTranscriptBuffer,
-  type LiveKeywordOccurrenceState,
-  type LiveTranscriptAnalysis,
-  type LiveTranscriptBuffer,
 } from "../../runtime/speech/tracking/liveTranscriptAnalysis";
 import { createRehearsalScriptPrompterRows } from "./panel/rehearsalScriptPrompter";
 import {
@@ -135,11 +128,6 @@ import {
 } from "../../runtime/presentation/displayManager";
 import { SingleScreenPresenter } from "./presenter/SingleScreenPresenter";
 import { SlideshowRenderer } from "./presenter/SlideshowRenderer";
-import {
-  createSlideAssetNavigationGate,
-  type SlideNavigationRequest,
-  type SlideNavigationResult,
-} from "./presenter/slideAssetNavigationGate";
 import { createSlideshowAnimationPlan } from "../../runtime/presentation/slideshow/slideshowStepModel";
 import { getNextPresenterStepState } from "../../runtime/presentation/slideshow/presenterStepNavigation";
 import {
@@ -171,7 +159,6 @@ import { RehearsalPanel } from "./panel/RehearsalPanel";
 import {
   clearProjectSlideImageCache,
   preloadSlideAssets,
-  prepareSlideAssets,
   retainSlideAssetWindow,
 } from "../slides/rendering";
 import { sanitizeLiveSttErrorMessage } from "./panel/rehearsalLiveSttRecovery";
@@ -267,6 +254,8 @@ import {
   createDefaultLiveSttPort,
   useLiveSttSession,
 } from "./hooks/useLiveSttSession";
+import { useRehearsalPresentation } from "./hooks/useRehearsalPresentation";
+import { useRehearsalSpeechTracking } from "./hooks/useRehearsalSpeechTracking";
 
 type RehearsalPhase =
   | "idle"
@@ -351,20 +340,46 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   const [deck, setDeck] = useState<Deck | null>(props.initialDeck ?? null);
   const { settings: presenterSettings, save: savePresenterSettings } =
     usePresenterSettings();
-  const [currentSlideIndex, setCurrentSlideIndex] = useState(
-    props.presenterInitialSlideIndex ?? 0,
-  );
-  const [presenterStepIndex, setPresenterStepIndex] = useState(
-    props.presenterInitialStepIndex ?? 0,
-  );
+  const rehearsalPresentation = useRehearsalPresentation({
+    deck,
+    initialSlideIndex: props.presenterInitialSlideIndex ?? 0,
+    initialStepIndex: props.presenterInitialStepIndex ?? 0,
+  });
+  const {
+    audienceOutputMode,
+    commitPresenterStep,
+    cancelPendingNavigation,
+    currentSlideIndex,
+    currentSlideIndexRef,
+    displayRole,
+    isSlidePreparationPending,
+    presenterStepIndex,
+    presenterStepIndexRef,
+    resetSlideDisplayToBeginning,
+    requestPreparedSlideChange,
+    setAudienceOutputMode,
+    setDisplayRole,
+    setSlideReceiverMessage,
+    slideReceiverMessage,
+    slideWindowRef,
+  } = rehearsalPresentation;
+  const speechTracking = useRehearsalSpeechTracking();
+  const {
+    commandConfirmationRef: liveCommandConfirmationRef,
+    keywordOccurrenceStateRef: liveKeywordOccurrenceStateRef,
+    keywordStateRef: liveKeywordStateRef,
+    sessionTranscript: liveSessionTranscript,
+    sessionTranscriptBufferRef: liveSessionTranscriptBufferRef,
+    setCurrentKeywordState: setLiveKeywordState,
+    setSessionTranscript: setLiveSessionTranscript,
+    transcriptBufferRef: liveTranscriptBufferRef,
+  } = speechTracking;
   const [phase, setPhase] = useState<RehearsalPhase>(
     props.initialDeck ? "idle" : "loading",
   );
   const [error, setError] = useState("");
   const [run, setRun] = useState<RehearsalRun | null>(null);
   const [job, setJob] = useState<Job | null>(null);
-  const [liveKeywordState, setLiveKeywordState] =
-    useState<LiveTranscriptAnalysis | null>(null);
   const [liveCue, setLiveCue] = useState<LiveSttAnimationCueEvent | null>(null);
   const [liveSlideAdvance, setLiveSlideAdvance] =
     useState<LiveSttSlideAdvanceEvent | null>(null);
@@ -373,7 +388,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   const [semanticDebugState, setSemanticDebugState] = useState(
     createIdleSemanticDebugState,
   );
-  const [liveSessionTranscript, setLiveSessionTranscript] = useState("");
   const [showSemanticDebugPanel, setShowSemanticDebugPanel] = useState(() =>
     shouldShowSemanticSpeechDebugPanel({
       isDevelopment: import.meta.env.DEV,
@@ -426,13 +440,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     useState<PauseDetectorSnapshot | null>(null);
   const [isLiveDemoActive, setIsLiveDemoActive] = useState(false);
   const [isLiveStopModalOpen, setIsLiveStopModalOpen] = useState(false);
-  const [displayRole, setDisplayRole] = useState<
-    "presenter" | "slide-receiver" | "slide-surface"
-  >("presenter");
-  const [audienceOutputMode, setAudienceOutputMode] = useState<
-    "slide" | "screen-share" | "black"
-  >("slide");
-  const [slideReceiverMessage, setSlideReceiverMessage] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [slideElapsedSeconds, setSlideElapsedSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -440,8 +447,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     useState<RehearsalRuntimeStatus>("idle");
   const [scriptAutoFollowKey, setScriptAutoFollowKey] = useState(0);
   const [isSingleScreenOpen, setIsSingleScreenOpen] = useState(false);
-  const [isSlidePreparationPending, setIsSlidePreparationPending] =
-    useState(false);
   const [isCompletionModalOpen, setIsCompletionModalOpen] = useState(false);
   const [timeMode, setTimeMode] = useState<RehearsalTimeMode>("stopwatch");
   const [timerDurationSeconds, setTimerDurationSeconds] = useState(() =>
@@ -483,33 +488,10 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     useRef<Promise<PresenterCompanionSessionIdentity> | null>(null);
   const companionSessionPromiseKeyRef = useRef<string | null>(null);
   const closeCompanionSessionPromiseRef = useRef<Promise<void> | null>(null);
-  const slideWindowRef = useRef<SlideWindowRef | null>(null);
   const reattachAudienceStreamRef = useRef<() => boolean>(() => true);
   const stopAudienceStreamRef = useRef<() => void>(() => undefined);
   const presenterCompanionEnabled = usePresenterCompanionFeatureFlag();
   const deckRef = useRef<Deck | null>(props.initialDeck ?? null);
-  const currentSlideIndexRef = useRef(0);
-  const liveTranscriptBufferRef = useRef<LiveTranscriptBuffer>(
-    createLiveTranscriptBuffer(),
-  );
-  const liveSessionTranscriptBufferRef = useRef<LiveTranscriptBuffer>(
-    createLiveTranscriptBuffer(),
-  );
-  const slideTranscriptSnapshotsRef = useRef<SlideTranscriptSnapshot[]>([]);
-  const slideTranscriptVisitVersionsRef = useRef(new Map<string, number>());
-  const activeSlideTranscriptVisitRef = useRef<{
-    slideId: string;
-    slideNum: number;
-    visitedAt: string;
-    visitedVer: number;
-  } | null>(null);
-  const liveKeywordStateRef = useRef<LiveTranscriptAnalysis | null>(null);
-  const liveKeywordOccurrenceStateRef =
-    useRef<LiveKeywordOccurrenceState | null>(null);
-  const liveCommandConfirmationRef = useRef(
-    createRehearsalCommandConfirmationState(),
-  );
-  const presenterStepIndexRef = useRef(0);
   const slidePlaybackStateRef = useRef<SlidePlaybackState>(
     createSlidePlaybackState(),
   );
@@ -523,9 +505,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   const lastSentenceSpokenAtMsRef = useRef<number | null>(null);
   const finalSentenceCommittedAtMsRef = useRef<number | null>(null);
   const pauseDetectorRef = useRef<PauseDetector | null>(null);
-  const slideNavigationGateRef = useRef<ReturnType<
-    typeof createSlideAssetNavigationGate
-  > | null>(null);
   const mediaSession = useRehearsalMediaSession();
   const liveSttSession = useLiveSttSession({
     fallbackEngineId: presenterSettings.sttEngine,
@@ -544,13 +523,12 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     status: liveStatus,
   } = liveSttSession;
   const runLifecycle = useRehearsalRunLifecycle({
-    getLiveTranscript: () =>
-      renderLiveTranscriptBuffer(liveSessionTranscriptBufferRef.current),
+    getLiveTranscript: speechTracking.getSessionTranscript,
     getRunMeta: async () =>
       pendingP3RunMetaRef.current
         ? await pendingP3RunMetaRef.current
         : p3RunMetaRef.current,
-    getSlideTranscriptSnapshots: () => slideTranscriptSnapshotsRef.current,
+    getSlideTranscriptSnapshots: speechTracking.getSlideTranscriptSnapshots,
     onCompletionModalChange: setIsCompletionModalOpen,
     onError: setError,
     onJobChange: setJob,
@@ -561,27 +539,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     sourceGoalSetId: props.sourceGoalSetId,
   });
 
-  if (slideNavigationGateRef.current === null) {
-    slideNavigationGateRef.current = createSlideAssetNavigationGate({
-      commit: (request) => {
-        const deckSnapshot = deckRef.current;
-        presenterStepIndexRef.current = request.stepIndex;
-        currentSlideIndexRef.current = request.targetSlideIndex;
-        setPresenterStepIndex(request.stepIndex);
-        setCurrentSlideIndex(request.targetSlideIndex);
-        if (deckSnapshot) {
-          retainSlideAssetWindow(deckSnapshot, request.targetSlideIndex);
-        }
-      },
-      onPendingChange: setIsSlidePreparationPending,
-      prepare: async (request) => {
-        const deckSnapshot = deckRef.current;
-        const slide = deckSnapshot?.slides[request.targetSlideIndex];
-        if (!deckSnapshot || !slide) return;
-        await prepareSlideAssets(deckSnapshot, slide);
-      },
-    });
-  }
   useEffect(() => {
     function handleDeveloperModeShortcut(event: KeyboardEvent) {
       if (
@@ -721,22 +678,10 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   }, [deck?.deckId, deck?.projectId]);
 
   useEffect(() => {
-    currentSlideIndexRef.current = currentSlideIndex;
-  }, [currentSlideIndex]);
-
-  useEffect(() => {
     if (deck) {
       setTimerDurationSeconds(getRehearsalDeckTargetSeconds(deck));
     }
   }, [deck?.deckId, deck?.targetDurationMinutes]);
-
-  useEffect(() => {
-    presenterStepIndexRef.current = presenterStepIndex;
-  }, [presenterStepIndex]);
-
-  useEffect(() => {
-    liveKeywordStateRef.current = liveKeywordState;
-  }, [liveKeywordState]);
 
   useEffect(() => {
     slidePlaybackStateRef.current = slidePlaybackState;
@@ -763,34 +708,6 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     timeMode === "timer"
       ? Math.max(timerDurationSeconds - elapsedSeconds, 0)
       : elapsedSeconds;
-
-  function requestPreparedSlideChange(
-    request: SlideNavigationRequest,
-  ): Promise<SlideNavigationResult> {
-    const deckSnapshot = deckRef.current;
-    if (!deckSnapshot || deckSnapshot.slides.length === 0) {
-      return Promise.resolve("ignored");
-    }
-
-    const targetSlideIndex = Math.min(
-      deckSnapshot.slides.length - 1,
-      Math.max(0, request.targetSlideIndex),
-    );
-    const normalizedRequest = { ...request, targetSlideIndex };
-    const gate = slideNavigationGateRef.current;
-
-    if (
-      targetSlideIndex === currentSlideIndexRef.current &&
-      gate &&
-      !gate.isPending()
-    ) {
-      presenterStepIndexRef.current = request.stepIndex;
-      setPresenterStepIndex(request.stepIndex);
-      return Promise.resolve("committed");
-    }
-
-    return gate?.request(normalizedRequest) ?? Promise.resolve("ignored");
-  }
 
   function handlePresenterRemoteCommand(command: PresenterRemoteCommand) {
     if (command.action === "finish") {
@@ -934,7 +851,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     if (!projectId) return;
 
     return () => {
-      slideNavigationGateRef.current?.cancel();
+      cancelPendingNavigation();
       clearProjectSlideImageCache(projectId);
     };
   }, [deck?.projectId]);
@@ -1235,17 +1152,13 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   }, [currentSlide?.slideId]);
 
   useEffect(() => {
-    const activeVisit = activeSlideTranscriptVisitRef.current;
-    if (
-      !activeVisit ||
-      !currentSlide ||
-      activeVisit.slideId === currentSlide.slideId
-    ) {
+    if (!currentSlide) {
       return;
     }
-
-    captureSlideTranscriptSnapshot("slide-change");
-    beginSlideTranscriptVisit(currentSlide, currentSlideIndex);
+    speechTracking.transitionSlideTranscriptVisit(
+      currentSlide,
+      currentSlideIndex,
+    );
   }, [currentSlide?.slideId, currentSlideIndex]);
 
   const isRehearsalCompletionVisible =
@@ -1349,7 +1262,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     if (options.allowDuringReport) {
       setPhase("idle");
     }
-    resetLiveSessionTranscript();
+    speechTracking.resetSessionTranscript();
     resetLivePlaybackForSlide(activeSlide);
     resetAutoAdvanceRuntimeState(activeSlide?.slideId ?? null);
 
@@ -1374,7 +1287,10 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
           void runLifecycle.submitRecording(activeDeck, audioFile);
         },
       });
-      resetSlideTranscriptSnapshots(activeDeck, currentSlideIndexRef.current);
+      speechTracking.resetSlideTranscriptSnapshots(
+        activeDeck,
+        currentSlideIndexRef.current,
+      );
       setPhase("recording");
       setIsTimerRunning(true);
       setRehearsalRuntimeStatus("running");
@@ -1422,7 +1338,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     setIsTimerRunning(true);
     setRehearsalRuntimeStatus("running");
     rehearsalRuntimeStatusRef.current = "running";
-    resetLiveSessionTranscript();
+    speechTracking.resetSessionTranscript();
     resetLivePlaybackForSlide(currentSlide);
     resetAutoAdvanceRuntimeState(currentSlide?.slideId ?? null);
 
@@ -1524,7 +1440,7 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   function stopRecording() {
     if (phase !== "recording") return;
 
-    captureSlideTranscriptSnapshot("rehearsal-end");
+    speechTracking.captureSlideTranscriptSnapshot("rehearsal-end");
     liveSttSession.cancelRetry();
     setRehearsalRuntimeStatus("stopping");
     setPhase("uploading");
@@ -2434,79 +2350,13 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     }
 
     if (playbackUpdate.presenterStepIndex !== presenterStepIndexRef.current) {
-      presenterStepIndexRef.current = playbackUpdate.presenterStepIndex;
-      setPresenterStepIndex(playbackUpdate.presenterStepIndex);
-    }
-  }
-
-  function resetLiveTranscriptForSlide(slide: Slide | null) {
-    const nextBuffer = createLiveTranscriptBuffer();
-    const nextKeywordState = slide ? evaluateLiveTranscript(slide, "") : null;
-
-    liveTranscriptBufferRef.current = nextBuffer;
-    liveKeywordStateRef.current = nextKeywordState;
-    liveKeywordOccurrenceStateRef.current = slide
-      ? createLiveKeywordOccurrenceState(slide.slideId)
-      : null;
-    liveCommandConfirmationRef.current =
-      createRehearsalCommandConfirmationState();
-    setLiveKeywordState(nextKeywordState);
-    setLiveCue(null);
-  }
-
-  function resetLiveSessionTranscript() {
-    liveSessionTranscriptBufferRef.current = createLiveTranscriptBuffer();
-    setLiveSessionTranscript("");
-  }
-
-  function beginSlideTranscriptVisit(
-    slide: Slide,
-    slideIndex: number,
-    visitedAt = new Date().toISOString(),
-  ) {
-    const visitedVer =
-      (slideTranscriptVisitVersionsRef.current.get(slide.slideId) ?? 0) + 1;
-    slideTranscriptVisitVersionsRef.current.set(slide.slideId, visitedVer);
-    activeSlideTranscriptVisitRef.current = {
-      slideId: slide.slideId,
-      slideNum: slideIndex + 1,
-      visitedAt,
-      visitedVer,
-    };
-  }
-
-  function captureSlideTranscriptSnapshot(
-    reason: SlideTranscriptSnapshot["reason"],
-    capturedAt = new Date().toISOString(),
-  ) {
-    const activeVisit = activeSlideTranscriptVisitRef.current;
-    if (!activeVisit) {
-      return;
-    }
-
-    slideTranscriptSnapshotsRef.current.push({
-      ...activeVisit,
-      transcript: renderLiveTranscriptBuffer(
-        liveSessionTranscriptBufferRef.current,
-      ),
-      capturedAt,
-      reason,
-    });
-    activeSlideTranscriptVisitRef.current = null;
-  }
-
-  function resetSlideTranscriptSnapshots(activeDeck: Deck, slideIndex: number) {
-    slideTranscriptSnapshotsRef.current = [];
-    slideTranscriptVisitVersionsRef.current = new Map();
-    activeSlideTranscriptVisitRef.current = null;
-    const slide = activeDeck.slides[slideIndex];
-    if (slide) {
-      beginSlideTranscriptVisit(slide, slideIndex);
+      commitPresenterStep(playbackUpdate.presenterStepIndex);
     }
   }
 
   function resetLivePlaybackForSlide(slide: Slide | null) {
-    resetLiveTranscriptForSlide(slide);
+    speechTracking.resetSlideTranscript(slide);
+    setLiveCue(null);
     const nextSlidePlaybackState = createSlidePlaybackState();
     slidePlaybackStateRef.current = nextSlidePlaybackState;
     setSlidePlaybackState(nextSlidePlaybackState);
@@ -2514,7 +2364,8 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
   }
 
   function restoreLivePlaybackAtStep(slide: Slide, stepIndex: number) {
-    resetLiveTranscriptForSlide(slide);
+    speechTracking.resetSlideTranscript(slide);
+    setLiveCue(null);
     const restored = restoreSlidePlaybackAtStep({
       slide,
       slideAnimationPlan: createSlideshowAnimationPlan({
@@ -2706,21 +2557,15 @@ export function RehearsalWorkspace(props: RehearsalWorkspaceProps) {
     await closeRehearsalCompanionSession().catch(() => undefined);
     navigateToPath(path);
   }
-  const resetSlideDisplayToBeginning = () => {
-    presenterStepIndexRef.current = 0;
-    currentSlideIndexRef.current = 0;
-    setPresenterStepIndex(0);
-    setCurrentSlideIndex(0);
-  };
   const resetRehearsalAttemptToBeginning = () => {
     const firstSlide = deck?.slides[0] ?? null;
 
     resetSlideDisplayToBeginning();
-    resetLiveSessionTranscript();
+    speechTracking.resetSessionTranscript();
     resetLivePlaybackForSlide(firstSlide);
     resetAutoAdvanceRuntimeState(firstSlide?.slideId ?? null);
     if (deck) {
-      resetSlideTranscriptSnapshots(deck, 0);
+      speechTracking.resetSlideTranscriptSnapshots(deck, 0);
     }
     setScriptAutoFollowKey((current) => current + 1);
   };
