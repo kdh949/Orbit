@@ -13,9 +13,9 @@ import {
 } from "../advance/advanceController";
 import { createP3RehearsalSession, type P3RehearsalSessionSlide } from "./p3RehearsalSession";
 import { createPauseDetector } from "./pauseDetector";
-import type { SemanticCueDebugEvent } from "./semanticCueDebugEvents";
-import { createSemanticCueEmbeddingIndex } from "./semanticCueEmbeddingIndex";
-import { createSemanticCueRuntime } from "./semanticCueRuntime";
+import type { SemanticCueDebugEvent } from "../../../runtime/speech/semantic/cue/semanticCueDebugEvents";
+import { createSemanticCueEmbeddingIndex } from "../../../runtime/speech/semantic/cue/semanticCueEmbeddingIndex";
+import { createSemanticCueRuntime } from "../../../runtime/speech/semantic/cue/semanticCueRuntime";
 import { createMockSemanticCueNliProvider } from "../../../runtime/speech/semantic/nli/mockSemanticCueNliProvider";
 import type { SemanticUtteranceDebugState } from "../../../runtime/speech/semantic/semanticSpeechDebug";
 import type { SemanticUtteranceDecision } from "../../../runtime/speech/semantic/semanticUtteranceDecision";

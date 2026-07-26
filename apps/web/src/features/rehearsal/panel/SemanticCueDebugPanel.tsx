@@ -1,6 +1,6 @@
 import type { SemanticCapabilityEvent } from "@orbit/shared";
 
-import type { SemanticCueDebugEvent } from "../speech/semanticCueDebugEvents";
+import type { SemanticCueDebugEvent } from "../../../runtime/speech/semantic/cue/semanticCueDebugEvents";
 import {
   createSemanticCueDebugTimeline,
   serializeSemanticCueDebugTimeline,
