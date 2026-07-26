@@ -38,8 +38,9 @@ instead of introducing a parallel token or component system.
 - UI refactoring must not change API calls, Zustand state, routing, or report schema.
 - Do not mix visual redesign and business-logic changes in the same task.
 - Keep each change buildable.
-- Run targeted tests for the changed feature and
-  `pnpm turbo run typecheck --filter=@orbit/web`.
+- Run targeted tests through Turbo so workspace dependencies are built first:
+  `pnpm turbo run test --filter=@orbit/web -- <test-path>`.
+- Run `pnpm turbo run typecheck --filter=@orbit/web`.
 - Run the Web build when changing routes, Vite configuration, assets, workers,
   or package/public import resolution.
 

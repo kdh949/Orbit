@@ -33,9 +33,9 @@
     "apps/api/src/decks/decks.service.spec.ts"
   ],
   "fastChecks": [
-    "pnpm --filter @orbit/web test -- src/features/editor/shell/EditorShell.test.tsx",
-    "pnpm --filter @orbit/editor-core test -- src/patches/applyPatch.test.ts",
-    "pnpm --filter @orbit/api test -- src/decks/decks.service.spec.ts"
+    "pnpm turbo run test --filter=@orbit/web -- src/features/editor/shell/EditorShell.test.tsx",
+    "pnpm turbo run test --filter=@orbit/editor-core -- src/patches/applyPatch.test.ts",
+    "pnpm turbo run test --filter=@orbit/api -- src/decks/decks.service.spec.ts"
   ],
   "fullCheckTriggers": [
     "Deck 또는 Patch schema 변경",

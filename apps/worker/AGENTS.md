@@ -33,7 +33,7 @@ These rules apply to `apps/worker`.
 - Run the narrowest processor test first:
 
 ```bash
-pnpm --filter @orbit/worker test -- src/<processor>.spec.ts
+pnpm turbo run test --filter=@orbit/worker -- src/<processor>.spec.ts
 pnpm turbo run typecheck --filter=@orbit/worker
 ```
 

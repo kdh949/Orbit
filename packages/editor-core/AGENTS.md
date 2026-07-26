@@ -30,7 +30,7 @@ These rules apply to `packages/editor-core`.
 - Run the narrowest test first:
 
 ```bash
-pnpm --filter @orbit/editor-core test -- src/<domain>/<file>.test.ts
+pnpm turbo run test --filter=@orbit/editor-core -- src/<domain>/<file>.test.ts
 pnpm turbo run typecheck --filter=@orbit/editor-core
 pnpm turbo run build --filter=@orbit/editor-core
 ```
