@@ -106,6 +106,9 @@ async function collectRuleOccurrences(root, filePaths) {
         if (!Number.isInteger(start) || !Number.isInteger(end)) {
           continue;
         }
+        const lineStart = source.lastIndexOf("\n", start - 1) + 1;
+        const removalStart =
+          source.slice(lineStart, start).trim().length === 0 ? lineStart : start;
         const raw = source.slice(start, end);
         occurrences.push({
           context,
@@ -114,7 +117,7 @@ async function collectRuleOccurrences(root, filePaths) {
           filePath,
           line: node.source?.start?.line ?? 1,
           signature: `${context.join(" > ")} || ${canonicalCss(raw)}`,
-          start,
+          start: removalStart,
         });
       }
     }

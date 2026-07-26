@@ -27,7 +27,7 @@ describe("CSS cascade order", () => {
       ].join("\n"),
     );
     expect(sha256(readCssBundle(globalStylesPath))).toBe(
-      "32f46786b30cad11ce18175807f8864a3d824f9d9bd8be74a52eef1cf319b13f",
+      "33d1acfe0fd657a2a80ad16ac2572eb3dc6ec77ea301ffc7f420c0d2e9a8804e",
     );
   });
 
@@ -47,7 +47,7 @@ describe("CSS cascade order", () => {
       ].join("\n"),
     );
     expect(sha256(readCssBundle(editorStylesPath))).toBe(
-      "12c83327e53172c472eb91a178ba38482ebb449af43feea3ceac94f29fd894ea",
+      "b4635073f405b66024cb182e72fb9db292b3125d061c9771963d2899f906f242",
     );
   });
 

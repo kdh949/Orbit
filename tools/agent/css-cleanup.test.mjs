@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { cleanupCssBundles } from "./css-cleanup.mjs";
@@ -53,10 +54,9 @@ test("bundle 내부의 완전 동일 rule과 빈 rule만 제거한다", async ()
   assert.equal(report.duplicateRuleCount, 2);
   assert.equal(report.emptyRuleCount, 1);
   assert.equal(report.removalCount, 3);
-  assert.doesNotMatch(
-    readFileSync(join(root, "styles/base.css"), "utf8"),
-    /card|empty/,
-  );
+  const cleanedBase = readFileSync(join(root, "styles/base.css"), "utf8");
+  assert.doesNotMatch(cleanedBase, /card|empty/);
+  assert.doesNotMatch(cleanedBase, /^[ \t]+$/m);
   assert.match(
     readFileSync(join(root, "styles/override.css"), "utf8"),
     /@media \(min-width: 801px\)/,
@@ -84,4 +84,34 @@ test("서로 독립적인 entry bundle 사이의 동일 rule은 제거하지 않
   );
   assert.match(readFileSync(join(root, "first.css"), "utf8"), /\.shared/);
   assert.match(readFileSync(join(root, "second.css"), "utf8"), /\.shared/);
+});
+
+test("production CSS bundle의 no-op cleanup과 cascade fingerprint를 고정한다", async () => {
+  const repositoryRoot = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../..",
+  );
+  const reports = await cleanupCssBundles(repositoryRoot);
+
+  assert.deepEqual(
+    reports.map(({ entryPath, fingerprint, removalCount }) => ({
+      entryPath,
+      fingerprint,
+      removalCount,
+    })),
+    [
+      {
+        entryPath: "apps/web/src/features/editor/editor-shell.css",
+        fingerprint:
+          "ec6417cdbf6185184ece4c84dfba7dba3f235b9f558ea55bc336f6ef38242694",
+        removalCount: 0,
+      },
+      {
+        entryPath: "apps/web/src/styles.css",
+        fingerprint:
+          "0c8730ae45b1dd2eaa1011b144389ca8afb7c5a6532c40823c146464c07e1f11",
+        removalCount: 0,
+      },
+    ],
+  );
 });

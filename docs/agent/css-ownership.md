@@ -20,6 +20,16 @@ aggregator 대신 실제 owner leaf 파일을 cascade 순서대로 측정한다.
 후순위 override는 중복으로 집계되더라도 자동 병합하지 않는다.
 
 2026-07-26 owner extraction 직후 기준선은 selector 719개, occurrence 1,872개다.
-완전히 같은 rule과 빈 rule을 제거하는 no-op cleanup 뒤에도 나머지는 시각 결과를
-검토해야 하는 override 부채다. 장기 목표는 duplicate occurrence 500 이하이며,
-token 치환과 selector 병합은 별도 시각 변경 PR에서 검증한다.
+bundle별 no-op cleanup은 완전히 같은 rule 59개와 빈 rule 3개, 12,131 bytes를
+제거했다. cleanup 뒤 기준선은 selector 703개, occurrence 1,773개다. 나머지는 시각
+결과를 검토해야 하는 override 부채다. 장기 목표는 duplicate occurrence 500
+이하이며, token 치환과 selector 병합은 별도 시각 변경 PR에서 검증한다.
+
+```bash
+pnpm css:cleanup
+pnpm css:cleanup -- --check
+```
+
+`--check`는 exact duplicate 또는 빈 rule이 다시 생기면 실패한다. `--write`는 같은
+bundle 안에서만 no-op rule을 제거하고 전후 cascade fingerprint와 idempotency를
+검증한다.

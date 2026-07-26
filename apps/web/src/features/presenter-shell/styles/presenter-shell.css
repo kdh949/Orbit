@@ -1,8 +1,5 @@
 /* Presenter mode redesign: Product Design 2a, 1g, 1h */
-.rehearsal-preflight-screen,
-.rehearsal-completion-screen,
-.rehearsal-presenter-shell {
-}
+
 
 .rehearsal-preflight-screen {
   align-items: stretch;
@@ -27,10 +24,7 @@
   text-align: center;
 }
 
-.rehearsal-preflight-banner svg,
-.rehearsal-preflight-banner strong {
-  color: var(--redesign-color-secondary);
-}
+
 
 .rehearsal-preflight-card {
   align-self: center;
@@ -690,9 +684,7 @@
   width: 7px;
 }
 
-.rehearsal-session-status span {
-  background: var(--redesign-color-secondary);
-}
+
 
 .rehearsal-recording-status {
   background: color-mix(in srgb, var(--redesign-color-primary) 8%, transparent);
@@ -701,9 +693,7 @@
   padding: 0 var(--redesign-space-3);
 }
 
-.rehearsal-recording-status span {
-  background: var(--redesign-color-secondary);
-}
+
 
 .rehearsal-recording-status-active {
   background: color-mix(in srgb, var(--redesign-color-error) 14%, transparent);
@@ -711,9 +701,7 @@
   color: var(--redesign-color-error);
 }
 
-.rehearsal-recording-status-active span {
-  background: var(--redesign-color-error);
-}
+
 
 .rehearsal-exit-button,
 .presenter-single-screen-button,
@@ -1009,9 +997,7 @@
   padding-left: 0;
 }
 
-.rehearsal-panel-live-slot .rehearsal-assist-card {
-  padding: var(--redesign-space-3) var(--redesign-space-4);
-}
+
 
 .rehearsal-panel-live-slot .rehearsal-assist-card header {
   border-bottom-color: color-mix(in srgb, var(--redesign-color-primary) 12%, transparent);
@@ -1142,10 +1128,7 @@
 }
 
 /* ORBIT design-system pass for rehearsal and presenter surfaces. */
-.rehearsal-preflight-screen,
-.rehearsal-completion-screen,
-.rehearsal-presenter-shell {
-}
+
 
 .rehearsal-preflight-screen {
   background:

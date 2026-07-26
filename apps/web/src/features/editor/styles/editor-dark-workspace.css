@@ -136,9 +136,7 @@
   color: var(--redesign-color-on-surface);
 }
 
-.orbit-shell.editor-professional .top-actions {
-  gap: var(--redesign-space-1);
-}
+
 
 .orbit-shell.editor-professional .visually-hidden {
   position: absolute;
@@ -338,12 +336,7 @@
   background-size: 20px 20px;
 }
 
-.orbit-shell.editor-professional .canvas-shell,
-.orbit-shell.editor-professional .editor-canvas-shell {
-  border: 1px solid var(--redesign-color-outline);
-  border-radius: var(--redesign-radius-sm);
-  box-shadow: var(--redesign-shadow-overlay);
-}
+
 
 .orbit-shell.editor-professional .ai-pane {
   gap: 0;

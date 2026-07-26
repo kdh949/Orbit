@@ -634,20 +634,14 @@
   min-height: 100%;
 }
 
-.orbit-product-shell .rehearsal-presenter-shell {
-  height: calc(100vh - 72px);
-  min-height: calc(100vh - 72px);
-}
+
 
 .orbit-product-shell .rehearsal-presenter-layout,
 .orbit-product-shell .rehearsal-presenter-side {
   height: calc(100vh - 130px);
 }
 
-.orbit-headerless-shell .rehearsal-presenter-shell {
-  height: 100vh;
-  min-height: 100vh;
-}
+
 
 .orbit-headerless-shell .rehearsal-presenter-layout,
 .orbit-headerless-shell .rehearsal-presenter-side {
