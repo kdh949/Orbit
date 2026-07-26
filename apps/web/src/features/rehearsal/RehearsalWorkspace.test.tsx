@@ -45,6 +45,7 @@ import {
   shouldLoadPracticeGoalSummary,
 } from "./report/RehearsalReportPage";
 import { RehearsalCompletionScreen } from "./completion/RehearsalCompletionScreen";
+import { getPreflightMicrophonePermissionHint } from "./preflight/RehearsalPreflightScreen";
 import {
   applyLiveTranscriptEvent,
   confirmKeywordOccurrenceMatches,
@@ -69,7 +70,6 @@ import {
   getLiveAudioLevelPercent,
   getLiveSttDebugDecodingMethod,
   getRehearsalMicrophoneAudioConstraints,
-  getPreflightMicrophonePermissionHint,
   getRehearsalPrompterRows,
   getRehearsalTeleprompterScrollBehavior,
   getRehearsalTimingProgress,
@@ -109,6 +109,9 @@ import { resolveEditorAssetUrl } from "../editor/shared/editorAssetUrl";
 const createdAt = "2026-06-29T00:00:00.000Z";
 const rehearsalWorkspaceSourcePath = fileURLToPath(
   new URL("./RehearsalWorkspace.tsx", import.meta.url),
+);
+const rehearsalPreflightSourcePath = fileURLToPath(
+  new URL("./preflight/RehearsalPreflightScreen.tsx", import.meta.url),
 );
 const livePresentationOutputSourcePath = fileURLToPath(
   new URL("../presentation/useLivePresentationOutput.ts", import.meta.url),
@@ -1160,6 +1163,10 @@ describe("RehearsalWorkspace", () => {
 
   it("creates fallback Live STT ports from the runtime-configured engine", () => {
     const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
+    const preflightSource = fs.readFileSync(
+      rehearsalPreflightSourcePath,
+      "utf8",
+    );
     const defaultStart = source.indexOf("function createDefaultLiveSttPort");
     const defaultEnd = source.indexOf("export function RehearsalWorkspace");
     const createDefaultLiveSttPortBody = source.slice(defaultStart, defaultEnd);
@@ -1189,8 +1196,8 @@ describe("RehearsalWorkspace", () => {
     expect(getOrCreateLiveSttPortBody).toContain("engineId");
     expect(source).toContain("await fetchLiveSttRuntimeConfig()");
     expect(source).toContain("return presenterSettings.sttEngine");
-    expect(source).toContain("props.resolveLiveSttEngine()");
-    expect(source).toContain("props.createLiveSttPort(engineId)");
+    expect(preflightSource).toContain("props.resolveLiveSttEngine()");
+    expect(preflightSource).toContain("props.createLiveSttPort(engineId)");
   });
 
   it("routes report recording through the P3 tracking session", () => {
