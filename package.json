@@ -37,11 +37,16 @@
     "test:format-check": "node --test tools/agent/format-check.test.mjs",
     "test:package-task-graph": "node --test tools/agent/package-task-graph.test.mjs",
     "test:repo-doctor": "node --test tools/agent/repo-doctor.test.mjs",
+    "test:verify-affected": "node --test tools/agent/verify-affected.test.mjs",
+    "test:verification-env": "node --test tools/agent/verification-env.test.mjs",
+    "test:verify-scope": "node --test tools/agent/verify-scope.test.mjs",
     "test:activity-slides:e2e": "node infra/scripts/run-playwright-test.mjs activity-slides.spec.ts",
     "test:env-contract": "node --test infra/scripts/personal-staging-env.test.mjs infra/scripts/personal-staging-wrapper.test.mjs infra/scripts/personal-staging-deploy.test.mjs",
     "test:nli-browser": "node infra/scripts/run-semantic-cue-nli-browser-benchmark.mjs",
     "test:smoke": "node infra/scripts/run-playwright-test.mjs",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "verify:affected": "node tools/agent/verify-affected.mjs",
+    "verify:scope": "node tools/agent/verify-scope.mjs"
   },
   "devDependencies": {
     "@orbit/editor-core": "workspace:*",
