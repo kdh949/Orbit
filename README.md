@@ -16,12 +16,6 @@
     <a href="#개발-가이드">개발 가이드</a>
   </p>
   <p>
-    <a href="https://github.com/na-man-mu-303-team2/Orbit/actions/workflows/typescript-ci.yml">
-      <img src="https://github.com/na-man-mu-303-team2/Orbit/actions/workflows/typescript-ci.yml/badge.svg?branch=develop" alt="TypeScript CI 상태" />
-    </a>
-    <a href="https://github.com/na-man-mu-303-team2/Orbit/actions/workflows/adaptive-coaching-ci.yml">
-      <img src="https://github.com/na-man-mu-303-team2/Orbit/actions/workflows/adaptive-coaching-ci.yml/badge.svg?branch=develop" alt="Adaptive Coaching CI 상태" />
-    </a>
     <img src="https://img.shields.io/badge/pnpm-10.12.4-F69220?logo=pnpm&logoColor=white" alt="pnpm 10.12.4" />
   </p>
 </div>
