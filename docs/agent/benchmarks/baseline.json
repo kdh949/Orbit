@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-07-26T07:17:47.219Z",
+  "sourceCommit": "52640827aeacb7c9675f148281d609e874e8c6c0",
+  "structural": {
+    "directPackageSourceImportFiles": 20,
+    "sharedRootImportFiles": 648,
+    "editorCoreRootImportFiles": 104,
+    "githubWorkflowFiles": 0,
+    "agentDomainManifests": 4,
+    "scopedAgentInstructionFiles": 7,
+    "hotspotLines": {
+      "apps/web/src/features/rehearsal/RehearsalWorkspace.tsx": 7711,
+      "apps/web/src/features/rehearsal/RehearsalWorkspace.test.tsx": 3612,
+      "apps/web/src/features/editor/shell/EditorShell.tsx": 2847,
+      "apps/web/src/features/editor/shell/EditorShell.test.tsx": 2729,
+      "apps/web/src/features/presentation/PresentationWorkspace.tsx": 2301,
+      "apps/web/src/features/editor/editor-shell.css": 15070,
+      "apps/web/src/styles.css": 11088,
+      "apps/worker/src/worker.service.ts": 1285,
+      "services/python-worker/app/main.py": 1843,
+      "services/python-worker/app/ai/pptx_ooxml_generation.py": 7189
+    }
+  },
+  "manualBenchmark": {
+    "status": "pending",
+    "runsPerTask": 3,
+    "tokenUsage": {
+      "status": "unavailable",
+      "note": "실제 Agent 실행 환경이 제공한 값만 기록하고 추정하지 않는다."
+    },
+    "metrics": [
+      "filesReadBeforeFirstPatch",
+      "topLevelAreasRead",
+      "toolCallsBeforeFirstTargetedTest",
+      "workspacesVerified",
+      "secondsToFirstTargetedTest",
+      "totalSeconds",
+      "rollbackCount"
+    ],
+    "tasks": [
+      {
+        "id": "rehearsal-copy",
+        "description": "리허설 UI 문구 변경",
+        "scope": "web:rehearsal",
+        "runs": []
+      },
+      {
+        "id": "web-speech-retry",
+        "description": "Web Speech retry 조건 변경",
+        "scope": "web:rehearsal",
+        "runs": []
+      },
+      {
+        "id": "rehearsal-response-field",
+        "description": "RehearsalRun response 필드 추가",
+        "scope": "rehearsal",
+        "runs": []
+      },
+      {
+        "id": "worker-retry-option",
+        "description": "Worker retry option 변경",
+        "scope": "worker",
+        "runs": []
+      },
+      {
+        "id": "python-audio-validation",
+        "description": "Python audio validation 추가",
+        "scope": "python:audio",
+        "runs": []
+      },
+      {
+        "id": "editor-slide-patch",
+        "description": "Editor slide patch 변경",
+        "scope": "editor",
+        "runs": []
+      },
+      {
+        "id": "environment-variable",
+        "description": "환경변수 추가",
+        "scope": "config",
+        "runs": []
+      },
+      {
+        "id": "pptx-error-mapping",
+        "description": "PPTX sync error mapping 변경",
+        "scope": "pptx",
+        "runs": []
+      }
+    ]
+  }
+}
