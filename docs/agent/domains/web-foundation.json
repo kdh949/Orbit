@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 2,
+  "id": "web-foundation",
+  "summary": "Web app route, provider, 공통 UI primitive와 slide rendering 기반",
+  "owns": [
+    "apps/web/src/App.tsx",
+    "apps/web/src/app/**",
+    "apps/web/src/components/**",
+    "apps/web/src/features/slides/**",
+    "apps/web/src/features/shared/**",
+    "apps/web/src/main.tsx",
+    "apps/web/src/pages/**",
+    "apps/web/src/styles/**",
+    "apps/web/vite.config.ts"
+  ],
+  "excludes": [],
+  "entrypoints": [
+    {
+      "area": "web",
+      "path": "apps/web/src/App.tsx"
+    },
+    {
+      "area": "ui",
+      "path": "apps/web/src/components/ui/index.ts"
+    }
+  ],
+  "primaryContracts": [
+    "packages/shared/src/deck/deck.schema.ts",
+    "docs/contracts/common.md"
+  ],
+  "secondaryContracts": ["apps/web/src/styles/tokens.css"],
+  "testOwners": [
+    {
+      "source": "apps/web/src/App.tsx",
+      "tests": [
+        "apps/web/src/App.test.tsx",
+        "apps/web/src/app/staticRoutes.test.ts"
+      ]
+    }
+  ],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/App.test.tsx",
+      "pnpm turbo run typecheck --filter=@orbit/web --env-mode=loose"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
+  "fullCheckTriggers": [
+    "route registry 또는 provider 변경",
+    "공통 UI public export 또는 Vite asset resolution 변경"
+  ],
+  "allowedDependencies": [
+    "packages/shared/src/**",
+    "packages/editor-core/src/**"
+  ],
+  "forbiddenDependencies": ["apps/api/src/**"],
+  "boundaries": [
+    "components/ui는 features를 import하지 않는다",
+    "공통 primitive는 tokens.css를 사용한다"
+  ]
+}

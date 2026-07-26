@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 2,
+  "id": "coaching-reporting",
+  "summary": "코칭 목표, 집중 연습, 평가 기준, Q&A와 리포트 표시",
+  "owns": [
+    "apps/web/src/features/coaching/**",
+    "apps/web/src/features/reports/**",
+    "apps/api/src/focused-practice/**",
+    "apps/api/src/practice-goals/**",
+    "apps/api/src/challenge-qna/**",
+    "apps/api/src/evaluator-lenses/**",
+    "apps/api/src/presentation-briefs/**",
+    "apps/worker/src/coaching/**",
+    "packages/shared/src/coaching/**"
+  ],
+  "excludes": [],
+  "entrypoints": [
+    {
+      "area": "web",
+      "path": "apps/web/src/features/coaching/FocusedPracticePage.tsx"
+    },
+    {
+      "area": "api",
+      "path": "apps/api/src/focused-practice/focused-practice.module.ts"
+    },
+    {
+      "area": "worker",
+      "path": "apps/worker/src/coaching/criterion-evaluator.ts"
+    }
+  ],
+  "primaryContracts": [
+    "packages/shared/src/coaching/focused-practice.schema.ts",
+    "packages/shared/src/coaching/practice-goal.schema.ts",
+    "packages/shared/src/coaching/evaluator-lens.schema.ts"
+  ],
+  "secondaryContracts": [
+    "packages/shared/src/coaching/presentation-brief.schema.ts",
+    "packages/shared/src/rehearsals/rehearsal.schema.ts"
+  ],
+  "testOwners": [
+    {
+      "source": "apps/web/src/features/coaching/FocusedPracticePage.tsx",
+      "tests": ["apps/web/src/features/coaching/FocusedPracticePage.test.ts"]
+    },
+    {
+      "source": "apps/api/src/focused-practice/**",
+      "tests": [
+        "apps/api/src/focused-practice/focused-practice.service.spec.ts"
+      ]
+    },
+    {
+      "source": "apps/worker/src/coaching/**",
+      "tests": ["apps/worker/src/coaching/criterion-evaluator.spec.ts"]
+    }
+  ],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/features/coaching/FocusedPracticePage.test.ts",
+      "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/focused-practice/focused-practice.service.spec.ts",
+      "pnpm turbo run test --filter=@orbit/worker --env-mode=loose -- src/coaching/criterion-evaluator.spec.ts"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
+  "fullCheckTriggers": [
+    "coaching schema 또는 evaluator contract 변경",
+    "리허설 결과에서 코칭 파생 규칙 변경"
+  ],
+  "allowedDependencies": [
+    "packages/shared/src/coaching/**",
+    "packages/shared/src/rehearsals/**"
+  ],
+  "forbiddenDependencies": ["apps/web/src/features/editor/**"],
+  "boundaries": [
+    "코칭 결과는 shared schema 검증 후 저장한다",
+    "private transcript와 발표자 script를 audience API에 노출하지 않는다"
+  ]
+}

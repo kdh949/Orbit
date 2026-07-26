@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 2,
+  "id": "activity-slides",
+  "summary": "활동 슬라이드 편집, 청중 응답, 실시간 집계와 결과 렌더링",
+  "owns": [
+    "apps/web/src/features/activity-slides/**",
+    "apps/api/src/activities/**",
+    "packages/shared/src/activity/**"
+  ],
+  "excludes": [],
+  "entrypoints": [
+    {
+      "area": "web",
+      "path": "apps/web/src/features/activity-slides/index.ts"
+    },
+    {
+      "area": "api",
+      "path": "apps/api/src/activities/activities.module.ts"
+    },
+    {
+      "area": "shared",
+      "path": "packages/shared/src/activity/index.ts"
+    }
+  ],
+  "primaryContracts": [
+    "packages/shared/src/activity/activity-api.schema.ts",
+    "packages/shared/src/activity/activity-definition.schema.ts",
+    "packages/shared/src/activity/activity-results.schema.ts"
+  ],
+  "secondaryContracts": ["packages/shared/src/realtime/websocket.schema.ts"],
+  "testOwners": [
+    {
+      "source": "apps/web/src/features/activity-slides/editor/**",
+      "tests": [
+        "apps/web/src/features/activity-slides/editor/activityEditor.test.tsx"
+      ]
+    },
+    {
+      "source": "apps/api/src/activities/**",
+      "tests": ["apps/api/src/activities/activity-runs.service.spec.ts"]
+    }
+  ],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/features/activity-slides/editor/activityEditor.test.tsx",
+      "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/activities/activity-runs.service.spec.ts",
+      "pnpm turbo run typecheck --filter=@orbit/web --env-mode=loose"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
+  "fullCheckTriggers": [
+    "activity definition 또는 result schema 변경",
+    "청중 realtime event 변경"
+  ],
+  "allowedDependencies": [
+    "packages/shared/src/activity/**",
+    "packages/realtime/src/**"
+  ],
+  "forbiddenDependencies": ["apps/web/src/features/rehearsal/**"],
+  "boundaries": [
+    "활동 정의와 결과는 shared schema로 검증한다",
+    "청중 입력은 저장 전 런타임 검증과 moderation을 거친다"
+  ]
+}

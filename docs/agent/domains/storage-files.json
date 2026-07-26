@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 2,
+  "id": "storage-files",
+  "summary": "파일 업로드 결과, StoragePort, 프로젝트 자산과 삭제 lifecycle",
+  "owns": [
+    "packages/storage/src/**",
+    "apps/api/src/files/**",
+    "apps/worker/src/storage*.ts",
+    "packages/shared/src/files/**"
+  ],
+  "excludes": [],
+  "entrypoints": [
+    {
+      "area": "storage",
+      "path": "packages/storage/src/index.ts"
+    },
+    {
+      "area": "api",
+      "path": "apps/api/src/files/files.module.ts"
+    }
+  ],
+  "primaryContracts": [
+    "packages/shared/src/files/file.schema.ts",
+    "docs/contracts/common.md"
+  ],
+  "secondaryContracts": ["packages/shared/src/projects/project.schema.ts"],
+  "testOwners": [
+    {
+      "source": "packages/storage/src/**",
+      "tests": ["packages/storage/src/index.spec.ts"]
+    },
+    {
+      "source": "apps/api/src/files/**",
+      "tests": ["apps/api/src/files/files.service.spec.ts"]
+    }
+  ],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run test --filter=@orbit/storage --env-mode=loose -- src/index.spec.ts",
+      "pnpm turbo run typecheck --filter=@orbit/storage --env-mode=loose",
+      "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/files/files.service.spec.ts"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
+  "fullCheckTriggers": [
+    "File result schema 변경",
+    "storage 삭제 또는 recovery lifecycle 변경"
+  ],
+  "allowedDependencies": [
+    "packages/shared/src/files/**",
+    "packages/config/src/**"
+  ],
+  "forbiddenDependencies": ["apps/web/src/**"],
+  "boundaries": [
+    "File 결과의 fileId, projectId, purpose, url, createdAt 구조를 유지한다",
+    "스토리지 구현은 StoragePort 뒤에 둔다"
+  ]
+}

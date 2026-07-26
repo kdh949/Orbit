@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 2,
+  "id": "auth-access",
+  "summary": "인증 세션, cookie, 현재 사용자와 profile 접근",
+  "owns": [
+    "apps/web/src/features/auth/**",
+    "apps/api/src/auth/**",
+    "packages/shared/src/auth/**"
+  ],
+  "excludes": [],
+  "entrypoints": [
+    {
+      "area": "web",
+      "path": "apps/web/src/features/auth/AuthPage.tsx"
+    },
+    {
+      "area": "api",
+      "path": "apps/api/src/auth/auth.module.ts"
+    }
+  ],
+  "primaryContracts": [
+    "packages/shared/src/auth/auth.schema.ts",
+    "docs/contracts/common.md"
+  ],
+  "secondaryContracts": ["packages/shared/src/projects/project.schema.ts"],
+  "testOwners": [
+    {
+      "source": "apps/web/src/features/auth/**",
+      "tests": ["apps/web/src/features/auth/ProfilePage.test.tsx"]
+    },
+    {
+      "source": "apps/api/src/auth/**",
+      "tests": ["apps/api/src/auth/auth.service.spec.ts"]
+    }
+  ],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/features/auth/ProfilePage.test.tsx",
+      "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/auth/auth.service.spec.ts",
+      "pnpm turbo run typecheck --filter=@orbit/api --env-mode=loose"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
+  "fullCheckTriggers": [
+    "auth session 또는 cookie contract 변경",
+    "현재 사용자 authorization 변경"
+  ],
+  "allowedDependencies": [
+    "packages/shared/src/auth/**",
+    "packages/shared/src/projects/**"
+  ],
+  "forbiddenDependencies": ["apps/api/src/files/**"],
+  "boundaries": [
+    "cookie와 token 값을 로그에 남기지 않는다",
+    "resource access에서 현재 사용자와 project ownership을 함께 확인한다"
+  ]
+}

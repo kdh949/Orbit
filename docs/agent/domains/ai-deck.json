@@ -1,16 +1,23 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "ai-deck",
   "summary": "AI Deck 요청, staged generation, preview, publication, quality pipeline",
-  "ownedPaths": [
+  "owns": [
     "apps/web/src/features/ai-ppt/**",
     "apps/api/src/generate-deck/**",
+    "apps/api/src/design-agent/**",
     "apps/worker/src/generate-deck/**",
+    "apps/worker/src/generate-deck.processor.ts",
     "services/python-worker/app/ai/deck_generation/**",
     "services/python-worker/app/ai/generate_deck.py",
+    "services/python-worker/app/ai/composition_library.py",
+    "services/python-worker/app/ai/design_agent.py",
+    "packages/ai/src/**",
     "packages/shared/src/deck/generate-deck.schema.ts",
+    "packages/shared/src/deck/ai-deck-preview.schema.ts",
     "packages/shared/src/jobs/ai-deck-generation-stage.schema.ts"
   ],
+  "excludes": [],
   "entrypoints": [
     {
       "area": "web",
@@ -29,34 +36,59 @@
       "path": "services/python-worker/app/ai/generate_deck.py"
     }
   ],
-  "contracts": [
+  "primaryContracts": [
     "docs/contracts/ai-deck.md",
-    "docs/contracts/common.md",
     "packages/shared/src/deck/generate-deck.schema.ts",
-    "packages/shared/src/deck/ai-deck-preview.schema.ts",
     "packages/shared/src/jobs/ai-deck-generation-stage.schema.ts"
   ],
-  "tests": [
-    "apps/web/src/features/ai-ppt/AiDeckGenerationPage.test.tsx",
-    "apps/api/src/generate-deck/generate-deck.service.spec.ts",
-    "apps/worker/src/generate-deck/execution-stage.processor.spec.ts",
-    "services/python-worker/tests/test_generate_deck_contract.py"
+  "secondaryContracts": [
+    "docs/contracts/common.md",
+    "packages/shared/src/deck/ai-deck-preview.schema.ts"
   ],
-  "fastChecks": [
-    "pnpm turbo run typecheck --filter=@orbit/web --env-mode=loose",
-    "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/features/ai-ppt/AiDeckGenerationPage.test.tsx",
-    "pnpm turbo run typecheck --filter=@orbit/api --env-mode=loose",
-    "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/generate-deck/generate-deck.service.spec.ts",
-    "pnpm turbo run typecheck --filter=@orbit/worker --env-mode=loose",
-    "pnpm turbo run test --filter=@orbit/worker --env-mode=loose -- src/generate-deck/execution-stage.processor.spec.ts",
-    "cd services/python-worker && uv run pytest tests/test_generate_deck_facade.py"
+  "testOwners": [
+    {
+      "source": "apps/web/src/features/ai-ppt/AiDeckGenerationPage.tsx",
+      "tests": ["apps/web/src/features/ai-ppt/AiDeckGenerationPage.test.tsx"]
+    },
+    {
+      "source": "apps/api/src/generate-deck/**",
+      "tests": ["apps/api/src/generate-deck/generate-deck.service.spec.ts"]
+    },
+    {
+      "source": "apps/worker/src/generate-deck/**",
+      "tests": [
+        "apps/worker/src/generate-deck/execution-stage.processor.spec.ts"
+      ]
+    },
+    {
+      "source": "services/python-worker/app/ai/deck_generation/**",
+      "tests": ["services/python-worker/tests/test_generate_deck_facade.py"]
+    }
   ],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/features/ai-ppt/AiDeckGenerationPage.test.tsx",
+      "pnpm turbo run typecheck --filter=@orbit/web --env-mode=loose",
+      "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/generate-deck/generate-deck.service.spec.ts",
+      "pnpm turbo run typecheck --filter=@orbit/api --env-mode=loose",
+      "pnpm turbo run test --filter=@orbit/worker --env-mode=loose -- src/generate-deck/execution-stage.processor.spec.ts",
+      "pnpm turbo run typecheck --filter=@orbit/worker --env-mode=loose",
+      "cd services/python-worker && uv run pytest tests/test_generate_deck_facade.py"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
   "fullCheckTriggers": [
     "generation request·response schema 변경",
     "stage checkpoint 또는 queue payload 변경",
     "publication·preview compatibility 변경",
     "Python planning·composition 결과 shape 변경"
   ],
+  "allowedDependencies": [
+    "packages/ai/src/**",
+    "packages/shared/src/deck/**",
+    "packages/shared/src/jobs/**"
+  ],
+  "forbiddenDependencies": ["apps/web/src/features/rehearsal/**"],
   "boundaries": [
     "provider 결과는 shared schema 검증 후 저장한다",
     "stage retry와 reconciliation은 멱등성을 유지한다",

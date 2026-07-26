@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 2,
+  "id": "realtime-companion",
+  "summary": "발표자 companion, WebSocket envelope, annotation과 실시간 projection",
+  "owns": [
+    "apps/web/src/features/presenter-companion/**",
+    "apps/api/src/realtime/**",
+    "apps/api/src/presentation-sessions/presentation-companion-*.ts",
+    "packages/realtime/src/**",
+    "packages/shared/src/realtime/**",
+    "packages/shared/src/presentation/presenter-companion.schema.ts"
+  ],
+  "excludes": [],
+  "entrypoints": [
+    {
+      "area": "web",
+      "path": "apps/web/src/features/presenter-companion/CompanionPage.tsx"
+    },
+    {
+      "area": "api",
+      "path": "apps/api/src/realtime/realtime.gateway.ts"
+    },
+    {
+      "area": "realtime",
+      "path": "packages/realtime/src/index.ts"
+    }
+  ],
+  "primaryContracts": [
+    "packages/shared/src/realtime/websocket.schema.ts",
+    "packages/shared/src/presentation/presenter-companion.schema.ts",
+    "docs/contracts/common.md"
+  ],
+  "secondaryContracts": [
+    "packages/shared/src/presentation/presentation.schema.ts"
+  ],
+  "testOwners": [
+    {
+      "source": "apps/web/src/features/presenter-companion/CompanionPage.tsx",
+      "tests": [
+        "apps/web/src/features/presenter-companion/CompanionPage.test.tsx"
+      ]
+    },
+    {
+      "source": "packages/realtime/src/**",
+      "tests": ["packages/realtime/src/presentationCompanionRealtime.test.ts"]
+    },
+    {
+      "source": "apps/api/src/realtime/**",
+      "tests": ["apps/api/src/realtime/realtime.gateway.spec.ts"]
+    }
+  ],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/features/presenter-companion/CompanionPage.test.tsx",
+      "pnpm turbo run test --filter=@orbit/realtime --env-mode=loose -- src/presentationCompanionRealtime.test.ts",
+      "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/realtime/realtime.gateway.spec.ts"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
+  "fullCheckTriggers": [
+    "WebSocket envelope 또는 event payload 변경",
+    "companion authority 또는 access cookie 변경"
+  ],
+  "allowedDependencies": [
+    "packages/realtime/src/**",
+    "packages/shared/src/realtime/**"
+  ],
+  "forbiddenDependencies": ["apps/web/src/features/rehearsal/**"],
+  "boundaries": [
+    "공통 WebSocket envelope과 roomId, sessionId, userId를 유지한다",
+    "annotation authority와 access 검사를 우회하지 않는다"
+  ]
+}

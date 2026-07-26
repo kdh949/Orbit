@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 2,
+  "id": "queue-runtime",
+  "summary": "Job payload, queue name, publisher port와 Worker runtime 등록",
+  "owns": [
+    "packages/job-queue/src/**",
+    "apps/api/src/jobs/**",
+    "apps/worker/src/runtime/**",
+    "apps/worker/src/worker.module.ts",
+    "apps/worker/src/worker.service.ts",
+    "packages/shared/src/jobs/**"
+  ],
+  "excludes": ["packages/shared/src/jobs/ai-deck-generation-stage.schema.ts"],
+  "entrypoints": [
+    {
+      "area": "queue",
+      "path": "packages/job-queue/src/index.ts"
+    },
+    {
+      "area": "worker",
+      "path": "apps/worker/src/worker.module.ts"
+    }
+  ],
+  "primaryContracts": [
+    "packages/shared/src/jobs/job.schema.ts",
+    "packages/job-queue/src/index.ts",
+    "docs/contracts/common.md"
+  ],
+  "secondaryContracts": ["packages/config/src/index.ts"],
+  "testOwners": [
+    {
+      "source": "packages/job-queue/src/**",
+      "tests": ["packages/job-queue/src/index.spec.ts"]
+    },
+    {
+      "source": "apps/api/src/jobs/**",
+      "tests": ["apps/api/src/jobs/db-job-queue.spec.ts"]
+    }
+  ],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run test --filter=@orbit/job-queue --env-mode=loose -- src/index.spec.ts",
+      "pnpm turbo run typecheck --filter=@orbit/job-queue --env-mode=loose",
+      "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/jobs/db-job-queue.spec.ts"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
+  "fullCheckTriggers": [
+    "queue payload 또는 name 변경",
+    "publisher port 또는 retry runtime 변경"
+  ],
+  "allowedDependencies": [
+    "packages/shared/src/jobs/**",
+    "packages/config/src/**"
+  ],
+  "forbiddenDependencies": ["apps/web/src/**"],
+  "boundaries": [
+    "Job 상태는 queued, running, succeeded, failed를 유지한다",
+    "queue adapter는 port 뒤에 두고 processor retry 멱등성을 유지한다"
+  ]
+}

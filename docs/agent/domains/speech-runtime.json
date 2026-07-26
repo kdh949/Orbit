@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 2,
+  "id": "speech-runtime",
+  "summary": "브라우저·Python speech runtime, realtime transcription과 reference extraction",
+  "owns": [
+    "apps/web/src/runtime/speech/**",
+    "apps/api/src/realtime-transcription/**",
+    "apps/api/src/extract/**",
+    "apps/api/src/references/**",
+    "services/python-worker/app/audio/**",
+    "services/python-worker/app/extraction.py",
+    "services/python-worker/app/routers/audio.py",
+    "services/python-worker/app/routers/references.py",
+    "services/python-worker/app/routers/rehearsal.py"
+  ],
+  "excludes": ["apps/web/src/runtime/speech/stt/**"],
+  "entrypoints": [
+    {
+      "area": "web",
+      "path": "apps/web/src/runtime/speech/semantic/cue/semanticCueRuntime.ts"
+    },
+    {
+      "area": "api",
+      "path": "apps/api/src/realtime-transcription/realtime-transcription.module.ts"
+    }
+  ],
+  "primaryContracts": [
+    "packages/shared/src/rehearsals/realtime-transcription.schema.ts",
+    "docs/contracts/rehearsal.md"
+  ],
+  "secondaryContracts": [
+    "packages/shared/src/rehearsals/rehearsal-audio-analysis.schema.ts"
+  ],
+  "testOwners": [
+    {
+      "source": "apps/api/src/realtime-transcription/**",
+      "tests": [
+        "apps/api/src/realtime-transcription/realtime-transcription.service.spec.ts"
+      ]
+    }
+  ],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/realtime-transcription/realtime-transcription.service.spec.ts",
+      "cd services/python-worker && uv run pytest tests/test_rehearsal_analyze.py"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
+  "fullCheckTriggers": [
+    "audio 또는 transcription response 계약 변경",
+    "브라우저와 Python runtime provider 경계 변경"
+  ],
+  "allowedDependencies": ["packages/shared/src/rehearsals/**"],
+  "forbiddenDependencies": ["apps/web/src/features/**"],
+  "boundaries": [
+    "raw audio와 transcript 원문을 로그에 남기지 않는다",
+    "CPU 작업을 async event loop에서 직접 실행하지 않는다"
+  ]
+}

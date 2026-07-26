@@ -28,12 +28,16 @@ test("contract index가 모든 domain 문서만 탐색 링크로 제공한다", 
 test("domain manifest가 index 전체 대신 필요한 계약 문서만 선택한다", () => {
   for (const [domain, domainDoc] of domainDocs) {
     const manifest = JSON.parse(read(`docs/agent/domains/${domain}.json`));
-    const selectedDocs = manifest.contracts.filter((path) =>
+    const allContracts = [
+      ...(manifest.primaryContracts ?? manifest.contracts),
+      ...(manifest.secondaryContracts ?? []),
+    ];
+    const selectedDocs = allContracts.filter((path) =>
       path.startsWith("docs/contracts"),
     );
 
     assert.deepEqual(selectedDocs, [domainDoc, "docs/contracts/common.md"]);
-    assert.ok(!manifest.contracts.includes("docs/contracts.md"));
+    assert.ok(!allContracts.includes("docs/contracts.md"));
   }
 });
 

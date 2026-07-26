@@ -139,6 +139,9 @@ function loadOwnedPathPatterns(root) {
   }).flatMap((file) => {
     try {
       const manifest = JSON.parse(readFileSync(file, "utf8"));
+      if (Array.isArray(manifest.owns)) {
+        return manifest.owns;
+      }
       return Array.isArray(manifest.ownedPaths) ? manifest.ownedPaths : [];
     } catch {
       return [];
