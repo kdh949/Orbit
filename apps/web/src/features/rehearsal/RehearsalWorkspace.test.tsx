@@ -56,35 +56,43 @@ import {
   getOccurrenceTriggerProgress,
   renderLiveTranscriptBuffer,
 } from "../../runtime/speech/tracking/liveTranscriptAnalysis";
+import { RehearsalWorkspace } from "./RehearsalWorkspace";
+import { RehearsalFailureScreen } from "./completion/RehearsalFailureScreen";
 import {
-  LiveSttAdapterError,
-  RehearsalFailureScreen,
-  RehearsalWorkspace,
-  SherpaLiveSttAdapter,
   buildP3SessionSlides,
-  getRehearsalFinishPath,
   getHighlightedKeywordOccurrencesForSlide,
+  getRehearsalPrompterRows,
+  getRehearsalTimingProgress,
+  getRemainingTriggerStepsForSlide,
+  resetRehearsalTimerState,
+  shouldRenderRehearsalThumbnailImage,
+} from "./rehearsalWorkspaceModel";
+import {
+  getRehearsalFinishPath,
   getRehearsalPresenterWindowPath,
   getRehearsalReportPath,
+} from "./rehearsalRoutes";
+import {
   getLiveAudioLevelLabel,
   getLiveAudioLevelPercent,
   getLiveSttDebugDecodingMethod,
-  getRehearsalMicrophoneAudioConstraints,
-  getRehearsalPrompterRows,
-  getRehearsalTeleprompterScrollBehavior,
-  getRehearsalTimingProgress,
+  shouldShowLiveSttDebugPcmDownload,
+} from "./stt/liveSttUiModel";
+import {
   isReusableRehearsalMediaStream,
-  getRemainingTriggerStepsForSlide,
+  setMediaStreamTracksEnabled,
+} from "./recording/rehearsalMediaStream";
+import {
+  getRehearsalMicrophoneAudioConstraints,
+  readRehearsalMicrophoneDeviceId,
   rehearsalMicrophoneAudioConstraints,
   rehearsalRawMicrophoneAudioConstraints,
-  readRehearsalMicrophoneDeviceId,
   requestRehearsalMicrophoneStream,
-  resetRehearsalTimerState,
-  setMediaStreamTracksEnabled,
-  shouldRenderRehearsalThumbnailImage,
-  shouldShowLiveSttDebugPcmDownload,
   writeRehearsalMicrophoneDeviceId,
-} from "./RehearsalWorkspace";
+} from "../presenter-shell/microphoneSettings";
+import { getRehearsalTeleprompterScrollBehavior } from "./presenter/RehearsalScriptTeleprompter";
+import { LiveSttAdapterError } from "../../runtime/speech/stt/liveSttAdapter";
+import { SherpaLiveSttAdapter } from "../../runtime/speech/stt/sherpa/sherpaOnnxLiveSttAdapter";
 import {
   defaultAutoAdvanceConfig,
   defaultAutoAdvancePolicy,
@@ -180,10 +188,7 @@ describe("RehearsalWorkspace", () => {
     const effectStart = source.indexOf(
       "if (!presenterCompanionEnabled || !deck || props.presenterWindow)",
     );
-    const effectEnd = source.indexOf(
-      "useEffect(() => {",
-      effectStart + 1,
-    );
+    const effectEnd = source.indexOf("useEffect(() => {", effectStart + 1);
     const effect = source.slice(effectStart, effectEnd);
 
     expect(effectStart).toBeGreaterThan(-1);
@@ -815,7 +820,10 @@ describe("RehearsalWorkspace", () => {
 
   it("wires audience output state, popup reattach, and receiver failure cleanup", () => {
     const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
-    const hostSource = fs.readFileSync(livePresentationOutputSourcePath, "utf8");
+    const hostSource = fs.readFileSync(
+      livePresentationOutputSourcePath,
+      "utf8",
+    );
     const publisherStart = source.indexOf(
       "const livePresentationOutput = useLivePresentationOutput",
     );
@@ -852,9 +860,7 @@ describe("RehearsalWorkspace", () => {
     const presenterScreenCapture = surfaceBody.indexOf(
       "const presenterScreen = displayManager.getCurrentScreen()",
     );
-    const fullscreenRequest = surfaceBody.indexOf(
-      "requestFullscreenOnScreen",
-    );
+    const fullscreenRequest = surfaceBody.indexOf("requestFullscreenOnScreen");
     const presenterWindowOpen = surfaceBody.indexOf(
       "openPresenterRemoteWindow",
     );
@@ -971,7 +977,7 @@ describe("RehearsalWorkspace", () => {
 
     expect(topbarSource).toContain("onOpenPresenceDebug: () => void;");
     expect(topbarSource).toContain("onClick={onOpenPresenceDebug}");
-    expect(topbarSource).toContain("type=\"button\"");
+    expect(topbarSource).toContain('type="button"');
     expect(shellSource).toContain("onOpenPresenceDebug={() => {");
     expect(shellSource).toContain("setIsPresenceDebugOpen(true);");
   });
