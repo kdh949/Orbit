@@ -6,7 +6,6 @@
     "build": "tsc -p tsconfig.json && vite build && node scripts/build-semantic-cue-nli-worker.mjs",
     "clean": "rm -rf dist",
     "dev": "vite --host 0.0.0.0",
-    "lint": "tsc -p tsconfig.json --noEmit",
     "preview": "vite preview --host 0.0.0.0",
     "stt:model:prepare": "node scripts/prepare-live-stt-model.mjs",
     "test": "vitest run --passWithNoTests",

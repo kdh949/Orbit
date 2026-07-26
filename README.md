@@ -198,7 +198,7 @@ docs/               Architecture, conventions, runbooks, and research
 | 명령                               | 용도                 |
 | ---------------------------------- | -------------------- |
 | `pnpm build`                       | workspace 전체 빌드  |
-| `pnpm lint`                        | TypeScript lint      |
+| `pnpm format:check`                | 변경 파일 포맷 검사  |
 | `pnpm test`                        | workspace 테스트     |
 | `pnpm typecheck`                   | TypeScript typecheck |
 | `node infra/scripts/check-env.mjs` | 환경변수 계약 검증   |

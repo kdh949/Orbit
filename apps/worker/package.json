@@ -6,7 +6,6 @@
     "build": "nest build",
     "clean": "rm -rf dist",
     "dev": "nest start --watch",
-    "lint": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/main.js",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json --noEmit"
