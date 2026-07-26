@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -92,4 +92,19 @@ test("역사 자료의 이전 경로는 경고로 분리한다", () => {
   assert.deepEqual(result.issues, []);
   assert.equal(result.warnings.length, 1);
   assert.equal(result.warnings[0].code, "HISTORICAL_FORBIDDEN_REFERENCE");
+});
+
+test("historical root의 완료 문서를 active source로 등록하지 못하게 한다", () => {
+  const root = createRepositoryFixture();
+  const configPath = "docs/agent/repository-truth.json";
+  const config = JSON.parse(readFileSync(join(root, configPath), "utf8"));
+  config.activeDocs.push("docs/archive/completed-plan.md");
+  writeFixture(root, configPath, JSON.stringify(config));
+  writeFixture(root, "docs/archive/completed-plan.md", "# Completed\n");
+
+  const result = inspectRepository(root);
+
+  assert.equal(result.issues.length, 1);
+  assert.equal(result.issues[0].code, "ACTIVE_DOC_HISTORICAL");
+  assert.equal(result.issues[0].file, "docs/archive/completed-plan.md");
 });

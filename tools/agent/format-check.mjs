@@ -171,10 +171,35 @@ export function classifyFormatStatus({
 }
 
 export function isLegacyFormatFragment(content, legacySources) {
-  return (
-    content.trim().length > 0 &&
-    legacySources.some((source) => source.includes(content))
+  if (content.trim().length === 0) {
+    return false;
+  }
+  if (legacySources.some((source) => source.includes(content))) {
+    return true;
+  }
+
+  const markdownSections = [...content.matchAll(/^## .*(?:\n|$)/gm)].map(
+    (match, index, matches) => {
+      const nextMatch = matches[index + 1];
+      return content.slice(match.index, nextMatch?.index);
+    },
   );
+  const normalizedLegacySources = legacySources.map((source) =>
+    normalizeMovedMarkdownLinks(source),
+  );
+  return (
+    markdownSections.length > 0 &&
+    markdownSections.every((section) => {
+      const normalizedSection = normalizeMovedMarkdownLinks(section.trimEnd());
+      return normalizedLegacySources.some((source) =>
+        source.includes(normalizedSection),
+      );
+    })
+  );
+}
+
+function normalizeMovedMarkdownLinks(content) {
+  return content.replace(/\]\((?:\.\.\/)+/g, "](");
 }
 
 async function isFormatted(path, content) {

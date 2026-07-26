@@ -119,6 +119,68 @@ test("기존 포맷 부채에서 그대로 추출한 새 fragment는 부채를 �
   );
 });
 
+test("기존 문서의 section을 재배치한 domain 문서는 부채를 승계한다", () => {
+  const legacySource = [
+    "# Legacy",
+    "",
+    "## Deck",
+    "",
+    "deck contract",
+    "",
+    "## Job",
+    "",
+    "job contract",
+    "",
+  ].join("\n");
+  const extracted = [
+    "# Domain",
+    "",
+    "> canonical index",
+    "",
+    "## Job",
+    "",
+    "job contract",
+    "",
+    "## Deck",
+    "",
+    "deck contract",
+    "",
+  ].join("\n");
+
+  assert.equal(isLegacyFormatFragment(extracted, [legacySource]), true);
+  assert.equal(
+    isLegacyFormatFragment(extracted.replace("deck contract", "changed"), [
+      legacySource,
+    ]),
+    false,
+  );
+});
+
+test("문서 이동에 필요한 상대 link prefix만 legacy section에서 허용한다", () => {
+  const legacySource = [
+    "## Persistence",
+    "",
+    "[API](api/deck-persistence.md)를 따른다.",
+    "",
+  ].join("\n");
+  const moved = [
+    "# Deck",
+    "",
+    "## Persistence",
+    "",
+    "[API](../api/deck-persistence.md)를 따른다.",
+    "",
+  ].join("\n");
+
+  assert.equal(isLegacyFormatFragment(moved, [legacySource]), true);
+  assert.equal(
+    isLegacyFormatFragment(moved.replace("를 따른다.", "를 바꾼다."), [
+      legacySource,
+    ]),
+    false,
+  );
+});
+
 test("명시한 경로만 format check 대상으로 파싱한다", () => {
   assert.deepEqual(
     parseFormatCheckArguments([

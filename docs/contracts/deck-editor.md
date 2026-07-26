@@ -681,7 +681,7 @@ DeckChangeRecord 결정 사항:
 
 ORBIT-15에서 추가하는 저장/복원 API 계약은 deck 자체 구조를 다시 정의하지 않고, API request/response envelope만 정의한다. NestJS API, web/editor, AI 생성 결과 적용 흐름은 같은 shared schema를 기준으로 payload를 검증한다.
 
-상세 endpoint, request/response, 실패 코드, DB 저장 범위는 [덱 저장/복원 API 명세](api/deck-persistence.md)를 따른다.
+상세 endpoint, request/response, 실패 코드, DB 저장 범위는 [덱 저장/복원 API 명세](../api/deck-persistence.md)를 따른다.
 
 MVP API:
 

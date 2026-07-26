@@ -479,7 +479,7 @@ live `semanticCueDecisions`는 provisional/debug 호환 필드이며 canonical r
 ## Adaptive Rehearsal Coach Milestone 1 계약
 
 상세 제품·DB·API·Job·Web 수용 기준은
-[`docs/product/adaptive-rehearsal-coach-direction.md`](product/adaptive-rehearsal-coach-direction.md)의
+[`docs/product/adaptive-rehearsal-coach-direction.md`](../product/adaptive-rehearsal-coach-direction.md)의
 19~31장을 따른다. 런타임 계약의 원본은 `packages/shared/src/coaching`이다.
 
 ### Aggregate와 snapshot 경계
