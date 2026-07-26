@@ -8,7 +8,7 @@ import {
   type LiveSttStartOptions
 } from "../liveStt";
 import { LiveSttError } from "../../../runtime/speech/stt/liveSttPort";
-import { runLiveSttPortContractTests } from "./liveSttPortContract";
+import { runLiveSttPortContractTests } from "../../../runtime/speech/stt/liveSttPortContract";
 import { SherpaLiveSttPort } from "./sherpaLiveSttPort";
 
 runLiveSttPortContractTests("Sherpa", () => {

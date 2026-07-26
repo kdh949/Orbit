@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BrowserSpeechRecognition } from "./browserSpeechRecognition";
 import {
   resolveWebSpeechAudioTrack,
-  startRecognitionWithAudioTrack
+  startRecognitionWithAudioTrack,
 } from "./webSpeechAudioTrack";
 
 describe("webSpeechAudioTrack", () => {
@@ -19,8 +19,8 @@ describe("webSpeechAudioTrack", () => {
     expect(
       resolveWebSpeechAudioTrack({
         getAudioTracks: () => [endedAudio, liveAudio],
-        getTracks: () => [liveVideo]
-      } as unknown as MediaStream)
+        getTracks: () => [liveVideo],
+      } as unknown as MediaStream),
     ).toBe(liveAudio);
   });
 
@@ -29,8 +29,8 @@ describe("webSpeechAudioTrack", () => {
 
     expect(
       resolveWebSpeechAudioTrack({
-        getTracks: () => [fakeTrack("video", "live"), liveAudio]
-      } as unknown as MediaStream)
+        getTracks: () => [fakeTrack("video", "live"), liveAudio],
+      } as unknown as MediaStream),
     ).toBe(liveAudio);
   });
 
@@ -38,8 +38,8 @@ describe("webSpeechAudioTrack", () => {
     expect(
       resolveWebSpeechAudioTrack({
         getAudioTracks: () => [fakeTrack("audio", "ended")],
-        getTracks: () => [fakeTrack("audio", "ended")]
-      } as unknown as MediaStream)
+        getTracks: () => [fakeTrack("audio", "ended")],
+      } as unknown as MediaStream),
     ).toBeNull();
     expect(resolveWebSpeechAudioTrack(null)).toBeNull();
   });
@@ -53,7 +53,9 @@ describe("webSpeechAudioTrack", () => {
   });
 
   it("start(track)이 실패하면 debug 로그 후 start()로 폴백한다", () => {
-    const debug = vi.spyOn(console, "debug").mockImplementation(() => undefined);
+    const debug = vi
+      .spyOn(console, "debug")
+      .mockImplementation(() => undefined);
     const recognition = fakeRecognition({ failWithTrack: true });
     const track = fakeTrack("audio", "live");
 
@@ -61,7 +63,7 @@ describe("webSpeechAudioTrack", () => {
     expect(recognition.startCalls).toEqual([track, undefined]);
     expect(debug).toHaveBeenCalledWith(
       "[orbit-live-stt] Web Speech start(audioTrack) failed; falling back to default microphone.",
-      expect.any(Error)
+      expect.any(Error),
     );
   });
 
@@ -95,7 +97,7 @@ function fakeRecognition(options: { failWithTrack?: boolean } = {}) {
     },
     stop() {},
     abort() {},
-    startCalls
+    startCalls,
   } as BrowserSpeechRecognition & {
     startCalls: Array<MediaStreamTrack | undefined>;
   };

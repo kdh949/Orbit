@@ -4,7 +4,7 @@ import type { BrowserSpeechRecognition } from "./browserSpeechRecognition";
 import {
   applyWebSpeechPhrases,
   isWebSpeechPhrasesSupported,
-  toWebSpeechPhrases
+  toWebSpeechPhrases,
 } from "./webSpeechPhrases";
 
 describe("webSpeechPhrases", () => {
@@ -13,19 +13,19 @@ describe("webSpeechPhrases", () => {
 
     expect(
       isWebSpeechPhrasesSupported(recognition, {
-        SpeechRecognitionPhrase: FakeSpeechRecognitionPhrase
-      })
+        SpeechRecognitionPhrase: FakeSpeechRecognitionPhrase,
+      }),
     ).toBe(true);
   });
 
   it("phrases 프로퍼티나 생성자가 없으면 미지원으로 판단한다", () => {
     expect(
       isWebSpeechPhrasesSupported(fakeRecognition(), {
-        SpeechRecognitionPhrase: FakeSpeechRecognitionPhrase
-      })
+        SpeechRecognitionPhrase: FakeSpeechRecognitionPhrase,
+      }),
     ).toBe(false);
     expect(
-      isWebSpeechPhrasesSupported(fakeRecognition({ phrases: [] }), {})
+      isWebSpeechPhrasesSupported(fakeRecognition({ phrases: [] }), {}),
     ).toBe(false);
   });
 
@@ -35,16 +35,16 @@ describe("webSpeechPhrases", () => {
         { text: "오르빗", weight: 1 },
         { text: "결재", weight: 0.45 },
         { text: "낮은 값", weight: -1 },
-        { text: "높은 값", weight: 2 }
+        { text: "높은 값", weight: 2 },
       ],
-      { SpeechRecognitionPhrase: FakeSpeechRecognitionPhrase }
+      { SpeechRecognitionPhrase: FakeSpeechRecognitionPhrase },
     );
 
     expect(phrases).toEqual([
       new FakeSpeechRecognitionPhrase("오르빗", 5),
       new FakeSpeechRecognitionPhrase("결재", 2.8),
       new FakeSpeechRecognitionPhrase("낮은 값", 1),
-      new FakeSpeechRecognitionPhrase("높은 값", 5)
+      new FakeSpeechRecognitionPhrase("높은 값", 5),
     ]);
   });
 
@@ -52,14 +52,12 @@ describe("webSpeechPhrases", () => {
     const recognition = fakeRecognition({ phrases: [] });
 
     expect(
-      applyWebSpeechPhrases(
-        recognition,
-        [{ text: "오르빗", weight: 1 }],
-        { SpeechRecognitionPhrase: FakeSpeechRecognitionPhrase }
-      )
+      applyWebSpeechPhrases(recognition, [{ text: "오르빗", weight: 1 }], {
+        SpeechRecognitionPhrase: FakeSpeechRecognitionPhrase,
+      }),
     ).toBe(true);
     expect(recognition.phrases).toEqual([
-      new FakeSpeechRecognitionPhrase("오르빗", 5)
+      new FakeSpeechRecognitionPhrase("오르빗", 5),
     ]);
   });
 
@@ -67,25 +65,21 @@ describe("webSpeechPhrases", () => {
     const unsupported = fakeRecognition();
 
     expect(
-      applyWebSpeechPhrases(
-        unsupported,
-        [{ text: "오르빗", weight: 1 }],
-        { SpeechRecognitionPhrase: FakeSpeechRecognitionPhrase }
-      )
+      applyWebSpeechPhrases(unsupported, [{ text: "오르빗", weight: 1 }], {
+        SpeechRecognitionPhrase: FakeSpeechRecognitionPhrase,
+      }),
     ).toBe(false);
 
     const throwing = fakeRecognitionWithThrowingPhrases([
-      new FakeSpeechRecognitionPhrase("기존", 1)
+      new FakeSpeechRecognitionPhrase("기존", 1),
     ]);
     expect(
-      applyWebSpeechPhrases(
-        throwing,
-        [{ text: "오르빗", weight: 1 }],
-        { SpeechRecognitionPhrase: FakeSpeechRecognitionPhrase }
-      )
+      applyWebSpeechPhrases(throwing, [{ text: "오르빗", weight: 1 }], {
+        SpeechRecognitionPhrase: FakeSpeechRecognitionPhrase,
+      }),
     ).toBe(false);
     expect(throwing.phrases).toEqual([
-      new FakeSpeechRecognitionPhrase("기존", 1)
+      new FakeSpeechRecognitionPhrase("기존", 1),
     ]);
   });
 });
@@ -93,12 +87,12 @@ describe("webSpeechPhrases", () => {
 class FakeSpeechRecognitionPhrase {
   constructor(
     readonly phrase: string,
-    readonly boost: number
+    readonly boost: number,
   ) {}
 }
 
 function fakeRecognition(
-  overrides: Partial<BrowserSpeechRecognition> = {}
+  overrides: Partial<BrowserSpeechRecognition> = {},
 ): BrowserSpeechRecognition {
   return {
     continuous: false,
@@ -111,12 +105,12 @@ function fakeRecognition(
     start() {},
     stop() {},
     abort() {},
-    ...overrides
+    ...overrides,
   };
 }
 
 function fakeRecognitionWithThrowingPhrases(
-  initialPhrases: FakeSpeechRecognitionPhrase[]
+  initialPhrases: FakeSpeechRecognitionPhrase[],
 ): BrowserSpeechRecognition {
   let phrases = initialPhrases;
   const recognition = fakeRecognition({ phrases });
@@ -125,7 +119,7 @@ function fakeRecognitionWithThrowingPhrases(
     set: () => {
       throw new Error("phrases unsupported");
     },
-    configurable: true
+    configurable: true,
   });
   return recognition;
 }

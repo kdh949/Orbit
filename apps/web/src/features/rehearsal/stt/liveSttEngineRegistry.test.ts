@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createLiveSttPort, defaultLiveSttEngineId } from "./liveSttEngineRegistry";
 import { MoonshineLiveSttPort } from "./moonshineLiveSttPort";
 import { OpenAiRealtimeLiveSttPort } from "./openAiRealtimeLiveSttPort";
-import { RerankingLiveSttPort } from "./rerankingLiveSttPort";
+import { RerankingLiveSttPort } from "../../../runtime/speech/stt/rerankingLiveSttPort";
 import { SherpaLiveSttPort } from "./sherpaLiveSttPort";
 
 describe("liveSttEngineRegistry", () => {

@@ -3,13 +3,17 @@ import {
   LiveSttError,
   type LiveSttBiasPhrase,
   type LiveSttPort,
-  type LiveSttResult
-} from "../../../runtime/speech/stt/liveSttPort";
+  type LiveSttResult,
+} from "./liveSttPort";
 
 type ContractHarness = {
   port: LiveSttPort;
   audioSource: MediaStream;
-  emitResult: (result: { text: string; isFinal?: boolean; confidence?: number }) => void;
+  emitResult: (result: {
+    text: string;
+    isFinal?: boolean;
+    confidence?: number;
+  }) => void;
   emitError: (error: LiveSttError) => void;
   readBiasPhrases: () => LiveSttBiasPhrase[];
   expectedBiasPhrasesAfterUpdate?: LiveSttBiasPhrase[];
@@ -17,7 +21,7 @@ type ContractHarness = {
 
 export function runLiveSttPortContractTests(
   name: string,
-  createHarness: () => ContractHarness
+  createHarness: () => ContractHarness,
 ) {
   describe(`${name} LiveSttPort contract`, () => {
     it("시작 후 partial/final 결과를 session-relative timestamp로 전달한다", async () => {
@@ -28,24 +32,32 @@ export function runLiveSttPortContractTests(
       await harness.port.start({
         language: "ko",
         audioSource: harness.audioSource,
-        biasPhrases: [{ text: "오르빗", weight: 1, source: "keyword" }]
+        biasPhrases: [{ text: "오르빗", weight: 1, source: "keyword" }],
       });
-      harness.emitResult({ text: "오르빗 리허설", isFinal: false, confidence: 0.8 });
-      harness.emitResult({ text: "오르빗 리허설 완료", isFinal: true, confidence: 0.9 });
+      harness.emitResult({
+        text: "오르빗 리허설",
+        isFinal: false,
+        confidence: 0.8,
+      });
+      harness.emitResult({
+        text: "오르빗 리허설 완료",
+        isFinal: true,
+        confidence: 0.9,
+      });
 
       expect(results).toEqual([
         {
           text: "오르빗 리허설",
           isFinal: false,
           timestampMs: [0, 0],
-          confidence: 0.8
+          confidence: 0.8,
         },
         {
           text: "오르빗 리허설 완료",
           isFinal: true,
           timestampMs: [0, 0],
-          confidence: 0.9
-        }
+          confidence: 0.9,
+        },
       ]);
     });
 
@@ -55,7 +67,7 @@ export function runLiveSttPortContractTests(
       await harness.port.start({
         language: "ko",
         audioSource: harness.audioSource,
-        biasPhrases: [{ text: "첫 번째", weight: 1, source: "keyword" }]
+        biasPhrases: [{ text: "첫 번째", weight: 1, source: "keyword" }],
       });
       harness.port.updateBiasPhrases([
         {
@@ -63,16 +75,16 @@ export function runLiveSttPortContractTests(
           weight: 0.4,
           source: "keyword",
           keywordId: "kw_second",
-          canonicalText: "두 번째"
+          canonicalText: "두 번째",
         },
         {
           text: "두 번째",
           weight: 0.8,
           source: "synonym",
           keywordId: "kw_second",
-          canonicalText: "둘째"
+          canonicalText: "둘째",
         },
-        { text: "  세 번째  ", weight: 1 }
+        { text: "  세 번째  ", weight: 1 },
       ]);
 
       expect(harness.readBiasPhrases()).toEqual(
@@ -82,21 +94,23 @@ export function runLiveSttPortContractTests(
             weight: 0.8,
             source: "synonym",
             keywordId: "kw_second",
-            canonicalText: "둘째"
+            canonicalText: "둘째",
           },
-          { text: "세 번째", weight: 1 }
-        ]
+          { text: "세 번째", weight: 1 },
+        ],
       );
     });
 
     it("unsubscribe와 stop 이후 stale result를 무시한다", async () => {
       const harness = createHarness();
       const results: LiveSttResult[] = [];
-      const unsubscribe = harness.port.onResult((result) => results.push(result));
+      const unsubscribe = harness.port.onResult((result) =>
+        results.push(result),
+      );
 
       await harness.port.start({
         language: "ko",
-        audioSource: harness.audioSource
+        audioSource: harness.audioSource,
       });
       unsubscribe();
       harness.emitResult({ text: "구독 해제 후 결과", isFinal: false });
@@ -113,7 +127,7 @@ export function runLiveSttPortContractTests(
 
       await harness.port.start({
         language: "ko",
-        audioSource: harness.audioSource
+        audioSource: harness.audioSource,
       });
       harness.emitError(new LiveSttError("runtime_error", "테스트 오류"));
       unsubscribe();
