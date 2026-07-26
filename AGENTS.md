@@ -10,6 +10,8 @@
 
 이 파일은 ORBIT 저장소에서 에이전트가 반드시 지켜야 하는 최상위 작업 규칙이다.
 상세 설명과 예시는 `docs/` 문서를 따른다.
+작업 파일과 가장 가까운 하위 `AGENTS.md`가 있으면 해당 범위의 구현·검증 규칙을
+함께 적용한다.
 
 ## 목적과 우선순위
 
@@ -92,16 +94,25 @@
 - 버그 수정 시 가능하면 재발 방지 테스트를 추가한다.
 - 테스트를 실행하지 못한 경우 이유와 남은 검증 범위를 작업 결과에 남긴다.
 
-## 권장 검증 명령
+## 검증 선택
 
-변경 범위에 맞춰 필요한 명령을 실행한다.
+기본 검증은 가장 가까운 하위 `AGENTS.md`의 targeted 명령을 사용한다. 공통 계약,
+root build 설정, lockfile처럼 여러 workspace에 영향을 주는 변경만 전체 검증으로
+승격한다.
+
+전체 TypeScript 검증이 필요한 경우:
 
 ```bash
 pnpm build
-pnpm lint
+pnpm typecheck
 pnpm test
+```
+
+환경·Compose 계약을 변경한 경우:
+
+```bash
 node infra/scripts/check-env.mjs
-docker compose config
+docker compose config --quiet
 ```
 
 Python worker를 변경한 경우:
@@ -135,10 +146,4 @@ pnpm db:migration:revert
 - 공통 계약: `docs/contracts.md`
 - Demo ID 기준: `docs/demo-standards.md`
 - Git과 PR 규칙: `docs/git-rules.md`
-- 로컬 우선 아키텍처: `docs/architecture/local-first-stack.md`
-- 기술스택 버전: `docs/architecture/tech-stack-versions.md`
-- 환경변수 규칙: `docs/conventions/environment.md`
-- 서버 로그 규칙: `docs/conventions/logging.md`
 - 로컬 개발 Runbook: `docs/runbooks/local-development.md`
-- AWS 배포 기준: `docs/deployment.md`
-- STT spike: `docs/spikes/on-device-stt.md`
