@@ -1,61 +1,57 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { extname, join, relative, resolve, sep } from "node:path";
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { extname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { findSourceCycles } from "./check-source-cycles.mjs";
+import { createCssOwnershipReport } from "./css-ownership.mjs";
+import {
+  SOURCE_EXTENSIONS,
+  isProductionSourcePath,
+  isTestPath,
+  listFiles,
+} from "./lib/fs-walk.mjs";
+import { collectGitIdentity } from "./lib/git-changes.mjs";
+import {
+  buildImportGraph,
+  collectDependencyClosure,
+} from "./lib/import-graph.mjs";
+import { matchesRepoGlob, toRepoPath } from "./lib/repo-path.mjs";
 
-const CODE_EXTENSIONS = new Set([".js", ".mjs", ".ts", ".tsx"]);
-const SKIPPED_DIRECTORIES = new Set([
-  ".git",
-  ".turbo",
-  ".venv",
-  "dist",
-  "node_modules"
-]);
+export const BENCHMARK_TOOL_VERSION = 2;
+const CODE_EXTENSIONS = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 
 export const BENCHMARK_TASKS = [
   {
-    id: "rehearsal-copy",
-    description: "리허설 UI 문구 변경",
-    scope: "web:rehearsal"
-  },
-  {
     id: "web-speech-retry",
     description: "Web Speech retry 조건 변경",
-    scope: "web:rehearsal"
+    path: "apps/web/src/runtime/speech/stt/koreanTextSimilarity.ts",
   },
   {
     id: "rehearsal-response-field",
     description: "RehearsalRun response 필드 추가",
-    scope: "rehearsal"
+    path: "packages/shared/src/rehearsals/rehearsal.schema.ts",
   },
   {
     id: "worker-retry-option",
     description: "Worker retry option 변경",
-    scope: "worker"
-  },
-  {
-    id: "python-audio-validation",
-    description: "Python audio validation 추가",
-    scope: "python:audio"
-  },
-  {
-    id: "editor-slide-patch",
-    description: "Editor slide patch 변경",
-    scope: "editor"
-  },
-  {
-    id: "environment-variable",
-    description: "환경변수 추가",
-    scope: "config"
+    path: "apps/worker/src/rehearsal-stt.processor.ts",
   },
   {
     id: "pptx-error-mapping",
     description: "PPTX sync error mapping 변경",
-    scope: "pptx"
-  }
+    path: "services/python-worker/app/ai/pptx_ooxml_generation.py",
+  },
 ];
 
 const HOTSPOT_PATHS = [
@@ -68,32 +64,13 @@ const HOTSPOT_PATHS = [
   "apps/web/src/styles.css",
   "apps/worker/src/worker.service.ts",
   "services/python-worker/app/main.py",
-  "services/python-worker/app/ai/pptx_ooxml_generation.py"
+  "services/python-worker/app/ai/pptx_ooxml_generation.py",
 ];
 
-function toRepoPath(root, absolutePath) {
-  return relative(root, absolutePath).split(sep).join("/");
-}
-
-function listFiles(rootPath) {
-  if (!existsSync(rootPath)) {
-    return [];
-  }
-
-  const files = [];
-  for (const entry of readdirSync(rootPath, { withFileTypes: true })) {
-    if (entry.isDirectory() && SKIPPED_DIRECTORIES.has(entry.name)) {
-      continue;
-    }
-    const entryPath = join(rootPath, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...listFiles(entryPath));
-    } else if (entry.isFile()) {
-      files.push(entryPath);
-    }
-  }
-  return files;
-}
+const CSS_HOTSPOTS = [
+  "apps/web/src/features/editor/editor-shell.css",
+  "apps/web/src/styles.css",
+];
 
 function lineCount(filePath) {
   const content = readFileSync(filePath, "utf8");
@@ -104,29 +81,81 @@ function lineCount(filePath) {
 }
 
 function countMatchingFiles(files, pattern) {
-  let count = 0;
-  for (const file of files) {
-    if (!CODE_EXTENSIONS.has(extname(file))) {
-      continue;
-    }
-    if (pattern.test(readFileSync(file, "utf8"))) {
-      count += 1;
-    }
-  }
-  return count;
+  return files.filter(
+    (file) =>
+      CODE_EXTENSIONS.has(extname(file)) &&
+      pattern.test(readFileSync(file, "utf8")),
+  ).length;
 }
 
-function countFiles(directory, predicate = () => true) {
-  return listFiles(directory).filter(predicate).length;
+function loadOwnedPathPatterns(root) {
+  return listFiles(resolve(root, "docs/agent/domains"), {
+    extensions: new Set([".json"]),
+  }).flatMap((file) => {
+    try {
+      const manifest = JSON.parse(readFileSync(file, "utf8"));
+      return Array.isArray(manifest.ownedPaths) ? manifest.ownedPaths : [];
+    } catch {
+      return [];
+    }
+  });
+}
+
+function collectManifestCoverage(root, productionFiles) {
+  const patterns = loadOwnedPathPatterns(root);
+  const ownedProductionSourceFiles = productionFiles.filter((file) => {
+    const path = toRepoPath(root, file);
+    return patterns.some((pattern) => matchesRepoGlob(path, pattern));
+  }).length;
+  return {
+    ownedProductionSourceFiles,
+    percent:
+      productionFiles.length === 0
+        ? 0
+        : Number(
+            (
+              (ownedProductionSourceFiles / productionFiles.length) *
+              100
+            ).toFixed(1),
+          ),
+    productionSourceFiles: productionFiles.length,
+  };
+}
+
+function collectHotspotContext(root, graph) {
+  const result = {};
+  for (const path of HOTSPOT_PATHS.filter((candidate) =>
+    graph.has(candidate),
+  )) {
+    const closure = collectDependencyClosure(graph, path);
+    result[path] = {
+      directDependencies: graph.get(path).size,
+      reachableFiles: closure.size,
+      reachableLines: [...closure].reduce((total, dependency) => {
+        const file = resolve(root, dependency);
+        return total + (existsSync(file) ? lineCount(file) : 0);
+      }, 0),
+    };
+  }
+  return result;
 }
 
 export function collectStructuralMetrics(rootDirectory) {
   const root = resolve(rootDirectory);
-  const sourceFiles = [
-    ...listFiles(resolve(root, "apps")),
-    ...listFiles(resolve(root, "packages")),
-    ...listFiles(resolve(root, "services"))
-  ];
+  const sourceFiles = ["apps", "packages", "services"].flatMap((sourceRoot) =>
+    listFiles(resolve(root, sourceRoot)),
+  );
+  const codeFiles = sourceFiles.filter((file) =>
+    SOURCE_EXTENSIONS.has(extname(file)),
+  );
+  const productionFiles = codeFiles.filter(isProductionSourcePath);
+  const testFiles = codeFiles.filter(isTestPath);
+  const productionJavascriptFiles = productionFiles.filter((file) =>
+    CODE_EXTENSIONS.has(extname(file)),
+  );
+  const testJavascriptFiles = testFiles.filter((file) =>
+    CODE_EXTENSIONS.has(extname(file)),
+  );
 
   const hotspotLines = {};
   for (const path of HOTSPOT_PATHS) {
@@ -134,55 +163,100 @@ export function collectStructuralMetrics(rootDirectory) {
     hotspotLines[path] = existsSync(filePath) ? lineCount(filePath) : null;
   }
 
+  const cssPaths = CSS_HOTSPOTS.filter((path) =>
+    existsSync(resolve(root, path)),
+  );
+  const cssReport =
+    cssPaths.length > 0
+      ? createCssOwnershipReport(root, cssPaths)
+      : { duplicateOccurrenceCount: 0, duplicateSelectorCount: 0 };
+  const importGraph = buildImportGraph(root, { includeTests: false });
+
   return {
+    agentDomainManifests: listFiles(resolve(root, "docs/agent/domains"), {
+      extensions: new Set([".json"]),
+    }).length,
+    cssDuplicateOccurrences: cssReport.duplicateOccurrenceCount,
+    cssDuplicateSelectors: cssReport.duplicateSelectorCount,
     directPackageSourceImportFiles: countMatchingFiles(
-      sourceFiles,
-      /(?:\.\.\/)+packages\/[^"'`\n]+\/src(?:\/|["'`])/
-    ),
-    sharedRootImportFiles: countMatchingFiles(
-      sourceFiles,
-      /(?:from\s+["']@orbit\/shared["']|require\(["']@orbit\/shared["']\))/
-    ),
-    sharedSubpathImportFiles: countMatchingFiles(
-      sourceFiles,
-      /(?:from\s+["']@orbit\/shared\/[^"']+["']|require\(["']@orbit\/shared\/[^"']+["']\))/
+      codeFiles,
+      /(?:\.\.\/)+packages\/[^"'`\n]+\/src(?:\/|["'`])/,
     ),
     editorCoreRootImportFiles: countMatchingFiles(
-      sourceFiles,
-      /(?:from\s+["']@orbit\/editor-core["']|require\(["']@orbit\/editor-core["']\))/
+      codeFiles,
+      /(?:from\s+["']@orbit\/editor-core["']|require\(["']@orbit\/editor-core["']\))/,
     ),
     editorCoreSubpathImportFiles: countMatchingFiles(
-      sourceFiles,
-      /(?:from\s+["']@orbit\/editor-core\/[^"']+["']|require\(["']@orbit\/editor-core\/[^"']+["']\))/
+      codeFiles,
+      /(?:from\s+["']@orbit\/editor-core\/[^"']+["']|require\(["']@orbit\/editor-core\/[^"']+["']\))/,
     ),
-    sourceCycles: findSourceCycles(root).length,
-    githubWorkflowFiles: countFiles(
-      resolve(root, ".github/workflows"),
-      (file) => file.endsWith(".yml") || file.endsWith(".yaml")
-    ),
-    agentDomainManifests: countFiles(
-      resolve(root, "docs/agent/domains"),
-      (file) => file.endsWith(".json")
+    githubWorkflowFiles: listFiles(resolve(root, ".github/workflows"), {
+      extensions: new Set([".yaml", ".yml"]),
+    }).length,
+    hotspotContext: collectHotspotContext(root, importGraph),
+    hotspotLines,
+    manifestCoverage: collectManifestCoverage(root, productionFiles),
+    productionSharedRootImportFiles: countMatchingFiles(
+      productionJavascriptFiles,
+      /(?:from\s+["']@orbit\/shared["']|require\(["']@orbit\/shared["']\))/,
     ),
     scopedAgentInstructionFiles: listFiles(root).filter(
-      (file) => file.endsWith(`${sep}AGENTS.md`) || toRepoPath(root, file) === "AGENTS.md"
+      (file) =>
+        file.endsWith("/AGENTS.md") || toRepoPath(root, file) === "AGENTS.md",
     ).length,
-    hotspotLines
+    sharedRootImportFiles: countMatchingFiles(
+      codeFiles,
+      /(?:from\s+["']@orbit\/shared["']|require\(["']@orbit\/shared["']\))/,
+    ),
+    sharedSubpathImportFiles: countMatchingFiles(
+      codeFiles,
+      /(?:from\s+["']@orbit\/shared\/[^"']+["']|require\(["']@orbit\/shared\/[^"']+["']\))/,
+    ),
+    sourceCycles: findSourceCycles(root).length,
+    sourceInspectionTestFiles: testJavascriptFiles.filter((file) =>
+      /(?:\breadFileSync\s*\(|\bfs\.readFileSync\s*\()/.test(
+        readFileSync(file, "utf8"),
+      ),
+    ).length,
+    testSharedRootImportFiles: countMatchingFiles(
+      testJavascriptFiles,
+      /(?:from\s+["']@orbit\/shared["']|require\(["']@orbit\/shared["']\))/,
+    ),
   };
 }
 
+function defaultGitIdentity(rootDirectory, options) {
+  if (options.gitIdentity) {
+    return options.gitIdentity;
+  }
+  return collectGitIdentity(rootDirectory, options.ref ?? "HEAD");
+}
+
 export function createBenchmarkSnapshot(rootDirectory, options = {}) {
+  const gitIdentity = defaultGitIdentity(rootDirectory, options);
+  if (gitIdentity.workingTreeDirty && !options.allowDirty) {
+    throw new Error(
+      "dirty working tree에서는 benchmark snapshot을 생성할 수 없습니다. " +
+        "임시 측정은 --allow-dirty를 명시하세요.",
+    );
+  }
+
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    toolVersion: BENCHMARK_TOOL_VERSION,
     capturedAt: options.capturedAt ?? new Date().toISOString(),
-    sourceCommit: options.sourceCommit ?? null,
+    headCommit: gitIdentity.headCommit ?? null,
+    treeHash: gitIdentity.treeHash ?? null,
+    workingTreeDirty: gitIdentity.workingTreeDirty,
+    sourceArchiveSha256: options.sourceArchiveSha256 ?? null,
     structural: collectStructuralMetrics(rootDirectory),
+    macroRuns: options.macroRuns ?? [],
     manualBenchmark: {
       status: "pending",
-      runsPerTask: 3,
+      initialRunsPerTask: 1,
       tokenUsage: {
         status: "unavailable",
-        note: "실제 Agent 실행 환경이 제공한 값만 기록하고 추정하지 않는다."
+        note: "실제 Agent 실행 환경이 제공한 값만 기록하고 추정하지 않는다.",
       },
       metrics: [
         "filesReadBeforeFirstPatch",
@@ -191,46 +265,112 @@ export function createBenchmarkSnapshot(rootDirectory, options = {}) {
         "workspacesVerified",
         "secondsToFirstTargetedTest",
         "totalSeconds",
-        "rollbackCount"
+        "rollbackCount",
       ],
-      tasks: BENCHMARK_TASKS.map((task) => ({ ...task, runs: [] }))
-    }
+      tasks: BENCHMARK_TASKS.map((task) => ({ ...task, runs: [] })),
+    },
   };
+}
+
+function isNonNegativeInteger(value) {
+  return Number.isInteger(value) && value >= 0;
 }
 
 export function validateBenchmarkSnapshot(snapshot) {
   const issues = [];
-  if (snapshot?.schemaVersion !== 1) {
-    issues.push("schemaVersion은 1이어야 합니다.");
+  if (snapshot?.schemaVersion !== 2) {
+    issues.push("schemaVersion은 2여야 합니다.");
+  }
+  if (snapshot?.toolVersion !== BENCHMARK_TOOL_VERSION) {
+    issues.push(`toolVersion은 ${BENCHMARK_TOOL_VERSION}여야 합니다.`);
   }
   if (typeof snapshot?.capturedAt !== "string" || snapshot.capturedAt === "") {
     issues.push("capturedAt이 필요합니다.");
   }
-  if (typeof snapshot?.structural !== "object" || snapshot.structural === null) {
+  const gitHashPattern = /^[a-f0-9]{40,64}$/i;
+  const hasGitIdentity =
+    gitHashPattern.test(snapshot?.headCommit ?? "") &&
+    gitHashPattern.test(snapshot?.treeHash ?? "");
+  const hasArchiveIdentity = /^[a-f0-9]{64}$/i.test(
+    snapshot?.sourceArchiveSha256 ?? "",
+  );
+  if (!hasGitIdentity && !hasArchiveIdentity) {
+    issues.push(
+      "Git commit/tree 또는 source archive SHA-256 identity가 필요합니다.",
+    );
+  }
+  if (
+    hasArchiveIdentity &&
+    !hasGitIdentity &&
+    (snapshot?.headCommit !== null || snapshot?.treeHash !== null)
+  ) {
+    issues.push(
+      "archive-only snapshot의 headCommit과 treeHash는 null이어야 합니다.",
+    );
+  }
+  if ((snapshot?.headCommit === null) !== (snapshot?.treeHash === null)) {
+    issues.push(
+      "headCommit과 treeHash는 함께 기록하거나 함께 null이어야 합니다.",
+    );
+  }
+  if (typeof snapshot?.workingTreeDirty !== "boolean") {
+    issues.push("workingTreeDirty는 boolean이어야 합니다.");
+  }
+  if (
+    snapshot?.sourceArchiveSha256 !== null &&
+    !/^[a-f0-9]{64}$/i.test(snapshot?.sourceArchiveSha256 ?? "")
+  ) {
+    issues.push("sourceArchiveSha256은 SHA-256 hex 또는 null이어야 합니다.");
+  }
+  if (
+    typeof snapshot?.structural !== "object" ||
+    snapshot.structural === null
+  ) {
     issues.push("structural metric이 필요합니다.");
   } else {
-    const requiredMetrics = [
-      "directPackageSourceImportFiles",
-      "sharedRootImportFiles",
-      "editorCoreRootImportFiles",
-      "githubWorkflowFiles",
+    for (const key of [
       "agentDomainManifests",
-      "scopedAgentInstructionFiles"
-    ];
-    const optionalMetrics = [
-      "sharedSubpathImportFiles",
+      "cssDuplicateOccurrences",
+      "cssDuplicateSelectors",
+      "directPackageSourceImportFiles",
+      "editorCoreRootImportFiles",
       "editorCoreSubpathImportFiles",
-      "sourceCycles"
-    ];
-    for (const key of requiredMetrics) {
-      if (!Number.isInteger(snapshot.structural[key]) || snapshot.structural[key] < 0) {
+      "githubWorkflowFiles",
+      "productionSharedRootImportFiles",
+      "scopedAgentInstructionFiles",
+      "sharedRootImportFiles",
+      "sharedSubpathImportFiles",
+      "sourceCycles",
+      "sourceInspectionTestFiles",
+      "testSharedRootImportFiles",
+    ]) {
+      if (!isNonNegativeInteger(snapshot.structural[key])) {
         issues.push(`${key}는 0 이상의 정수여야 합니다.`);
       }
     }
-    for (const key of optionalMetrics) {
-      const value = snapshot.structural[key];
-      if (value !== undefined && (!Number.isInteger(value) || value < 0)) {
-        issues.push(`${key}는 0 이상의 정수여야 합니다.`);
+    const coverage = snapshot.structural.manifestCoverage;
+    if (
+      !isNonNegativeInteger(coverage?.productionSourceFiles) ||
+      !isNonNegativeInteger(coverage?.ownedProductionSourceFiles) ||
+      typeof coverage?.percent !== "number" ||
+      coverage.percent < 0 ||
+      coverage.percent > 100
+    ) {
+      issues.push("manifestCoverage가 유효하지 않습니다.");
+    }
+  }
+  if (!Array.isArray(snapshot?.macroRuns)) {
+    issues.push("macroRuns가 필요합니다.");
+  } else {
+    for (const run of snapshot.macroRuns) {
+      if (
+        run?.kind !== "macro-refactor" ||
+        !isNonNegativeInteger(run.elapsedSeconds) ||
+        !isNonNegativeInteger(run.reportedTokens) ||
+        !/^[a-f0-9]{64}$/i.test(run.sourceArchiveSha256 ?? "") ||
+        !/^[a-f0-9]{64}$/i.test(run.resultArchiveSha256 ?? "")
+      ) {
+        issues.push("macroRuns 항목이 유효하지 않습니다.");
       }
     }
   }
@@ -245,15 +385,14 @@ export function validateBenchmarkSnapshot(snapshot) {
   return issues;
 }
 
-function flattenStructuralMetrics(structural) {
+function flattenStructuralMetrics(structural, prefix = "") {
   const flattened = {};
   for (const [key, value] of Object.entries(structural)) {
-    if (key === "hotspotLines") {
-      for (const [path, lines] of Object.entries(value)) {
-        flattened[`hotspotLines:${path}`] = lines;
-      }
-    } else {
-      flattened[key] = value;
+    const metric = prefix ? `${prefix}:${key}` : key;
+    if (typeof value === "number" || value === null) {
+      flattened[metric] = value;
+    } else if (typeof value === "object" && value !== null) {
+      Object.assign(flattened, flattenStructuralMetrics(value, metric));
     }
   }
   return flattened;
@@ -262,7 +401,12 @@ function flattenStructuralMetrics(structural) {
 export function compareSnapshots(baseline, current) {
   const baselineMetrics = flattenStructuralMetrics(baseline.structural);
   const currentMetrics = flattenStructuralMetrics(current.structural);
-  return [...new Set([...Object.keys(baselineMetrics), ...Object.keys(currentMetrics)])]
+  return [
+    ...new Set([
+      ...Object.keys(baselineMetrics),
+      ...Object.keys(currentMetrics),
+    ]),
+  ]
     .sort()
     .map((metric) => {
       const before = baselineMetrics[metric] ?? null;
@@ -272,7 +416,9 @@ export function compareSnapshots(baseline, current) {
         baseline: before,
         current: after,
         delta:
-          typeof before === "number" && typeof after === "number" ? after - before : null
+          typeof before === "number" && typeof after === "number"
+            ? after - before
+            : null,
       };
     });
 }
@@ -283,7 +429,7 @@ function renderComparison(rows) {
     lines.push(
       `${row.metric}\t${row.baseline ?? "n/a"}\t${row.current ?? "n/a"}\t${
         row.delta ?? "n/a"
-      }`
+      }`,
     );
   }
   return `${lines.join("\n")}\n`;
@@ -291,20 +437,34 @@ function renderComparison(rows) {
 
 function parseArguments(argv) {
   const options = {
+    allowDirty: false,
+    archive: null,
+    archiveSha256: null,
     command: "snapshot",
     file: null,
+    json: false,
+    ref: null,
     root: process.cwd(),
-    json: false
   };
-
   const args = [...argv];
   if (args[0] && !args[0].startsWith("-")) {
     options.command = args.shift();
   }
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
-    if (argument === "--json") {
+    if (argument === "--allow-dirty") {
+      options.allowDirty = true;
+    } else if (argument === "--archive") {
+      options.archive = args[index + 1];
+      index += 1;
+    } else if (argument === "--archive-sha256") {
+      options.archiveSha256 = args[index + 1];
+      index += 1;
+    } else if (argument === "--json") {
       options.json = true;
+    } else if (argument === "--ref") {
+      options.ref = args[index + 1];
+      index += 1;
     } else if (argument === "--root") {
       options.root = args[index + 1];
       index += 1;
@@ -321,31 +481,104 @@ function loadSnapshot(filePath) {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
+function withArchivedRef(rootDirectory, ref, callback) {
+  const root = resolve(rootDirectory);
+  const temporaryRoot = mkdtempSync(
+    join(tmpdir(), "orbit-agent-benchmark-ref-"),
+  );
+  const archivePath = join(temporaryRoot, "tree.tar");
+  const extractedRoot = join(temporaryRoot, "tree");
+  try {
+    execFileSync("mkdir", ["-p", extractedRoot]);
+    execFileSync("git", ["archive", "--format=tar", "-o", archivePath, ref], {
+      cwd: root,
+      stdio: "ignore",
+    });
+    execFileSync("tar", ["-xf", archivePath, "-C", extractedRoot]);
+    return callback(extractedRoot, collectGitIdentity(root, ref));
+  } finally {
+    rmSync(temporaryRoot, { force: true, recursive: true });
+  }
+}
+
+function withSourceArchive(archiveFile, callback) {
+  const archivePath = resolve(archiveFile);
+  if (!existsSync(archivePath)) {
+    throw new Error(`source archive가 없습니다: ${archivePath}`);
+  }
+  const temporaryRoot = mkdtempSync(
+    join(tmpdir(), "orbit-agent-benchmark-zip-"),
+  );
+  try {
+    execFileSync("tar", ["-xf", archivePath, "-C", temporaryRoot]);
+    const entries = readdirSync(temporaryRoot, { withFileTypes: true }).filter(
+      (entry) => entry.name !== "__MACOSX",
+    );
+    const measurementRoot =
+      entries.length === 1 && entries[0].isDirectory()
+        ? join(temporaryRoot, entries[0].name)
+        : temporaryRoot;
+    const sourceArchiveSha256 = createHash("sha256")
+      .update(readFileSync(archivePath))
+      .digest("hex");
+    return callback(
+      measurementRoot,
+      { headCommit: null, treeHash: null, workingTreeDirty: false },
+      sourceArchiveSha256,
+    );
+  } finally {
+    rmSync(temporaryRoot, { force: true, recursive: true });
+  }
+}
+
+function createCurrentSnapshot(options, allowDirty) {
+  const create = (measurementRoot, gitIdentity, archiveSha256) =>
+    createBenchmarkSnapshot(measurementRoot, {
+      allowDirty,
+      gitIdentity,
+      sourceArchiveSha256: archiveSha256 ?? options.archiveSha256,
+    });
+  if (options.archive && options.ref) {
+    throw new Error("--archive와 --ref는 함께 사용할 수 없습니다.");
+  }
+  if (options.archive) {
+    return withSourceArchive(options.archive, create);
+  }
+  return options.ref
+    ? withArchivedRef(options.root, options.ref, create)
+    : createBenchmarkSnapshot(options.root, {
+        allowDirty,
+        sourceArchiveSha256: options.archiveSha256,
+      });
+}
+
 function run() {
   try {
     const options = parseArguments(process.argv.slice(2));
-    const current = createBenchmarkSnapshot(options.root);
-
-    if (options.command === "snapshot") {
-      process.stdout.write(`${JSON.stringify(current, null, 2)}\n`);
-      return;
-    }
     if (options.command === "tasks") {
       process.stdout.write(
         `${BENCHMARK_TASKS.map(
-          (task) => `${task.id}\t${task.scope}\t${task.description}`
-        ).join("\n")}\n`
+          (task) => `${task.id}\t${task.path}\t${task.description}`,
+        ).join("\n")}\n`,
       );
       return;
     }
-    if (!["validate", "compare"].includes(options.command) || options.file === null) {
+    if (options.command === "snapshot") {
+      const snapshot = createCurrentSnapshot(options, options.allowDirty);
+      process.stdout.write(`${JSON.stringify(snapshot, null, 2)}\n`);
+      return;
+    }
+    if (
+      !["validate", "compare"].includes(options.command) ||
+      options.file === null
+    ) {
       throw new Error(
-        "사용법: agent:benchmark [snapshot|tasks|validate <file>|compare <file>]"
+        "사용법: agent:benchmark [snapshot [--ref <commit>|--archive <zip>] [--allow-dirty]|" +
+          "tasks|validate <file>|compare <file>]",
       );
     }
 
-    const filePath = resolve(options.root, options.file);
-    const baseline = loadSnapshot(filePath);
+    const baseline = loadSnapshot(resolve(options.root, options.file));
     const issues = validateBenchmarkSnapshot(baseline);
     if (issues.length > 0) {
       process.stderr.write(`${issues.join("\n")}\n`);
@@ -357,11 +590,12 @@ function run() {
       return;
     }
 
+    const current = createCurrentSnapshot(options, true);
     const comparison = compareSnapshots(baseline, current);
     process.stdout.write(
       options.json
         ? `${JSON.stringify(comparison, null, 2)}\n`
-        : renderComparison(comparison)
+        : renderComparison(comparison),
     );
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
@@ -369,7 +603,9 @@ function run() {
   }
 }
 
-const currentEntry = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : "";
+const currentEntry = process.argv[1]
+  ? pathToFileURL(resolve(process.argv[1])).href
+  : "";
 if (currentEntry === import.meta.url) {
   run();
 }

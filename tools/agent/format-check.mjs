@@ -1,11 +1,17 @@
 #!/usr/bin/env node
 
-import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { format, resolveConfig } from "prettier";
+import {
+  collectChangedPaths,
+  gitRefExists,
+  resolveBaseRef as resolveGitBaseRef,
+  resolveMergeBase as resolveGitMergeBase,
+  runGit,
+  splitNullSeparated,
+} from "./lib/git-changes.mjs";
 
 const repositoryRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -39,16 +45,8 @@ const excludedSegments = new Set([
   "node_modules",
 ]);
 
-function splitNullSeparated(output) {
-  return output.split("\0").filter(Boolean);
-}
-
 function git(args, options = {}) {
-  return execFileSync("git", args, {
-    cwd: repositoryRoot,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", options.quiet ? "ignore" : "inherit"],
-  });
+  return runGit(repositoryRoot, args, options);
 }
 
 export function isSupportedFormatPath(path) {
@@ -66,65 +64,40 @@ export function selectFormatFiles(paths, fileExists = () => true) {
     .sort((left, right) => left.localeCompare(right));
 }
 
-function parseBaseArgument(args) {
-  const baseIndex = args.indexOf("--base");
-  if (baseIndex === -1) {
-    return undefined;
+export function parseFormatCheckArguments(args) {
+  const options = { base: undefined, paths: [] };
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === "--base") {
+      if (!args[index + 1]) {
+        throw new Error("--base 다음에 Git ref가 필요합니다.");
+      }
+      options.base = args[index + 1];
+      index += 1;
+    } else if (argument === "--path") {
+      if (!args[index + 1]) {
+        throw new Error("--path 다음에 파일 경로가 필요합니다.");
+      }
+      options.paths.push(args[index + 1]);
+      index += 1;
+    } else {
+      throw new Error(`지원하지 않는 인자입니다: ${argument}`);
+    }
   }
-  if (!args[baseIndex + 1]) {
-    throw new Error("--base 다음에 Git ref가 필요합니다.");
-  }
-  return args[baseIndex + 1];
-}
-
-function refExists(ref) {
-  try {
-    git(["rev-parse", "--verify", `${ref}^{commit}`], { quiet: true });
-    return true;
-  } catch {
-    return false;
-  }
+  return options;
 }
 
 function resolveBaseRef(explicitBase) {
-  if (explicitBase) {
-    if (!refExists(explicitBase)) {
-      throw new Error(
-        `format check 기준 ref를 찾을 수 없습니다: ${explicitBase}`,
-      );
-    }
-    return explicitBase;
+  try {
+    return resolveGitBaseRef(repositoryRoot, explicitBase, "FORMAT_CHECK_BASE");
+  } catch (error) {
+    const requested = explicitBase ?? process.env.FORMAT_CHECK_BASE;
+    throw new Error(
+      requested
+        ? `format check 기준 ref를 찾을 수 없습니다: ${requested}`
+        : error.message,
+    );
   }
-
-  const configuredBase = process.env.FORMAT_CHECK_BASE;
-  if (configuredBase) {
-    if (!refExists(configuredBase)) {
-      throw new Error(
-        `FORMAT_CHECK_BASE ref를 찾을 수 없습니다: ${configuredBase}`,
-      );
-    }
-    return configuredBase;
-  }
-
-  for (const candidate of ["origin/develop", "develop", "HEAD^"]) {
-    if (refExists(candidate)) {
-      return candidate;
-    }
-  }
-
-  return "HEAD";
-}
-
-export function collectChangedPaths(baseRef) {
-  const mergeBase = resolveMergeBase(baseRef);
-  const pathGroups = [
-    git(["diff", "--name-only", "--diff-filter=ACMR", "-z", mergeBase, "HEAD"]),
-    git(["diff", "--name-only", "--diff-filter=ACMR", "-z"]),
-    git(["diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"]),
-    git(["ls-files", "--others", "--exclude-standard", "-z"]),
-  ];
-
-  return pathGroups.flatMap(splitNullSeparated);
 }
 
 export function parseRenameSources(output) {
@@ -167,7 +140,7 @@ function collectRenameSources(baseRef) {
 }
 
 export function resolveMergeBase(baseRef) {
-  return git(["merge-base", baseRef, "HEAD"]).trim();
+  return resolveGitMergeBase(repositoryRoot, baseRef);
 }
 
 export function classifyFormatStatus({
@@ -185,6 +158,7 @@ export function classifyFormatStatus({
 }
 
 async function isFormatted(path, content) {
+  const { format, resolveConfig } = await import("prettier");
   const absolutePath = join(repositoryRoot, path);
   const config = (await resolveConfig(absolutePath)) ?? {};
   const formatted = await format(content, {
@@ -252,11 +226,15 @@ async function checkFormatting(files, mergeBase, renameSources) {
 }
 
 async function main() {
-  const baseRef = resolveBaseRef(parseBaseArgument(process.argv.slice(2)));
+  const options = parseFormatCheckArguments(process.argv.slice(2));
+  const baseRef = resolveBaseRef(options.base);
   const mergeBase = resolveMergeBase(baseRef);
   const renameSources = collectRenameSources(baseRef);
-  const files = selectFormatFiles(collectChangedPaths(baseRef), (path) =>
-    existsSync(join(repositoryRoot, path)),
+  const files = selectFormatFiles(
+    options.paths.length > 0
+      ? options.paths
+      : collectChangedPaths(baseRef, { root: repositoryRoot }),
+    (path) => existsSync(join(repositoryRoot, path)),
   );
 
   if (files.length === 0) {
@@ -265,10 +243,14 @@ async function main() {
   }
 
   console.log(
-    `[format-check] ${files.length}개 변경 파일 검사. base=${baseRef}`,
+    `[format-check] ${files.length}개 ${
+      options.paths.length > 0 ? "지정" : "변경"
+    } 파일 검사. base=${baseRef}`,
   );
   return checkFormatting(files, mergeBase, renameSources);
 }
+
+export { collectChangedPaths, gitRefExists };
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {

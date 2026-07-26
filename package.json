@@ -38,6 +38,7 @@
     "test": "turbo run test",
     "test:agent-context": "node --test tools/agent/context.test.mjs",
     "test:agent-benchmark": "node --test tools/agent/benchmark.test.mjs",
+    "test:agent": "node --test tools/agent/*.test.mjs tools/agent/lib/*.test.mjs",
     "test:import-boundaries": "node --test tools/agent/check-import-boundaries.test.mjs",
     "test:source-cycles": "node --test tools/agent/check-source-cycles.test.mjs",
     "test:format-check": "node --test tools/agent/format-check.test.mjs",
@@ -52,6 +53,8 @@
     "test:smoke": "node infra/scripts/run-playwright-test.mjs",
     "typecheck": "turbo run typecheck",
     "verify:affected": "node tools/agent/verify-affected.mjs",
+    "verify:changed": "node tools/agent/verify-changed.mjs",
+    "verify:guard": "node tools/agent/verify-guard.mjs",
     "verify:scope": "node tools/agent/verify-scope.mjs"
   },
   "devDependencies": {

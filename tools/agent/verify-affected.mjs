@@ -1,10 +1,19 @@
 #!/usr/bin/env node
 
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { collectChangedPaths } from "./format-check.mjs";
+import {
+  collectChangedPaths,
+  gitRefExists,
+  resolveBaseRef as resolveGitBaseRef,
+} from "./lib/git-changes.mjs";
+import {
+  commandDescriptorForTestPath,
+  contractImpactsForPaths,
+  loadContractConsumerMatrix,
+} from "./lib/verification-impact.mjs";
 import { createVerificationEnvironment } from "./verification-env.mjs";
 
 const repositoryRoot = resolve(
@@ -39,9 +48,15 @@ function isPythonVerificationPath(path) {
   );
 }
 
-export function classifyAffectedPaths(paths) {
+export function classifyAffectedPaths(paths, options = {}) {
   const uniquePaths = [...new Set(paths)].sort();
   const reasons = [];
+  const matrix = options.contractMatrix ?? { contracts: {} };
+  const contractImpacts = contractImpactsForPaths(uniquePaths, matrix);
+  const knownContracts = new Set(contractImpacts.map((impact) => impact.path));
+  const unknownSharedContracts = uniquePaths.filter(
+    (path) => isSharedContract(path) && !knownContracts.has(path),
+  );
 
   if (uniquePaths.some((path) => fullRootFiles.has(path))) {
     reasons.push("root lockfile 또는 compiler/build config 변경");
@@ -53,8 +68,10 @@ export function classifyAffectedPaths(paths) {
   ) {
     reasons.push("DB migration 변경");
   }
-  if (uniquePaths.some(isSharedContract)) {
-    reasons.push("shared schema, Job 또는 realtime 계약 변경");
+  if (unknownSharedContracts.length > 0) {
+    reasons.push(
+      "consumer matrix에 없는 shared schema, Job 또는 realtime 계약 변경",
+    );
   }
   if (uniquePaths.some((path) => path.startsWith("packages/job-queue/src/"))) {
     reasons.push("queue payload 또는 queue runtime 변경");
@@ -62,10 +79,11 @@ export function classifyAffectedPaths(paths) {
 
   return {
     paths: uniquePaths,
+    contractImpacts,
     full: reasons.length > 0,
     python:
       uniquePaths.some(isPythonVerificationPath) ||
-      uniquePaths.some(isSharedContract),
+      unknownSharedContracts.length > 0,
     reasons,
   };
 }
@@ -79,32 +97,72 @@ function command(argv, options = {}) {
 }
 
 export function createAffectedVerificationPlan(classification, baseRef) {
+  const hasExactContractImpacts =
+    !classification.full && (classification.contractImpacts?.length ?? 0) > 0;
   const commands = classification.full
     ? [
         command(["pnpm", "turbo", "run", "build", "--env-mode=loose"]),
         command(["pnpm", "turbo", "run", "typecheck", "--env-mode=loose"]),
         command(["pnpm", "turbo", "run", "test", "--env-mode=loose"]),
       ]
-    : [
-        command(
-          [
-            "pnpm",
-            "turbo",
-            "run",
-            "build",
-            "typecheck",
-            "test",
-            "--affected",
-            "--env-mode=loose",
-          ],
-          {
-            env: {
-              TURBO_SCM_BASE: baseRef,
-              TURBO_SCM_HEAD: "HEAD",
+    : hasExactContractImpacts
+      ? [
+          command(
+            [
+              "pnpm",
+              "turbo",
+              "run",
+              "build",
+              "typecheck",
+              "--affected",
+              "--env-mode=loose",
+            ],
+            {
+              env: {
+                TURBO_SCM_BASE: baseRef,
+                TURBO_SCM_HEAD: "HEAD",
+              },
             },
-          },
-        ),
-      ];
+          ),
+        ]
+      : [
+          command(
+            [
+              "pnpm",
+              "turbo",
+              "run",
+              "build",
+              "typecheck",
+              "test",
+              "--affected",
+              "--env-mode=loose",
+            ],
+            {
+              env: {
+                TURBO_SCM_BASE: baseRef,
+                TURBO_SCM_HEAD: "HEAD",
+              },
+            },
+          ),
+        ];
+
+  const selectedCommands = new Set(
+    commands.map((item) => item.argv.join("\0")),
+  );
+  for (const impact of classification.contractImpacts ?? []) {
+    for (const test of impact.tests) {
+      const descriptor = commandDescriptorForTestPath(test);
+      if (!descriptor) {
+        continue;
+      }
+      const key = `${descriptor.cwd}\0${descriptor.argv.join("\0")}`;
+      if (selectedCommands.has(key)) {
+        continue;
+      }
+      selectedCommands.add(key);
+      commands.push(command(descriptor.argv, { cwd: descriptor.cwd }));
+    }
+  }
 
   if (classification.python) {
     commands.push(
@@ -167,33 +225,8 @@ export function executeAffectedVerificationPlan(plan, options = {}) {
   return 0;
 }
 
-function gitRefExists(ref) {
-  try {
-    execFileSync("git", ["rev-parse", "--verify", `${ref}^{commit}`], {
-      cwd: repositoryRoot,
-      stdio: "ignore",
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function resolveBaseRef(explicitBase) {
-  const requested = explicitBase ?? process.env.VERIFY_BASE;
-  if (requested) {
-    if (!gitRefExists(requested)) {
-      throw new Error(`검증 기준 ref를 찾을 수 없습니다: ${requested}`);
-    }
-    return requested;
-  }
-
-  for (const candidate of ["origin/develop", "develop", "HEAD^"]) {
-    if (gitRefExists(candidate)) {
-      return candidate;
-    }
-  }
-  return "HEAD";
+  return resolveGitBaseRef(repositoryRoot, explicitBase, "VERIFY_BASE");
 }
 
 function parseArguments(argv) {
@@ -223,7 +256,11 @@ function run() {
   try {
     const options = parseArguments(process.argv.slice(2));
     const baseRef = resolveBaseRef(options.base);
-    const classification = classifyAffectedPaths(collectChangedPaths(baseRef));
+    const contractMatrix = loadContractConsumerMatrix(repositoryRoot);
+    const classification = classifyAffectedPaths(
+      collectChangedPaths(baseRef, { root: repositoryRoot }),
+      { contractMatrix },
+    );
     const plan = createAffectedVerificationPlan(classification, baseRef);
     process.stdout.write(renderAffectedVerificationPlan(plan));
     if (!options.dryRun) {
@@ -234,6 +271,8 @@ function run() {
     process.exitCode = 2;
   }
 }
+
+export { gitRefExists };
 
 const currentEntry = process.argv[1]
   ? pathToFileURL(resolve(process.argv[1])).href
