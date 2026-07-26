@@ -6,6 +6,9 @@
   "types": "dist/index.d.ts",
   "typesVersions": {
     "*": {
+      "auth": [
+        "dist/auth/index.d.ts"
+      ],
       "activities": [
         "dist/activity/index.d.ts"
       ],
@@ -14,6 +17,9 @@
       ],
       "common": [
         "dist/common/index.d.ts"
+      ],
+      "community-templates": [
+        "dist/community-templates/index.d.ts"
       ],
       "config": [
         "dist/config/index.d.ts"
@@ -29,6 +35,9 @@
       ],
       "presentation": [
         "dist/presentation/index.d.ts"
+      ],
+      "projects": [
+        "dist/projects/index.d.ts"
       ],
       "pronunciation": [
         "dist/pronunciation/index.d.ts"
@@ -50,6 +59,11 @@
       "import": "./src/index.ts",
       "require": "./dist/index.js"
     },
+    "./auth": {
+      "types": "./dist/auth/index.d.ts",
+      "import": "./src/auth/index.ts",
+      "require": "./dist/auth/index.js"
+    },
     "./activities": {
       "types": "./dist/activity/index.d.ts",
       "import": "./src/activity/index.ts",
@@ -64,6 +78,11 @@
       "types": "./dist/common/index.d.ts",
       "import": "./src/common/index.ts",
       "require": "./dist/common/index.js"
+    },
+    "./community-templates": {
+      "types": "./dist/community-templates/index.d.ts",
+      "import": "./src/community-templates/index.ts",
+      "require": "./dist/community-templates/index.js"
     },
     "./config": {
       "types": "./dist/config/index.d.ts",
@@ -89,6 +108,11 @@
       "types": "./dist/presentation/index.d.ts",
       "import": "./src/presentation/index.ts",
       "require": "./dist/presentation/index.js"
+    },
+    "./projects": {
+      "types": "./dist/projects/index.d.ts",
+      "import": "./src/projects/index.ts",
+      "require": "./dist/projects/index.js"
     },
     "./pronunciation": {
       "types": "./dist/pronunciation/index.d.ts",
