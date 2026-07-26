@@ -1,10 +1,16 @@
 import type { OrbitConfig } from "@orbit/config";
 import {
   activityResponseRetentionQueueName,
+  activityResponseRetentionJobName,
+  challengeQnaAnswerAnalysisJobName,
   challengeQnaAnswerAnalysisQueueName,
+  challengeQnaGenerationJobName,
   challengeQnaGenerationQueueName,
+  focusedPracticeAnalysisJobName,
   focusedPracticeAnalysisQueueName,
+  slidePracticeAnalysisJobName,
   slidePracticeAnalysisQueueName,
+  slideQuestionGuideGenerationJobName,
   slideQuestionGuideGenerationQueueName,
 } from "@orbit/job-queue";
 import type { StoragePort } from "@orbit/storage";
@@ -18,7 +24,7 @@ import { processChallengeQnaGenerationJob } from "../../challenge-qna-generation
 import { processFocusedPracticeAnalysisJob } from "../../focused-practice-analysis.processor";
 import { processSlidePracticeAnalysisJob } from "../../slide-practice-analysis.processor";
 import { processSlideQuestionGuideGenerationJob } from "../../slide-question-guide-generation.processor";
-import type { WorkerRegistration } from "../worker-registration";
+import type { WorkerDescriptor } from "../worker-descriptor";
 
 interface PracticeWorkerRegistrationContext {
   challengeQnaEvidenceCache: ChallengeQnaEvidenceCache;
@@ -30,9 +36,10 @@ interface PracticeWorkerRegistrationContext {
 
 export function createPracticeWorkerRegistrations(
   context: PracticeWorkerRegistrationContext,
-): WorkerRegistration[] {
+): WorkerDescriptor[] {
   return [
     {
+      acceptedJobNames: [focusedPracticeAnalysisJobName],
       queueName: focusedPracticeAnalysisQueueName,
       handler: (job) =>
         processFocusedPracticeAnalysisJob(
@@ -43,6 +50,7 @@ export function createPracticeWorkerRegistrations(
         ),
     },
     {
+      acceptedJobNames: [slidePracticeAnalysisJobName],
       queueName: slidePracticeAnalysisQueueName,
       handler: (job) =>
         processSlidePracticeAnalysisJob(
@@ -57,6 +65,7 @@ export function createPracticeWorkerRegistrations(
         ),
     },
     {
+      acceptedJobNames: [challengeQnaGenerationJobName],
       queueName: challengeQnaGenerationQueueName,
       handler: (job) =>
         processChallengeQnaGenerationJob(
@@ -66,6 +75,7 @@ export function createPracticeWorkerRegistrations(
         ),
     },
     {
+      acceptedJobNames: [challengeQnaAnswerAnalysisJobName],
       queueName: challengeQnaAnswerAnalysisQueueName,
       handler: (job) =>
         processChallengeQnaAnswerJob(
@@ -77,7 +87,9 @@ export function createPracticeWorkerRegistrations(
         ),
     },
     {
+      acceptedJobNames: [slideQuestionGuideGenerationJobName],
       queueName: slideQuestionGuideGenerationQueueName,
+      runtimeOptions: { concurrency: 2 },
       handler: (job) =>
         processSlideQuestionGuideGenerationJob(
           context.dataSource,
@@ -99,6 +111,7 @@ export function createPracticeWorkerRegistrations(
         ),
     },
     {
+      acceptedJobNames: [activityResponseRetentionJobName],
       queueName: activityResponseRetentionQueueName,
       handler: (job) =>
         processActivityResponseRetentionJob(context.dataSource, job.data),
