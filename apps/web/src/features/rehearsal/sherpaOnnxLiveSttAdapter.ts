@@ -9,12 +9,12 @@ import {
   type LiveSttCallbacks,
   type LiveSttDecodingMethod,
   type LiveSttStartOptions
-} from "./liveStt";
-import { calculatePcmAudioLevel } from "./liveSttAudioLevel";
+} from "../../runtime/speech/stt/liveSttAdapter";
+import { calculatePcmAudioLevel } from "../../runtime/speech/stt/liveSttAudioLevel";
 import {
   createLiveSttPcmDebugRecorder,
   isLiveSttPcmDebugEnabled
-} from "./liveSttPcmDebug";
+} from "../../runtime/speech/stt/liveSttPcmDebug";
 import {
   defaultSherpaOnnxManifestUrl,
   loadSherpaOnnxModelManifest,

@@ -2,21 +2,21 @@ import { describe, expect, it, vi } from "vitest";
 import {
   loadMoonshineModelManifest,
   resolveMoonshineModelManifest,
-  type MoonshineModelManifest
+  type MoonshineModelManifest,
 } from "./moonshineManifest";
 
 describe("moonshineManifest", () => {
   it("manifest asset URL을 manifest 위치 기준으로 해석한다", () => {
     const resolved = resolveMoonshineModelManifest(
       manifestFixture(),
-      "http://localhost/models/live-stt/moonshine/korean/manifest.json"
+      "http://localhost/models/live-stt/moonshine/korean/manifest.json",
     );
 
     expect(resolved.runtime.worker).toBe(
-      "http://localhost/models/live-stt/moonshine/korean/moonshine-worker.js"
+      "http://localhost/models/live-stt/moonshine/korean/moonshine-worker.js",
     );
     expect(resolved.model.model).toBe(
-      "http://localhost/models/live-stt/moonshine/korean/moonshine.onnx"
+      "http://localhost/models/live-stt/moonshine/korean/moonshine.onnx",
     );
   });
 
@@ -25,18 +25,18 @@ describe("moonshineManifest", () => {
       loadMoonshineModelManifest({
         manifestUrl: "/manifest.json",
         fetcher: vi.fn(async () =>
-          jsonResponse({ ...manifestFixture(), provider: "other" })
-        ) as unknown as typeof fetch
-      })
+          jsonResponse({ ...manifestFixture(), provider: "other" }),
+        ) as unknown as typeof fetch,
+      }),
     ).rejects.toThrow("provider must be moonshine");
 
     await expect(
       loadMoonshineModelManifest({
         manifestUrl: "/manifest.json",
         fetcher: vi.fn(async () =>
-          jsonResponse({ ...manifestFixture(), language: "en" })
-        ) as unknown as typeof fetch
-      })
+          jsonResponse({ ...manifestFixture(), language: "en" }),
+        ) as unknown as typeof fetch,
+      }),
     ).rejects.toThrow("language must be ko");
   });
 
@@ -46,9 +46,9 @@ describe("moonshineManifest", () => {
         manifestUrl: "/missing.json",
         fetcher: vi.fn(async () => ({
           ok: false,
-          status: 404
-        })) as unknown as typeof fetch
-      })
+          status: 404,
+        })) as unknown as typeof fetch,
+      }),
     ).rejects.toThrow("Moonshine model manifest is unavailable: 404");
   });
 });
@@ -63,12 +63,12 @@ function manifestFixture(): MoonshineModelManifest {
     language: "ko",
     runtime: {
       worker: "moonshine-worker.js",
-      wasm: "moonshine.wasm"
+      wasm: "moonshine.wasm",
     },
     model: {
       model: "moonshine.onnx",
-      tokens: "tokens.txt"
-    }
+      tokens: "tokens.txt",
+    },
   };
 }
 
@@ -76,6 +76,6 @@ function jsonResponse(body: unknown) {
   return {
     ok: true,
     status: 200,
-    json: async () => body
+    json: async () => body,
   };
 }

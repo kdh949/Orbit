@@ -6,11 +6,11 @@ import {
   type LiveSttPort,
   type LiveSttResult,
   type LiveSttSessionConfig,
-  type LiveSttUnsubscribe
-} from "../../../runtime/speech/stt/liveSttPort";
+  type LiveSttUnsubscribe,
+} from "./liveSttPort";
 import {
   loadMoonshineModelManifest,
-  type ResolvedMoonshineModelManifest
+  type ResolvedMoonshineModelManifest,
 } from "./moonshineManifest";
 
 export type MoonshineRuntimeResult = {
@@ -43,11 +43,13 @@ export class MoonshineLiveSttPort implements LiveSttPort {
     onDevice: true,
     streaming: false,
     keywordBiasing: false,
-    languages: ["ko"]
+    languages: ["ko"],
   };
 
   private readonly now: () => number;
-  private readonly resultSubscribers = new Set<(result: LiveSttResult) => void>();
+  private readonly resultSubscribers = new Set<
+    (result: LiveSttResult) => void
+  >();
   private readonly errorSubscribers = new Set<(error: LiveSttError) => void>();
   private runtime: MoonshineRuntime | null = null;
   private startedAtMs: number | null = null;
@@ -64,15 +66,16 @@ export class MoonshineLiveSttPort implements LiveSttPort {
     try {
       const manifest = await loadMoonshineModelManifest({
         manifestUrl: this.options.manifestUrl,
-        fetcher: this.options.fetcher
+        fetcher: this.options.fetcher,
       });
-      const runtime = this.options.createRuntime?.() ?? createUnavailableRuntime();
+      const runtime =
+        this.options.createRuntime?.() ?? createUnavailableRuntime();
       this.runtime = runtime;
       await runtime.start({
         audioSource: config.audioSource,
         manifest,
         onResult: (result) => this.handleRuntimeResult(result),
-        onError: (error) => this.handleRuntimeError(error)
+        onError: (error) => this.handleRuntimeError(error),
       });
     } catch (error) {
       this.startedAtMs = null;
@@ -127,7 +130,7 @@ export class MoonshineLiveSttPort implements LiveSttPort {
       timestampMs: [elapsedMs, elapsedMs],
       ...(typeof result.confidence === "number"
         ? { confidence: result.confidence }
-        : {})
+        : {}),
     });
   }
 
@@ -153,11 +156,11 @@ function createUnavailableRuntime(): MoonshineRuntime {
     async start() {
       throw new LiveSttError(
         "model_unavailable",
-        "Moonshine 로컬 runtime이 아직 준비되지 않았습니다. 모델 README를 확인하세요."
+        "Moonshine 로컬 runtime이 아직 준비되지 않았습니다. 모델 README를 확인하세요.",
       );
     },
     stop() {},
-    dispose() {}
+    dispose() {},
   };
 }
 
@@ -168,6 +171,8 @@ function toMoonshineError(error: unknown) {
 
   return new LiveSttError(
     "model_unavailable",
-    error instanceof Error ? error.message : "Moonshine 인식을 시작하지 못했습니다."
+    error instanceof Error
+      ? error.message
+      : "Moonshine 인식을 시작하지 못했습니다.",
   );
 }

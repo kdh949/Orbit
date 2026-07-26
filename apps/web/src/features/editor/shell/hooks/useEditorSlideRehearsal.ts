@@ -1,7 +1,7 @@
 import type { Slide } from "@orbit/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { LiveSttAudioLevelEvent } from "../../../rehearsal/liveStt";
+import type { LiveSttAudioLevelEvent } from "../../../../runtime/speech/stt/liveSttAdapter";
 import {
   createSpeechTracker,
   type SpeechTracker

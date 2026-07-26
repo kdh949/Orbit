@@ -1,4 +1,4 @@
-import type { LiveSttPartialTranscriptEvent } from "@orbit/shared";
+import type { LiveSttPartialTranscriptEvent } from "@orbit/shared/rehearsals";
 import type { LiveSttDebugPcmRecording } from "./liveSttPcmDebug";
 
 export type LiveSttAudioLevelEvent = {
@@ -54,7 +54,7 @@ export type LiveSttAdapter = {
   start: (
     stream: MediaStream,
     callbacks: LiveSttCallbacks,
-    options?: LiveSttStartOptions
+    options?: LiveSttStartOptions,
   ) => Promise<void>;
   updateBiasContext?: (biasContext: LiveSttBiasContext | null) => void;
   stop: () => void;
@@ -68,7 +68,7 @@ export type LiveSttAdapterErrorCode =
 export class LiveSttAdapterError extends Error {
   constructor(
     readonly code: LiveSttAdapterErrorCode,
-    message: string
+    message: string,
   ) {
     super(message);
     this.name = "LiveSttAdapterError";

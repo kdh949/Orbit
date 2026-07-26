@@ -3,8 +3,8 @@ import {
   SherpaOnnxLiveSttAdapter,
   resampleFloat32Audio
 } from "./sherpaOnnxLiveSttAdapter";
-import type { LiveSttBiasContext, LiveSttDecodingMethod } from "./liveStt";
-import type { LiveSttDebugPcmRecording } from "./liveSttPcmDebug";
+import type { LiveSttBiasContext, LiveSttDecodingMethod } from "../../runtime/speech/stt/liveSttAdapter";
+import type { LiveSttDebugPcmRecording } from "../../runtime/speech/stt/liveSttPcmDebug";
 import type { SherpaOnnxModelManifest } from "./sherpaOnnxManifest";
 
 describe("SherpaOnnxLiveSttAdapter", () => {

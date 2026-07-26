@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { LiveSttAudioLevelEvent } from "../liveStt";
-import type { LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
+import type { LiveSttAudioLevelEvent } from "./liveSttAdapter";
+import type { LiveSttResult } from "./liveSttPort";
 import { OpenAiRealtimeLiveSttPort } from "./openAiRealtimeLiveSttPort";
 
 describe("OpenAiRealtimeLiveSttPort", () => {
@@ -12,22 +12,22 @@ describe("OpenAiRealtimeLiveSttPort", () => {
       createAudioLevelMeter: () => noopMeter(),
       createPeerConnection: () => peerConnection,
       fetcher,
-      now: () => 1000
+      now: () => 1000,
     });
     const results: LiveSttResult[] = [];
     port.onResult((result) => results.push(result));
 
     await port.start({
       language: "ko",
-      audioSource: fakeMediaStream()
+      audioSource: fakeMediaStream(),
     });
 
     expect(fetcher).toHaveBeenCalledWith(
       "/api/v1/projects/project_real_1/realtime-transcription/client-secret",
       {
         credentials: "include",
-        method: "POST"
-      }
+        method: "POST",
+      },
     );
     expect(fetcher).toHaveBeenCalledWith(
       "https://api.openai.com/v1/realtime/calls",
@@ -35,33 +35,33 @@ describe("OpenAiRealtimeLiveSttPort", () => {
         body: "offer-sdp",
         headers: {
           Authorization: "Bearer ek_test",
-          "Content-Type": "application/sdp"
+          "Content-Type": "application/sdp",
         },
-        method: "POST"
-      })
+        method: "POST",
+      }),
     );
     expect(peerConnection.remoteDescription).toEqual({
       type: "answer",
-      sdp: "answer-sdp"
+      sdp: "answer-sdp",
     });
 
     peerConnection.dataChannel.emitMessage({
       type: "conversation.item.input_audio_transcription.delta",
       item_id: "item_1",
       content_index: 0,
-      delta: "오르"
+      delta: "오르",
     });
     peerConnection.dataChannel.emitMessage({
       type: "conversation.item.input_audio_transcription.delta",
       item_id: "item_1",
       content_index: 0,
-      delta: "빗"
+      delta: "빗",
     });
     peerConnection.dataChannel.emitMessage({
       type: "conversation.item.input_audio_transcription.completed",
       item_id: "item_1",
       content_index: 0,
-      transcript: "오르빗"
+      transcript: "오르빗",
     });
 
     expect(results).toEqual([
@@ -70,22 +70,22 @@ describe("OpenAiRealtimeLiveSttPort", () => {
         isFinal: false,
         timestampMs: [0, 0],
         utteranceId: "item_1:0",
-        resultRevision: 1
+        resultRevision: 1,
       },
       {
         text: "오르빗",
         isFinal: false,
         timestampMs: [0, 0],
         utteranceId: "item_1:0",
-        resultRevision: 2
+        resultRevision: 2,
       },
       {
         text: "오르빗",
         isFinal: true,
         timestampMs: [0, 0],
         utteranceId: "item_1:0",
-        resultRevision: 3
-      }
+        resultRevision: 3,
+      },
     ]);
   });
 
@@ -93,7 +93,7 @@ describe("OpenAiRealtimeLiveSttPort", () => {
     const originalFetch = globalThis.fetch;
     const nativeLikeFetch = vi.fn(function (
       this: unknown,
-      input: RequestInfo | URL
+      input: RequestInfo | URL,
     ) {
       if (this !== globalThis) {
         throw new TypeError("Illegal invocation");
@@ -107,9 +107,9 @@ describe("OpenAiRealtimeLiveSttPort", () => {
               clientSecret: "ek_test",
               expiresAt: 1790000000,
               model: "gpt-realtime-whisper",
-              delay: "minimal"
-            })
-          )
+              delay: "minimal",
+            }),
+          ),
         );
       }
 
@@ -122,12 +122,12 @@ describe("OpenAiRealtimeLiveSttPort", () => {
         projectId: "project_real_1",
         createAudioLevelMeter: () => noopMeter(),
         createPeerConnection: () => new FakePeerConnection(),
-        now: () => 1000
+        now: () => 1000,
       });
 
       await port.start({
         language: "ko",
-        audioSource: fakeMediaStream()
+        audioSource: fakeMediaStream(),
       });
 
       expect(nativeLikeFetch).toHaveBeenCalledTimes(2);
@@ -143,32 +143,32 @@ describe("OpenAiRealtimeLiveSttPort", () => {
       createAudioLevelMeter: () => noopMeter(),
       createPeerConnection: () => peerConnection,
       fetcher: createOpenAiRealtimeFetcher(),
-      now: () => 1000
+      now: () => 1000,
     });
     const results: LiveSttResult[] = [];
     port.onResult((result) => results.push(result));
 
     await port.start({
       language: "ko",
-      audioSource: fakeMediaStream()
+      audioSource: fakeMediaStream(),
     });
 
     peerConnection.dataChannel.emitMessage({
       type: "conversation.item.input_audio_transcription.delta",
       item_id: "item_a",
       content_index: 0,
-      delta: "첫 번째"
+      delta: "첫 번째",
     });
     peerConnection.dataChannel.emitMessage({
       type: "conversation.item.input_audio_transcription.delta",
       item_id: "item_b",
       content_index: 0,
-      delta: "두 번째"
+      delta: "두 번째",
     });
     peerConnection.dataChannel.emitMessage({
       type: "conversation.item.input_audio_transcription.completed",
       item_id: "item_a",
-      content_index: 0
+      content_index: 0,
     });
 
     expect(results.at(-1)).toEqual({
@@ -176,7 +176,7 @@ describe("OpenAiRealtimeLiveSttPort", () => {
       isFinal: true,
       timestampMs: [0, 0],
       utteranceId: "item_a:0",
-      resultRevision: 2
+      resultRevision: 2,
     });
   });
 
@@ -186,18 +186,18 @@ describe("OpenAiRealtimeLiveSttPort", () => {
       createAudioLevelMeter: () => noopMeter(),
       createPeerConnection: () => new FakePeerConnection(),
       fetcher: createOpenAiRealtimeFetcher(),
-      now: () => 1000
+      now: () => 1000,
     });
 
     await port.start({
       language: "ko",
       audioSource: fakeMediaStream(),
-      biasPhrases: [{ text: "  오르빗  ", weight: 1, source: "keyword" }]
+      biasPhrases: [{ text: "  오르빗  ", weight: 1, source: "keyword" }],
     });
     port.updateBiasPhrases([{ text: "다음  슬라이드", weight: 0.7 }]);
 
     expect(port.readBiasPhrasesForTest()).toEqual([
-      { text: "다음 슬라이드", weight: 0.7 }
+      { text: "다음 슬라이드", weight: 0.7 },
     ]);
   });
 
@@ -208,7 +208,7 @@ describe("OpenAiRealtimeLiveSttPort", () => {
       peak: 0.2,
       rmsDb: -20,
       peakDb: -10,
-      isLikelySilence: false
+      isLikelySilence: false,
     };
     const stopMeter = vi.fn();
     const onAudioLevel = vi.fn();
@@ -221,12 +221,12 @@ describe("OpenAiRealtimeLiveSttPort", () => {
       createPeerConnection: () => new FakePeerConnection(),
       fetcher: createOpenAiRealtimeFetcher(),
       now: () => 1000,
-      onAudioLevel
+      onAudioLevel,
     });
 
     await port.start({
       language: "ko",
-      audioSource: fakeMediaStream()
+      audioSource: fakeMediaStream(),
     });
     await port.stop();
 
@@ -238,9 +238,7 @@ describe("OpenAiRealtimeLiveSttPort", () => {
     vi.useFakeTimers();
     try {
       const peerConnection = new FakePeerConnection();
-      let meterCallback:
-        | ((event: LiveSttAudioLevelEvent) => void)
-        | undefined;
+      let meterCallback: ((event: LiveSttAudioLevelEvent) => void) | undefined;
       const port = new OpenAiRealtimeLiveSttPort({
         projectId: "project_real_1",
         commitIntervalMs: 1000,
@@ -251,12 +249,12 @@ describe("OpenAiRealtimeLiveSttPort", () => {
         createPeerConnection: () => peerConnection,
         fetcher: createOpenAiRealtimeFetcher(),
         now: () => 1000,
-        pendingAudioRmsDbThreshold: -75
+        pendingAudioRmsDbThreshold: -75,
       });
 
       await port.start({
         language: "ko",
-        audioSource: fakeMediaStream()
+        audioSource: fakeMediaStream(),
       });
 
       meterCallback?.({
@@ -265,7 +263,7 @@ describe("OpenAiRealtimeLiveSttPort", () => {
         peak: 0.002,
         rmsDb: -70,
         peakDb: -60,
-        isLikelySilence: true
+        isLikelySilence: true,
       });
       vi.advanceTimersByTime(1000);
       expect(peerConnection.dataChannel.sentPayloads).toEqual([]);
@@ -274,7 +272,7 @@ describe("OpenAiRealtimeLiveSttPort", () => {
       vi.advanceTimersByTime(1000);
 
       expect(peerConnection.dataChannel.sentPayloads).toEqual([
-        { type: "input_audio_buffer.commit" }
+        { type: "input_audio_buffer.commit" },
       ]);
 
       vi.advanceTimersByTime(1000);
@@ -287,7 +285,7 @@ describe("OpenAiRealtimeLiveSttPort", () => {
         peak: 0.002,
         rmsDb: -70,
         peakDb: -60,
-        isLikelySilence: true
+        isLikelySilence: true,
       });
       vi.advanceTimersByTime(1000);
       expect(peerConnection.dataChannel.sentPayloads).toHaveLength(1);
@@ -303,14 +301,14 @@ describe("OpenAiRealtimeLiveSttPort", () => {
       createAudioLevelMeter: () => noopMeter(),
       createPeerConnection: () => new FakePeerConnection(),
       fetcher,
-      now: () => 1000
+      now: () => 1000,
     });
 
     await expect(
       port.start({
         language: "ko",
-        audioSource: { getAudioTracks: () => [] } as unknown as MediaStream
-      })
+        audioSource: { getAudioTracks: () => [] } as unknown as MediaStream,
+      }),
     ).rejects.toMatchObject({ code: "start_failed" });
     expect(fetcher).not.toHaveBeenCalled();
   });
@@ -367,7 +365,7 @@ class FakePeerConnection {
   async createOffer() {
     return {
       type: "offer" as const,
-      sdp: "offer-sdp"
+      sdp: "offer-sdp",
     };
   }
 
@@ -393,8 +391,8 @@ function createOpenAiRealtimeFetcher() {
           clientSecret: "ek_test",
           expiresAt: 1790000000,
           model: "gpt-realtime-whisper",
-          delay: "minimal"
-        })
+          delay: "minimal",
+        }),
       );
     }
 
@@ -404,7 +402,7 @@ function createOpenAiRealtimeFetcher() {
 
 function fakeMediaStream() {
   return {
-    getAudioTracks: () => [{} as MediaStreamTrack]
+    getAudioTracks: () => [{} as MediaStreamTrack],
   } as unknown as MediaStream;
 }
 

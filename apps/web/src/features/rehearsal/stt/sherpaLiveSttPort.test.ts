@@ -6,7 +6,7 @@ import {
   type LiveSttBiasContext,
   type LiveSttCallbacks,
   type LiveSttStartOptions
-} from "../liveStt";
+} from "../../../runtime/speech/stt/liveSttAdapter";
 import { LiveSttError } from "../../../runtime/speech/stt/liveSttPort";
 import { runLiveSttPortContractTests } from "../../../runtime/speech/stt/liveSttPortContract";
 import { SherpaLiveSttPort } from "./sherpaLiveSttPort";
