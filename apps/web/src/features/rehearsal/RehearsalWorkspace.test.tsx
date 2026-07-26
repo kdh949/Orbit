@@ -30,6 +30,13 @@ import {
   runRehearsalUploadFlow,
 } from "./api/rehearsalApi";
 import {
+  createRecordingFile,
+  createRecordingSession,
+  normalizeRecordingMimeType,
+  runRehearsalPauseSequence,
+  selectRecordingMimeType,
+} from "./recording/recordingSession";
+import {
   LiveSttAdapterError,
   RehearsalFailureScreen,
   RehearsalCompletionScreen,
@@ -44,8 +51,6 @@ import {
   createKeywordOccurrenceAnimationCueEvent,
   createLiveKeywordOccurrenceState,
   createLiveTranscriptBuffer,
-  createRecordingFile,
-  createRecordingSession,
   evaluateLiveTranscript,
   getRehearsalFinishPath,
   getHighlightedKeywordOccurrencesForSlide,
@@ -62,15 +67,12 @@ import {
   getRehearsalTimingProgress,
   isReusableRehearsalMediaStream,
   getRemainingTriggerStepsForSlide,
-  normalizeRecordingMimeType,
   rehearsalMicrophoneAudioConstraints,
   rehearsalRawMicrophoneAudioConstraints,
   readRehearsalMicrophoneDeviceId,
   renderLiveTranscriptBuffer,
   requestRehearsalMicrophoneStream,
   resetRehearsalTimerState,
-  runRehearsalPauseSequence,
-  selectRecordingMimeType,
   setMediaStreamTracksEnabled,
   shouldLoadPracticeGoalSummary,
   shouldRenderRehearsalThumbnailImage,
