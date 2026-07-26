@@ -19,7 +19,7 @@ import {
 } from "@orbit/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import type { PresenterSlideshowState } from "../rehearsal/presenter/presenterStateStore";
+import type { PresenterSlideshowState } from "../../runtime/presentation/channel/presenterStateStore";
 import {
   AnnotationAuthority,
   type AcceptedAnnotationDelta,

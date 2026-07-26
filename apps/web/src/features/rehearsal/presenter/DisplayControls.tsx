@@ -11,7 +11,7 @@ import type {
   DisplayManagerErrorCode,
   DisplayScreenDescriptor,
 } from "../../../runtime/presentation/displayManager";
-import type { PresentationChannelStatus } from "./usePresentationChannelPublisher";
+import type { PresentationChannelStatus } from "../../../runtime/presentation/channel/usePresentationChannelPublisher";
 
 export type SlideDisplayMode = "current-window" | "slide-window";
 

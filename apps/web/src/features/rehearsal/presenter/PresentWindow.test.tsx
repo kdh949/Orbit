@@ -16,14 +16,14 @@ import {
   PresentWindowReceiver,
   requestPresentWindowFullscreen,
 } from "./PresentWindow";
-import { createPresenterSlideshowState } from "./presenterStateStore";
+import { createPresenterSlideshowState } from "../../../runtime/presentation/channel/presenterStateStore";
 import {
   createPresenterAnnotationDeltaMessage,
   createPresenterAnnotationSnapshotMessage,
   createPresenterLaserMessage,
   createPresenterSnapshotMessage,
   createPresenterStateMessage,
-} from "./presentationChannel";
+} from "../../../runtime/presentation/channel/presentationChannel";
 
 vi.mock("react-konva", () => {
   function attrs(props: Record<string, unknown>) {

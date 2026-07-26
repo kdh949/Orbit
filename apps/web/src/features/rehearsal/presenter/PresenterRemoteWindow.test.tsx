@@ -15,8 +15,8 @@ import {
   splitPresenterRemoteNotes,
   PresenterRemoteWindow,
 } from "./PresenterRemoteWindow";
-import { createPresenterSlideshowState } from "./presenterStateStore";
-import { createPresenterStateMessage } from "./presentationChannel";
+import { createPresenterSlideshowState } from "../../../runtime/presentation/channel/presenterStateStore";
+import { createPresenterStateMessage } from "../../../runtime/presentation/channel/presentationChannel";
 
 vi.mock("./SlideshowRenderer", () => ({
   SlideshowRenderer: (props: { slideId: string }) => (

@@ -4,7 +4,7 @@ import type {
   PresentationCompanionLaser,
   PresentationCompanionStroke,
 } from "@orbit/shared";
-import type { AudienceOutputMode } from "./presenterStateStore";
+import type { AudienceOutputMode } from "../../../runtime/presentation/channel/presenterStateStore";
 import {
   calculateContainRect,
   type SurfaceSize,

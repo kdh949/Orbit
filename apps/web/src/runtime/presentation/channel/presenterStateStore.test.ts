@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { p0AnimationDeck } from "../../../runtime/presentation/slideshow/__fixtures__/animationDeck";
+import { p0AnimationDeck } from "../slideshow/__fixtures__/animationDeck";
 import {
   applyPresenterSlideshowCommand,
   createPresenterSlideshowState,

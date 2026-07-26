@@ -4,7 +4,7 @@ import type {
 } from "@orbit/shared";
 import { useEffect, useMemo, useState } from "react";
 import { AudienceOutputRenderer } from "../rehearsal/presenter/AudienceOutputRenderer";
-import type { PresenterSlideshowState } from "../rehearsal/presenter/presenterStateStore";
+import type { PresenterSlideshowState } from "../../runtime/presentation/channel/presenterStateStore";
 import {
   materializeCompanionDeck,
   resolveCompanionTriggerAnimationIds,

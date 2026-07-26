@@ -197,7 +197,7 @@ import {
   createAudiencePresenterState,
   createSlideWindowDeckSnapshot,
   type PresenterRemoteCommand,
-} from "./presenter/presentationChannel";
+} from "../../runtime/presentation/channel/presentationChannel";
 import { useLivePresentationOutput } from "../presentation/useLivePresentationOutput";
 import { PresenterCompanionSetup } from "../presenter-companion/PresenterCompanionSetup";
 import { PresenterCompanionStatus } from "../presenter-companion/PresenterCompanionStatus";

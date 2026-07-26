@@ -1,12 +1,12 @@
 import type {
-  Deck,
   PresentationCompanionAnnotationCommand,
   PresentationCompanionAnnotationSnapshot,
   PresentationCompanionLaser,
-} from "@orbit/shared";
+} from "@orbit/shared/realtime";
+import type { Deck } from "@orbit/shared/deck";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PresenterSlideshowState } from "./presenterStateStore";
-import type { ActivityElementRuntime } from "../../activity-slides/rendering/ActivityElementRuntimeContext";
+import type { ActivityElementRuntime } from "../activityElementRuntime";
 import {
   createPresentationSessionId,
   createPresenterAnnotationDeltaMessage,

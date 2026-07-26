@@ -4,8 +4,8 @@ import {
   detachAudienceStreamFromWindow,
   type AudienceStreamBridgeWindow,
 } from "../../../runtime/presentation/audienceStreamBridge";
-import type { AudienceOutputMode } from "./presenterStateStore";
-import type { PresentationChannelIdentity } from "./presentationChannel";
+import type { AudienceOutputMode } from "../../../runtime/presentation/channel/presenterStateStore";
+import type { PresentationChannelIdentity } from "../../../runtime/presentation/channel/presentationChannel";
 import {
   ScreenShareCaptureError,
   createScreenShareCapturePort,

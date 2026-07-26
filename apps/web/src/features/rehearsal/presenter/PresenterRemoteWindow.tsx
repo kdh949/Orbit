@@ -34,8 +34,8 @@ import {
   type PresentationChannelIdentity,
   type PresentationChannelMessage,
   type PresenterRemoteCommand,
-} from "./presentationChannel";
-import type { PresenterSlideshowState } from "./presenterStateStore";
+} from "../../../runtime/presentation/channel/presentationChannel";
+import type { PresenterSlideshowState } from "../../../runtime/presentation/channel/presenterStateStore";
 import { RehearsalScriptTeleprompter } from "./RehearsalScriptTeleprompter";
 import { SlideshowRenderer } from "./SlideshowRenderer";
 import { usePresenterKeyboard } from "./usePresenterKeyboard";

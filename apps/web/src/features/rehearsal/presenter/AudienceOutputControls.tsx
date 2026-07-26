@@ -9,7 +9,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { useId, useState } from "react";
-import type { AudienceOutputMode } from "./presenterStateStore";
+import type { AudienceOutputMode } from "../../../runtime/presentation/channel/presenterStateStore";
 import type { AudienceScreenShareStatus } from "./useAudienceScreenShare";
 
 export function AudienceOutputControls(props: {

@@ -70,11 +70,11 @@ import {
   createAudiencePresenterState,
   createSlideWindowDeckSnapshot,
   type PresenterRemoteCommand,
-} from "../rehearsal/presenter/presentationChannel";
+} from "../../runtime/presentation/channel/presentationChannel";
 import type {
   AudienceOutputMode,
   PresenterSlideshowState,
-} from "../rehearsal/presenter/presenterStateStore";
+} from "../../runtime/presentation/channel/presenterStateStore";
 import {
   PresentWindowReceiver,
   requestPresentWindowFullscreen,

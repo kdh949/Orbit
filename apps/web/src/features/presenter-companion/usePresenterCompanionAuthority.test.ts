@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PresenterSlideshowState } from "../rehearsal/presenter/presenterStateStore";
+import type { PresenterSlideshowState } from "../../runtime/presentation/channel/presenterStateStore";
 import {
   createCompanionOutputState,
   createPresenterNavigationAcknowledgement,
