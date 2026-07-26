@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { readCssBundle } from "../../../../styles/readCssBundle.test-utils";
 import {
   AiChatPanel,
   createInitialAiChatState,
@@ -96,7 +97,7 @@ describe("AiChatPanel", () => {
   });
 
   it("keeps assistant suggestion and mode controls compact", () => {
-    const css = fs.readFileSync(editorShellCssPath, "utf8");
+    const css = readCssBundle(editorShellCssPath);
     const scrollCss = fs.readFileSync(editorAiChatScrollCssPath, "utf8");
 
     expect(css).toMatch(

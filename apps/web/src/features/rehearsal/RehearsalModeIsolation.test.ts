@@ -17,15 +17,27 @@ const webRehearsalApiSource = fs.readFileSync(
   "utf8",
 );
 
-const serverRehearsalApiSource = fs.readFileSync(
-  fileURLToPath(
-    new URL(
-      "../../../../api/src/rehearsals/rehearsals.service.ts",
-      import.meta.url,
+const serverRehearsalApiSource = fs
+  .readFileSync(
+    fileURLToPath(
+      new URL(
+        "../../../../api/src/rehearsals/use-cases/rehearsal-upload.use-cases.ts",
+        import.meta.url,
+      ),
     ),
-  ),
-  "utf8",
-);
+    "utf8",
+  )
+  .concat(
+    fs.readFileSync(
+      fileURLToPath(
+        new URL(
+          "../../../../api/src/rehearsals/use-cases/rehearsal-use-cases.base.ts",
+          import.meta.url,
+        ),
+      ),
+      "utf8",
+    ),
+  );
 
 describe("rehearsal mode isolation", () => {
   it("keeps the existing rehearsal lifecycle on rehearsal-only endpoints", () => {

@@ -1,0 +1,1059 @@
+/* ORBIT production editor design-system adoption.
+ * The reference mockup remains read-only; production behavior is implemented here.
+ */
+.orbit-shell {
+}
+
+.orbit-shell.editor-app-shell {
+  grid-template-rows: 80px minmax(0, 1fr);
+  background: var(--redesign-color-surface-container-low);
+}
+
+.orbit-shell .app-topbar {
+  height: 80px;
+  padding: var(--redesign-space-2) var(--redesign-space-4) var(--redesign-space-1);
+  border-bottom-color: var(--redesign-color-outline-variant);
+  box-shadow: var(--redesign-shadow-none);
+}
+
+.orbit-shell .editor-document-title img {
+  height: 32px;
+}
+
+.orbit-shell .editor-document-title strong {
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-body-md-size);
+  font-weight: 650;
+}
+
+.orbit-shell .editor-document-title small {
+  align-items: center;
+  display: inline-flex;
+  font-size: var(--redesign-type-label-sm-size);
+  gap: var(--redesign-space-1);
+}
+
+.orbit-shell .menu-row {
+  gap: 1px;
+  padding-left: var(--redesign-space-10);
+}
+
+.orbit-shell .top-menu-button {
+  border-radius: var(--redesign-radius-md);
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-body-sm-size);
+  min-height: 26px;
+  padding-inline: var(--redesign-space-2);
+}
+
+.orbit-shell .top-menu-button:hover,
+.orbit-shell .top-menu-button.active,
+.orbit-shell .top-icon-button:hover,
+.orbit-shell .top-icon-button.active {
+  background: var(--redesign-color-surface-container-low);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell .top-actions {
+  gap: var(--redesign-space-2);
+}
+
+.orbit-shell .app-topbar .editor-save-control {
+  display: none;
+}
+
+.orbit-shell .editor-context-top-button,
+.orbit-shell .editor-rehearsal-button,
+.orbit-shell .share-top-button,
+.orbit-shell .editor-present-button,
+.orbit-shell .editor-present-menu-button {
+  align-items: center;
+  display: inline-flex;
+  font-size: var(--redesign-type-body-sm-size);
+  font-weight: 650;
+  justify-content: center;
+  min-height: 38px;
+}
+
+.orbit-shell .editor-context-top-button {
+  color: var(--redesign-color-on-surface-variant);
+}
+
+.orbit-shell .share-top-button,
+.orbit-shell .editor-rehearsal-button {
+  background: var(--redesign-color-surface-container-lowest);
+  border: 1px solid var(--redesign-color-outline);
+  border-radius: var(--redesign-radius-full);
+  color: var(--redesign-color-on-surface);
+  gap: var(--redesign-space-2);
+  padding: 0 var(--redesign-space-4);
+}
+
+.orbit-shell .share-top-button:hover,
+.orbit-shell .editor-rehearsal-button:hover:not(:disabled) {
+  background: var(--redesign-color-surface-container-low);
+  border-color: var(--redesign-color-outline);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell .share-top-button { order: 1; }
+.orbit-shell .editor-share-menu-anchor { order: 1; }
+.orbit-shell .editor-rehearsal-button { order: 2; }
+.orbit-shell .top-action-menu { order: 3; }
+.orbit-shell .refresh-top-button { order: 4; }
+
+.orbit-shell .top-actions > .editor-share-menu-anchor {
+  order: 2;
+}
+
+.orbit-shell .editor-share-menu-anchor > .editor-file-menu.redesign-dropdown-menu {
+  left: auto;
+  right: 0;
+  width: min(280px, calc(100vw - 24px));
+}
+
+.orbit-shell .editor-presentation-split {
+  align-items: stretch;
+  background: var(--redesign-color-on-surface);
+  border: 1px solid var(--redesign-color-on-surface);
+  border-radius: var(--redesign-radius-full);
+  display: inline-flex;
+  overflow: hidden;
+}
+
+.orbit-shell .editor-presentation-split.active,
+.orbit-shell .editor-presentation-split:hover {
+  background: var(--redesign-color-inverse-surface);
+  border-color: var(--redesign-color-inverse-surface);
+}
+
+.orbit-shell .editor-present-button,
+.orbit-shell .editor-present-menu-button {
+  background: transparent;
+  border: 0;
+  color: var(--redesign-color-surface-container-lowest);
+}
+
+.orbit-shell .editor-present-button {
+  gap: var(--redesign-space-2);
+  padding: 0 var(--redesign-space-3) 0 var(--redesign-space-4);
+}
+
+.orbit-shell .editor-present-menu-button {
+  border-left: 1px solid color-mix(in srgb, var(--redesign-color-surface-container-low) 24%, transparent);
+  padding: 0;
+  width: 34px;
+}
+
+.orbit-shell .editor-present-button:focus-visible,
+.orbit-shell .editor-present-menu-button:focus-visible,
+.orbit-shell .editor-rehearsal-button:focus-visible,
+.orbit-shell .share-top-button:focus-visible,
+.orbit-shell .refresh-top-button:focus-visible,
+.orbit-shell .collapse-right-pane-button:focus-visible,
+.orbit-shell .collapse-slides-button:focus-visible,
+.orbit-shell .add-slide-button:focus-visible,
+.orbit-shell .tool-button:focus-visible,
+.orbit-shell .icon-button:focus-visible {
+  box-shadow: var(--redesign-focus-ring);
+  outline: none;
+}
+
+.orbit-shell .editor-panel {
+  background: var(--redesign-color-background);
+  padding-top: 0;
+}
+
+.orbit-shell .stage-top-controls {
+  background: transparent;
+  border: 0;
+  height: 66px;
+  padding: var(--redesign-space-1) var(--redesign-space-3);
+  top: 80px;
+}
+
+.orbit-shell .editor-panel:has(.selection-quickbar) {
+  padding-top: 0;
+}
+
+.orbit-shell .stage-top-controls:has(.selection-quickbar) {
+  height: 120px;
+}
+
+.orbit-shell .slides-pane,
+.orbit-shell .ai-pane,
+.orbit-shell .animation-side-pane {
+  margin-top: var(--redesign-space-16);
+}
+
+.orbit-shell .editor-panel:has(.selection-quickbar) .slides-pane,
+.orbit-shell .editor-panel:has(.selection-quickbar) .ai-pane,
+.orbit-shell .editor-panel:has(.selection-quickbar) .animation-side-pane {
+  margin-top: var(--redesign-space-30);
+}
+
+.orbit-shell .editor-toolbar {
+  background: var(--redesign-color-surface-container);
+  border: 1px solid var(--redesign-color-surface-container);
+  border-radius: var(--redesign-radius-xl);
+  min-height: 54px;
+  padding: 0 var(--redesign-space-2);
+}
+
+.orbit-shell .editor-toolbar .tool-button,
+.orbit-shell .editor-toolbar .icon-button {
+  border: 1px solid transparent;
+  border-radius: var(--redesign-radius);
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-body-sm-size);
+  min-height: 36px;
+}
+
+.orbit-shell .editor-toolbar .tool-button:hover,
+.orbit-shell .editor-toolbar .icon-button:hover,
+.orbit-shell .editor-toolbar .tool-button.active,
+.orbit-shell .editor-toolbar .icon-button.selected-tool {
+  background: var(--redesign-color-surface-container-lowest);
+  border-color: transparent;
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell .editor-toolbar .tool-button.active,
+.orbit-shell .editor-toolbar .icon-button.selected-tool {
+  background: var(--redesign-color-secondary-container);
+  border-color: var(--redesign-color-secondary-container);
+}
+
+.orbit-shell .slides-pane,
+.orbit-shell .ai-pane {
+  background: var(--redesign-color-surface-container-lowest);
+}
+
+.orbit-shell .slides-pane-header {
+  justify-content: space-between;
+  min-height: 48px;
+  padding: var(--redesign-space-2) var(--redesign-space-2);
+}
+
+.orbit-shell .slides-pane-title {
+  align-items: center;
+  display: flex;
+  gap: var(--redesign-space-2);
+  min-width: 0;
+}
+
+.orbit-shell .slides-pane-title strong {
+  color: var(--redesign-color-on-surface);
+  font-size: var(--redesign-type-label-md-size);
+  letter-spacing: -0.01em;
+}
+
+.orbit-shell .slides-pane-title span {
+  align-items: center;
+  background: var(--redesign-color-secondary-container);
+  border-radius: var(--redesign-radius-full);
+  color: var(--redesign-color-secondary);
+  display: inline-flex;
+  font-size: var(--redesign-type-body-sm-size);
+  font-weight: 700;
+  height: 24px;
+  justify-content: center;
+  min-width: 24px;
+  padding-inline: var(--redesign-space-2);
+}
+
+.orbit-shell .add-slide-button {
+  align-items: center;
+  border-color: var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius);
+  color: var(--redesign-color-on-surface);
+  display: inline-flex;
+  font-size: var(--redesign-type-body-sm-size);
+  gap: var(--redesign-space-1);
+  justify-content: center;
+  min-height: 40px;
+}
+
+.orbit-shell .add-slide-button:hover {
+  background: var(--redesign-color-surface-container-low);
+  border-color: var(--redesign-color-outline);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell .slide-item.active {
+  border-color: var(--redesign-color-secondary);
+  box-shadow: var(--redesign-glow-secondary);
+}
+
+.orbit-shell .stage-pane,
+.orbit-shell .canvas-scroll,
+.orbit-shell .stage-pane-content {
+  background: var(--redesign-color-background);
+}
+
+.orbit-shell .canvas-shell,
+.orbit-shell .editor-canvas-shell,
+.orbit-shell .konva-stage-shell {
+  box-shadow: var(--redesign-shadow-overlay);
+}
+
+.orbit-shell .ai-pane {
+  gap: var(--redesign-space-3);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  padding: var(--redesign-space-3);
+}
+
+.orbit-shell .ai-header h2 {
+  font-size: var(--redesign-type-label-md-size);
+  font-weight: 700;
+}
+
+.orbit-shell .right-panel-tabs {
+  border: 0;
+  border-bottom: 1px solid var(--redesign-color-outline-variant);
+  border-radius: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 0;
+}
+
+.orbit-shell .right-panel-tabs button {
+  border-radius: 0;
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-body-sm-size);
+  min-height: 44px;
+  position: relative;
+}
+
+.orbit-shell .right-panel-tabs button.active {
+  background: transparent;
+  box-shadow: var(--redesign-shadow-none);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell .right-panel-tabs button.active::after {
+  background: var(--redesign-color-secondary);
+  bottom: -1px;
+  content: "";
+  height: 2px;
+  left: 8px;
+  position: absolute;
+  right: 8px;
+}
+
+.orbit-shell .right-panel-tabs button:focus-visible,
+.orbit-shell .assistant-subtabs button:focus-visible {
+  box-shadow: var(--redesign-focus-ring);
+  outline: none;
+}
+
+.orbit-shell .assistant-panel-view {
+  min-height: 0;
+  overflow: auto;
+}
+
+.orbit-shell .editor-ai-coach-panel {
+  display: grid;
+  gap: var(--redesign-space-3);
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.orbit-shell .assistant-subtabs {
+  background: var(--redesign-color-surface-container-low);
+  border-radius: var(--redesign-radius-full);
+  display: grid;
+  gap: var(--redesign-space-1);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: var(--redesign-space-1);
+}
+
+.orbit-shell .assistant-subtabs button {
+  background: transparent;
+  border: 0;
+  border-radius: var(--redesign-radius-full);
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-body-sm-size);
+  min-height: 36px;
+}
+
+.orbit-shell .assistant-subtabs button.active {
+  background: var(--redesign-color-surface-container-lowest);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell .assistant-panel-subview {
+  min-height: 0;
+  overflow: auto;
+}
+
+.orbit-shell #editor-ai-chat-panel {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.orbit-shell .assistant-panel-subview[hidden],
+.orbit-shell .assistant-panel-view[hidden] {
+  display: none;
+}
+
+.orbit-shell .editor-ai-tools-subview {
+  display: grid;
+  gap: var(--redesign-space-3);
+}
+
+.orbit-shell .editor-design-panel {
+  align-content: start;
+  display: grid;
+  gap: var(--redesign-space-2);
+  padding: var(--redesign-space-2) 2px;
+}
+
+.orbit-shell .editor-design-panel h3 {
+  font-size: var(--redesign-type-title-md-size);
+  margin: 0;
+}
+
+.orbit-shell .editor-design-panel > p {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-body-sm-size);
+  line-height: 1.6;
+  margin: 0 0 var(--redesign-space-1);
+}
+
+.orbit-shell .editor-design-panel .selection-quickbar {
+  align-items: stretch;
+  background: transparent;
+  border: 0;
+  flex-direction: column;
+  gap: var(--redesign-space-3);
+  min-height: 0;
+  overflow: visible;
+  padding: 0;
+}
+
+.orbit-shell .editor-design-panel .selection-quickbar-fields {
+  align-items: end;
+  display: grid;
+  gap: var(--redesign-space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.orbit-shell .editor-design-panel .selection-quickbar[data-testid="editor-slide-quickbar"] .selection-quickbar-fields,
+.orbit-shell .editor-design-panel .selection-quickbar[data-testid="editor-element-quickbar"] .selection-quickbar-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+}
+
+.orbit-shell .editor-design-panel .compact-property-field {
+  min-width: 0;
+  width: 100%;
+}
+
+.orbit-shell .editor-design-panel .quickbar-divider {
+  display: none;
+}
+
+.orbit-shell .editor-notes-panel {
+  overflow: hidden;
+}
+
+.orbit-shell .inspector-script-panel {
+  border: 0;
+  border-radius: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.orbit-shell .inspector-script-panel .script-panel-header {
+  align-items: center;
+  padding: var(--redesign-space-2) 0 var(--redesign-space-3);
+}
+
+.orbit-shell .inspector-script-panel .script-panel-heading {
+  gap: var(--redesign-space-2);
+}
+
+.orbit-shell .inspector-script-panel .script-panel-icon {
+  height: 32px;
+  width: 32px;
+}
+
+.orbit-shell .inspector-script-panel .script-panel-title-row strong {
+  font-size: var(--redesign-type-label-md-size);
+}
+
+.orbit-shell .inspector-script-panel .script-panel-actions {
+  gap: var(--redesign-space-1);
+}
+
+.orbit-shell .inspector-script-panel .script-panel-action {
+  min-height: 34px;
+  padding-inline: var(--redesign-space-2);
+}
+
+.orbit-shell .inspector-script-panel .script-panel-body {
+  min-height: 0;
+  overflow: auto;
+  padding: var(--redesign-space-3) 0 0;
+}
+
+.orbit-shell .side-footer {
+  align-items: stretch;
+  background: var(--redesign-color-surface-container-lowest);
+  display: grid;
+  gap: var(--redesign-space-2);
+  grid-template-columns: 1fr;
+  padding: var(--redesign-space-2);
+}
+
+.orbit-shell .slide-view-switch {
+  display: grid;
+  gap: var(--redesign-space-1);
+  grid-template-columns: 1fr 1fr;
+}
+
+.orbit-shell .side-footer > .add-slide-button {
+  width: 100%;
+}
+
+@media (max-width: 1179px) and (min-width: 861px) {
+  .orbit-shell .editor-document-title strong { max-width: 220px; }
+  .orbit-shell .editor-context-top-button span,
+  .orbit-shell .tool-button-label { display: none; }
+  .orbit-shell .editor-toolbar .tool-button { padding-inline: var(--redesign-space-2); }
+  .orbit-shell .presence-avatar-trigger { display: none; }
+}
+
+@media (max-width: 860px) {
+  .orbit-shell.editor-professional .ai-pane:not(.collapsed):has(.inspector-animation-properties) {
+    height: min(620px, calc(100dvh - 76px));
+    max-height: min(620px, calc(100dvh - 76px));
+  }
+
+  .orbit-shell.editor-professional .inspector-animation-properties > .animation-inspector-panel {
+    overscroll-behavior: contain;
+  }
+
+  .orbit-shell.editor-professional .inspector-animation-properties .animation-panel-effect-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .orbit-shell.editor-professional .inspector-animation-properties .animation-panel-existing-item {
+    min-width: 0;
+  }
+
+  .orbit-shell.editor-app-shell {
+    grid-template-rows: 64px minmax(0, 1fr);
+    min-height: 620px;
+  }
+
+  .orbit-shell .app-topbar {
+    align-items: center;
+    display: flex;
+    height: 64px;
+    padding: var(--redesign-space-1) var(--redesign-space-3);
+    position: relative;
+  }
+
+  .orbit-shell .menu-row,
+  .orbit-shell .editor-document-title > span,
+  .orbit-shell .editor-save-control,
+  .orbit-shell .editor-context-top-button,
+  .orbit-shell .editor-rehearsal-button,
+  .orbit-shell .share-top-button,
+  .orbit-shell .presence-avatar-trigger,
+  .orbit-shell .refresh-top-button {
+    display: none;
+  }
+
+  .orbit-shell .top-actions {
+    margin-left: 0;
+    overflow: visible;
+    position: absolute;
+    right: 12px;
+    top: 10px;
+    width: auto;
+    z-index: 2;
+  }
+
+  .orbit-shell .editor-panel,
+  .orbit-shell .editor-panel.right-panel-closed {
+    display: grid;
+    grid-template-columns: 86px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+    padding-top: var(--redesign-space-15);
+  }
+
+  .orbit-shell .editor-panel:has(.selection-quickbar),
+  .orbit-shell .editor-panel.right-panel-closed:has(.selection-quickbar) {
+    padding-top: var(--redesign-space-27);
+  }
+
+  .orbit-shell .stage-top-controls,
+  .orbit-shell .stage-top-controls:has(.selection-quickbar) {
+    height: auto;
+    left: 86px;
+    min-height: 54px;
+    position: fixed;
+    right: 0;
+    top: 64px;
+  }
+
+  .orbit-shell .slides-pane {
+    border-bottom: 0;
+    border-right: 1px solid var(--redesign-color-outline-variant);
+    display: grid;
+    grid-column: 1;
+    grid-row: 1;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    height: auto;
+    max-height: none;
+    margin-top: 0;
+  }
+
+  .orbit-shell .slides-pane-title {
+    display: none;
+  }
+
+  .orbit-shell .slides-pane-header {
+    justify-content: flex-end;
+    padding-inline: var(--redesign-space-1);
+  }
+
+  .orbit-shell .slides-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--redesign-space-2);
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: var(--redesign-space-1) var(--redesign-space-1) var(--redesign-space-3);
+  }
+
+  .orbit-shell .slide-item {
+    min-height: 58px;
+    padding: var(--redesign-space-1);
+  }
+
+  .orbit-shell .slide-number,
+  .orbit-shell .slide-view-switch,
+  .orbit-shell .slides-pane-resizer {
+    display: none;
+  }
+
+  .orbit-shell .side-footer {
+    display: block;
+    padding: var(--redesign-space-1);
+  }
+
+  .orbit-shell .side-footer > .add-slide-button {
+    display: inline-flex;
+    font-size: 0;
+    min-height: 40px;
+    padding: 0;
+  }
+
+  .orbit-shell .stage-pane {
+    grid-column: 2;
+    grid-row: 1;
+    min-height: 0;
+  }
+
+  .orbit-shell .canvas-scroll {
+    min-height: 0;
+    overflow: auto;
+    padding: var(--redesign-space-4) var(--redesign-space-3) var(--redesign-space-21);
+  }
+
+  .orbit-shell .ai-pane:not(.collapsed) {
+    bottom: 0;
+    box-shadow: var(--redesign-shadow-raised);
+    display: grid;
+    grid-column: 2;
+    grid-template-rows: auto minmax(0, 1fr);
+    left: 86px;
+    max-height: 46vh;
+    min-height: 64px;
+    padding: 0 var(--redesign-space-3) var(--redesign-space-3);
+    position: fixed;
+    right: 0;
+    width: auto;
+    z-index: 30;
+  }
+
+  .orbit-shell .ai-pane,
+  .orbit-shell .animation-side-pane,
+  .orbit-shell .editor-panel:has(.selection-quickbar) .slides-pane,
+  .orbit-shell .editor-panel:has(.selection-quickbar) .ai-pane,
+  .orbit-shell .editor-panel:has(.selection-quickbar) .animation-side-pane {
+    margin-top: 0;
+  }
+
+  .orbit-shell .ai-header { display: none; }
+  .orbit-shell .right-panel-tabs { order: -1; }
+  .orbit-shell .assistant-panel-slot { min-height: 0; }
+}
+
+/* Speaker notes live below the slide canvas, following the low-emphasis
+ * presenter-notes hierarchy used by slide editors. */
+.orbit-shell .stage-pane {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.orbit-shell .right-panel-tabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.orbit-shell .stage-speaker-notes-panel {
+  background: var(--redesign-color-surface-container-lowest);
+  border-color: var(--redesign-color-outline-variant);
+  border-radius: 0;
+  border-width: 1px 0 0;
+  box-shadow: var(--redesign-shadow-none);
+  display: grid;
+  margin: 0;
+  max-height: 66.6667vh;
+  max-width: none;
+  min-height: 54px;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  z-index: 31;
+}
+
+.orbit-shell .stage-speaker-notes-panel.collapsed {
+  height: 54px;
+}
+
+.orbit-shell .stage-speaker-notes-panel.expanded {
+  grid-template-rows: 12px auto minmax(0, 1fr);
+  height: min(var(--speaker-notes-panel-height, 240px), 66.6667vh);
+  min-height: 120px;
+  transition: height var(--redesign-duration-fast) var(--redesign-ease-standard);
+}
+
+.orbit-shell .stage-speaker-notes-panel.expanded.is-resizing {
+  transition: none;
+}
+
+.orbit-shell .speaker-notes-resize-handle {
+  align-items: center;
+  background: var(--redesign-color-surface-container-lowest);
+  border: 0;
+  color: var(--redesign-color-on-surface-variant);
+  cursor: ns-resize;
+  display: flex;
+  justify-content: center;
+  touch-action: none;
+  width: 100%;
+}
+
+.orbit-shell .speaker-notes-resize-handle {
+  height: 12px;
+  padding: 0;
+}
+
+.orbit-shell .speaker-notes-resize-handle:hover,
+.orbit-shell .speaker-notes-resize-handle:focus-visible {
+  background: var(--redesign-color-surface-container-low);
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell .speaker-notes-resize-handle:focus-visible {
+  box-shadow: var(--redesign-focus-ring-inset);
+  outline: none;
+}
+
+.orbit-shell .speaker-notes-resize-handle[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.45;
+}
+
+body.is-resizing-speaker-notes {
+  cursor: ns-resize;
+  user-select: none;
+}
+
+.orbit-shell .stage-speaker-notes-panel .script-panel-header {
+  align-items: center;
+  border-bottom: 0;
+  gap: var(--redesign-space-3);
+  min-height: 53px;
+  padding: var(--redesign-space-2) var(--redesign-space-4);
+}
+
+.orbit-shell .stage-speaker-notes-panel.expanded .script-panel-header {
+  border-bottom: 1px solid var(--redesign-color-outline-variant);
+}
+
+.orbit-shell .speaker-notes-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex: 1 1 auto;
+  gap: var(--redesign-space-2);
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.orbit-shell .speaker-notes-toggle:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.orbit-shell .speaker-notes-toggle:focus-visible {
+  border-radius: var(--redesign-radius);
+  box-shadow: var(--redesign-focus-ring);
+  outline: none;
+}
+
+.orbit-shell .stage-speaker-notes-panel .script-panel-icon {
+  background: transparent;
+  color: var(--redesign-color-on-surface-variant);
+  flex-basis: 30px;
+  height: 30px;
+  width: 30px;
+}
+
+.orbit-shell .speaker-notes-toggle-copy {
+  align-items: baseline;
+  display: flex;
+  flex: 1 1 auto;
+  gap: var(--redesign-space-3);
+  min-width: 0;
+}
+
+.orbit-shell .stage-speaker-notes-panel .script-panel-title-row {
+  flex: 0 0 auto;
+}
+
+.orbit-shell .stage-speaker-notes-panel .script-panel-title-row strong {
+  font-size: var(--redesign-type-label-md-size);
+}
+
+.orbit-shell .speaker-notes-preview {
+  color: var(--redesign-color-on-surface-variant);
+  display: block;
+  font-size: var(--redesign-type-body-sm-size);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-shell .speaker-notes-toggle-chevron {
+  color: var(--redesign-color-on-surface-variant);
+  flex: 0 0 auto;
+  transition: transform var(--redesign-duration-fast) var(--redesign-ease-standard);
+}
+
+.orbit-shell .stage-speaker-notes-panel.expanded .speaker-notes-toggle-chevron {
+  transform: rotate(180deg);
+}
+
+.orbit-shell .stage-speaker-notes-panel > #speaker-notes-content {
+  min-height: 0;
+  overflow: auto;
+}
+
+.orbit-shell .stage-speaker-notes-panel .script-panel-body {
+  padding: var(--redesign-space-3) var(--redesign-space-4) var(--redesign-space-4);
+}
+
+@media (max-width: 860px) {
+  .orbit-shell .stage-speaker-notes-panel {
+    max-height: 66.6667vh;
+  }
+
+  .orbit-shell .stage-speaker-notes-panel .script-panel-header {
+    padding-inline: var(--redesign-space-2);
+  }
+
+  .orbit-shell .stage-speaker-notes-panel .script-panel-actions {
+    flex-wrap: nowrap;
+  }
+
+  .orbit-shell .stage-speaker-notes-panel .script-panel-action {
+    font-size: var(--redesign-type-label-sm-size);
+    min-height: 32px;
+    padding-inline: var(--redesign-space-2);
+  }
+
+  .orbit-shell .speaker-notes-toggle-copy {
+    display: block;
+  }
+
+  .orbit-shell .speaker-notes-preview {
+    max-width: 36vw;
+  }
+
+  .orbit-shell .ai-pane:not(.collapsed) {
+    bottom: 54px;
+  }
+
+  .orbit-shell .editor-panel:has(.stage-speaker-notes-panel.expanded) .ai-pane:not(.collapsed) {
+    bottom: min(var(--speaker-notes-panel-height, 240px), 66.6667vh);
+    max-height: 32vh;
+  }
+
+}
+
+/* Editor density and alignment audit fixes.
+ * Keep the document toolbar, slide rail, canvas, notes, and inspector on one
+ * shared grid so every working region starts and ends on the same lines. */
+@media (min-width: 861px) {
+  .orbit-shell .editor-panel,
+  .orbit-shell .editor-panel:has(.selection-quickbar) {
+    grid-template-rows: 66px minmax(0, 1fr) auto;
+    padding-top: 0;
+  }
+
+  .orbit-shell .stage-pane {
+    display: contents;
+  }
+
+  .orbit-shell .stage-top-controls,
+  .orbit-shell .stage-top-controls:has(.selection-quickbar) {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    height: auto;
+    inset: auto;
+    min-height: 66px;
+    padding: var(--redesign-space-1) var(--redesign-space-3);
+    position: static;
+  }
+
+  .orbit-shell .stage-top-controls:has(> .selection-quickbar) {
+    min-height: 120px;
+  }
+
+  .orbit-shell .slides-pane {
+    grid-column: 1;
+    grid-row: 2 / 4;
+    margin-top: 0;
+  }
+
+  .orbit-shell .editor-panel:has(.selection-quickbar) .slides-pane,
+  .orbit-shell .editor-panel:has(.selection-quickbar) .ai-pane,
+  .orbit-shell .editor-panel:has(.selection-quickbar) .animation-side-pane {
+    margin-top: 0;
+  }
+
+  .orbit-shell .animation-side-pane {
+    grid-column: 2;
+    grid-row: 2 / 4;
+    margin-top: 0;
+  }
+
+  .orbit-shell .stage-pane > .canvas-scroll {
+    grid-column: 2;
+    grid-row: 2;
+    min-height: 0;
+    padding: var(--redesign-space-6);
+  }
+
+  .orbit-shell .stage-pane > .stage-speaker-notes-panel {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .orbit-shell .ai-pane {
+    grid-column: 3;
+    grid-row: 2 / 4;
+    margin-top: 0;
+  }
+
+  .orbit-shell .editor-panel.animation-panel-open .stage-pane > .canvas-scroll,
+  .orbit-shell .editor-panel.animation-panel-open .stage-pane > .stage-speaker-notes-panel {
+    grid-column: 3;
+  }
+
+  .orbit-shell .editor-panel.animation-panel-open .ai-pane {
+    grid-column: 4;
+  }
+
+  .orbit-shell .konva-wrap {
+    min-height: 100%;
+    place-items: center;
+  }
+}
+
+/* AI chat keeps conversation scrolling independently while its neutral
+ * composer remains anchored to the bottom of the assistant panel. */
+.orbit-shell.editor-professional
+  .editor-ai-assistant-panel
+  #editor-ai-chat-panel {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.orbit-shell.editor-professional
+  .editor-ai-assistant-panel
+  .ai-chat-panel {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--redesign-space-2);
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+}
+
+.orbit-shell.editor-professional
+  .editor-ai-assistant-panel
+  .ai-chat-history {
+  min-height: 0;
+  padding: var(--redesign-space-1) 2px var(--redesign-space-2);
+  overflow-y: auto;
+}
+
+.orbit-shell.editor-professional
+  .editor-ai-assistant-panel
+  .ai-chat-composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  min-height: 42px;
+  margin: 0;
+  padding: var(--redesign-space-1) var(--redesign-space-1) var(--redesign-space-1) var(--redesign-space-3);
+  border: 1px solid var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius-md);
+  background: var(--redesign-color-surface-container-high);
+  box-shadow: var(--redesign-shadow-none);
+}
+
+.orbit-shell.editor-professional
+  .editor-ai-assistant-panel
+  .ai-chat-composer:focus-within {
+  border-color: var(--redesign-color-primary);
+  background: var(--redesign-color-surface-container-highest);
+  box-shadow: var(--redesign-shadow-inset-primary);
+}
+
+.orbit-shell.editor-professional
+  .editor-ai-assistant-panel
+  .ai-chat-composer
+  input {
+  min-height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--redesign-color-on-surface);
+}
+
+.orbit-shell.editor-professional
+  .editor-ai-assistant-panel
+  .ai-chat-composer
+  input::placeholder {
+  color: var(--redesign-color-on-surface-variant);
+}
+

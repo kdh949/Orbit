@@ -1,8 +1,8 @@
-import fs from "node:fs";
 import path from "node:path";
 import { createDemoDeck, normalizeRichTextProps } from "@orbit/editor-core";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { readCssBundle } from "../../../../styles/readCssBundle.test-utils";
 
 import { InlineTextEditorOverlay } from "./InlineTextEditorOverlay";
 
@@ -66,9 +66,8 @@ function getRichTextFixture() {
 
 describe("InlineTextEditorOverlay", () => {
   it("keeps the editing surface transparent so slide colors remain visible", () => {
-    const editorCss = fs.readFileSync(
+    const editorCss = readCssBundle(
       path.join(process.cwd(), "src/features/editor/editor-shell.css"),
-      "utf8",
     );
     const rule = editorCss.match(/\.inline-text-editor\s*\{([\s\S]*?)\}/)?.[1];
 

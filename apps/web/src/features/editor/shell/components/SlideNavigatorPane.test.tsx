@@ -1,8 +1,8 @@
 import { createDemoDeck } from "@orbit/editor-core";
-import fs from "node:fs";
 import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { readCssBundle } from "../../../../styles/readCssBundle.test-utils";
 
 import { SlideNavigatorPane } from "./SlideNavigatorPane";
 import { buildSlideRailItems } from "../slideRailModel";
@@ -87,7 +87,7 @@ describe("SlideNavigatorPane", () => {
   });
 
   it("왼쪽 하단 아이콘 버튼은 전문 에디터에서 테두리 없는 스타일을 사용한다", () => {
-    const css = fs.readFileSync(editorShellCssPath, "utf8");
+    const css = readCssBundle(editorShellCssPath);
 
     expect(css).toMatch(
       /\.orbit-shell\.editor-professional \.side-footer > button,[\s\S]*?\.orbit-shell\.editor-professional \.side-footer > \.add-slide-split > button\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*var\(--redesign-shadow-none\);/s

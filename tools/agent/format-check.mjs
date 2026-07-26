@@ -156,14 +156,25 @@ export function classifyFormatStatus({
   currentFormatted,
   baseExists,
   baseFormatted,
+  extractedFromLegacy = false,
 }) {
   if (currentFormatted) {
     return "formatted";
+  }
+  if (extractedFromLegacy) {
+    return "legacy";
   }
   if (!baseExists || baseFormatted) {
     return "regression";
   }
   return "legacy";
+}
+
+export function isLegacyFormatFragment(content, legacySources) {
+  return (
+    content.trim().length > 0 &&
+    legacySources.some((source) => source.includes(content))
+  );
 }
 
 async function isFormatted(path, content) {
@@ -188,6 +199,16 @@ function readBaseContent(mergeBase, path) {
 async function checkFormatting(files, mergeBase, renameSources) {
   const regressions = [];
   const legacy = [];
+  const baseContents = new Map(
+    files.map((path) => [path, readBaseContent(mergeBase, path)]),
+  );
+  const legacySources = [];
+
+  for (const [path, content] of baseContents) {
+    if (content !== undefined && !(await isFormatted(path, content))) {
+      legacySources.push(content);
+    }
+  }
 
   for (const path of files) {
     const currentContent = readFileSync(join(repositoryRoot, path), "utf8");
@@ -195,13 +216,16 @@ async function checkFormatting(files, mergeBase, renameSources) {
     const basePath = renameSources.get(path) ?? path;
     const baseContent = currentFormatted
       ? undefined
-      : readBaseContent(mergeBase, basePath);
+      : (baseContents.get(basePath) ?? readBaseContent(mergeBase, basePath));
     const baseFormatted =
       baseContent === undefined ? false : await isFormatted(path, baseContent);
     const status = classifyFormatStatus({
       currentFormatted,
       baseExists: baseContent !== undefined,
       baseFormatted,
+      extractedFromLegacy:
+        baseContent === undefined &&
+        isLegacyFormatFragment(currentContent, legacySources),
     });
 
     if (status === "regression") {
