@@ -44,6 +44,7 @@ import {
   RehearsalReportPage,
   shouldLoadPracticeGoalSummary,
 } from "./report/RehearsalReportPage";
+import { RehearsalCompletionScreen } from "./completion/RehearsalCompletionScreen";
 import {
   applyLiveTranscriptEvent,
   confirmKeywordOccurrenceMatches,
@@ -57,7 +58,6 @@ import {
 import {
   LiveSttAdapterError,
   RehearsalFailureScreen,
-  RehearsalCompletionScreen,
   RehearsalWorkspace,
   SherpaLiveSttAdapter,
   buildP3SessionSlides,
