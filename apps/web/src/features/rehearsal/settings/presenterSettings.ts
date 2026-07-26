@@ -8,7 +8,7 @@ import {
 import {
   type HybridCoverageConfig,
   defaultSpeechTrackingConfig
-} from "../speech/speechTrackingConfig";
+} from "../../../runtime/speech/tracking/speechTrackingConfig";
 import type { LiveSttEngineId } from "../../../runtime/speech/stt/liveSttPort";
 import { defaultLiveSttEngineId } from "../../../runtime/speech/stt/liveSttEngineRegistry";
 

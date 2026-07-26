@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { PronunciationLexiconEntry, SemanticCue } from "@orbit/shared";
+import type { SemanticCue } from "@orbit/shared/deck";
+import type { PronunciationLexiconEntry } from "@orbit/shared/pronunciation";
 
 import { buildSpeechTrackingBiasPhrases } from "./speechBiasPhrases";
 

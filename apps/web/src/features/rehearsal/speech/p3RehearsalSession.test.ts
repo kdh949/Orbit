@@ -20,7 +20,7 @@ import { createMockSemanticCueNliProvider } from "./mockSemanticCueNliProvider";
 import type { SemanticUtteranceDebugState } from "./semanticSpeechDebug";
 import type { SemanticUtteranceDecision } from "./semanticUtteranceDecision";
 import type { SemanticUtteranceMatcher, SemanticUtteranceMatch } from "./semanticUtteranceMatcher";
-import type { SpeechTrackingEvent } from "./speechTrackingEvents";
+import type { SpeechTrackingEvent } from "../../../runtime/speech/tracking/speechTrackingEvents";
 
 describe("p3RehearsalSession", () => {
   it("does not commit timer, tracker, or log state when STT start fails", async () => {

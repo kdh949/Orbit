@@ -1,7 +1,7 @@
 import {
   matchPronunciationAliases,
   type PronunciationLexiconEntry,
-} from "@orbit/shared";
+} from "@orbit/shared/pronunciation";
 
 export function toCanonicalPronunciationMatchingText(
   originalText: string,

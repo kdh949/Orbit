@@ -256,7 +256,7 @@ import {
   type RehearsalTimingSnapshot,
 } from "./panel/rehearsalTiming";
 import { usePresenterSettings } from "./settings/presenterSettings";
-import { createDefaultPhraseExtractor } from "./speech/phraseExtractor";
+import { createDefaultPhraseExtractor } from "../../runtime/speech/tracking/phraseExtractor";
 import {
   createP3RehearsalSession,
   type P3RehearsalSession,
@@ -296,11 +296,11 @@ import {
   type PauseDetectorEvent,
   type PauseDetectorSnapshot,
 } from "./speech/pauseDetector";
-import { defaultSpeechTrackingConfig } from "./speech/speechTrackingConfig";
+import { defaultSpeechTrackingConfig } from "../../runtime/speech/tracking/speechTrackingConfig";
 import {
   matchKeywordOccurrenceTriggers,
   type KeywordOccurrenceRuntimeMatch,
-} from "./speech/keywordOccurrenceRuntime";
+} from "../../runtime/speech/tracking/keywordOccurrenceRuntime";
 import {
   getPresenterTimingProgress,
   PresenterStageSection,
@@ -312,8 +312,8 @@ import type {
   ExtractedSentence,
   SpeechTrackerSnapshot,
   SpeechTrackingEvent,
-} from "./speech/speechTrackingEvents";
-import type { PrompterProgressSnapshot } from "./speech/prompterProgressTracker";
+} from "../../runtime/speech/tracking/speechTrackingEvents";
+import type { PrompterProgressSnapshot } from "../../runtime/speech/tracking/prompterProgressTracker";
 import { PracticeGoalSummary } from "../coaching/PracticeGoalSummary";
 import { PracticeGoalReminder } from "../coaching/PracticeGoalReminder";
 import { fetchPresentationBrief } from "../coaching/presentationBriefApi";

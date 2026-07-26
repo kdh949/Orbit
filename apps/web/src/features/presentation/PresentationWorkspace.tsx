@@ -112,12 +112,12 @@ import {
   resetAdvanceControllerForSlide,
   type AdvanceControllerState,
 } from "../rehearsal/advance/advanceController";
-import { createDefaultPhraseExtractor } from "../rehearsal/speech/phraseExtractor";
+import { createDefaultPhraseExtractor } from "../../runtime/speech/tracking/phraseExtractor";
 import {
   estimateScriptProgressOffset,
   matchKeywordOccurrenceTriggers,
-} from "../rehearsal/speech/keywordOccurrenceRuntime";
-import type { SpeechTrackerSnapshot } from "../rehearsal/speech/speechTrackingEvents";
+} from "../../runtime/speech/tracking/keywordOccurrenceRuntime";
+import type { SpeechTrackerSnapshot } from "../../runtime/speech/tracking/speechTrackingEvents";
 import { createIdleSemanticDebugState } from "../rehearsal/speech/semanticSpeechDebug";
 import {
   PresenterStatusShell,

@@ -1,4 +1,4 @@
-import { splitFocusedPracticeSentences } from "@orbit/shared";
+import { splitFocusedPracticeSentences } from "@orbit/shared/coaching";
 
 export type CanonicalScriptSentence = {
   sentenceId: string;

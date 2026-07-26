@@ -5,10 +5,10 @@ import type { LiveSttAudioLevelEvent } from "../../../../runtime/speech/stt/live
 import {
   createSpeechTracker,
   type SpeechTracker
-} from "../../../rehearsal/speech/speechTracker";
+} from "../../../../runtime/speech/tracking/speechTracker";
 import type {
   SpeechTrackerSnapshot
-} from "../../../rehearsal/speech/speechTrackingEvents";
+} from "../../../../runtime/speech/tracking/speechTrackingEvents";
 import { createLiveSttPort } from "../../../../runtime/speech/stt/liveSttEngineRegistry";
 import {
   type LiveSttBiasPhrase,

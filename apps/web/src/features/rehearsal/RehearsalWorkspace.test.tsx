@@ -88,7 +88,7 @@ import { p0AnimationDeck } from "../../runtime/presentation/slideshow/__fixtures
 import { getNextPresenterStepState } from "../../runtime/presentation/slideshow/presenterStepNavigation";
 import { normalizeLiveTranscriptText } from "../../runtime/speech/stt/liveTranscriptText";
 import { createPauseDetector } from "./speech/pauseDetector";
-import { matchKeywordOccurrenceTriggers } from "./speech/keywordOccurrenceRuntime";
+import { matchKeywordOccurrenceTriggers } from "../../runtime/speech/tracking/keywordOccurrenceRuntime";
 import {
   confirmRehearsalCommandCandidate,
   createRehearsalCommandConfirmationState,

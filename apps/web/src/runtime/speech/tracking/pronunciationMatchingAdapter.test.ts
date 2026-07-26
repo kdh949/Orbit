@@ -1,4 +1,4 @@
-import type { PronunciationLexiconEntry } from "@orbit/shared";
+import type { PronunciationLexiconEntry } from "@orbit/shared/pronunciation";
 import { describe, expect, it } from "vitest";
 
 import { toCanonicalPronunciationMatchingText } from "./pronunciationMatchingAdapter";

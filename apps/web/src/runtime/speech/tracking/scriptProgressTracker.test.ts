@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createScriptProgressTracker } from "./scriptProgressTracker";
-import type { PronunciationLexiconEntry } from "@orbit/shared";
+import type { PronunciationLexiconEntry } from "@orbit/shared/pronunciation";
 
 describe("scriptProgressTracker", () => {
   it("partial 결과로 원문 위치를 단조 증가시킨다", () => {

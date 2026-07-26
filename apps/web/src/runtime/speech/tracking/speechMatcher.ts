@@ -3,7 +3,7 @@ import {
   normalizePronunciationText,
   type PronunciationLexiconEntry,
   type PronunciationLexiconSnapshot,
-} from "@orbit/shared";
+} from "@orbit/shared/pronunciation";
 
 import { defaultSpeechTrackingConfig } from "./speechTrackingConfig";
 import { normalizeSpeechText } from "./phraseExtractor";

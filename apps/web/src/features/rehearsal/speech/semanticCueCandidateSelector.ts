@@ -1,6 +1,6 @@
 import type { SemanticCue } from "@orbit/shared";
 
-import { normalizeSpeechText } from "./phraseExtractor";
+import { normalizeSpeechText } from "../../../runtime/speech/tracking/phraseExtractor";
 import {
   semanticCueRuntimeConfig,
   type SemanticCueRuntimeConfig

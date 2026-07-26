@@ -3,7 +3,7 @@ import type {
   RehearsalSemanticCueDecision,
   SemanticCapabilityEvent
 } from "@orbit/shared";
-import type { AdviceEventType } from "./speechTrackingConfig";
+import type { AdviceEventType } from "../../../runtime/speech/tracking/speechTrackingConfig";
 
 export type RehearsalLogSlide = {
   slideId: string;

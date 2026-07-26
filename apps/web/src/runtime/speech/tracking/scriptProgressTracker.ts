@@ -1,5 +1,5 @@
-import type { PronunciationLexiconEntry } from "@orbit/shared";
-import type { LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
+import type { PronunciationLexiconEntry } from "@orbit/shared/pronunciation";
+import type { LiveSttResult } from "../stt/liveSttPort";
 import { createCanonicalScriptSentenceIndex } from "./canonicalScriptSentenceIndex";
 import { toCanonicalPronunciationMatchingText } from "./pronunciationMatchingAdapter";
 import type { ScriptProgressSnapshot } from "./speechTrackingEvents";

@@ -14,7 +14,7 @@ import {
   buildBiasPhrasesForSlide,
   createP3RehearsalSession
 } from "./p3RehearsalSession";
-import { createSpeechTracker } from "./speechTracker";
+import { createSpeechTracker } from "../../../runtime/speech/tracking/speechTracker";
 
 describe("P3 speech fixture harness", () => {
   it("drives sentence and keyword state from deterministic final transcripts", async () => {
