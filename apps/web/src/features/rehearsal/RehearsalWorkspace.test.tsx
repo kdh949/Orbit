@@ -9,31 +9,16 @@ import { readCssBundle } from "../../styles/readCssBundle.test-utils";
 import { RehearsalCompletionScreen } from "./completion/RehearsalCompletionScreen";
 import { getPreflightMicrophonePermissionHint } from "./preflight/RehearsalPreflightScreen";
 import {
-  applyLiveTranscriptEvent,
   confirmKeywordOccurrenceMatches,
   createKeywordOccurrenceAnimationCueEvent,
   createLiveKeywordOccurrenceState,
-  createLiveTranscriptBuffer,
   evaluateLiveTranscript,
   getOccurrenceTriggerProgress,
-  renderLiveTranscriptBuffer,
 } from "../../runtime/speech/tracking/liveTranscriptAnalysis";
 import { RehearsalWorkspace } from "./RehearsalWorkspace";
 import { RehearsalFailureScreen } from "./completion/RehearsalFailureScreen";
-import {
-  buildP3SessionSlides,
-  getHighlightedKeywordOccurrencesForSlide,
-  getRehearsalPrompterRows,
-  getRehearsalTimingProgress,
-  getRemainingTriggerStepsForSlide,
-  resetRehearsalTimerState,
-  shouldRenderRehearsalThumbnailImage,
-} from "./rehearsalWorkspaceModel";
-import {
-  getRehearsalFinishPath,
-  getRehearsalPresenterWindowPath,
-  getRehearsalReportPath,
-} from "./rehearsalRoutes";
+import { getHighlightedKeywordOccurrencesForSlide } from "./rehearsalWorkspaceModel";
+import { getRehearsalPresenterWindowPath } from "./rehearsalRoutes";
 import { p0AnimationDeck } from "../../runtime/presentation/slideshow/__fixtures__/animationDeck";
 import { matchKeywordOccurrenceTriggers } from "../../runtime/speech/tracking/keywordOccurrenceRuntime";
 

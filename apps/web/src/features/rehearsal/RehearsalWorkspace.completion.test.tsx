@@ -1,7 +1,6 @@
 import { createDemoDeck } from "@orbit/editor-core";
 import { legacyRehearsalSlideSpeakingRate } from "@orbit/shared/coaching";
 import {
-  createRehearsalEvaluationSnapshot,
   legacyRehearsalReportMetricsDefaults,
   legacyRehearsalSilenceAnalysis,
   legacyRehearsalVolumeAnalysis,
@@ -13,35 +12,15 @@ import { forwardRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RehearsalReportDocument } from "../reports/RehearsalReportDocument";
-import {
-  RehearsalFlowError,
-  cancelRehearsalRun,
-  createRehearsalRun,
-  createRehearsalRunForUpload,
-  fetchOrCreateRehearsalDeck,
-  fetchRehearsalReport,
-  prepareRehearsalEvaluationRun,
-  resolveRehearsalReportLoadState,
-  retryRehearsalSemanticEvaluation,
-  runRehearsalUploadFlow,
-} from "./api/rehearsalApi";
+import { resolveRehearsalReportLoadState } from "./api/rehearsalApi";
 import {
   RehearsalReportPage,
   shouldLoadPracticeGoalSummary,
 } from "./report/RehearsalReportPage";
 import { RehearsalWorkspace } from "./RehearsalWorkspace";
-import {
-  buildP3SessionSlides,
-  getHighlightedKeywordOccurrencesForSlide,
-  getRehearsalPrompterRows,
-  getRehearsalTimingProgress,
-  getRemainingTriggerStepsForSlide,
-  resetRehearsalTimerState,
-  shouldRenderRehearsalThumbnailImage,
-} from "./rehearsalWorkspaceModel";
+import { shouldRenderRehearsalThumbnailImage } from "./rehearsalWorkspaceModel";
 import {
   getRehearsalFinishPath,
-  getRehearsalPresenterWindowPath,
   getRehearsalReportPath,
 } from "./rehearsalRoutes";
 

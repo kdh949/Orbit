@@ -1,12 +1,5 @@
 import { createDemoDeck } from "@orbit/editor-core";
-import {
-  createRehearsalEvaluationSnapshot,
-  legacyRehearsalReportMetricsDefaults,
-  legacyRehearsalSilenceAnalysis,
-  legacyRehearsalVolumeAnalysis,
-  type RehearsalReport,
-  type RehearsalRun,
-} from "@orbit/shared/rehearsals";
+import { createRehearsalEvaluationSnapshot } from "@orbit/shared/rehearsals";
 import type { ReactNode } from "react";
 import { forwardRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -16,22 +9,16 @@ import {
 } from "./stt/liveSttBias";
 import {
   applyLiveTranscriptEvent,
-  confirmKeywordOccurrenceMatches,
-  createKeywordOccurrenceAnimationCueEvent,
-  createLiveKeywordOccurrenceState,
   createLiveTranscriptBuffer,
   evaluateLiveTranscript,
-  getOccurrenceTriggerProgress,
   renderLiveTranscriptBuffer,
 } from "../../runtime/speech/tracking/liveTranscriptAnalysis";
 import {
   buildP3SessionSlides,
-  getHighlightedKeywordOccurrencesForSlide,
   getRehearsalPrompterRows,
   getRehearsalTimingProgress,
   getRemainingTriggerStepsForSlide,
   resetRehearsalTimerState,
-  shouldRenderRehearsalThumbnailImage,
 } from "./rehearsalWorkspaceModel";
 import { getRehearsalTeleprompterScrollBehavior } from "../presenter-shell/presenter/RehearsalScriptTeleprompter";
 import {

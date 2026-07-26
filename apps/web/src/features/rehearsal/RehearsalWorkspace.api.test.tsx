@@ -20,19 +20,10 @@ import {
   fetchOrCreateRehearsalDeck,
   fetchRehearsalReport,
   prepareRehearsalEvaluationRun,
-  resolveRehearsalReportLoadState,
   retryRehearsalSemanticEvaluation,
   runRehearsalUploadFlow,
 } from "./api/rehearsalApi";
-import {
-  buildP3SessionSlides,
-  getHighlightedKeywordOccurrencesForSlide,
-  getRehearsalPrompterRows,
-  getRehearsalTimingProgress,
-  getRemainingTriggerStepsForSlide,
-  resetRehearsalTimerState,
-  shouldRenderRehearsalThumbnailImage,
-} from "./rehearsalWorkspaceModel";
+import { buildP3SessionSlides } from "./rehearsalWorkspaceModel";
 
 const createdAt = "2026-06-29T00:00:00.000Z";
 
