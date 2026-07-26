@@ -9,7 +9,7 @@ import {
 import type {
   SpeechTrackerSnapshot
 } from "../../../rehearsal/speech/speechTrackingEvents";
-import { createLiveSttPort } from "../../../rehearsal/stt/liveSttEngineRegistry";
+import { createLiveSttPort } from "../../../../runtime/speech/stt/liveSttEngineRegistry";
 import {
   type LiveSttBiasPhrase,
   type LiveSttEngineId,

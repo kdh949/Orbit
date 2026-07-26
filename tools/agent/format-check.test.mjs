@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   classifyFormatStatus,
   isSupportedFormatPath,
+  parseRenameSources,
   selectFormatFiles,
 } from "./format-check.mjs";
 
@@ -37,6 +38,20 @@ test("변경 경로를 중복 제거하고 존재하는 파일만 정렬한다",
   );
 
   assert.deepEqual(selected, ["apps/web/src/App.tsx", "README.md"]);
+});
+
+test("Git name-status 출력에서 rename 원본을 복원한다", () => {
+  assert.deepEqual(
+    parseRenameSources(
+      "R097\0apps/web/src/old.ts\0apps/web/src/runtime/new.ts\0" +
+        "M\0apps/web/src/App.tsx\0" +
+        "R100\0old.md\0docs/new.md\0",
+    ),
+    new Map([
+      ["apps/web/src/runtime/new.ts", "apps/web/src/old.ts"],
+      ["docs/new.md", "old.md"],
+    ]),
+  );
 });
 
 test("현재 파일이 포맷되었으면 base 상태와 무관하게 통과한다", () => {

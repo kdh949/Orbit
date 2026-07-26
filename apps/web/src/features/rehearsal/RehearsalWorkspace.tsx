@@ -150,10 +150,10 @@ import {
   type LiveSttPort,
   type LiveSttResult,
 } from "../../runtime/speech/stt/liveSttPort";
-import { createLiveSttPort } from "./stt/liveSttEngineRegistry";
+import { createLiveSttPort } from "../../runtime/speech/stt/liveSttEngineRegistry";
 import { fetchLiveSttRuntimeConfig } from "../../runtime/speech/stt/liveSttRuntimeConfig";
 import { normalizeLiveTranscriptText } from "../../runtime/speech/stt/liveTranscriptText";
-import { SherpaLiveSttPort } from "./stt/sherpaLiveSttPort";
+import { SherpaLiveSttPort } from "../../runtime/speech/stt/sherpa/sherpaLiveSttPort";
 import {
   getKeywordOccurrenceTriggerIdsForSlide,
   resolveCueTriggeredActions,
@@ -329,7 +329,7 @@ export {
   SherpaLiveSttAdapter,
   SherpaOnnxLiveSttAdapter,
   resampleFloat32Audio,
-} from "./sherpaOnnxLiveSttAdapter";
+} from "../../runtime/speech/stt/sherpa/sherpaOnnxLiveSttAdapter";
 export { getRehearsalTeleprompterScrollBehavior } from "./presenter/RehearsalScriptTeleprompter";
 export { getRehearsalReportPath } from "./rehearsalRoutes";
 

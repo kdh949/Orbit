@@ -127,6 +127,45 @@ export function collectChangedPaths(baseRef) {
   return pathGroups.flatMap(splitNullSeparated);
 }
 
+export function parseRenameSources(output) {
+  const fields = splitNullSeparated(output);
+  const renameSources = new Map();
+
+  for (let index = 0; index < fields.length; index += 1) {
+    const status = fields[index];
+    if (!status?.startsWith("R")) {
+      index += 1;
+      continue;
+    }
+
+    const sourcePath = fields[index + 1];
+    const targetPath = fields[index + 2];
+    if (sourcePath && targetPath) {
+      renameSources.set(targetPath, sourcePath);
+    }
+    index += 2;
+  }
+
+  return renameSources;
+}
+
+function collectRenameSources(baseRef) {
+  const mergeBase = resolveMergeBase(baseRef);
+  const renameSources = new Map();
+  const outputs = [
+    git(["diff", "--name-status", "--find-renames", "-z", mergeBase, "HEAD"]),
+    git(["diff", "--cached", "--name-status", "--find-renames", "-z"]),
+  ];
+
+  for (const output of outputs) {
+    for (const [targetPath, sourcePath] of parseRenameSources(output)) {
+      renameSources.set(targetPath, sourcePath);
+    }
+  }
+
+  return renameSources;
+}
+
 export function resolveMergeBase(baseRef) {
   return git(["merge-base", baseRef, "HEAD"]).trim();
 }
@@ -163,16 +202,17 @@ function readBaseContent(mergeBase, path) {
   }
 }
 
-async function checkFormatting(files, mergeBase) {
+async function checkFormatting(files, mergeBase, renameSources) {
   const regressions = [];
   const legacy = [];
 
   for (const path of files) {
     const currentContent = readFileSync(join(repositoryRoot, path), "utf8");
     const currentFormatted = await isFormatted(path, currentContent);
+    const basePath = renameSources.get(path) ?? path;
     const baseContent = currentFormatted
       ? undefined
-      : readBaseContent(mergeBase, path);
+      : readBaseContent(mergeBase, basePath);
     const baseFormatted =
       baseContent === undefined ? false : await isFormatted(path, baseContent);
     const status = classifyFormatStatus({
@@ -214,6 +254,7 @@ async function checkFormatting(files, mergeBase) {
 async function main() {
   const baseRef = resolveBaseRef(parseBaseArgument(process.argv.slice(2)));
   const mergeBase = resolveMergeBase(baseRef);
+  const renameSources = collectRenameSources(baseRef);
   const files = selectFormatFiles(collectChangedPaths(baseRef), (path) =>
     existsSync(join(repositoryRoot, path)),
   );
@@ -226,7 +267,7 @@ async function main() {
   console.log(
     `[format-check] ${files.length}개 변경 파일 검사. base=${baseRef}`,
   );
-  return checkFormatting(files, mergeBase);
+  return checkFormatting(files, mergeBase, renameSources);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

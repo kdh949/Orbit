@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { createLiveSttPort, defaultLiveSttEngineId } from "./liveSttEngineRegistry";
-import { MoonshineLiveSttPort } from "../../../runtime/speech/stt/moonshineLiveSttPort";
-import { OpenAiRealtimeLiveSttPort } from "../../../runtime/speech/stt/openAiRealtimeLiveSttPort";
-import { RerankingLiveSttPort } from "../../../runtime/speech/stt/rerankingLiveSttPort";
-import { SherpaLiveSttPort } from "./sherpaLiveSttPort";
+import { MoonshineLiveSttPort } from "./moonshineLiveSttPort";
+import { OpenAiRealtimeLiveSttPort } from "./openAiRealtimeLiveSttPort";
+import { RerankingLiveSttPort } from "./rerankingLiveSttPort";
+import { SherpaLiveSttPort } from "./sherpa/sherpaLiveSttPort";
 
 describe("liveSttEngineRegistry", () => {
   it("기본 엔진은 OpenAI Realtime이다", () => {
