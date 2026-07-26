@@ -143,9 +143,17 @@ export function collectStructuralMetrics(rootDirectory) {
       sourceFiles,
       /(?:from\s+["']@orbit\/shared["']|require\(["']@orbit\/shared["']\))/
     ),
+    sharedSubpathImportFiles: countMatchingFiles(
+      sourceFiles,
+      /(?:from\s+["']@orbit\/shared\/[^"']+["']|require\(["']@orbit\/shared\/[^"']+["']\))/
+    ),
     editorCoreRootImportFiles: countMatchingFiles(
       sourceFiles,
       /(?:from\s+["']@orbit\/editor-core["']|require\(["']@orbit\/editor-core["']\))/
+    ),
+    editorCoreSubpathImportFiles: countMatchingFiles(
+      sourceFiles,
+      /(?:from\s+["']@orbit\/editor-core\/[^"']+["']|require\(["']@orbit\/editor-core\/[^"']+["']\))/
     ),
     sourceCycles: findSourceCycles(root).length,
     githubWorkflowFiles: countFiles(
@@ -201,16 +209,27 @@ export function validateBenchmarkSnapshot(snapshot) {
   if (typeof snapshot?.structural !== "object" || snapshot.structural === null) {
     issues.push("structural metric이 필요합니다.");
   } else {
-    for (const key of [
+    const requiredMetrics = [
       "directPackageSourceImportFiles",
       "sharedRootImportFiles",
       "editorCoreRootImportFiles",
-      "sourceCycles",
       "githubWorkflowFiles",
       "agentDomainManifests",
       "scopedAgentInstructionFiles"
-    ]) {
+    ];
+    const optionalMetrics = [
+      "sharedSubpathImportFiles",
+      "editorCoreSubpathImportFiles",
+      "sourceCycles"
+    ];
+    for (const key of requiredMetrics) {
       if (!Number.isInteger(snapshot.structural[key]) || snapshot.structural[key] < 0) {
+        issues.push(`${key}는 0 이상의 정수여야 합니다.`);
+      }
+    }
+    for (const key of optionalMetrics) {
+      const value = snapshot.structural[key];
+      if (value !== undefined && (!Number.isInteger(value) || value < 0)) {
         issues.push(`${key}는 0 이상의 정수여야 합니다.`);
       }
     }
@@ -243,10 +262,10 @@ function flattenStructuralMetrics(structural) {
 export function compareSnapshots(baseline, current) {
   const baselineMetrics = flattenStructuralMetrics(baseline.structural);
   const currentMetrics = flattenStructuralMetrics(current.structural);
-  return Object.keys(baselineMetrics)
+  return [...new Set([...Object.keys(baselineMetrics), ...Object.keys(currentMetrics)])]
     .sort()
     .map((metric) => {
-      const before = baselineMetrics[metric];
+      const before = baselineMetrics[metric] ?? null;
       const after = currentMetrics[metric] ?? null;
       return {
         metric,
