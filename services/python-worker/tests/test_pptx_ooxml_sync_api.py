@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app.main as api_module
+import app.routers.pptx as pptx_router
 from app.ai.pptx_ooxml_generation import PptxOoxmlSyncResult
 
 
@@ -44,7 +45,7 @@ def captured_sync(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         )
         return PptxOoxmlSyncResult()
 
-    monkeypatch.setattr(api_module, "sync_pptx_ooxml", fake_sync)
+    monkeypatch.setattr(pptx_router, "sync_pptx_ooxml", fake_sync)
     return captured
 
 
@@ -147,7 +148,7 @@ def test_reorder_acknowledgment_omits_element_locator_nulls(
             appliedOperations=[{"operationType": "reorder_slides"}],
         )
 
-    monkeypatch.setattr(api_module, "sync_pptx_ooxml", fake_sync)
+    monkeypatch.setattr(pptx_router, "sync_pptx_ooxml", fake_sync)
 
     response = post_sync(
         operations=[
@@ -189,7 +190,7 @@ def test_created_notes_page_locator_uses_bounded_response_fields(
             ],
         )
 
-    monkeypatch.setattr(api_module, "sync_pptx_ooxml", fake_sync)
+    monkeypatch.setattr(pptx_router, "sync_pptx_ooxml", fake_sync)
 
     response = post_sync()
 
@@ -216,7 +217,7 @@ def test_json_file_part_over_explicit_limit_is_bounded(
     captured_sync: dict[str, Any],
 ) -> None:
     del captured_sync
-    monkeypatch.setattr(api_module, "TEMPLATE_BLUEPRINT_MAX_BYTES", 128)
+    monkeypatch.setattr(pptx_router, "TEMPLATE_BLUEPRINT_MAX_BYTES", 128)
 
     response = post_sync(template_blueprint={"large": "x" * 256})
 

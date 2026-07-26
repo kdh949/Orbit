@@ -14,6 +14,7 @@ from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 import app.main as api_module
+import app.routers.ai_deck as ai_deck_router
 import app.ai.deck_generation.design_planning as design_planning_module
 import app.ai.deck_generation.source_grounding as source_grounding_module
 from app.ai.deck_pptx_export import DeckPptxExportRequest, export_deck_pptx
@@ -4946,7 +4947,7 @@ def test_generate_deck_endpoint_uses_payload_image_review_mode(
         captured["mode"] = kwargs["image_review_mode"]
         return response_payload
 
-    monkeypatch.setattr(api_module, "generate_deck", fake_generate_deck)
+    monkeypatch.setattr(ai_deck_router, "generate_deck", fake_generate_deck)
 
     response = client().post(
         "/ai/generate-deck",

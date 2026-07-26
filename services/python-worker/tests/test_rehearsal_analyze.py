@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 import app.main as api_module
+import app.routers.rehearsal as rehearsal_router
 import app.rehearsal as rehearsal_module
 from app.audio.analysis.models import RehearsalSilenceAnalysis
 from app.audio.transcribe import PronunciationContextTerm, TranscriptSegment
@@ -618,7 +619,7 @@ def test_rehearsal_analyze_endpoint_returns_slide_speaking_rate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        api_module,
+        rehearsal_router,
         "generate_rehearsal_coaching",
         lambda **_kwargs: RehearsalCoachingResult(
             status="succeeded",

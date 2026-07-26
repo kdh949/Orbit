@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 
 import app.main as api_module
+import app.routers.ai_deck as ai_deck_router
 from app.ai.deck_generation.content_planning import (
     deck_content_prompt,
     story_source_records,
@@ -65,7 +66,7 @@ def test_staged_retrieval_uses_full_query_balances_files_and_keeps_late_text(
         captured.update(kwargs)
         return candidates, EmbeddingResult(status="succeeded", embeddings=[[0.1]])
 
-    monkeypatch.setattr(api_module, "search_reference_chunks_by_file", fake_search)
+    monkeypatch.setattr(ai_deck_router, "search_reference_chunks_by_file", fake_search)
     request = GenerateDeckRequest(
         projectId="project-a",
         topic="발표 주제",
@@ -123,7 +124,7 @@ def test_policy_selection_limits_and_fallbacks(
         for index in range(3)
     ]
     monkeypatch.setattr(
-        api_module,
+        ai_deck_router,
         "search_reference_chunks_by_file",
         lambda **_kwargs: (
             candidates,
@@ -161,7 +162,7 @@ def test_references_only_requires_an_indexed_chunk_for_every_file(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        api_module,
+        ai_deck_router,
         "search_reference_chunks_by_file",
         lambda **_kwargs: (
             [chunk("file-1", 0, 0.9, "indexed")],
@@ -193,7 +194,7 @@ def test_references_first_degrades_and_user_input_only_skips_search(
         calls += 1
         return [], EmbeddingResult(status="failed")
 
-    monkeypatch.setattr(api_module, "search_reference_chunks_by_file", failed_search)
+    monkeypatch.setattr(ai_deck_router, "search_reference_chunks_by_file", failed_search)
     request = GenerateDeckRequest(
         projectId="project-a",
         topic="topic",
@@ -228,7 +229,7 @@ def test_references_first_degrades_and_user_input_only_skips_search(
 
 def test_degraded_stage_adds_safe_warning(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        api_module,
+        ai_deck_router,
         "search_reference_chunks_by_file",
         lambda **_kwargs: ([], EmbeddingResult(status="failed")),
     )
@@ -241,7 +242,7 @@ def test_degraded_stage_adds_safe_warning(monkeypatch: pytest.MonkeyPatch) -> No
             sourceRecords=raw_input.source_records,
         )
 
-    monkeypatch.setattr(api_module, "run_source_grounding_stage", fake_stage)
+    monkeypatch.setattr(ai_deck_router, "run_source_grounding_stage", fake_stage)
     api_module.app.state.config = config()
     result = api_module.source_grounding_stage(
         SourceGroundingStageInput(
