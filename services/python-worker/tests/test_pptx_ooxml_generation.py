@@ -38,7 +38,7 @@ from app.ai.pptx_package_security import (
     PPTX_EXTERNAL_RELATIONSHIP_BLOCKED,
 )
 from app.ai.pptx_render_resource_limits import PptxRenderResourceLimitError
-import app.main as api_module
+import app.routers.pptx as pptx_router
 from app.main import app
 
 IMPORT_FIDELITY_NOTES_FIXTURE = (
@@ -79,7 +79,7 @@ def test_generation_endpoint_validates_and_forwards_import_preference(
             qualityReport={},
         )
 
-    monkeypatch.setattr(api_module, "generate_pptx_ooxml", fake_generate)
+    monkeypatch.setattr(pptx_router, "generate_pptx_ooxml", fake_generate)
     response = TestClient(app).post(
         "/ai/pptx-ooxml-generation",
         files={"file": ("template.pptx", b"synthetic", "application/octet-stream")},
@@ -114,7 +114,7 @@ def test_generation_endpoint_rejects_unknown_import_preference(
             qualityReport={},
         )
 
-    monkeypatch.setattr(api_module, "generate_pptx_ooxml", fake_generate)
+    monkeypatch.setattr(pptx_router, "generate_pptx_ooxml", fake_generate)
 
     response = TestClient(app).post(
         "/ai/pptx-ooxml-generation",
