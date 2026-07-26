@@ -108,7 +108,7 @@ export function parseRenameSources(output) {
 
   for (let index = 0; index < fields.length; index += 1) {
     const status = fields[index];
-    if (!status?.startsWith("R")) {
+    if (!status || (!status.startsWith("R") && !status.startsWith("C"))) {
       index += 1;
       continue;
     }
@@ -128,8 +128,15 @@ function collectRenameSources(baseRef) {
   const mergeBase = resolveMergeBase(baseRef);
   const renameSources = new Map();
   const outputs = [
-    git(["diff", "--name-status", "--find-renames", "-z", mergeBase, "HEAD"]),
-    git(["diff", "--cached", "--name-status", "--find-renames", "-z"]),
+    git([
+      "diff",
+      "--name-status",
+      "--find-copies-harder",
+      "-z",
+      mergeBase,
+      "HEAD",
+    ]),
+    git(["diff", "--cached", "--name-status", "--find-copies-harder", "-z"]),
   ];
 
   for (const output of outputs) {
