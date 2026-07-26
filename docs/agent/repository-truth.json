@@ -3,8 +3,14 @@
   "activeDocs": [
     "README.md",
     "AGENTS.md",
+    "CLAUDE.md",
+    "apps/api/AGENTS.md",
+    "apps/api/CLAUDE.md",
     "apps/web/AGENTS.md",
+    "apps/web/CLAUDE.md",
     "apps/web/DESIGN.md",
+    "apps/worker/AGENTS.md",
+    "apps/worker/CLAUDE.md",
     "docs/contracts.md",
     "docs/demo-standards.md",
     "docs/git-rules.md",
@@ -17,7 +23,13 @@
     "docs/testing/test-matrix.md",
     "docs/deployment.md",
     "docs/spikes/on-device-stt.md",
-    "docs/orbit-design-system.md"
+    "docs/orbit-design-system.md",
+    "packages/editor-core/AGENTS.md",
+    "packages/editor-core/CLAUDE.md",
+    "packages/shared/AGENTS.md",
+    "packages/shared/CLAUDE.md",
+    "services/python-worker/AGENTS.md",
+    "services/python-worker/CLAUDE.md"
   ],
   "workflowClaimDocs": [
     "README.md",
