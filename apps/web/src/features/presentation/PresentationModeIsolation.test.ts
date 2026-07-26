@@ -2,7 +2,9 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const presentationWorkspaceSource = read("./PresentationWorkspace.tsx");
+const presentationWorkspaceSource = read(
+  "./PresentationWorkspaceController.tsx",
+);
 const presentationApiSource = read("./presentationApi.ts");
 const presentationProcessorSource = read(
   "../../../../worker/src/presentation-analysis.processor.ts",

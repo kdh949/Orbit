@@ -65,7 +65,7 @@ import {
   isRehearsalEntryPath,
   rehearsalNavigationRequestEvent,
 } from "./features/reports/reportUtils";
-import { PresentationWorkspace } from "./features/presentation/PresentationWorkspace";
+import { PresentationWorkspace } from "./features/presentation/public";
 import { PresentationReportPage } from "./features/presentation/PresentationReportPage";
 import { AudienceSessionPage } from "./pages/audience/AudienceSessionPage";
 import { PresentWindow } from "./features/presenter-shell/presenter/PresentWindow";

@@ -7,8 +7,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { PresentationWorkspace } from "./PresentationWorkspace";
 
-const presentationWorkspaceSourcePath = fileURLToPath(
-  new URL("./PresentationWorkspace.tsx", import.meta.url),
+const presentationWorkspaceControllerSourcePath = fileURLToPath(
+  new URL("./PresentationWorkspaceController.tsx", import.meta.url),
 );
 
 vi.mock("react-konva", () => {
@@ -55,7 +55,10 @@ describe("PresentationWorkspace", () => {
   });
 
   it("delegates the presentation view to a dedicated screen component", () => {
-    const source = fs.readFileSync(presentationWorkspaceSourcePath, "utf8");
+    const source = fs.readFileSync(
+      presentationWorkspaceControllerSourcePath,
+      "utf8",
+    );
 
     expect(source).toContain("<PresentationScreen");
     expect(source).not.toContain('<header className="rehearsal-presenter-topbar">');
@@ -63,7 +66,10 @@ describe("PresentationWorkspace", () => {
   });
 
   it("keeps the live presentation lifecycle separate from rehearsal persistence", () => {
-    const source = fs.readFileSync(presentationWorkspaceSourcePath, "utf8");
+    const source = fs.readFileSync(
+      presentationWorkspaceControllerSourcePath,
+      "utf8",
+    );
 
     expect(source).toContain("ensurePresenterCompanionSession");
     expect(source).toContain("startPresentationRuntime");
@@ -85,7 +91,10 @@ describe("PresentationWorkspace", () => {
   });
 
   it("uses the shared auto-advance controller in live mode only", () => {
-    const source = fs.readFileSync(presentationWorkspaceSourcePath, "utf8");
+    const source = fs.readFileSync(
+      presentationWorkspaceControllerSourcePath,
+      "utf8",
+    );
 
     expect(source).toContain("evaluateAdvanceController");
     expect(source).toContain('mode: "live"');
@@ -94,7 +103,10 @@ describe("PresentationWorkspace", () => {
   });
 
   it("resolves exact speaker-note keyword occurrences during live presentation", () => {
-    const source = fs.readFileSync(presentationWorkspaceSourcePath, "utf8");
+    const source = fs.readFileSync(
+      presentationWorkspaceControllerSourcePath,
+      "utf8",
+    );
 
     expect(source).toContain("matchKeywordOccurrenceTriggers");
     expect(source).toContain("resolveKeywordOccurrenceTriggeredActions");
