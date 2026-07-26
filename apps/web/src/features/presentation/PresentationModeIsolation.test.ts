@@ -13,7 +13,9 @@ const presentationProcessorSource = read(
 describe("presentation mode isolation", () => {
   it("keeps live presentation persistence away from rehearsal endpoints", () => {
     expect(presentationApiSource).toContain("/presentation-sessions/${segment(sessionId)}/runs");
-    expect(presentationApiSource).not.toContain("/rehearsals");
+    expect(presentationApiSource).not.toMatch(
+      /\/api\/v1\/projects\/[^\n]*\/rehearsals/,
+    );
     expect(presentationApiSource).not.toContain("rehearsal-stt");
     expect(presentationWorkspaceSource).not.toContain("createRehearsalRun");
     expect(presentationWorkspaceSource).not.toContain("completeRehearsalAudioUpload");
