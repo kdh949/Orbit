@@ -13,10 +13,10 @@ import { RedisRehearsalTranscriptCache } from "./rehearsal-transcript-cache";
 import {
   REHEARSAL_SEMANTIC_EVALUATION_ENQUEUE_JOB,
   REHEARSAL_STT_ENQUEUE_JOB,
-  RehearsalUseCasesBase,
   type RehearsalSemanticEvaluationEnqueueJob,
   type RehearsalSttEnqueueJob,
 } from "./use-cases/rehearsal-use-cases.base";
+import { RehearsalRetryUseCases } from "./use-cases/rehearsal-retry.use-cases";
 
 export {
   REHEARSAL_SEMANTIC_EVALUATION_ENQUEUE_JOB,
@@ -26,7 +26,7 @@ export {
 } from "./use-cases/rehearsal-use-cases.base";
 
 @Injectable()
-export class RehearsalsService extends RehearsalUseCasesBase {
+export class RehearsalsService extends RehearsalRetryUseCases {
   constructor(
     @InjectRepository(RehearsalRunEntity)
     rehearsalRuns: Repository<RehearsalRunEntity>,
