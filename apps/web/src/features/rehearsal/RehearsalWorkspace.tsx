@@ -5,8 +5,6 @@ import {
 import { deriveKeywordOccurrences } from "@orbit/editor-core/keywords";
 import { demoIds } from "@orbit/shared/common";
 import {
-  matchPronunciationAliases,
-  normalizePronunciationText,
   type PronunciationLexiconSnapshot,
 } from "@orbit/shared/pronunciation";
 import {
@@ -19,7 +17,6 @@ import { type Job } from "@orbit/shared/jobs";
 import {
   createRehearsalEvaluationSnapshot,
   type LiveSttAnimationCueEvent,
-  type LiveSttKeywordDetectedEvent,
   type LiveSttPartialTranscriptEvent,
   type LiveSttSlideAdvanceEvent,
   type RehearsalReport,
@@ -168,6 +165,21 @@ import {
 import { createLiveSttPort } from "../../runtime/speech/stt/liveSttEngineRegistry";
 import { fetchLiveSttRuntimeConfig } from "../../runtime/speech/stt/liveSttRuntimeConfig";
 import { normalizeLiveTranscriptText } from "../../runtime/speech/stt/liveTranscriptText";
+import {
+  appendLiveTranscriptText,
+  applyLiveTranscriptEvent,
+  confirmKeywordOccurrenceMatches,
+  createKeywordOccurrenceAnimationCueEvent,
+  createLiveKeywordOccurrenceState,
+  createLiveTranscriptBuffer,
+  evaluateLiveTranscript,
+  getLiveKeywordOccurrenceStateForSlide,
+  getOccurrenceTriggerProgress,
+  renderLiveTranscriptBuffer,
+  type LiveKeywordOccurrenceState,
+  type LiveTranscriptAnalysis,
+  type LiveTranscriptBuffer,
+} from "../../runtime/speech/tracking/liveTranscriptAnalysis";
 import { SherpaLiveSttPort } from "../../runtime/speech/stt/sherpa/sherpaLiveSttPort";
 import {
   getKeywordOccurrenceTriggerIdsForSlide,
@@ -314,7 +326,6 @@ import {
 import { defaultSpeechTrackingConfig } from "../../runtime/speech/tracking/speechTrackingConfig";
 import {
   matchKeywordOccurrenceTriggers,
-  type KeywordOccurrenceRuntimeMatch,
 } from "../../runtime/speech/tracking/keywordOccurrenceRuntime";
 import {
   getPresenterTimingProgress,
@@ -374,6 +385,17 @@ export {
   runRehearsalPauseSequence,
   selectRecordingMimeType,
 };
+export {
+  applyLiveTranscriptEvent,
+  confirmKeywordOccurrenceMatches,
+  createKeywordOccurrenceAnimationCueEvent,
+  createLiveKeywordOccurrenceState,
+  createLiveTranscriptBuffer,
+  evaluateLiveTranscript,
+  getLiveKeywordOccurrenceStateForSlide,
+  getOccurrenceTriggerProgress,
+  renderLiveTranscriptBuffer,
+};
 
 type RehearsalPhase =
   | "idle"
@@ -398,35 +420,6 @@ type RehearsalRuntimeStatus =
   | "paused"
   | "resuming"
   | "stopping";
-
-type LiveKeywordCandidate = {
-  keyword: Keyword;
-  aliases: string[];
-};
-
-type LiveTranscriptAnalysis = {
-  slideId: string;
-  transcript: string;
-  coverage: number;
-  detectedKeywords: LiveSttKeywordDetectedEvent[];
-  missingKeywordIds: string[];
-};
-
-export type LiveKeywordOccurrenceState = {
-  slideId: string;
-  confirmedOccurrenceIds: string[];
-};
-
-export type OccurrenceTriggerProgress = {
-  targetOccurrenceIds: string[];
-  confirmedOccurrenceIds: string[];
-  coverage: number;
-};
-
-type LiveTranscriptBuffer = {
-  committedTranscript: string;
-  draftTranscript: string;
-};
 
 type BiasTermDraft = Omit<LiveSttBiasTerm, "text"> & { text: string };
 
@@ -753,190 +746,6 @@ export function applyLiveTranscriptBias(
   return appendLiveTranscriptText(transcript, additions.join(" "));
 }
 
-export function createLiveTranscriptBuffer(): LiveTranscriptBuffer {
-  return {
-    committedTranscript: "",
-    draftTranscript: "",
-  };
-}
-
-export function applyLiveTranscriptEvent(
-  buffer: LiveTranscriptBuffer,
-  event: Pick<LiveSttPartialTranscriptEvent, "transcript" | "isFinal">,
-): LiveTranscriptBuffer {
-  const transcript = normalizeLiveTranscriptDisplayText(event.transcript);
-
-  if (event.isFinal) {
-    return {
-      committedTranscript: appendLiveTranscriptText(
-        buffer.committedTranscript,
-        transcript,
-      ),
-      draftTranscript: "",
-    };
-  }
-
-  return {
-    ...buffer,
-    draftTranscript: transcript,
-  };
-}
-
-export function renderLiveTranscriptBuffer(buffer: LiveTranscriptBuffer) {
-  return appendLiveTranscriptText(
-    buffer.committedTranscript,
-    buffer.draftTranscript,
-  );
-}
-
-function appendLiveTranscriptText(current: string, next: string) {
-  return [current, next]
-    .map(normalizeLiveTranscriptDisplayText)
-    .filter((part) => part.length > 0)
-    .join(" ");
-}
-
-function normalizeLiveTranscriptDisplayText(value: string) {
-  return value.replace(/\s+/g, " ").trim();
-}
-
-export function evaluateLiveTranscript(
-  slide: Slide,
-  transcript: string,
-  pronunciationLexicon?: PronunciationLexiconSnapshot,
-): LiveTranscriptAnalysis {
-  const candidates = getLiveKeywordCandidates(slide);
-  const normalizedTranscript = normalizeLiveTranscriptText(transcript);
-  const pronunciationEvidence = pronunciationLexicon
-    ? matchPronunciationAliases(transcript, pronunciationLexicon, {
-        slideIds: [slide.slideId],
-      }).evidence
-    : [];
-  const detectedKeywords = candidates.flatMap((candidate) => {
-    const matchedText = candidate.aliases.find((alias) => {
-      const normalizedAlias = normalizeLiveTranscriptText(alias);
-      return normalizedAlias && normalizedTranscript.includes(normalizedAlias);
-    });
-
-    const canonicalKeys = new Set(
-      candidate.aliases.map(
-        (alias) => normalizePronunciationText(alias).compactText,
-      ),
-    );
-    const matchedEvidence = pronunciationEvidence.find((evidence) =>
-      canonicalKeys.has(evidence.canonicalKey),
-    );
-
-    if (!matchedText && !matchedEvidence) {
-      return [];
-    }
-
-    return [
-      {
-        type: "keyword-detected" as const,
-        slideId: slide.slideId,
-        keywordId: candidate.keyword.keywordId,
-        text: candidate.keyword.text,
-        matchedText: matchedText ?? matchedEvidence?.matchedText ?? "",
-        coverage: 0,
-      },
-    ];
-  });
-  const coverage =
-    candidates.length === 0 ? 0 : detectedKeywords.length / candidates.length;
-  const missingKeywordIds = candidates
-    .filter(
-      (candidate) =>
-        !detectedKeywords.some(
-          (event) => event.keywordId === candidate.keyword.keywordId,
-        ),
-    )
-    .map((candidate) => candidate.keyword.keywordId);
-
-  return {
-    slideId: slide.slideId,
-    transcript,
-    coverage,
-    detectedKeywords: detectedKeywords.map((event) => ({
-      ...event,
-      coverage,
-    })),
-    missingKeywordIds,
-  };
-}
-
-export function createKeywordOccurrenceAnimationCueEvent(args: {
-  match: KeywordOccurrenceRuntimeMatch;
-  slideId: string;
-}): LiveSttAnimationCueEvent {
-  return {
-    type: "animation-cue",
-    slideId: args.slideId,
-    keywordId: args.match.keywordId,
-    occurrenceId: args.match.occurrenceId,
-    cue: "emphasis",
-    text: args.match.text,
-  };
-}
-
-export function createLiveKeywordOccurrenceState(
-  slideId: string,
-): LiveKeywordOccurrenceState {
-  return {
-    slideId,
-    confirmedOccurrenceIds: [],
-  };
-}
-
-export function getLiveKeywordOccurrenceStateForSlide(
-  current: LiveKeywordOccurrenceState | null,
-  slideId: string,
-): LiveKeywordOccurrenceState {
-  return current?.slideId === slideId
-    ? current
-    : createLiveKeywordOccurrenceState(slideId);
-}
-
-export function confirmKeywordOccurrenceMatches(
-  state: LiveKeywordOccurrenceState,
-  matches: readonly Pick<KeywordOccurrenceRuntimeMatch, "occurrenceId">[],
-): LiveKeywordOccurrenceState {
-  const confirmedOccurrenceIds = new Set(state.confirmedOccurrenceIds);
-
-  for (const match of matches) {
-    confirmedOccurrenceIds.add(match.occurrenceId);
-  }
-
-  return {
-    slideId: state.slideId,
-    confirmedOccurrenceIds: [...confirmedOccurrenceIds],
-  };
-}
-
-export function getOccurrenceTriggerProgress(options: {
-  targetOccurrenceIds: readonly string[];
-  confirmedOccurrenceIds: readonly string[];
-}): OccurrenceTriggerProgress {
-  const targetOccurrenceIds = [...new Set(options.targetOccurrenceIds)];
-  const targetOccurrenceIdSet = new Set(targetOccurrenceIds);
-  const confirmedOccurrenceIds = [
-    ...new Set(
-      options.confirmedOccurrenceIds.filter((occurrenceId) =>
-        targetOccurrenceIdSet.has(occurrenceId),
-      ),
-    ),
-  ];
-
-  return {
-    targetOccurrenceIds,
-    confirmedOccurrenceIds,
-    coverage:
-      targetOccurrenceIds.length === 0
-        ? 0
-        : confirmedOccurrenceIds.length / targetOccurrenceIds.length,
-  };
-}
-
 export function getLiveAudioLevelLabel(level: LiveSttAudioLevelEvent | null) {
   if (!level) {
     return "입력 대기";
@@ -988,17 +797,6 @@ export function downloadLiveSttDebugPcm(recording: LiveSttDebugPcmRecording) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
-}
-
-function getLiveKeywordCandidates(slide: Slide): LiveKeywordCandidate[] {
-  return slide.keywords.map((keyword) => ({
-    keyword,
-    aliases: [
-      keyword.text,
-      ...keyword.synonyms,
-      ...keyword.abbreviations,
-    ].filter((value) => value.trim().length > 0),
-  }));
 }
 
 function isLiveSttBiasMode(value: unknown): value is LiveSttBiasMode {
