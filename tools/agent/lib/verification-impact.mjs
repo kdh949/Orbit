@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+import { isTestPath } from "./fs-walk.mjs";
+import { reverseImportGraph } from "./import-graph.mjs";
 import { classifyWorkspace } from "./repo-path.mjs";
 
 export const DEFAULT_CONTRACT_CONSUMER_MATRIX =
@@ -16,13 +18,18 @@ export function loadContractConsumerMatrix(rootDirectory, path) {
   }
   const matrix = JSON.parse(readFileSync(filePath, "utf8"));
   const issues = [];
-  if (matrix.schemaVersion !== 1) {
-    issues.push("schemaVersion은 1이어야 합니다.");
+  if (matrix.schemaVersion !== 2) {
+    issues.push("schemaVersion은 2여야 합니다.");
   }
-  if (typeof matrix.contracts !== "object" || matrix.contracts === null) {
-    issues.push("contracts object가 필요합니다.");
+  if (
+    typeof matrix.crossLanguageOverrides !== "object" ||
+    matrix.crossLanguageOverrides === null
+  ) {
+    issues.push("crossLanguageOverrides object가 필요합니다.");
   } else {
-    for (const [contract, impact] of Object.entries(matrix.contracts)) {
+    for (const [contract, impact] of Object.entries(
+      matrix.crossLanguageOverrides,
+    )) {
       if (!Array.isArray(impact.consumers) || impact.consumers.length === 0) {
         issues.push(`${contract}: consumers가 필요합니다.`);
       }
@@ -40,6 +47,20 @@ export function loadContractConsumerMatrix(rootDirectory, path) {
     throw new Error(issues.join("\n"));
   }
   return matrix;
+}
+
+function collectReverseClosure(reverseGraph, path) {
+  const visited = new Set();
+  const pending = [...(reverseGraph.get(path) ?? [])];
+  while (pending.length > 0) {
+    const importer = pending.pop();
+    if (visited.has(importer)) {
+      continue;
+    }
+    visited.add(importer);
+    pending.push(...(reverseGraph.get(importer) ?? []));
+  }
+  return visited;
 }
 
 export function commandForTestPath(path) {
@@ -87,8 +108,39 @@ export function commandDescriptorForTestPath(path) {
   return null;
 }
 
-export function contractImpactsForPaths(paths, matrix) {
-  return paths
-    .filter((path) => matrix.contracts[path])
-    .map((path) => ({ path, ...matrix.contracts[path] }));
+export function contractImpactsForPaths(paths, matrix, options = {}) {
+  const overrides = matrix.crossLanguageOverrides ?? {};
+  const reverseGraph = options.graph
+    ? (options.reverseGraph ?? reverseImportGraph(options.graph))
+    : new Map();
+  const impacts = [];
+
+  for (const path of [...new Set(paths)].sort()) {
+    const override = overrides[path];
+    if (!override && !path.startsWith("packages/shared/src/")) {
+      continue;
+    }
+    const importers = collectReverseClosure(reverseGraph, path);
+    const tests = new Set(override?.tests ?? []);
+    const consumers = new Set(override?.consumers ?? []);
+
+    for (const importer of importers) {
+      if (isTestPath(importer)) {
+        tests.add(importer);
+        continue;
+      }
+      const workspace = classifyWorkspace(importer);
+      if (workspace.area) {
+        consumers.add(workspace.area);
+      }
+    }
+    if (override || tests.size > 0 || consumers.size > 0) {
+      impacts.push({
+        path,
+        consumers: [...consumers].sort(),
+        tests: [...tests].sort(),
+      });
+    }
+  }
+  return impacts;
 }

@@ -5,7 +5,7 @@ import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  collectChangedPaths,
+  collectChangedPathGroups,
   gitRefExists,
   resolveBaseRef as resolveGitBaseRef,
   resolveMergeBase as resolveGitMergeBase,
@@ -65,7 +65,7 @@ export function selectFormatFiles(paths, fileExists = () => true) {
 }
 
 export function parseFormatCheckArguments(args) {
-  const options = { base: undefined, paths: [] };
+  const options = { base: undefined, paths: [], trackedOnly: false };
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "--base") {
@@ -80,6 +80,8 @@ export function parseFormatCheckArguments(args) {
       }
       options.paths.push(args[index + 1]);
       index += 1;
+    } else if (argument === "--tracked-only") {
+      options.trackedOnly = true;
     } else {
       throw new Error(`지원하지 않는 인자입니다: ${argument}`);
     }
@@ -233,7 +235,10 @@ async function main() {
   const files = selectFormatFiles(
     options.paths.length > 0
       ? options.paths
-      : collectChangedPaths(baseRef, { root: repositoryRoot }),
+      : collectChangedPathGroups(baseRef, {
+          includeUntracked: !options.trackedOnly,
+          root: repositoryRoot,
+        }).formatPaths,
     (path) => existsSync(join(repositoryRoot, path)),
   );
 
@@ -250,7 +255,7 @@ async function main() {
   return checkFormatting(files, mergeBase, renameSources);
 }
 
-export { collectChangedPaths, gitRefExists };
+export { collectChangedPathGroups, gitRefExists };
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {

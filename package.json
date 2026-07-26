@@ -35,7 +35,7 @@
     "py:sync": "cd services/python-worker && uv sync",
     "py:test": "cd services/python-worker && uv run pytest",
     "repo:doctor": "node tools/agent/repo-doctor.mjs",
-    "test": "turbo run test",
+    "test": "node tools/agent/run-with-verification-env.mjs pnpm turbo run test --env-mode=loose",
     "test:agent-context": "node --test tools/agent/context.test.mjs",
     "test:agent-benchmark": "node --test tools/agent/benchmark.test.mjs",
     "test:agent": "node --test tools/agent/*.test.mjs tools/agent/lib/*.test.mjs",
@@ -55,6 +55,7 @@
     "verify:affected": "node tools/agent/verify-affected.mjs",
     "verify:changed": "node tools/agent/verify-changed.mjs",
     "verify:guard": "node tools/agent/verify-guard.mjs",
+    "verify:pr": "node tools/agent/verify-pr.mjs",
     "verify:scope": "node tools/agent/verify-scope.mjs"
   },
   "devDependencies": {

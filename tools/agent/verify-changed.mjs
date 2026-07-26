@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { createPathContext, loadDomainCatalog } from "./context.mjs";
-import { collectChangedPaths, resolveBaseRef } from "./lib/git-changes.mjs";
+import {
+  collectChangedPathGroups,
+  resolveBaseRef,
+} from "./lib/git-changes.mjs";
 import { buildImportGraph, reverseImportGraph } from "./lib/import-graph.mjs";
 import {
   commandForTestPath,
@@ -21,6 +25,7 @@ const TIER_LABELS = {
   3: "계약 consumer",
   4: "전체 release gate",
 };
+const MAX_EXACT_TESTS = 8;
 
 function addCommand(commands, command, reason) {
   if (!command) {
@@ -38,6 +43,23 @@ function shellQuote(value) {
   return `'${value.replaceAll("'", `'\\''`)}'`;
 }
 
+export function isPublicBarrelPath(path) {
+  return /(?:^|\/)(?:index|public)\.(?:[cm]?[jt]sx?)$/.test(path);
+}
+
+function workspaceTestCommand(workspace) {
+  if (workspace.language === "python") {
+    return "cd services/python-worker && uv run pytest";
+  }
+  if (workspace.packageName) {
+    return `pnpm turbo run test --filter=${workspace.packageName} --env-mode=loose`;
+  }
+  if (workspace.area === "agent-tool") {
+    return "pnpm test:agent";
+  }
+  return null;
+}
+
 export function createChangedVerificationPlan(
   paths,
   contexts,
@@ -46,6 +68,7 @@ export function createChangedVerificationPlan(
 ) {
   const maxTier = options.maxTier ?? 2;
   const uniquePaths = [...new Set(paths)].sort();
+  const formatPaths = [...new Set(options.formatPaths ?? uniquePaths)].sort();
   const tiers = [0, 1, 2, 3, 4].map((tier) => ({
     tier,
     label: TIER_LABELS[tier],
@@ -57,9 +80,11 @@ export function createChangedVerificationPlan(
   }
   addCommand(
     tiers[0].commands,
-    `pnpm format:check ${uniquePaths
-      .flatMap((path) => ["--path", shellQuote(path)])
-      .join(" ")}`,
+    formatPaths.length === 0
+      ? "pnpm format:check"
+      : `pnpm format:check ${formatPaths
+          .flatMap((path) => ["--path", shellQuote(path)])
+          .join(" ")}`,
     "지정한 변경 파일만 포맷 검사",
   );
   for (const context of contexts) {
@@ -74,8 +99,41 @@ export function createChangedVerificationPlan(
       );
     }
   }
-  for (const impact of contractImpactsForPaths(uniquePaths, matrix)) {
+  const broadLeafSelection =
+    tiers[1].commands.length > MAX_EXACT_TESTS ||
+    uniquePaths.some(isPublicBarrelPath);
+  if (broadLeafSelection) {
+    tiers[1].commands = [];
+    for (const context of contexts) {
+      addCommand(
+        tiers[1].commands,
+        workspaceTestCommand(context.workspace),
+        uniquePaths.some(isPublicBarrelPath)
+          ? "public barrel 변경"
+          : `exact leaf test ${MAX_EXACT_TESTS}개 초과`,
+      );
+    }
+  }
+
+  const contractImpacts = contractImpactsForPaths(uniquePaths, matrix, {
+    graph: options.graph,
+    reverseGraph: options.reverseGraph,
+  });
+  const exactContractTests = [
+    ...new Set(contractImpacts.flatMap((impact) => impact.tests)),
+  ];
+  if (exactContractTests.length > MAX_EXACT_TESTS) {
+    addCommand(
+      tiers[3].commands,
+      "pnpm verify:affected",
+      `contract consumer test ${MAX_EXACT_TESTS}개 초과`,
+    );
+  }
+  for (const impact of contractImpacts) {
     for (const test of impact.tests) {
+      if (exactContractTests.length > MAX_EXACT_TESTS) {
+        continue;
+      }
       const command = commandForTestPath(test);
       const alreadySelected = tiers
         .slice(0, 3)
@@ -206,10 +264,11 @@ function run() {
     const options = parseArguments(process.argv.slice(2));
     const root = resolve(options.root);
     const baseRef = resolveBaseRef(root, options.base, "VERIFY_BASE");
-    const paths =
+    const changed =
       options.paths.length > 0
-        ? options.paths
-        : collectChangedPaths(baseRef, { root });
+        ? { formatPaths: options.paths, impactPaths: options.paths }
+        : collectChangedPathGroups(baseRef, { root });
+    const paths = changed.impactPaths;
     if (paths.length === 0) {
       process.stdout.write("[verify:changed] 검사할 변경 파일이 없습니다.\n");
       return;
@@ -220,12 +279,17 @@ function run() {
       sourceRoots: ["apps", "packages", "services", "src", "tests", "tools"],
     });
     const reverseGraph = reverseImportGraph(graph);
-    const contexts = paths.map((path) =>
-      createPathContext(root, path, { catalog, graph, reverseGraph }),
-    );
+    const contexts = paths
+      .filter((path) => existsSync(resolve(root, path)))
+      .map((path) =>
+        createPathContext(root, path, { catalog, graph, reverseGraph }),
+      );
     const matrix = loadContractConsumerMatrix(root, options.matrixPath);
     const plan = createChangedVerificationPlan(paths, contexts, matrix, {
+      formatPaths: changed.formatPaths,
+      graph,
       maxTier: options.maxTier,
+      reverseGraph,
     });
     process.stdout.write(renderChangedVerificationPlan(plan));
     if (!options.dryRun) {

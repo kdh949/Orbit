@@ -24,7 +24,7 @@ test("Web leaf 변경은 인접 test와 Web typecheck만 선택한다", () => {
   const plan = createChangedVerificationPlan(
     [path],
     [context(path)],
-    { contracts: {} },
+    { crossLanguageOverrides: {} },
     { maxTier: 2 },
   );
   const rendered = renderChangedVerificationPlan(plan);
@@ -48,7 +48,7 @@ test("등록된 shared 계약만 exact consumer test를 Tier 3에 추가한다",
       }),
     ],
     {
-      contracts: {
+      crossLanguageOverrides: {
         [path]: {
           consumers: ["shared", "python"],
           tests: [
@@ -75,7 +75,7 @@ test("중복 명령을 합치고 첫 실패에서 실행을 멈춘다", () => {
   const plan = createChangedVerificationPlan(
     ["apps/web/src/one.ts", "apps/web/src/two.ts"],
     [context("apps/web/src/one.ts"), context("apps/web/src/two.ts")],
-    { contracts: {} },
+    { crossLanguageOverrides: {} },
     { maxTier: 2 },
   );
   const commands = plan.tiers.flatMap((tier) => tier.commands);
@@ -93,4 +93,60 @@ test("중복 명령을 합치고 첫 실패에서 실행을 멈춘다", () => {
   });
   assert.equal(status, 7);
   assert.equal(invoked.length, 2);
+});
+
+test("leaf test가 8개를 넘으면 workspace test로 승격한다", () => {
+  const paths = Array.from({ length: 9 }, (_, index) => `src/${index}.ts`);
+  const contexts = paths.map((path, index) =>
+    context(path, {
+      workspace: {
+        area: "web",
+        language: "typescript",
+        packageName: "@orbit/web",
+      },
+      verification: {
+        tier1: [`pnpm test -- leaf-${index}.test.ts`],
+        tier2: [],
+      },
+    }),
+  );
+  const plan = createChangedVerificationPlan(
+    paths,
+    contexts,
+    { crossLanguageOverrides: {} },
+    { maxTier: 1 },
+  );
+  const commands = plan.tiers.flatMap((tier) => tier.commands);
+
+  assert.equal(
+    commands.filter((item) => item.command.includes("leaf-")).length,
+    0,
+  );
+  assert.equal(
+    commands.filter((item) => item.command.includes("--filter=@orbit/web"))
+      .length,
+    1,
+  );
+});
+
+test("public barrel 변경은 exact leaf 대신 workspace test를 선택한다", () => {
+  const path = "packages/shared/src/index.ts";
+  const plan = createChangedVerificationPlan(
+    [path],
+    [
+      context(path, {
+        workspace: {
+          area: "shared",
+          language: "typescript",
+          packageName: "@orbit/shared",
+        },
+      }),
+    ],
+    { crossLanguageOverrides: {} },
+    { maxTier: 1 },
+  );
+  const rendered = renderChangedVerificationPlan(plan);
+
+  assert.match(rendered, /test --filter=@orbit\/shared/);
+  assert.doesNotMatch(rendered, /leaf\.test\.ts/);
 });
