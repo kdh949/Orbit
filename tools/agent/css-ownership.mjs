@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 
 import { readFileSync } from "node:fs";
-import { relative, resolve, sep } from "node:path";
+import { dirname, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const defaultCssFiles = [
+export const defaultCssEntries = [
   "apps/web/src/features/editor/editor-shell.css",
   "apps/web/src/styles.css",
 ];
+
+const cssImportPattern = /^\s*@import\s+["']([^"']+)["'];\s*$/gm;
 
 function toRepoPath(root, absolutePath) {
   return relative(root, absolutePath).split(sep).join("/");
@@ -278,6 +280,40 @@ export function createCssOwnershipReport(rootDirectory, filePaths) {
   };
 }
 
+export function resolveCssImportFiles(rootDirectory, entryPaths) {
+  const root = resolve(rootDirectory);
+  const resolvedFiles = [];
+  const visited = new Set();
+
+  function visit(filePath) {
+    const absolutePath = resolve(root, filePath);
+    if (visited.has(absolutePath)) {
+      return;
+    }
+    visited.add(absolutePath);
+
+    const source = readFileSync(absolutePath, "utf8");
+    const imports = [...source.matchAll(cssImportPattern)];
+    for (const match of imports) {
+      const importPath = match[1];
+      if (!importPath || !importPath.startsWith(".")) {
+        continue;
+      }
+      visit(resolve(dirname(absolutePath), importPath));
+    }
+
+    const localSource = source.replace(cssImportPattern, "").trim();
+    if (imports.length === 0 || localSource.length > 0) {
+      resolvedFiles.push(toRepoPath(root, absolutePath));
+    }
+  }
+
+  for (const entryPath of entryPaths) {
+    visit(entryPath);
+  }
+  return resolvedFiles;
+}
+
 function printTextReport(report) {
   for (const file of report.files) {
     console.log(
@@ -307,10 +343,15 @@ function printTextReport(report) {
 function run() {
   const args = process.argv.slice(2);
   const json = args.includes("--json");
-  const filePaths = args.filter((argument) => argument !== "--json");
+  const filePaths = args.filter(
+    (argument) => argument !== "--" && argument !== "--json",
+  );
   const report = createCssOwnershipReport(
     process.cwd(),
-    filePaths.length > 0 ? filePaths : defaultCssFiles,
+    resolveCssImportFiles(
+      process.cwd(),
+      filePaths.length > 0 ? filePaths : defaultCssEntries,
+    ),
   );
   if (json) {
     console.log(JSON.stringify(report, null, 2));

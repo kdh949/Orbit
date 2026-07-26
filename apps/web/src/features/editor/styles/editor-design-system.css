@@ -1,8 +1,7 @@
 /* ORBIT production editor design-system adoption.
  * The reference mockup remains read-only; production behavior is implemented here.
  */
-.orbit-shell {
-}
+
 
 .orbit-shell.editor-app-shell {
   grid-template-rows: 80px minmax(0, 1fr);

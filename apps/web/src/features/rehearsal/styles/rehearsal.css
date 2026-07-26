@@ -1727,9 +1727,7 @@
   flex: 0 0 auto;
 }
 
-.presenter-display-split .presenter-display-primary {
-  border-radius: var(--redesign-radius-lg) 0 0 var(--redesign-radius-lg);
-}
+
 
 .presenter-display-split .presenter-display-options-toggle {
   border-radius: 0 var(--redesign-radius-lg) var(--redesign-radius-lg) 0;
@@ -2894,9 +2892,7 @@
   white-space: nowrap;
 }
 
-.rehearsal-side-advice-card strong {
-  color: var(--redesign-color-primary-emphasis);
-}
+
 
 .rehearsal-assist-card {
   background: var(--redesign-color-surface-container-lowest);
