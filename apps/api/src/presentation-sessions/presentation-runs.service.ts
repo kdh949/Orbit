@@ -16,7 +16,6 @@ import {
 import {
   BadRequestException,
   ConflictException,
-  forwardRef,
   Inject,
   Injectable,
   NotFoundException,
@@ -60,7 +59,6 @@ export class PresentationRunsService {
     private readonly decks: DecksService,
     private readonly files: FilesService,
     private readonly jobs: JobsService,
-    @Inject(forwardRef(() => ActivityResultsService))
     private readonly activityResults: ActivityResultsService,
     @Inject(PRESENTATION_ANALYSIS_ENQUEUE_JOB)
     private readonly enqueueAnalysis: PresentationAnalysisEnqueueJob,

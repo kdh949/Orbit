@@ -1,9 +1,9 @@
-import { forwardRef, Module } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 
 import { AuthModule } from "../auth/auth.module";
 import { DecksModule } from "../decks/decks.module";
 import { ProjectsModule } from "../projects/projects.module";
-import { PresentationSessionsModule } from "../presentation-sessions/presentation-sessions.module";
+import { PresentationSessionPersistenceModule } from "../presentation-sessions/presentation-session-persistence.module";
 import { ActivityRunRepository } from "./activity-run.repository";
 import { ActivityRunsController } from "./activity-runs.controller";
 import { ActivityRunsService } from "./activity-runs.service";
@@ -23,7 +23,7 @@ import { ActivityTextModerationService } from "./activity-text-moderation.servic
     AuthModule,
     DecksModule,
     ProjectsModule,
-    forwardRef(() => PresentationSessionsModule)
+    PresentationSessionPersistenceModule
   ],
   controllers: [
     ActivityRunsController,
