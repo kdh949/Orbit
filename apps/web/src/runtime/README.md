@@ -13,7 +13,9 @@ workspace package를 사용할 수 있지만 `features/**` 내부 구현을 impo
   script progress, keyword occurrence
 - `speech/semantic/`: E5 embedding, semantic sentence matching, utterance
   decision과 debug state
-- 이후 semantic cue/NLI와 media capability도 같은 의존 방향을 유지하며
-  이동한다.
+- `speech/semantic/nli/`: browser NLI provider contract, worker protocol과
+  browser/mock adapter
+- 이후 semantic cue orchestration과 media capability도 같은 의존 방향을
+  유지하며 이동한다.
 
 Feature는 runtime을 사용할 수 있고 runtime은 feature를 알지 못한다.

@@ -1,5 +1,5 @@
-import type { SemanticCueNliProviderId } from "./semanticCueNliProvider";
-import type { BrowserSemanticCueNliDevice } from "./browserSemanticCueNliWorkerProtocol";
+import type { SemanticCueNliProviderId } from "../../../runtime/speech/semantic/nli/semanticCueNliProvider";
+import type { BrowserSemanticCueNliDevice } from "../../../runtime/speech/semantic/nli/browserSemanticCueNliWorkerProtocol";
 
 export type SemanticCueRuntimeFlags = {
   nliEnabled: boolean;

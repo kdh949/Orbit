@@ -3,12 +3,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { semanticCueSchema, type SemanticCue } from "@orbit/shared";
 
 import { getE5EmbeddingService } from "../../../../runtime/speech/semantic/e5EmbeddingService";
-import { createBrowserTransformersSemanticCueNliProvider } from "../browserSemanticCueNliProvider";
+import { createBrowserTransformersSemanticCueNliProvider } from "../../../../runtime/speech/semantic/nli/browserSemanticCueNliProvider";
 import {
   createSemanticCueEmbeddingIndex,
   type SemanticCueEmbeddingIndex
 } from "../semanticCueEmbeddingIndex";
-import type { SemanticCueNliProvider } from "../semanticCueNliProvider";
+import type { SemanticCueNliProvider } from "../../../../runtime/speech/semantic/nli/semanticCueNliProvider";
 import {
   createSemanticCueRuntime,
   type SemanticCueRuntimeResult

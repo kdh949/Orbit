@@ -13,7 +13,7 @@ describe("resolveBrowserSemanticCueNliWorkerUrl", () => {
         DEV: true,
         BASE_URL: "/"
       })
-    ).toBe("/src/features/rehearsal/speech/browserSemanticCueNliWorker.ts");
+    ).toBe("/src/runtime/speech/semantic/nli/browserSemanticCueNliWorker.ts");
   });
 
   it("uses the separately built worker asset in production", () => {

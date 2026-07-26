@@ -275,8 +275,8 @@ import {
   type SemanticCueEmbeddingIndex,
 } from "./speech/semanticCueEmbeddingIndex";
 import { createSemanticCueRuntime } from "./speech/semanticCueRuntime";
-import { createMockSemanticCueNliProvider } from "./speech/mockSemanticCueNliProvider";
-import { createBrowserTransformersSemanticCueNliProvider } from "./speech/browserSemanticCueNliProvider";
+import { createMockSemanticCueNliProvider } from "../../runtime/speech/semantic/nli/mockSemanticCueNliProvider";
+import { createBrowserTransformersSemanticCueNliProvider } from "../../runtime/speech/semantic/nli/browserSemanticCueNliProvider";
 import {
   getE5EmbeddingService,
   type E5EmbeddingService,

@@ -3,7 +3,7 @@ export type BrowserSemanticCueNliWorkerAssetEnv = {
   readonly BASE_URL: string;
 };
 
-const devWorkerUrl = "/src/features/rehearsal/speech/browserSemanticCueNliWorker.ts";
+const devWorkerUrl = "/src/runtime/speech/semantic/nli/browserSemanticCueNliWorker.ts";
 const productionWorkerFileName = "semantic-cue-nli-worker.js";
 
 export function resolveBrowserSemanticCueNliWorkerUrl(
