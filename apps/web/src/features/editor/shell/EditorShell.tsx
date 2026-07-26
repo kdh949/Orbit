@@ -1,14 +1,20 @@
 import {
   createDemoDeck,
+} from "@orbit/editor-core/fixtures";
+import {
   createApplyActivityDesignPresetPatch,
-  createDuplicateSlidePatch,
   createUpdateActivityDefinitionPatch,
   createUpdateActivityResultDefinitionPatch,
-  getElementAnimations,
+} from "@orbit/editor-core/activities";
+import {
+  createDuplicateSlidePatch,
   deriveKeywordActionUsage,
+  getElementAnimations,
   validateSlideAnimations
-} from "@orbit/editor-core";
-import { demoIds, slideQuestionGuideTextHashInput, type Slide } from "@orbit/shared";
+} from "@orbit/editor-core/patches";
+import { demoIds } from "@orbit/shared/common";
+import type { Slide } from "@orbit/shared/deck";
+import { slideQuestionGuideTextHashInput } from "@orbit/shared/slide-practice";
 import { getRenderableSlideElements } from "../canvas/EditorCanvas";
 import { getImageCropActionState } from "../canvas/image/imageCropSession";
 import {

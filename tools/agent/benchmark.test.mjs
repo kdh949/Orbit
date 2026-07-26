@@ -29,7 +29,9 @@ function createRepositoryFixture() {
   writeFixture(
     root,
     "apps/api/src/main.ts",
-    'import { applyDeckPatch } from "@orbit/editor-core";\n'
+    'import { applyDeckPatch } from "@orbit/editor-core";\n' +
+      'import { Deck } from "@orbit/shared/deck";\n' +
+      'import { createSlidePlaybackState } from "@orbit/editor-core/playback";\n'
   );
   writeFixture(root, "docs/agent/domains/example.json", "{}\n");
   writeFixture(root, "AGENTS.md", "# Root\n");
@@ -45,7 +47,9 @@ test("구조 지표를 파일 단위로 계산한다", () => {
 
   assert.equal(metrics.directPackageSourceImportFiles, 1);
   assert.equal(metrics.sharedRootImportFiles, 1);
+  assert.equal(metrics.sharedSubpathImportFiles, 1);
   assert.equal(metrics.editorCoreRootImportFiles, 1);
+  assert.equal(metrics.editorCoreSubpathImportFiles, 1);
   assert.equal(metrics.sourceCycles, 0);
   assert.equal(metrics.githubWorkflowFiles, 1);
   assert.equal(metrics.agentDomainManifests, 1);
@@ -80,6 +84,27 @@ test("현재 구조 지표와 baseline delta를 계산한다", () => {
   );
 
   assert.equal(directImport.delta, -1);
+});
+
+test("새 지표가 없는 legacy baseline과 현재 지표를 비교한다", () => {
+  const root = createRepositoryFixture();
+  const baseline = createBenchmarkSnapshot(root, {
+    capturedAt: "2026-07-26T00:00:00.000Z"
+  });
+  delete baseline.structural.sharedSubpathImportFiles;
+  delete baseline.structural.editorCoreSubpathImportFiles;
+  delete baseline.structural.sourceCycles;
+
+  assert.deepEqual(validateBenchmarkSnapshot(baseline), []);
+
+  const comparison = compareSnapshots(baseline, createBenchmarkSnapshot(root));
+  const sharedSubpath = comparison.find(
+    (row) => row.metric === "sharedSubpathImportFiles"
+  );
+
+  assert.equal(sharedSubpath.baseline, null);
+  assert.equal(sharedSubpath.current, 1);
+  assert.equal(sharedSubpath.delta, null);
 });
 
 test("잘못된 snapshot schema를 거부한다", () => {

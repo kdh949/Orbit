@@ -1,14 +1,18 @@
 import {
   createSlidePlaybackState,
   type SlidePlaybackState,
-} from "@orbit/editor-core";
+} from "@orbit/editor-core/playback";
+import type {
+  PresentationRecordingMode,
+} from "@orbit/shared/presentation";
 import type {
   Deck,
   DeckElement,
-  PresentationRecordingMode,
   Slide,
+} from "@orbit/shared/deck";
+import type {
   SlideTranscriptSnapshot,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { OrbitButton, OrbitFailureState } from "../../components/ui";
 import { PresentationScreen } from "./PresentationScreen";
