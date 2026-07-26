@@ -65,18 +65,21 @@ test("구조 지표를 production과 test 파일로 분리해 계산한다", () 
   assert.equal(metrics.scopedAgentInstructionFiles, 2);
 });
 
-test("schema v3 snapshot에 Git tree identity와 대표 task 4개를 기록한다", () => {
+test("schema v4 snapshot에 Git tree identity와 대표 task 8개를 기록한다", () => {
   const snapshot = createBenchmarkSnapshot(createRepositoryFixture(), {
     capturedAt: "2026-07-26T00:00:00.000Z",
     gitIdentity,
   });
 
-  assert.equal(BENCHMARK_TASKS.length, 4);
-  assert.equal(snapshot.schemaVersion, 3);
-  assert.equal(snapshot.toolVersion, 3);
+  assert.equal(BENCHMARK_TASKS.length, 8);
+  assert.equal(snapshot.schemaVersion, 4);
+  assert.equal(snapshot.toolVersion, 4);
   assert.equal(snapshot.headCommit, gitIdentity.headCommit);
   assert.equal(snapshot.treeHash, gitIdentity.treeHash);
   assert.equal(snapshot.manualBenchmark.initialRunsPerTask, 1);
+  assert.ok(snapshot.structural.rootAgentInstructionsBytes > 0);
+  assert.equal(snapshot.structural.productionLineStatistics.files, 2);
+  assert.equal(snapshot.structural.testLineStatistics.files, 1);
   assert.deepEqual(validateBenchmarkSnapshot(snapshot), []);
 });
 
@@ -115,8 +118,8 @@ test("현재 구조 지표와 baseline의 nested delta를 계산한다", () => {
 
 test("legacy schema와 Git identity 누락을 거부한다", () => {
   const issues = validateBenchmarkSnapshot({
-    schemaVersion: 2,
-    toolVersion: 2,
+    schemaVersion: 3,
+    toolVersion: 3,
     capturedAt: "",
     headCommit: "",
     treeHash: "",

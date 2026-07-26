@@ -18,10 +18,11 @@ import { collectGitIdentity } from "./lib/git-changes.mjs";
 import {
   buildImportGraph,
   collectDependencyClosure,
+  reverseImportGraph,
 } from "./lib/import-graph.mjs";
 import { matchesRepoGlob, toRepoPath } from "./lib/repo-path.mjs";
 
-export const BENCHMARK_TOOL_VERSION = 3;
+export const BENCHMARK_TOOL_VERSION = 4;
 const CODE_EXTENSIONS = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 
 export const BENCHMARK_TASKS = [
@@ -29,35 +30,66 @@ export const BENCHMARK_TASKS = [
     id: "web-speech-retry",
     description: "Web Speech retry 조건 변경",
     path: "apps/web/src/runtime/speech/stt/koreanTextSimilarity.ts",
+    taskFile: "docs/agent/benchmark/tasks/web-speech-retry.md",
   },
   {
     id: "rehearsal-response-field",
     description: "RehearsalRun response 필드 추가",
     path: "packages/shared/src/rehearsals/rehearsal.schema.ts",
+    taskFile: "docs/agent/benchmark/tasks/rehearsal-response-field.md",
   },
   {
     id: "worker-retry-option",
     description: "Worker retry option 변경",
     path: "apps/worker/src/rehearsal-stt.processor.ts",
+    taskFile: "docs/agent/benchmark/tasks/worker-retry-option.md",
   },
   {
     id: "pptx-error-mapping",
     description: "PPTX sync error mapping 변경",
     path: "services/python-worker/app/ai/pptx_ooxml_generation.py",
+    taskFile: "docs/agent/benchmark/tasks/pptx-error-mapping.md",
+  },
+  {
+    id: "job-queue-payload",
+    description: "Job queue payload 변경",
+    path: "packages/job-queue/src/index.ts",
+    taskFile: "docs/agent/benchmark/tasks/job-queue-payload.md",
+  },
+  {
+    id: "rehearsal-controller",
+    description: "Rehearsal Controller 동작 변경",
+    path: "apps/web/src/features/rehearsal/RehearsalWorkspaceController.tsx",
+    taskFile: "docs/agent/benchmark/tasks/rehearsal-controller.md",
+  },
+  {
+    id: "app-route",
+    description: "Web App route 추가",
+    path: "apps/web/src/App.tsx",
+    taskFile: "docs/agent/benchmark/tasks/app-route.md",
+  },
+  {
+    id: "cross-boundary-stage-contract",
+    description: "Web·API·Worker stage 계약 변경",
+    path: "packages/shared/src/jobs/ai-deck-generation-stage.schema.ts",
+    taskFile: "docs/agent/benchmark/tasks/cross-boundary-stage-contract.md",
   },
 ];
 
 const HOTSPOT_PATHS = [
-  "apps/web/src/features/rehearsal/RehearsalWorkspace.tsx",
+  "apps/web/src/App.tsx",
+  "apps/web/src/features/rehearsal/RehearsalWorkspaceController.tsx",
   "apps/web/src/features/rehearsal/RehearsalWorkspace.test.tsx",
-  "apps/web/src/features/editor/shell/EditorShell.tsx",
+  "apps/web/src/features/editor/shell/EditorShellController.tsx",
   "apps/web/src/features/editor/shell/EditorShell.test.tsx",
-  "apps/web/src/features/presentation/PresentationWorkspace.tsx",
-  "apps/web/src/features/editor/editor-shell.css",
-  "apps/web/src/styles.css",
-  "apps/worker/src/worker.service.ts",
-  "services/python-worker/app/main.py",
-  "services/python-worker/app/ai/pptx_ooxml_generation.py",
+  "apps/web/src/features/presentation/PresentationWorkspaceController.tsx",
+  "packages/job-queue/src/index.ts",
+  "packages/shared/src/rehearsals/rehearsal.schema.ts",
+  "apps/worker/src/pptx-ooxml-sync.processor.ts",
+  "apps/worker/src/rehearsal-stt.processor.ts",
+  "services/python-worker/app/ai/composition_library.py",
+  "services/python-worker/app/ai/deck_generation/content_planning.py",
+  "services/python-worker/app/ai/pptx_ooxml_vector_importer.py",
 ];
 
 const CSS_HOTSPOTS = [
@@ -71,6 +103,26 @@ function lineCount(filePath) {
     return 0;
   }
   return content.split("\n").length - (content.endsWith("\n") ? 1 : 0);
+}
+
+function percentile(sortedValues, ratio) {
+  if (sortedValues.length === 0) {
+    return 0;
+  }
+  return sortedValues[Math.ceil(sortedValues.length * ratio) - 1];
+}
+
+function collectLineStatistics(files) {
+  const values = files.map(lineCount).sort((left, right) => left - right);
+  return {
+    files: values.length,
+    p50: percentile(values, 0.5),
+    p90: percentile(values, 0.9),
+    p95: percentile(values, 0.95),
+    max: values.at(-1) ?? 0,
+    over1000: values.filter((value) => value >= 1_000).length,
+    over2000: values.filter((value) => value >= 2_000).length,
+  };
 }
 
 function countMatchingFiles(files, pattern) {
@@ -94,28 +146,47 @@ function loadOwnedPathPatterns(root) {
   });
 }
 
-function collectManifestCoverage(root, productionFiles) {
+function collectManifestCoverage(root, productionFiles, reverseGraph) {
   const patterns = loadOwnedPathPatterns(root);
-  const ownedProductionSourceFiles = productionFiles.filter((file) => {
+  const ownedFiles = productionFiles.filter((file) => {
     const path = toRepoPath(root, file);
     return patterns.some((pattern) => matchesRepoGlob(path, pattern));
+  });
+  const ownedSet = new Set(ownedFiles.map((file) => toRepoPath(root, file)));
+  const productionLines = productionFiles.reduce(
+    (total, file) => total + lineCount(file),
+    0,
+  );
+  const ownedProductionSourceLines = ownedFiles.reduce(
+    (total, file) => total + lineCount(file),
+    0,
+  );
+  const highFanoutFallbackFiles = productionFiles.filter((file) => {
+    const path = toRepoPath(root, file);
+    return !ownedSet.has(path) && (reverseGraph.get(path)?.size ?? 0) >= 20;
   }).length;
   return {
-    ownedProductionSourceFiles,
+    highFanoutFallbackFiles,
+    ownedProductionSourceFiles: ownedFiles.length,
+    ownedProductionSourceLines,
     percent:
       productionFiles.length === 0
         ? 0
         : Number(
-            (
-              (ownedProductionSourceFiles / productionFiles.length) *
-              100
-            ).toFixed(1),
+            ((ownedFiles.length / productionFiles.length) * 100).toFixed(1),
           ),
     productionSourceFiles: productionFiles.length,
+    productionSourceLines: productionLines,
+    linePercent:
+      productionLines === 0
+        ? 0
+        : Number(
+            ((ownedProductionSourceLines / productionLines) * 100).toFixed(1),
+          ),
   };
 }
 
-function collectHotspotContext(root, graph) {
+function collectHotspotContext(root, graph, reverseGraph) {
   const result = {};
   for (const path of HOTSPOT_PATHS.filter((candidate) =>
     graph.has(candidate),
@@ -123,6 +194,7 @@ function collectHotspotContext(root, graph) {
     const closure = collectDependencyClosure(graph, path);
     result[path] = {
       directDependencies: graph.get(path).size,
+      reverseImporters: reverseGraph.get(path)?.size ?? 0,
       reachableFiles: closure.size,
       reachableLines: [...closure].reduce((total, dependency) => {
         const file = resolve(root, dependency);
@@ -164,8 +236,12 @@ export function collectStructuralMetrics(rootDirectory) {
       ? createCssOwnershipReport(root, cssPaths)
       : { duplicateOccurrenceCount: 0, duplicateSelectorCount: 0 };
   const importGraph = buildImportGraph(root, { includeTests: false });
+  const reverseGraph = reverseImportGraph(importGraph);
 
   return {
+    rootAgentInstructionsBytes: existsSync(resolve(root, "AGENTS.md"))
+      ? readFileSync(resolve(root, "AGENTS.md")).byteLength
+      : 0,
     agentDomainManifests: listFiles(resolve(root, "docs/agent/domains"), {
       extensions: new Set([".json"]),
     }).length,
@@ -186,9 +262,14 @@ export function collectStructuralMetrics(rootDirectory) {
     githubWorkflowFiles: listFiles(resolve(root, ".github/workflows"), {
       extensions: new Set([".yaml", ".yml"]),
     }).length,
-    hotspotContext: collectHotspotContext(root, importGraph),
+    hotspotContext: collectHotspotContext(root, importGraph, reverseGraph),
     hotspotLines,
-    manifestCoverage: collectManifestCoverage(root, productionFiles),
+    manifestCoverage: collectManifestCoverage(
+      root,
+      productionFiles,
+      reverseGraph,
+    ),
+    productionLineStatistics: collectLineStatistics(productionFiles),
     productionSharedRootImportFiles: countMatchingFiles(
       productionJavascriptFiles,
       /(?:from\s+["']@orbit\/shared["']|require\(["']@orbit\/shared["']\))/,
@@ -211,6 +292,7 @@ export function collectStructuralMetrics(rootDirectory) {
         readFileSync(file, "utf8"),
       ),
     ).length,
+    testLineStatistics: collectLineStatistics(testFiles),
     testSharedRootImportFiles: countMatchingFiles(
       testJavascriptFiles,
       /(?:from\s+["']@orbit\/shared["']|require\(["']@orbit\/shared["']\))/,
@@ -235,7 +317,7 @@ export function createBenchmarkSnapshot(rootDirectory, options = {}) {
   }
 
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     toolVersion: BENCHMARK_TOOL_VERSION,
     capturedAt: options.capturedAt ?? new Date().toISOString(),
     headCommit: gitIdentity.headCommit,
@@ -250,7 +332,12 @@ export function createBenchmarkSnapshot(rootDirectory, options = {}) {
         note: "실제 Agent 실행 환경이 제공한 값만 기록하고 추정하지 않는다.",
       },
       metrics: [
+        "inputTokens",
+        "cachedInputTokens",
+        "outputTokens",
+        "reasoningTokens",
         "filesReadBeforeFirstPatch",
+        "searchCallsBeforeFirstPatch",
         "topLevelAreasRead",
         "toolCallsBeforeFirstTargetedTest",
         "workspacesVerified",
@@ -269,8 +356,8 @@ function isNonNegativeInteger(value) {
 
 export function validateBenchmarkSnapshot(snapshot) {
   const issues = [];
-  if (snapshot?.schemaVersion !== 3) {
-    issues.push("schemaVersion은 3이어야 합니다.");
+  if (snapshot?.schemaVersion !== 4) {
+    issues.push("schemaVersion은 4여야 합니다.");
   }
   if (snapshot?.toolVersion !== BENCHMARK_TOOL_VERSION) {
     issues.push(`toolVersion은 ${BENCHMARK_TOOL_VERSION}여야 합니다.`);
@@ -303,6 +390,7 @@ export function validateBenchmarkSnapshot(snapshot) {
       "editorCoreSubpathImportFiles",
       "githubWorkflowFiles",
       "productionSharedRootImportFiles",
+      "rootAgentInstructionsBytes",
       "scopedAgentInstructionFiles",
       "sharedRootImportFiles",
       "sharedSubpathImportFiles",
@@ -316,11 +404,17 @@ export function validateBenchmarkSnapshot(snapshot) {
     }
     const coverage = snapshot.structural.manifestCoverage;
     if (
+      !isNonNegativeInteger(coverage?.highFanoutFallbackFiles) ||
       !isNonNegativeInteger(coverage?.productionSourceFiles) ||
       !isNonNegativeInteger(coverage?.ownedProductionSourceFiles) ||
+      !isNonNegativeInteger(coverage?.productionSourceLines) ||
+      !isNonNegativeInteger(coverage?.ownedProductionSourceLines) ||
       typeof coverage?.percent !== "number" ||
       coverage.percent < 0 ||
-      coverage.percent > 100
+      coverage.percent > 100 ||
+      typeof coverage?.linePercent !== "number" ||
+      coverage.linePercent < 0 ||
+      coverage.linePercent > 100
     ) {
       issues.push("manifestCoverage가 유효하지 않습니다.");
     }
