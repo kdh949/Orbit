@@ -2,17 +2,9 @@ import {
   createSlidePlaybackState,
   type SlidePlaybackState,
 } from "@orbit/editor-core/playback";
-import type {
-  PresentationRecordingMode,
-} from "@orbit/shared/presentation";
-import type {
-  Deck,
-  DeckElement,
-  Slide,
-} from "@orbit/shared/deck";
-import type {
-  SlideTranscriptSnapshot,
-} from "@orbit/shared/rehearsals";
+import type { PresentationRecordingMode } from "@orbit/shared/presentation";
+import type { Deck, Slide } from "@orbit/shared/deck";
+import type { SlideTranscriptSnapshot } from "@orbit/shared/rehearsals";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { OrbitButton, OrbitFailureState } from "../../components/ui";
 import { PresentationScreen } from "./PresentationScreen";
@@ -35,6 +27,21 @@ import {
 import { usePresentationSpeech } from "./usePresentationSpeech";
 import { getPresentationHighlightedKeywordOccurrences } from "./presentationKeywordOccurrences";
 import { getPresentationFailureCopy } from "./presentationFailureCopy";
+import { PresentationAnimationTriggerDebug } from "./PresentationAnimationTriggerDebug";
+import {
+  createEmptySpeechTrackerSnapshot,
+  createPresentationScreenSession,
+  formatClock,
+  getMiniSlideScale,
+  getSlideTitle,
+  navigateToHome,
+  navigateToPresentationReport,
+  navigateToProject,
+  parseClockInput,
+  presentationAutoAdvancePolicy,
+  resetPresentationTimerState,
+} from "./presentationWorkspaceModel";
+import { usePresentationStageScale } from "./usePresentationStageScale";
 import {
   shouldClosePresenterSessionOnPreflightExit,
   shouldWarnBeforePresentationUnload,
@@ -101,10 +108,7 @@ import {
 } from "../../runtime/presentation/playback/triggeredActionPlayback";
 import type { AnimationFlowNavigation } from "../presenter-shell/presenter/AnimationFlowNavigator";
 import { AutoAdvanceStatus } from "../presenter-shell/advance/AutoAdvanceStatus";
-import {
-  defaultAutoAdvanceConfig,
-  defaultAutoAdvancePolicy,
-} from "../../runtime/presentation/advance/autoAdvanceConfig";
+import { defaultAutoAdvanceConfig } from "../../runtime/presentation/advance/autoAdvanceConfig";
 import {
   cancelAdvanceCountdown,
   createInitialAdvanceControllerState,
@@ -117,7 +121,6 @@ import {
   estimateScriptProgressOffset,
   matchKeywordOccurrenceTriggers,
 } from "../../runtime/speech/tracking/keywordOccurrenceRuntime";
-import type { SpeechTrackerSnapshot } from "../../runtime/speech/tracking/speechTrackingEvents";
 import { createIdleSemanticDebugState } from "../../runtime/speech/semantic/semanticSpeechDebug";
 import {
   PresenterStatusShell,
@@ -191,8 +194,9 @@ export function PresentationWorkspaceController(
   const [requestedRecordingMode, setRequestedRecordingMode] =
     useState<PresentationRecordingMode>("microphone");
   const runtimeRef = useRef<PresentationRuntimeIdentity | null>(null);
-  const presenterSessionRef =
-    useRef<PresenterCompanionSessionIdentity | null>(null);
+  const presenterSessionRef = useRef<PresenterCompanionSessionIdentity | null>(
+    null,
+  );
   const [presenterSession, setPresenterSession] =
     useState<PresenterCompanionSessionIdentity | null>(null);
   const presenterSessionPromiseRef =
@@ -402,9 +406,8 @@ export function PresentationWorkspaceController(
       return null;
     }
 
-    const targetOccurrenceIds = getKeywordOccurrenceTriggerIdsForSlide(
-      currentSlide,
-    );
+    const targetOccurrenceIds =
+      getKeywordOccurrenceTriggerIdsForSlide(currentSlide);
     const confirmedOccurrenceIds =
       keywordOccurrenceStateRef.current?.slideId === currentSlide.slideId
         ? keywordOccurrenceStateRef.current.confirmedOccurrenceIds
@@ -450,8 +453,9 @@ export function PresentationWorkspaceController(
         transcriptSpan.previousTranscript,
       ),
       currentStepAnimationIds:
-        currentTriggerStep?.animations.map((animation) => animation.animationId) ??
-        [],
+        currentTriggerStep?.animations.map(
+          (animation) => animation.animationId,
+        ) ?? [],
       currentStepIndex: presenterStepIndex,
       latestTranscript: speech.state.latestTranscript,
       matches,
@@ -527,8 +531,7 @@ export function PresentationWorkspaceController(
     () =>
       currentSlide
         ? createCompanionPrompterProjection({
-            progressPercent:
-              (panelSnapshot.scriptProgress?.ratio ?? 0) * 100,
+            progressPercent: (panelSnapshot.scriptProgress?.ratio ?? 0) * 100,
             rows: createRehearsalScriptPrompterRows({
               sentences,
               coveredSentenceIds: panelSnapshot.coveredSentenceIds,
@@ -630,7 +633,7 @@ export function PresentationWorkspaceController(
           ? "발표 진행 중"
           : "발표 준비";
   const miniSlideScale = deck ? getMiniSlideScale(deck) : 0.14;
-  const { presenterScale, presenterStageRef } = usePresenterStageScale(deck);
+  const { presenterScale, presenterStageRef } = usePresentationStageScale(deck);
   const infoCards: PresenterInfoCardItem[] = [
     {
       detail: currentSlide ? getSlideTitle(currentSlide) : "-",
@@ -727,7 +730,12 @@ export function PresentationWorkspaceController(
       slide: currentSlide,
       update,
     });
-  }, [applyPlaybackUpdate, currentSlide, presenterStepIndex, slideshowAnimationPlan]);
+  }, [
+    applyPlaybackUpdate,
+    currentSlide,
+    presenterStepIndex,
+    slideshowAnimationPlan,
+  ]);
 
   const restorePresentationPlaybackAtStep = useCallback(
     (slide: Slide, stepIndex: number) => {
@@ -765,7 +773,8 @@ export function PresentationWorkspaceController(
       if (!targetSlide) return;
       cancelAutoAdvanceForManualCommand();
       const stepIndex =
-        targetSlide.kind === "activity" || targetSlide.kind === "activity-results"
+        targetSlide.kind === "activity" ||
+        targetSlide.kind === "activity-results"
           ? 0
           : navigation.stepIndex;
 
@@ -797,12 +806,12 @@ export function PresentationWorkspaceController(
 
   useEffect(() => {
     const pendingFlowRestore = pendingFlowRestoreRef.current;
-    if (
-      currentSlide &&
-      pendingFlowRestore?.slideId === currentSlide.slideId
-    ) {
+    if (currentSlide && pendingFlowRestore?.slideId === currentSlide.slideId) {
       pendingFlowRestoreRef.current = null;
-      restorePresentationPlaybackAtStep(currentSlide, pendingFlowRestore.stepIndex);
+      restorePresentationPlaybackAtStep(
+        currentSlide,
+        pendingFlowRestore.stepIndex,
+      );
       return;
     }
     previousHitKeywordIdsRef.current = new Set();
@@ -820,7 +829,12 @@ export function PresentationWorkspaceController(
     if (currentSlide && speech.state.status === "listening") {
       speech.enterSlide(currentSlide);
     }
-  }, [currentSlide, restorePresentationPlaybackAtStep, speech.enterSlide, speech.state.status]);
+  }, [
+    currentSlide,
+    restorePresentationPlaybackAtStep,
+    speech.enterSlide,
+    speech.state.status,
+  ]);
 
   useEffect(() => {
     if (runtimePhase !== "active" || speech.state.status !== "listening") {
@@ -1414,11 +1428,7 @@ export function PresentationWorkspaceController(
 
   const displayManager = useMemo(() => createDisplayManager(), []);
   const presentationScreenSession = useMemo(
-    () =>
-      createPresentationScreenSession(
-        runtimeRef.current,
-        presenterSession,
-      ),
+    () => createPresentationScreenSession(runtimeRef.current, presenterSession),
     [presenterSession, runtimePhase],
   );
   const activityElementRuntime = useMemo(
@@ -1437,9 +1447,8 @@ export function PresentationWorkspaceController(
     ),
     canGoNext: Boolean(
       deck &&
-        (presenterStepIndex <
-          (slideshowAnimationPlan?.maxStepIndex ?? 0) ||
-          currentSlideIndex < deck.slides.length - 1),
+      (presenterStepIndex < (slideshowAnimationPlan?.maxStepIndex ?? 0) ||
+        currentSlideIndex < deck.slides.length - 1),
     ),
     canGoPrevious: currentSlideIndex > 0,
     companionEnabled: presenterCompanionEnabled,
@@ -1602,9 +1611,7 @@ export function PresentationWorkspaceController(
     if (options.displayMode === "current-window") {
       const fullscreenStarted = options.fullscreen
         ? await requestPresentWindowFullscreen(
-            typeof document === "undefined"
-              ? null
-              : document.documentElement,
+            typeof document === "undefined" ? null : document.documentElement,
           )
         : false;
       setDisplayRole("slide-receiver");
@@ -1893,9 +1900,7 @@ export function PresentationWorkspaceController(
           });
         }}
         panelSnapshot={panelSnapshot}
-        presentationSession={
-          presentationScreenSession
-        }
+        presentationSession={presentationScreenSession}
         presenterScale={presenterScale}
         presenterStageRef={presenterStageRef}
         presenterStepIndex={presenterStepIndex}
@@ -1964,347 +1969,4 @@ export function PresentationWorkspaceController(
       ) : null}
     </>
   );
-}
-
-const presentationAutoAdvancePolicy = Object.freeze({
-  ...defaultAutoAdvancePolicy,
-  live: true,
-  rehearsal: false,
-});
-
-function createPresentationScreenSession(
-  runtime: PresentationRuntimeIdentity | null,
-  presenterSession: PresenterCompanionSessionIdentity | null,
-) {
-  if (runtime) {
-    return {
-      audienceUrl: runtime.audienceUrl,
-      passcodeState:
-        runtime.accessMode === "public"
-          ? ({ status: "public" } as const)
-          : runtime.displayPasscode
-            ? ({
-                status: "private",
-                displayPasscode: runtime.displayPasscode,
-              } as const)
-            : ({ status: "legacy-unavailable" } as const),
-      sessionId: runtime.sessionId,
-    };
-  }
-  return presenterSession
-    ? {
-        audienceUrl: presenterSession.audienceUrl,
-        passcodeState: { status: "not-prepared" } as const,
-        sessionId: presenterSession.sessionId,
-      }
-    : undefined;
-}
-
-function navigateToProject(projectId?: string) {
-  if (!projectId || typeof window === "undefined") {
-    return;
-  }
-
-  window.history.pushState({}, "", `/project/${encodeURIComponent(projectId)}`);
-  window.dispatchEvent(new PopStateEvent("popstate"));
-}
-
-function navigateToHome() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.history.pushState({}, "", "/");
-  window.dispatchEvent(new PopStateEvent("popstate"));
-}
-
-function navigateToPresentationReport(input: {
-  projectId: string;
-  runId: string;
-  sessionId: string;
-}) {
-  if (typeof window === "undefined") {
-    return;
-  }
-  const search = new URLSearchParams({ runId: input.runId });
-  window.history.pushState(
-    {},
-    "",
-    `/presentation/${encodeURIComponent(input.projectId)}/report/${encodeURIComponent(
-      input.sessionId,
-    )}?${search.toString()}`,
-  );
-  window.dispatchEvent(new PopStateEvent("popstate"));
-}
-
-function createEmptySpeechTrackerSnapshot(options: {
-  matchableSentenceCount: number;
-  slideId: string;
-}): SpeechTrackerSnapshot {
-  return {
-    coveredSentenceIds: [],
-    coveredSentenceMatchKinds: {},
-    effectiveCoverage: 0,
-    finalSentenceSpoken: false,
-    hitKeywordIds: [],
-    matchableSentenceCount: options.matchableSentenceCount,
-    provisionalMissingKeywordIds: [],
-    sentenceCoverage: 0,
-    slideId: options.slideId,
-    wordCoverage: 0,
-  };
-}
-
-function PresentationAnimationTriggerDebug(props: {
-  data: {
-    confidence: number | null;
-    confirmedOccurrenceIds: string[];
-    currentCharOffset: number;
-    previousCharOffset: number;
-    currentStepAnimationIds: string[];
-    currentStepIndex: number;
-    latestTranscript: string;
-    matches: Array<{ occurrenceId: string }>;
-    occurrenceActions: Array<{ animationId: string; occurrenceId: string }>;
-    playedAnimationIds: string[];
-    speechStatus: string;
-    targetOccurrenceIds: string[];
-    transcript: string;
-  };
-}) {
-  const { data } = props;
-  const blocker = getAnimationTriggerBlocker(data);
-
-  return (
-    <aside
-      aria-label="애니메이션 트리거 디버그"
-      className="presentation-animation-trigger-debug"
-    >
-      <header>
-        <strong>애니메이션 트리거 디버그</strong>
-        <span>URL의 <code>animationDebug=1</code>에서만 표시</span>
-      </header>
-      <dl>
-        <div>
-          <dt>STT 상태</dt>
-          <dd>{data.speechStatus}</dd>
-        </div>
-        <div>
-          <dt>최근 인식</dt>
-          <dd>{data.latestTranscript || "-"}</dd>
-        </div>
-        <div>
-          <dt>confidence</dt>
-          <dd>{data.confidence?.toFixed(2) ?? "브라우저 미제공"}</dd>
-        </div>
-        <div>
-          <dt>대본 위치</dt>
-          <dd>{data.previousCharOffset} → {data.currentCharOffset}</dd>
-        </div>
-        <div>
-          <dt>매칭 occurrence</dt>
-          <dd>{formatDebugValues(data.matches.map((match) => match.occurrenceId))}</dd>
-        </div>
-        <div>
-          <dt>소비된 occurrence</dt>
-          <dd>{formatDebugValues(data.confirmedOccurrenceIds)}</dd>
-        </div>
-        <div>
-          <dt>실행된 animation</dt>
-          <dd>{formatDebugValues(data.playedAnimationIds)}</dd>
-        </div>
-        <div>
-          <dt>현재 step</dt>
-          <dd>
-            {data.currentStepIndex} · {formatDebugValues(data.currentStepAnimationIds)}
-          </dd>
-        </div>
-      </dl>
-      <p className="presentation-animation-trigger-debug-blocker">
-        판정: {blocker}
-      </p>
-      <details>
-        <summary>연결 데이터 보기</summary>
-        <p>트리거 occurrence: {formatDebugValues(data.targetOccurrenceIds)}</p>
-        <p>
-          action 연결: {" "}
-          {formatDebugValues(
-            data.occurrenceActions.map(
-              (action) => `${action.occurrenceId} → ${action.animationId}`,
-            ),
-          )}
-        </p>
-        <p>위치 계산 대본: {data.transcript || "-"}</p>
-      </details>
-    </aside>
-  );
-}
-
-function getAnimationTriggerBlocker(data: {
-  confidence: number | null;
-  confirmedOccurrenceIds: string[];
-  latestTranscript: string;
-  matches: Array<{ occurrenceId: string }>;
-  occurrenceActions: Array<{ animationId: string; occurrenceId: string }>;
-  speechStatus: string;
-  targetOccurrenceIds: string[];
-}) {
-  if (data.speechStatus !== "listening") {
-    return "음성 인식이 listening 상태가 아닙니다.";
-  }
-  if (!data.latestTranscript.trim()) {
-    return "아직 STT 결과가 없습니다.";
-  }
-  if (data.confidence !== null && data.confidence < 0.7) {
-    return "confidence가 0.70 미만이라 자동 실행을 막았습니다.";
-  }
-  if (data.targetOccurrenceIds.length === 0) {
-    return "현재 슬라이드에 keyword-occurrence action이 없습니다.";
-  }
-  if (data.occurrenceActions.length === 0) {
-    return "occurrence action 연결을 찾지 못했습니다.";
-  }
-  if (
-    data.targetOccurrenceIds.length > 0 &&
-    data.targetOccurrenceIds.every((occurrenceId) =>
-      data.confirmedOccurrenceIds.includes(occurrenceId),
-    )
-  ) {
-    return "해당 occurrence는 이미 처리되어 중복 실행하지 않습니다.";
-  }
-  if (data.matches.length === 0) {
-    return "대본 위치·키워드·미소비 조건 중 하나가 일치하지 않습니다.";
-  }
-  return "매칭 성공: 다음 렌더에서 action 실행·step 전진을 확인하세요.";
-}
-
-function formatDebugValues(values: readonly string[]) {
-  return values.length > 0 ? values.join(", ") : "-";
-}
-
-function getMiniSlideScale(deck: Deck) {
-  return Math.min(0.16, 154 / deck.canvas.width, 87 / deck.canvas.height);
-}
-
-function getSlideTitle(slide: Slide) {
-  const title = slide.title.trim();
-  if (title) {
-    return title;
-  }
-
-  const titleElement = slide.elements.find(
-    (element): element is Extract<DeckElement, { type: "text" }> =>
-      element.type === "text" && element.role === "title",
-  );
-  return titleElement?.props.text || `Slide ${slide.order}`;
-}
-
-function formatClock(totalSeconds: number) {
-  const minutes = Math.floor(totalSeconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const seconds = Math.floor(totalSeconds % 60)
-    .toString()
-    .padStart(2, "0");
-  return `${minutes}:${seconds}`;
-}
-
-function parseClockInput(value: string): number | null {
-  const normalizedValue = value.trim();
-  const match = normalizedValue.match(/^(\d{1,3})(?::([0-5]?\d))?$/);
-
-  if (!match) {
-    return null;
-  }
-
-  const minutes = Number(match[1]);
-  const seconds = Number(match[2] ?? 0);
-
-  if (!Number.isInteger(minutes) || !Number.isInteger(seconds)) {
-    return null;
-  }
-
-  return minutes * 60 + seconds;
-}
-
-function resetPresentationTimerState(actions: {
-  setElapsedSeconds: (value: number) => void;
-  setIsTimerRunning: (value: boolean) => void;
-  setSlideElapsedSeconds: (value: number) => void;
-}) {
-  actions.setElapsedSeconds(0);
-  actions.setSlideElapsedSeconds(0);
-  actions.setIsTimerRunning(false);
-}
-
-function usePresenterStageScale(deck: Deck | null) {
-  const [presenterStageElement, setPresenterStageElement] =
-    useState<HTMLDivElement | null>(null);
-  const [presenterScale, setPresenterScale] = useState(0.44);
-  const presenterStageRef = useCallback((node: HTMLDivElement | null) => {
-    setPresenterStageElement(node);
-  }, []);
-
-  useEffect(() => {
-    const stage = presenterStageElement;
-    if (!stage || !deck) {
-      return;
-    }
-
-    let animationFrame: number | null = null;
-
-    const updateScale = () => {
-      const bounds = stage.getBoundingClientRect();
-      const style = window.getComputedStyle(stage);
-      const horizontalPadding =
-        Number.parseFloat(style.paddingLeft) +
-        Number.parseFloat(style.paddingRight);
-      const verticalPadding =
-        Number.parseFloat(style.paddingTop) +
-        Number.parseFloat(style.paddingBottom);
-      const availableWidth = Math.max(0, bounds.width - horizontalPadding);
-      const availableHeight = Math.max(0, bounds.height - verticalPadding);
-      const nextScale = Math.min(
-        availableWidth / deck.canvas.width,
-        availableHeight / deck.canvas.height,
-      );
-      if (Number.isFinite(nextScale) && nextScale > 0) {
-        setPresenterScale((current) =>
-          Math.abs(current - nextScale) > 0.001 ? nextScale : current,
-        );
-      }
-    };
-    const scheduleScaleUpdate = () => {
-      if (animationFrame !== null) {
-        window.cancelAnimationFrame(animationFrame);
-      }
-      animationFrame = window.requestAnimationFrame(updateScale);
-    };
-
-    updateScale();
-    scheduleScaleUpdate();
-
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", scheduleScaleUpdate);
-      return () => {
-        window.removeEventListener("resize", scheduleScaleUpdate);
-        if (animationFrame !== null) {
-          window.cancelAnimationFrame(animationFrame);
-        }
-      };
-    }
-
-    const observer = new ResizeObserver(scheduleScaleUpdate);
-    observer.observe(stage);
-    window.addEventListener("resize", scheduleScaleUpdate);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", scheduleScaleUpdate);
-      if (animationFrame !== null) {
-        window.cancelAnimationFrame(animationFrame);
-      }
-    };
-  }, [deck, presenterStageElement]);
-
-  return { presenterScale, presenterStageRef };
 }
