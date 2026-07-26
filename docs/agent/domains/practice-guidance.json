@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 2,
+  "id": "practice-guidance",
+  "summary": "슬라이드 연습, 질문 가이드, PPT advisor와 발표 보조 제안",
+  "owns": [
+    "apps/api/src/slide-practice/**",
+    "apps/api/src/slide-question-guides/**",
+    "apps/api/src/ppt-advisor/**",
+    "apps/worker/src/slide-practice-*.ts",
+    "apps/worker/src/slide-question-guide-*.ts",
+    "apps/worker/src/speaker-notes-suggestion.processor.ts",
+    "packages/shared/src/slide-practice/**"
+  ],
+  "excludes": [],
+  "entrypoints": [
+    {
+      "area": "api",
+      "path": "apps/api/src/slide-practice/slide-practice.module.ts"
+    },
+    {
+      "area": "shared",
+      "path": "packages/shared/src/slide-practice/index.ts"
+    }
+  ],
+  "primaryContracts": [
+    "packages/shared/src/slide-practice/index.ts",
+    "docs/contracts/common.md"
+  ],
+  "secondaryContracts": ["packages/shared/src/deck/deck.schema.ts"],
+  "testOwners": [
+    {
+      "source": "apps/api/src/slide-practice/**",
+      "tests": ["apps/api/src/slide-practice/slide-practice.service.spec.ts"]
+    }
+  ],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/slide-practice/slide-practice.service.spec.ts",
+      "pnpm turbo run typecheck --filter=@orbit/worker --env-mode=loose"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
+  "fullCheckTriggers": [
+    "slide practice 또는 question guide schema 변경",
+    "발표 보조 결과의 audience 노출 범위 변경"
+  ],
+  "allowedDependencies": [
+    "packages/shared/src/slide-practice/**",
+    "packages/shared/src/deck/**"
+  ],
+  "forbiddenDependencies": ["apps/web/src/features/rehearsal/**"],
+  "boundaries": [
+    "발표자 script와 private suggestion을 audience API에 노출하지 않는다",
+    "Worker 결과를 shared schema로 검증한다"
+  ]
+}

@@ -95,6 +95,84 @@ test("중복 명령을 합치고 첫 실패에서 실행을 멈춘다", () => {
   assert.equal(invoked.length, 2);
 });
 
+test("같은 workspace의 leaf test를 한 프로세스로 묶는다", () => {
+  const plan = createChangedVerificationPlan(
+    ["apps/web/src/one.ts", "apps/web/src/two.ts"],
+    [
+      context("apps/web/src/one.ts", {
+        workspace: {
+          area: "web",
+          language: "typescript",
+          packageName: "@orbit/web",
+        },
+        verification: {
+          tier1: [
+            "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/one.test.ts",
+          ],
+          tier2: [],
+        },
+      }),
+      context("apps/web/src/two.ts", {
+        workspace: {
+          area: "web",
+          language: "typescript",
+          packageName: "@orbit/web",
+        },
+        verification: {
+          tier1: [
+            "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/two.test.ts",
+          ],
+          tier2: [],
+        },
+      }),
+    ],
+    { crossLanguageOverrides: {} },
+    { maxTier: 1 },
+  );
+  const tierOne = plan.tiers.find((tier) => tier.tier === 1);
+
+  assert.equal(tierOne.commands.length, 1);
+  assert.equal(
+    tierOne.commands[0].command,
+    "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/one.test.ts src/two.test.ts",
+  );
+});
+
+test("같은 Python workspace의 test를 한 Pytest 프로세스로 묶는다", () => {
+  const plan = createChangedVerificationPlan(
+    ["services/python-worker/app/one.py", "services/python-worker/app/two.py"],
+    [
+      context("services/python-worker/app/one.py", {
+        workspace: { area: "python", language: "python" },
+        verification: {
+          tier1: [
+            "cd services/python-worker && uv run pytest tests/test_one.py",
+          ],
+          tier2: [],
+        },
+      }),
+      context("services/python-worker/app/two.py", {
+        workspace: { area: "python", language: "python" },
+        verification: {
+          tier1: [
+            "cd services/python-worker && uv run pytest tests/test_two.py",
+          ],
+          tier2: [],
+        },
+      }),
+    ],
+    { crossLanguageOverrides: {} },
+    { maxTier: 1 },
+  );
+  const tierOne = plan.tiers.find((tier) => tier.tier === 1);
+
+  assert.equal(tierOne.commands.length, 1);
+  assert.equal(
+    tierOne.commands[0].command,
+    "cd services/python-worker && uv run pytest tests/test_one.py tests/test_two.py",
+  );
+});
+
 test("leaf test가 8개를 넘으면 workspace test로 승격한다", () => {
   const paths = Array.from({ length: 9 }, (_, index) => `src/${index}.ts`);
   const contexts = paths.map((path, index) =>

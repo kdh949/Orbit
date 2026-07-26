@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "rehearsal",
   "summary": "리허설 실행, 녹음, 실시간·보고서 STT, 발화 추적, 리포트",
-  "ownedPaths": [
+  "owns": [
     "apps/web/src/features/rehearsal/**",
     "apps/web/src/runtime/speech/stt/**",
     "apps/api/src/rehearsals/**",
@@ -11,6 +11,7 @@
     "services/python-worker/app/semantic_rehearsal.py",
     "packages/shared/src/rehearsals/**"
   ],
+  "excludes": [],
   "entrypoints": [
     {
       "area": "web",
@@ -29,35 +30,71 @@
       "path": "services/python-worker/app/rehearsal.py"
     }
   ],
-  "contracts": [
+  "primaryContracts": [
     "docs/contracts/rehearsal.md",
+    "packages/shared/src/rehearsals/rehearsal-core-contracts.ts",
+    "packages/shared/src/rehearsals/rehearsal-api-contracts.ts",
+    "packages/shared/src/rehearsals/rehearsal-audio-analysis.schema.ts"
+  ],
+  "secondaryContracts": [
     "docs/contracts/common.md",
-    "packages/shared/src/rehearsals/rehearsal.schema.ts",
-    "packages/shared/src/rehearsals/rehearsal-audio-analysis.schema.ts",
-    "packages/shared/src/rehearsals/rehearsal-semantic-evidence.schema.ts"
+    "packages/shared/src/rehearsals/rehearsal-semantic-evidence.schema.ts",
+    "packages/shared/src/rehearsals/trend-contracts.ts",
+    "packages/shared/src/rehearsals/project-summary-contracts.ts"
   ],
-  "tests": [
-    "apps/web/src/features/rehearsal/RehearsalWorkspace.test.tsx",
-    "apps/web/src/runtime/speech/stt/liveSttPort.test.ts",
-    "apps/api/src/rehearsals/rehearsals.service.spec.ts",
-    "apps/worker/src/rehearsal-stt.processor.spec.ts",
-    "services/python-worker/tests/test_rehearsal_analyze.py"
+  "testOwners": [
+    {
+      "source": "apps/web/src/features/rehearsal/RehearsalWorkspaceController.tsx",
+      "tests": ["apps/web/src/features/rehearsal/RehearsalWorkspace.test.tsx"]
+    },
+    {
+      "source": "apps/api/src/rehearsals/**",
+      "tests": ["apps/api/src/rehearsals/rehearsals.service.spec.ts"]
+    },
+    {
+      "source": "apps/worker/src/rehearsal-stt.processor.ts",
+      "tests": ["apps/worker/src/rehearsal-stt.processor.spec.ts"]
+    },
+    {
+      "source": "packages/shared/src/rehearsals/rehearsal-api-contracts.ts",
+      "tests": [
+        "packages/shared/src/rehearsals/rehearsal-api-contracts.test.ts"
+      ]
+    },
+    {
+      "source": "packages/shared/src/rehearsals/project-summary-contracts.ts",
+      "tests": [
+        "packages/shared/src/rehearsals/project-summary-contracts.test.ts"
+      ]
+    },
+    {
+      "source": "services/python-worker/app/rehearsal.py",
+      "tests": ["services/python-worker/tests/test_rehearsal_analyze.py"]
+    }
   ],
-  "fastChecks": [
-    "pnpm turbo run typecheck --filter=@orbit/web --env-mode=loose",
-    "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/features/rehearsal/RehearsalWorkspace.test.tsx",
-    "pnpm turbo run typecheck --filter=@orbit/api --env-mode=loose",
-    "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/rehearsals/rehearsals.service.spec.ts",
-    "pnpm turbo run typecheck --filter=@orbit/worker --env-mode=loose",
-    "pnpm turbo run test --filter=@orbit/worker --env-mode=loose -- src/rehearsal-stt.processor.spec.ts",
-    "cd services/python-worker && uv run pytest tests/test_rehearsal_analyze.py"
-  ],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/features/rehearsal/RehearsalWorkspace.test.tsx",
+      "pnpm turbo run typecheck --filter=@orbit/web --env-mode=loose",
+      "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/rehearsals/rehearsals.service.spec.ts",
+      "pnpm turbo run typecheck --filter=@orbit/api --env-mode=loose",
+      "pnpm turbo run test --filter=@orbit/worker --env-mode=loose -- src/rehearsal-stt.processor.spec.ts",
+      "pnpm turbo run typecheck --filter=@orbit/worker --env-mode=loose",
+      "cd services/python-worker && uv run pytest tests/test_rehearsal_analyze.py"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
   "fullCheckTriggers": [
     "rehearsal shared schema 변경",
     "STT 또는 semantic Job payload 변경",
     "DB migration 변경",
     "TypeScript와 Python 사이 response 계약 변경"
   ],
+  "allowedDependencies": [
+    "packages/shared/src/rehearsals/**",
+    "packages/realtime/src/**"
+  ],
+  "forbiddenDependencies": ["apps/web/src/features/presentation/**"],
   "boundaries": [
     "raw audio와 transcript 원문을 서버 로그에 남기지 않는다",
     "발표자 script를 audience API 또는 slide window로 전달하지 않는다",

@@ -35,74 +35,77 @@ from app.ai.pptx_motion import (
 )
 from app.ai.pptx_package_security import inspect_pptx_package
 
-PML_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
-DML_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
-REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-PKG_REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
-CONTENT_TYPES_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
-ORBIT_OOXML_NS = "urn:orbit:deck:ooxml"
-TABLE_GRAPHIC_DATA_URI = (
-    "http://schemas.openxmlformats.org/drawingml/2006/table"
+from app.ai.pptx_vector_import.models import (
+    OoxmlImportState,
+    OoxmlScale as OoxmlScale,
+    OoxmlTextCascade,
+    OoxmlTextStyleContext,
+    OoxmlThemeFonts,
+    OoxmlThemeStyles,
 )
 
-SLIDE_REL_TYPE = (
-    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+from app.ai.pptx_vector_import.constants import (
+    PML_NS as PML_NS,
+    DML_NS,
+    REL_NS as REL_NS,
+    PKG_REL_NS as PKG_REL_NS,
+    CONTENT_TYPES_NS as CONTENT_TYPES_NS,
+    ORBIT_OOXML_NS as ORBIT_OOXML_NS,
+    TABLE_GRAPHIC_DATA_URI,
+    SLIDE_REL_TYPE as SLIDE_REL_TYPE,
+    SLIDE_LAYOUT_REL_TYPE,
+    SLIDE_MASTER_REL_TYPE,
+    IMAGE_REL_TYPE as IMAGE_REL_TYPE,
+    THEME_REL_TYPE as THEME_REL_TYPE,
+    VECTOR_IMPORT_FLAG,
+    DEFAULT_TEXT_BODY_HORIZONTAL_INSET_EMU,
+    DEFAULT_TEXT_BODY_VERTICAL_INSET_EMU,
+    DEFAULT_PPTX_FONT_FAMILY,
+    PPTX_FONT_BROWSER_FALLBACK,
+    PPTX_FONT_FAMILY_ALIASES,
+    PPTX_BROWSER_AVAILABLE_FONT_FAMILIES,
+    RICH_TEXT_UNSUPPORTED_HYPERLINK,
+    TABLE_STRUCTURE_UNSUPPORTED,
+    TABLE_TRACK_MISMATCH,
+    MAX_TABLE_CELL_LOCATORS,
+    MAX_MOTION_DIAGNOSTIC_DETAILS,
+    FALLBACK_SCHEME_COLORS,
+    SCHEME_COLOR_ALIASES,
 )
-SLIDE_LAYOUT_REL_TYPE = (
-    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
-)
-SLIDE_MASTER_REL_TYPE = (
-    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
-)
-IMAGE_REL_TYPE = (
-    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
-)
-THEME_REL_TYPE = (
-    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
-)
-VECTOR_IMPORT_FLAG = "ORBIT_PPTX_OOXML_VECTOR_IMPORT"
-DEFAULT_TEXT_BODY_HORIZONTAL_INSET_EMU = 91440
-DEFAULT_TEXT_BODY_VERTICAL_INSET_EMU = 45720
-DEFAULT_PPTX_FONT_FAMILY = "Aptos, Calibri, Arial, sans-serif"
-PPTX_FONT_BROWSER_FALLBACK = "PPTX_FONT_BROWSER_FALLBACK"
-PPTX_FONT_FAMILY_ALIASES = {
-    "pretendard": ("Pretendard", None),
-    "pretendard extralight": ("Pretendard", 200),
-    "pretendard medium": ("Pretendard", 500),
-    "pretendard semibold": ("Pretendard", 600),
-    "pretendard extrabold": ("Pretendard", 800),
-}
-PPTX_BROWSER_AVAILABLE_FONT_FAMILIES = frozenset(
-    {"Pretendard", "Arial", "sans-serif", "serif", "monospace"}
-)
-RICH_TEXT_UNSUPPORTED_HYPERLINK = "PPTX_RICH_TEXT_UNSUPPORTED_HYPERLINK"
-TABLE_STRUCTURE_UNSUPPORTED = "PPTX_TABLE_STRUCTURE_UNSUPPORTED"
-TABLE_TRACK_MISMATCH = "PPTX_TABLE_TRACK_MISMATCH"
-MAX_TABLE_CELL_LOCATORS = 10_000
-MAX_MOTION_DIAGNOSTIC_DETAILS = 500
-FALLBACK_SCHEME_COLORS = {
-    "bg1": "#FFFFFF",
-    "tx1": "#111827",
-    "bg2": "#FFFFFF",
-    "tx2": "#111827",
-    "accent1": "#2563EB",
-    "accent2": "#7C3AED",
-    "accent3": "#0EA5E9",
-    "accent4": "#10B981",
-    "accent5": "#F59E0B",
-    "accent6": "#EF4444",
-    "dk1": "#111827",
-    "lt1": "#FFFFFF",
-    "dk2": "#111827",
-    "lt2": "#FFFFFF",
-}
-SCHEME_COLOR_ALIASES = {
-    "bg1": "lt1",
-    "tx1": "dk1",
-    "bg2": "lt2",
-    "tx2": "dk2",
-}
 
+from app.ai.pptx_vector_import.xml_utils import (
+    presentation_slide_parts,
+    presentation_size_emu,
+    slide_shows_master_shapes,
+    theme_color_map as theme_color_map,
+    theme_font_scheme,
+    theme_font_value as theme_font_value,
+    theme_style_matrix,
+    presentation_theme_part as presentation_theme_part,
+    first_theme_part as first_theme_part,
+    theme_color_value as theme_color_value,
+    apply_color_transforms,
+    clamp_rgb as clamp_rgb,
+    relationships_for_part,
+    relationship_target_by_type,
+    relationship_is_external,
+    rels_path_for_part as rels_path_for_part,
+    resolve_part_path,
+    read_xml,
+    content_type_map,
+    mime_type_for_part,
+    extension_for_mime_type,
+    is_svg_mime_type,
+    is_full_canvas_frame,
+    first_local_descendant,
+    first_local_child,
+    direct_local_children,
+    local_name,
+    int_attr,
+    int_value,
+    attr_by_local_name,
+    safe_id,
+)
 
 def import_pptx_design_with_optional_ooxml_vector(
     path: Path,
@@ -149,26 +152,6 @@ def ooxml_vector_import_disabled() -> bool:
         "no",
         "off",
     }
-
-
-@dataclass(frozen=True)
-class OoxmlScale:
-    canvas_width: int
-    canvas_height: int
-    slide_width_emu: int
-    slide_height_emu: int
-
-    @property
-    def scale_x(self) -> float:
-        return self.canvas_width / max(1, self.slide_width_emu)
-
-    @property
-    def scale_y(self) -> float:
-        return self.canvas_height / max(1, self.slide_height_emu)
-
-    @property
-    def average_scale(self) -> float:
-        return (self.scale_x + self.scale_y) / 2
 
 
 @dataclass(frozen=True)
@@ -223,55 +206,6 @@ class OoxmlTransform:
             translate_x=self.scale_x * local.translate_x + self.translate_x,
             translate_y=self.scale_y * local.translate_y + self.translate_y,
         )
-
-
-@dataclass
-class OoxmlImportState:
-    assets: list[ImportedDesignAsset]
-    asset_ids_by_content_hash: dict[str, str]
-    asset_colors: dict[str, str]
-    theme_colors: dict[str, str]
-    theme_fonts: OoxmlThemeFonts
-    theme_styles: OoxmlThemeStyles
-    warnings: list[str]
-    text_style_context: OoxmlTextStyleContext | None = None
-    z_cursor: int = 1
-
-    def next_z(self) -> int:
-        value = self.z_cursor
-        self.z_cursor += 1
-        return value
-
-
-@dataclass(frozen=True)
-class OoxmlThemeStyles:
-    line_styles: tuple[ET.Element[Any], ...] = ()
-    effect_styles: tuple[ET.Element[Any], ...] = ()
-
-
-@dataclass(frozen=True)
-class OoxmlThemeFonts:
-    major_latin: str = "Calibri"
-    major_east_asian: str = "Calibri"
-    major_complex_script: str = "Calibri"
-    minor_latin: str = "Calibri"
-    minor_east_asian: str = "Calibri"
-    minor_complex_script: str = "Calibri"
-
-
-@dataclass(frozen=True)
-class OoxmlTextStyleContext:
-    layout: ET.Element[Any] | None
-    master: ET.Element[Any] | None
-    theme_fonts: OoxmlThemeFonts
-
-
-@dataclass(frozen=True)
-class OoxmlTextCascade:
-    layout_shape: ET.Element[Any] | None
-    master_shape: ET.Element[Any] | None
-    master_text_style: ET.Element[Any] | None
-    theme_fonts: OoxmlThemeFonts
 
 
 def import_pptx_ooxml_visual_tree(
@@ -3492,185 +3426,6 @@ def element_id(
     return f"el_ooxml_{slide_index}_{safe_id(source_name)}_{safe_id(shape_id)}_{kind}"
 
 
-def presentation_slide_parts(package: zipfile.ZipFile) -> list[str]:
-    presentation = read_xml(package, "ppt/presentation.xml")
-    if presentation is None:
-        raise ValueError("PPTX presentation.xml is missing.")
-    rels = relationships_for_part(package, "ppt/presentation.xml")
-    slide_parts: list[str] = []
-    for slide_id in presentation.iter():
-        if local_name(slide_id) != "sldId":
-            continue
-        rel_id = slide_id.get(f"{{{REL_NS}}}id")
-        if not rel_id:
-            continue
-        rel = rels.get(rel_id)
-        if (
-            rel
-            and rel.get("Type") == SLIDE_REL_TYPE
-            and not relationship_is_external(rel)
-        ):
-            slide_parts.append(
-                resolve_part_path(
-                    "ppt/presentation.xml",
-                    rel.get("Target", ""),
-                )
-            )
-    return slide_parts
-
-
-def presentation_size_emu(package: zipfile.ZipFile) -> tuple[int, int]:
-    presentation = read_xml(package, "ppt/presentation.xml")
-    size = first_local_descendant(presentation, "sldSz")
-    return (
-        max(1, int_attr(size, "cx", 12192000)),
-        max(1, int_attr(size, "cy", 6858000)),
-    )
-
-
-def slide_shows_master_shapes(slide: ET.Element[Any]) -> bool:
-    common_slide_data = first_local_child(slide, "cSld")
-    return common_slide_data is None or common_slide_data.get("showMasterSp") != "0"
-
-
-def theme_color_map(package: zipfile.ZipFile) -> dict[str, str]:
-    theme_part = presentation_theme_part(package) or first_theme_part(package)
-    theme = read_xml(package, theme_part)
-    color_scheme = first_local_descendant(theme, "clrScheme") if theme is not None else None
-    if color_scheme is None:
-        return FALLBACK_SCHEME_COLORS
-
-    colors: dict[str, str] = {}
-    for item in list(color_scheme):
-        key = local_name(item)
-        color = theme_color_value(item)
-        if color:
-            colors[key] = color
-    for alias, target in SCHEME_COLOR_ALIASES.items():
-        if target in colors:
-            colors[alias] = colors[target]
-    return {**FALLBACK_SCHEME_COLORS, **colors}
-
-
-def theme_font_scheme(package: zipfile.ZipFile) -> OoxmlThemeFonts:
-    theme_part = presentation_theme_part(package) or first_theme_part(package)
-    theme = read_xml(package, theme_part)
-    font_scheme = first_local_descendant(theme, "fontScheme") if theme is not None else None
-    major = first_local_child(font_scheme, "majorFont")
-    minor = first_local_child(font_scheme, "minorFont")
-    major_latin = theme_font_value(major, "latin", "Calibri")
-    minor_latin = theme_font_value(minor, "latin", "Calibri")
-    return OoxmlThemeFonts(
-        major_latin=major_latin,
-        major_east_asian=theme_font_value(major, "ea", major_latin),
-        major_complex_script=theme_font_value(major, "cs", major_latin),
-        minor_latin=minor_latin,
-        minor_east_asian=theme_font_value(minor, "ea", minor_latin),
-        minor_complex_script=theme_font_value(minor, "cs", minor_latin),
-    )
-
-
-def theme_font_value(
-    font_group: ET.Element[Any] | None,
-    script: str,
-    fallback: str,
-) -> str:
-    font = first_local_child(font_group, script)
-    typeface = str(font.get("typeface", "")).strip() if font is not None else ""
-    return typeface or fallback
-
-
-def theme_style_matrix(package: zipfile.ZipFile) -> OoxmlThemeStyles:
-    theme_part = presentation_theme_part(package) or first_theme_part(package)
-    theme = read_xml(package, theme_part)
-    if theme is None:
-        return OoxmlThemeStyles()
-    format_scheme = first_local_descendant(theme, "fmtScheme")
-    line_style_list = first_local_child(format_scheme, "lnStyleLst")
-    effect_style_list = first_local_child(format_scheme, "effectStyleLst")
-    return OoxmlThemeStyles(
-        line_styles=(
-            tuple(direct_local_children(line_style_list, "ln"))
-            if line_style_list is not None
-            else ()
-        ),
-        effect_styles=(
-            tuple(direct_local_children(effect_style_list, "effectStyle"))
-            if effect_style_list is not None
-            else ()
-        ),
-    )
-
-
-def presentation_theme_part(package: zipfile.ZipFile) -> str | None:
-    rels = relationships_for_part(package, "ppt/presentation.xml")
-    return relationship_target_by_type("ppt/presentation.xml", rels, THEME_REL_TYPE)
-
-
-def first_theme_part(package: zipfile.ZipFile) -> str | None:
-    return next(
-        (
-            name
-            for name in package.namelist()
-            if name.startswith("ppt/theme/theme") and name.endswith(".xml")
-        ),
-        None,
-    )
-
-
-def theme_color_value(item: ET.Element[Any]) -> str | None:
-    srgb = first_local_child(item, "srgbClr")
-    if srgb is not None and srgb.get("val"):
-        return f"#{str(srgb.get('val')).upper()}"
-    sys = first_local_child(item, "sysClr")
-    if sys is not None and sys.get("lastClr"):
-        return f"#{str(sys.get('lastClr')).upper()}"
-    scheme = first_local_child(item, "schemeClr")
-    if scheme is not None:
-        return FALLBACK_SCHEME_COLORS.get(str(scheme.get("val", "")))
-    return None
-
-
-def apply_color_transforms(color: str, color_node: ET.Element[Any]) -> str:
-    red = int(color[1:3], 16)
-    green = int(color[3:5], 16)
-    blue = int(color[5:7], 16)
-
-    for transform in list(color_node):
-        name = local_name(transform)
-        value = int_attr(transform, "val", 100000) / 100000
-        if name == "lumMod":
-            red, green, blue = (
-                round(red * value),
-                round(green * value),
-                round(blue * value),
-            )
-        elif name == "lumOff":
-            red, green, blue = (
-                round(red + 255 * value),
-                round(green + 255 * value),
-                round(blue + 255 * value),
-            )
-        elif name == "tint":
-            red, green, blue = (
-                round(red + (255 - red) * value),
-                round(green + (255 - green) * value),
-                round(blue + (255 - blue) * value),
-            )
-        elif name == "shade":
-            red, green, blue = (
-                round(red * value),
-                round(green * value),
-                round(blue * value),
-            )
-
-    return f"#{clamp_rgb(red):02X}{clamp_rgb(green):02X}{clamp_rgb(blue):02X}"
-
-
-def clamp_rgb(value: int) -> int:
-    return max(0, min(255, value))
-
-
 def slide_background_color(
     slide: ET.Element[Any],
     theme_colors: dict[str, str],
@@ -3680,184 +3435,4 @@ def slide_background_color(
         solid_color(first_local_child(background, "solidFill"), theme_colors)
         if background is not None
         else None
-    )
-
-
-def relationships_for_part(
-    package: zipfile.ZipFile,
-    part_path: str | None,
-) -> dict[str, dict[str, str]]:
-    if not part_path:
-        return {}
-    rels_path = rels_path_for_part(part_path)
-    if rels_path not in package.namelist():
-        return {}
-    root = ET.fromstring(package.read(rels_path))
-    return {
-        str(relationship.get("Id")): {
-            key: str(value) for key, value in relationship.attrib.items()
-        }
-        for relationship in root
-        if local_name(relationship) == "Relationship" and relationship.get("Id")
-    }
-
-
-def relationship_target_by_type(
-    part_path: str | None,
-    rels: dict[str, dict[str, str]],
-    rel_type: str,
-) -> str | None:
-    if not part_path:
-        return None
-    for rel in rels.values():
-        if (
-            rel.get("Type") == rel_type
-            and rel.get("Target")
-            and not relationship_is_external(rel)
-        ):
-            return resolve_part_path(part_path, rel["Target"])
-    return None
-
-
-def relationship_is_external(relationship: dict[str, str]) -> bool:
-    return relationship.get("TargetMode", "").lower() == "external"
-
-
-def rels_path_for_part(part_path: str) -> str:
-    directory, _, filename = part_path.rpartition("/")
-    return f"{directory}/_rels/{filename}.rels" if directory else f"_rels/{filename}.rels"
-
-
-def resolve_part_path(part_path: str, target: str) -> str:
-    if target.startswith("/"):
-        return target.lstrip("/")
-    base_parts = part_path.split("/")[:-1]
-    for piece in target.split("/"):
-        if piece in {"", "."}:
-            continue
-        if piece == "..":
-            if base_parts:
-                base_parts.pop()
-        else:
-            base_parts.append(piece)
-    return "/".join(base_parts)
-
-
-def read_xml(package: zipfile.ZipFile, part_path: str | None) -> ET.Element[Any] | None:
-    if not part_path or part_path not in package.namelist():
-        return None
-    return ET.fromstring(package.read(part_path))
-
-
-def content_type_map(package: zipfile.ZipFile) -> dict[str, str]:
-    if "[Content_Types].xml" not in package.namelist():
-        return {}
-    root = ET.fromstring(package.read("[Content_Types].xml"))
-    mapping: dict[str, str] = {}
-    for item in root:
-        name = local_name(item)
-        if name == "Default" and item.get("Extension") and item.get("ContentType"):
-            mapping[f".{str(item.get('Extension')).lower()}"] = str(item.get("ContentType"))
-        elif name == "Override" and item.get("PartName") and item.get("ContentType"):
-            mapping[str(item.get("PartName")).lstrip("/")] = str(item.get("ContentType"))
-    return mapping
-
-
-def mime_type_for_part(content_types: dict[str, str], part_path: str) -> str:
-    if part_path in content_types:
-        return content_types[part_path]
-    suffix = f".{part_path.rsplit('.', maxsplit=1)[-1].lower()}"
-    return content_types.get(suffix, "image/png")
-
-
-def extension_for_mime_type(mime_type: str) -> str:
-    subtype = mime_type.rsplit("/", maxsplit=1)[-1].lower()
-    if subtype == "jpeg":
-        return "jpg"
-    if subtype in {"svg", "svg+xml"}:
-        return "svg"
-    return subtype if subtype in {"png", "jpg", "gif", "webp"} else "png"
-
-
-def is_svg_mime_type(mime_type: str) -> bool:
-    return mime_type.lower() in {"image/svg+xml", "image/svg"}
-
-
-def is_full_canvas_frame(frame: dict[str, int], scale: OoxmlScale) -> bool:
-    return (
-        frame["x"] <= 4
-        and frame["y"] <= 4
-        and frame["width"] >= scale.canvas_width - 8
-        and frame["height"] >= scale.canvas_height - 8
-    )
-
-
-def first_local_descendant(
-    element: ET.Element[Any] | None,
-    name: str,
-) -> ET.Element[Any] | None:
-    if element is None:
-        return None
-    for candidate in element.iter():
-        if local_name(candidate) == name:
-            return candidate
-    return None
-
-
-def first_local_child(
-    element: ET.Element[Any] | None,
-    name: str,
-) -> ET.Element[Any] | None:
-    if element is None:
-        return None
-    for candidate in list(element):
-        if local_name(candidate) == name:
-            return candidate
-    return None
-
-
-def direct_local_children(
-    element: ET.Element[Any],
-    name: str,
-) -> list[ET.Element[Any]]:
-    return [child for child in list(element) if local_name(child) == name]
-
-
-def local_name(element: ET.Element[Any] | str) -> str:
-    tag = element.tag if isinstance(element, ET.Element) else element
-    return str(tag).rsplit("}", maxsplit=1)[-1]
-
-
-def int_attr(element: ET.Element[Any] | None, name: str, fallback: int) -> int:
-    if element is None:
-        return fallback
-    try:
-        return int(str(element.get(name)))
-    except Exception:
-        return fallback
-
-
-def int_value(value: object, fallback: int) -> int:
-    try:
-        return int(str(value))
-    except Exception:
-        return fallback
-
-
-def attr_by_local_name(element: ET.Element[Any] | None, name: str) -> str | None:
-    if element is None:
-        return None
-    for key, value in element.attrib.items():
-        if local_name(key) == name:
-            return str(value)
-    return None
-
-
-def safe_id(value: str) -> str:
-    return (
-        "".join(
-            char if char.isascii() and (char.isalnum() or char in "_-") else "_"
-            for char in value
-        )
-        or "ooxml"
     )

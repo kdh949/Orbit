@@ -18,7 +18,9 @@ describe("EditorShell architecture", () => {
   it("preserves the compatibility exports behind the public module", () => {
     expect(publicSource).toContain('export * from "./EditorShell"');
     expect(shellSource).toContain('export * from "./EditorShellController"');
-    expect(controllerSource).toContain("export function getEditorStatusLabel");
+    expect(controllerSource).toContain(
+      'export { getEditorStatusLabel } from "./editorStatusModel"',
+    );
   });
 
   it("keeps the editor view composition inside the controller boundary", () => {

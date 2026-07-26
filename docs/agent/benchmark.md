@@ -6,7 +6,7 @@
 
 ## Snapshot identity
 
-schema v3 snapshot은 측정 대상의 Git identity를 함께 기록한다.
+schema v4 snapshot은 측정 대상의 Git identity를 함께 기록한다.
 
 - `headCommit`
 - `treeHash`
@@ -39,14 +39,17 @@ pnpm agent:benchmark compare docs/agent/benchmarks/baseline.json
 - `@orbit/shared`, `@orbit/editor-core` root/subpath import 파일 수
 - production/test `@orbit/shared` root import 분리
 - source cycle과 source inspection test 수
-- domain manifest의 production source coverage
-- 주요 shell의 direct dependency, reachable file/LOC
+- domain manifest의 production source 파일·LOC coverage와 고 fan-out fallback 수
+- production/test LOC p50·p90·p95·max와 1,000/2,000줄 이상 파일 수
+- 실제 Controller·processor·Python hotspot의 direct dependency, reverse importer,
+  reachable file/LOC
 - 주요 production, test, CSS hotspot 줄 수
 - CSS duplicate selector와 occurrence
+- root `AGENTS.md` byte 수
 
-`docs/agent/benchmarks/baseline.json`은 Agent 효율 리팩터링 직전의 Git commit
-`3b045d7b8fdcf7adb1121227879adf316c865c4c`과 tree
-`78eb72732526a350f3381ab9226ecfca430d36fa`를 기준으로 한다.
+`docs/agent/benchmarks/baseline.json`은 이번 Agent 효율 리팩터링 직전의 Git
+commit `a8a37ed488c73faaee3224b89b674d99a9d713d1`과 tree
+`b42018cd296d2c7ddfd3691f6f1c7699386b0f31`를 기준으로 한다.
 
 ## 실제 Agent 작업 측정
 
@@ -54,17 +57,38 @@ pnpm agent:benchmark compare docs/agent/benchmarks/baseline.json
 pnpm agent:benchmark tasks
 ```
 
-처음에는 대표 작업 4개를 한 번씩 실행한다.
+처음에는 대표 작업 8개를 한 번씩 실행한다.
 
 - Web leaf logic
 - shared contract
 - Worker retry
 - Python PPTX error mapping
+- high fan-out `job-queue` payload
+- Rehearsal Controller
+- global `App.tsx` route
+- Web·API·Worker cross-boundary contract
+
+실제 token 측정은 disposable detached worktree와 `codex exec --json
+--ephemeral`을 사용한다. 원본 worktree와 Git 이력은 변경하지 않으며 raw event나
+prompt 응답은 저장하지 않고 usage와 탐색/검증 집계만 JSON으로 남긴다.
+
+```bash
+pnpm agent:benchmark:codex --task web-speech-retry \
+  --output /tmp/orbit-codex-benchmark.json
+
+pnpm agent:benchmark:codex --all --runs 1 \
+  --ref origin/develop \
+  --output /tmp/orbit-codex-benchmark.json
+```
+
+`--runs`는 비용과 편차를 통제하기 위해 최대 3으로 제한한다. task 원문은
+`docs/agent/benchmark/tasks`에서 버전 관리한다.
 
 편차가 큰 작업만 한 번 추가하고 세 번째 run은 필요할 때만 수행한다. 각 run은 첫
-patch 전 파일 수, 첫 targeted test까지 tool call과 시간, 전체 시간, 검증
-workspace, rollback을 기록한다. prompt, transcript, 발표자 script, credential,
-개인식별정보는 기록하지 않는다.
+patch 전 파일 수와 검색 수, 첫 targeted test까지 tool call과 시간, 전체 시간,
+검증 workspace, rollback, input/cached input/output/reasoning token을 기록한다.
+prompt, transcript, 발표자 script, credential, 개인식별정보는 결과에 기록하지
+않는다.
 
 ## 비교 규칙
 

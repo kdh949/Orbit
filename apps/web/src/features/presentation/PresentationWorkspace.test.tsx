@@ -6,6 +6,7 @@ import { forwardRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { PresentationWorkspace } from "./PresentationWorkspace";
+import { presentationAutoAdvancePolicy } from "./presentationWorkspaceModel";
 
 const presentationWorkspaceControllerSourcePath = fileURLToPath(
   new URL("./PresentationWorkspaceController.tsx", import.meta.url),
@@ -61,8 +62,12 @@ describe("PresentationWorkspace", () => {
     );
 
     expect(source).toContain("<PresentationScreen");
-    expect(source).not.toContain('<header className="rehearsal-presenter-topbar">');
-    expect(source).not.toContain('<section className="rehearsal-presenter-layout">');
+    expect(source).not.toContain(
+      '<header className="rehearsal-presenter-topbar">',
+    );
+    expect(source).not.toContain(
+      '<section className="rehearsal-presenter-layout">',
+    );
   });
 
   it("keeps the live presentation lifecycle separate from rehearsal persistence", () => {
@@ -98,8 +103,10 @@ describe("PresentationWorkspace", () => {
 
     expect(source).toContain("evaluateAdvanceController");
     expect(source).toContain('mode: "live"');
-    expect(source).toContain("live: true");
-    expect(source).toContain("rehearsal: false");
+    expect(presentationAutoAdvancePolicy).toMatchObject({
+      live: true,
+      rehearsal: false,
+    });
   });
 
   it("resolves exact speaker-note keyword occurrences during live presentation", () => {
@@ -115,14 +122,18 @@ describe("PresentationWorkspace", () => {
     expect(source).toContain("applyPlaybackUpdate");
     expect(source).toContain("confirmedOccurrenceIds");
     expect(source).toContain("getSlideTranscriptSpan");
-    expect(source).toContain("previousTranscript: transcriptSpan.previousTranscript");
+    expect(source).toContain(
+      "previousTranscript: transcriptSpan.previousTranscript",
+    );
   });
 
   it("renders the auto-start presenter controls for an Activity slide", () => {
     const deck = createDemoDeck();
     const activitySlide = createActivitySlide(deck, "pre-question");
     const html = renderToStaticMarkup(
-      <PresentationWorkspace initialDeck={{ ...deck, slides: [activitySlide] }} />,
+      <PresentationWorkspace
+        initialDeck={{ ...deck, slides: [activitySlide] }}
+      />,
     );
 
     expect(html).toContain('aria-label="참여 장표 운영"');

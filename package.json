@@ -10,6 +10,8 @@
   "scripts": {
     "agent:context": "node tools/agent/context.mjs",
     "agent:benchmark": "node tools/agent/benchmark.mjs",
+    "agent:benchmark:codex": "node tools/agent/codex-benchmark.mjs",
+    "agent:search": "node tools/agent/agent-search.mjs",
     "build": "turbo run build",
     "clean": "turbo run clean && rm -rf node_modules",
     "compose:down": "docker compose down --remove-orphans",

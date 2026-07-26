@@ -1,13 +1,16 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "pptx",
   "summary": "PPTX OOXML 생성, sync, asset 저장, import·render pipeline",
-  "ownedPaths": [
+  "owns": [
     "apps/api/src/pptx-ooxml-generations/**",
     "apps/worker/src/pptx-ooxml-*.ts",
     "services/python-worker/app/ai/pptx_*.py",
+    "services/python-worker/app/ai/pptx/**",
+    "services/python-worker/app/ai/pptx_ooxml/**",
     "packages/shared/src/deck/pptx-*.ts"
   ],
+  "excludes": [],
   "entrypoints": [
     {
       "area": "api",
@@ -22,31 +25,56 @@
       "path": "services/python-worker/app/ai/pptx_ooxml_generation.py"
     }
   ],
-  "contracts": [
+  "primaryContracts": [
     "docs/contracts/pptx.md",
-    "docs/contracts/common.md",
     "packages/shared/src/deck/pptx-ooxml-generation.schema.ts",
     "packages/shared/src/deck/pptx-ooxml-storage.schema.ts"
   ],
-  "tests": [
-    "apps/api/src/pptx-ooxml-generations/pptx-ooxml-generations.service.spec.ts",
-    "apps/worker/src/pptx-ooxml-sync.processor.spec.ts",
-    "services/python-worker/tests/test_pptx_ooxml_generation.py",
-    "services/python-worker/tests/test_pptx_ooxml_sync_api.py"
+  "secondaryContracts": ["docs/contracts/common.md"],
+  "testOwners": [
+    {
+      "source": "apps/api/src/pptx-ooxml-generations/**",
+      "tests": [
+        "apps/api/src/pptx-ooxml-generations/pptx-ooxml-generations.service.spec.ts"
+      ]
+    },
+    {
+      "source": "apps/worker/src/pptx-ooxml-sync.processor.ts",
+      "tests": ["apps/worker/src/pptx-ooxml-sync.processor.spec.ts"]
+    },
+    {
+      "source": "services/python-worker/app/ai/pptx_ooxml_generation.py",
+      "tests": [
+        "services/python-worker/tests/test_pptx_ooxml_generation.py",
+        "services/python-worker/tests/test_pptx_ooxml_sync_api.py"
+      ]
+    },
+    {
+      "source": "services/python-worker/app/ai/pptx_ooxml_vector_importer.py",
+      "tests": ["services/python-worker/tests/test_pptx_design_importer.py"]
+    }
   ],
-  "fastChecks": [
-    "pnpm turbo run typecheck --filter=@orbit/api --env-mode=loose",
-    "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/pptx-ooxml-generations/pptx-ooxml-generations.service.spec.ts",
-    "pnpm turbo run typecheck --filter=@orbit/worker --env-mode=loose",
-    "pnpm turbo run test --filter=@orbit/worker --env-mode=loose -- src/pptx-ooxml-sync.processor.spec.ts",
-    "cd services/python-worker && uv run pytest tests/test_pptx_ooxml_sync_api.py"
-  ],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/pptx-ooxml-generations/pptx-ooxml-generations.service.spec.ts",
+      "pnpm turbo run typecheck --filter=@orbit/api --env-mode=loose",
+      "pnpm turbo run test --filter=@orbit/worker --env-mode=loose -- src/pptx-ooxml-sync.processor.spec.ts",
+      "pnpm turbo run typecheck --filter=@orbit/worker --env-mode=loose",
+      "cd services/python-worker && uv run pytest tests/test_pptx_ooxml_sync_api.py"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
   "fullCheckTriggers": [
     "OOXML Job payload 또는 storage schema 변경",
     "TypeScript와 Python sync response 변경",
     "PPTX package security·resource limit 변경",
     "render 또는 import compatibility fallback 변경"
   ],
+  "allowedDependencies": [
+    "packages/shared/src/deck/pptx-*.ts",
+    "packages/storage/src/**"
+  ],
+  "forbiddenDependencies": ["apps/web/src/features/**"],
   "boundaries": [
     "archive traversal, package size, render resource limit 검사를 유지한다",
     "임시 파일은 성공·실패 모두 정리한다",

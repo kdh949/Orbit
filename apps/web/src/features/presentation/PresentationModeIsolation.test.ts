@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { createPresentationScreenSession } from "./presentationWorkspaceModel";
 
 const presentationWorkspaceSource = read(
   "./PresentationWorkspaceController.tsx",
@@ -25,9 +26,19 @@ describe("presentation mode isolation", () => {
     expect(presentationWorkspaceSource).toContain(
       "runtimeRef.current ??",
     );
-    expect(presentationWorkspaceSource).toContain(
-      "sessionId: presenterSession.sessionId",
-    );
+    expect(
+      createPresentationScreenSession(null, {
+        audienceAccessEnabled: true,
+        audienceUrl: "/audience/session-presenter",
+        deckId: "deck-presentation",
+        deckVersion: 1,
+        sessionId: "session-presenter",
+        sessionPurpose: "presentation",
+      }),
+    ).toMatchObject({
+      audienceUrl: "/audience/session-presenter",
+      sessionId: "session-presenter",
+    });
     expect(presentationWorkspaceSource).toContain(
       "await ensurePresentationSession()",
     );

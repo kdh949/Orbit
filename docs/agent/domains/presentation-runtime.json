@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 2,
+  "id": "presentation-runtime",
+  "summary": "발표 실행, 녹화, 슬라이드 진행, 발표 세션과 결과 처리",
+  "owns": [
+    "apps/web/src/features/presentation/**",
+    "apps/web/src/runtime/presentation/**",
+    "apps/web/src/features/presenter-shell/**",
+    "apps/api/src/presentation-sessions/**",
+    "packages/shared/src/presentation/index.ts",
+    "packages/shared/src/presentation/presentation.schema.ts"
+  ],
+  "excludes": [
+    "apps/api/src/presentation-sessions/presentation-companion-*.ts"
+  ],
+  "entrypoints": [
+    {
+      "area": "web",
+      "path": "apps/web/src/features/presentation/PresentationWorkspace.tsx"
+    },
+    {
+      "area": "api",
+      "path": "apps/api/src/presentation-sessions/presentation-sessions.module.ts"
+    }
+  ],
+  "primaryContracts": [
+    "packages/shared/src/presentation/presentation.schema.ts",
+    "docs/contracts/common.md"
+  ],
+  "secondaryContracts": ["packages/shared/src/deck/deck.schema.ts"],
+  "testOwners": [
+    {
+      "source": "apps/web/src/features/presentation/PresentationWorkspaceController.tsx",
+      "tests": [
+        "apps/web/src/features/presentation/PresentationWorkspace.test.tsx"
+      ]
+    },
+    {
+      "source": "apps/api/src/presentation-sessions/presentation-runs.service.ts",
+      "tests": [
+        "apps/api/src/presentation-sessions/presentation-runs.service.spec.ts"
+      ]
+    }
+  ],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/features/presentation/PresentationWorkspace.test.tsx",
+      "pnpm turbo run typecheck --filter=@orbit/web --env-mode=loose",
+      "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/presentation-sessions/presentation-runs.service.spec.ts"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
+  "fullCheckTriggers": [
+    "presentation run schema 변경",
+    "recording 또는 output window lifecycle 변경"
+  ],
+  "allowedDependencies": [
+    "packages/shared/src/presentation/**",
+    "apps/web/src/runtime/presentation/**"
+  ],
+  "forbiddenDependencies": ["apps/web/src/features/rehearsal/**"],
+  "boundaries": [
+    "발표 실행 상태 변경 경로를 lifecycle 계층에 모은다",
+    "청중 surface에 발표자 script를 노출하지 않는다"
+  ]
+}

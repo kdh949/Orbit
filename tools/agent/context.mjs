@@ -19,11 +19,17 @@ import {
 } from "./lib/repo-path.mjs";
 
 const DEFAULT_DOMAIN_DIRECTORY = "docs/agent/domains";
-const REQUIRED_STRING_ARRAYS = [
+const V1_REQUIRED_STRING_ARRAYS = [
   "ownedPaths",
   "contracts",
   "tests",
   "fastChecks",
+  "fullCheckTriggers",
+  "boundaries",
+];
+const V2_REQUIRED_STRING_ARRAYS = [
+  "owns",
+  "primaryContracts",
   "fullCheckTriggers",
   "boundaries",
 ];
@@ -78,12 +84,77 @@ function validateStringArray(manifest, key, file, issues) {
   }
 }
 
+function validateOptionalStringArray(manifest, key, file, issues) {
+  if (manifest[key] === undefined) {
+    return;
+  }
+  if (!Array.isArray(manifest[key])) {
+    issues.push(`${file}: ${key}는 배열이어야 합니다.`);
+    return;
+  }
+  if (
+    manifest[key].some(
+      (value) => typeof value !== "string" || value.trim() === "",
+    )
+  ) {
+    issues.push(
+      `${file}: ${key}의 모든 값은 비어 있지 않은 문자열이어야 합니다.`,
+    );
+  }
+  if (new Set(manifest[key]).size !== manifest[key].length) {
+    issues.push(`${file}: ${key}에 중복 값이 있습니다.`);
+  }
+}
+
+function normalizeManifest(manifest) {
+  if (manifest.schemaVersion === 1) {
+    return {
+      ...manifest,
+      excludedPaths: [],
+      primaryContracts: [],
+      secondaryContracts: manifest.contracts,
+      testOwners: [],
+      verificationProfiles: {
+        leaf: manifest.fastChecks,
+        crossBoundary: ["pnpm verify:affected"],
+      },
+      allowedDependencies: [],
+      forbiddenDependencies: [],
+    };
+  }
+  const tests = [
+    ...new Set(
+      (manifest.testOwners ?? []).flatMap((owner) => owner.tests ?? []),
+    ),
+  ];
+  const fastChecks = [
+    ...new Set(Object.values(manifest.verificationProfiles ?? {}).flat()),
+  ];
+  return {
+    ...manifest,
+    ownedPaths: manifest.owns,
+    excludedPaths: manifest.excludes ?? [],
+    contracts: [
+      ...new Set([
+        ...(manifest.primaryContracts ?? []),
+        ...(manifest.secondaryContracts ?? []),
+      ]),
+    ],
+    tests,
+    fastChecks,
+    testOwners: manifest.testOwners ?? [],
+    secondaryContracts: manifest.secondaryContracts ?? [],
+    allowedDependencies: manifest.allowedDependencies ?? [],
+    forbiddenDependencies: manifest.forbiddenDependencies ?? [],
+  };
+}
+
 function validateManifest(root, filePath, manifest) {
   const file = toRepoPath(root, filePath);
   const issues = [];
 
-  if (manifest.schemaVersion !== 1) {
-    issues.push(`${file}: schemaVersion은 1이어야 합니다.`);
+  if (![1, 2].includes(manifest.schemaVersion)) {
+    issues.push(`${file}: schemaVersion은 1 또는 2여야 합니다.`);
   }
   if (typeof manifest.id !== "string" || !/^[a-z0-9-]+$/.test(manifest.id)) {
     issues.push(`${file}: id는 소문자, 숫자, 하이픈만 사용해야 합니다.`);
@@ -94,8 +165,74 @@ function validateManifest(root, filePath, manifest) {
     issues.push(`${file}: summary가 필요합니다.`);
   }
 
-  for (const key of REQUIRED_STRING_ARRAYS) {
+  const requiredArrays =
+    manifest.schemaVersion === 2
+      ? V2_REQUIRED_STRING_ARRAYS
+      : V1_REQUIRED_STRING_ARRAYS;
+  for (const key of requiredArrays) {
     validateStringArray(manifest, key, file, issues);
+  }
+  if (manifest.schemaVersion === 2) {
+    for (const key of [
+      "excludes",
+      "secondaryContracts",
+      "allowedDependencies",
+      "forbiddenDependencies",
+    ]) {
+      validateOptionalStringArray(manifest, key, file, issues);
+    }
+    if (
+      typeof manifest.verificationProfiles !== "object" ||
+      manifest.verificationProfiles === null ||
+      !Array.isArray(manifest.verificationProfiles.leaf) ||
+      manifest.verificationProfiles.leaf.length === 0
+    ) {
+      issues.push(
+        `${file}: verificationProfiles.leaf는 비어 있지 않은 배열이어야 합니다.`,
+      );
+    } else {
+      for (const [profile, commands] of Object.entries(
+        manifest.verificationProfiles,
+      )) {
+        if (
+          !Array.isArray(commands) ||
+          commands.some(
+            (command) => typeof command !== "string" || command.trim() === "",
+          )
+        ) {
+          issues.push(
+            `${file}: verificationProfiles.${profile}가 유효하지 않습니다.`,
+          );
+        }
+      }
+    }
+    if (!Array.isArray(manifest.testOwners)) {
+      issues.push(`${file}: testOwners는 배열이어야 합니다.`);
+    } else {
+      for (const owner of manifest.testOwners) {
+        if (
+          typeof owner?.source !== "string" ||
+          owner.source.trim() === "" ||
+          !Array.isArray(owner.tests) ||
+          owner.tests.length === 0
+        ) {
+          issues.push(
+            `${file}: testOwners 항목에는 source와 비어 있지 않은 tests가 필요합니다.`,
+          );
+          continue;
+        }
+        if (!existsSync(resolve(root, ownedPathAnchor(owner.source)))) {
+          issues.push(
+            `${file}: test owner 기준 경로가 없습니다: ${owner.source}`,
+          );
+        }
+        for (const test of owner.tests) {
+          if (!existsSync(resolve(root, test))) {
+            issues.push(`${file}: testOwners 경로가 없습니다: ${test}`);
+          }
+        }
+      }
+    }
   }
 
   if (
@@ -125,8 +262,10 @@ function validateManifest(root, filePath, manifest) {
     }
   }
 
-  if (Array.isArray(manifest.ownedPaths)) {
-    for (const ownedPath of manifest.ownedPaths) {
+  const ownedPaths =
+    manifest.schemaVersion === 2 ? manifest.owns : manifest.ownedPaths;
+  if (Array.isArray(ownedPaths)) {
+    for (const ownedPath of ownedPaths) {
       if (
         typeof ownedPath === "string" &&
         !existsSync(resolve(root, ownedPathAnchor(ownedPath)))
@@ -136,7 +275,11 @@ function validateManifest(root, filePath, manifest) {
     }
   }
 
-  for (const key of ["contracts", "tests"]) {
+  const pathGroups =
+    manifest.schemaVersion === 2
+      ? ["primaryContracts", "secondaryContracts"]
+      : ["contracts", "tests"];
+  for (const key of pathGroups) {
     if (!Array.isArray(manifest[key])) {
       continue;
     }
@@ -184,7 +327,7 @@ export function loadDomainCatalog(rootDirectory, options = {}) {
       continue;
     }
     issues.push(...validateManifest(root, filePath, manifest));
-    manifests.push(manifest);
+    manifests.push(normalizeManifest(manifest));
   }
 
   const seenIds = new Set();
@@ -226,8 +369,17 @@ export function renderDomainContext(manifest) {
     (entrypoint) => `${entrypoint.area}: ${entrypoint.path}`,
   );
   appendList(lines, "Owned paths", manifest.ownedPaths);
-  appendList(lines, "Contracts", manifest.contracts);
-  appendList(lines, "Tests", manifest.tests);
+  if (manifest.excludedPaths.length > 0) {
+    appendList(lines, "Excluded paths", manifest.excludedPaths);
+  }
+  appendList(lines, "Primary contracts", manifest.primaryContracts);
+  appendList(lines, "Secondary contracts", manifest.secondaryContracts);
+  appendList(
+    lines,
+    "Test owners",
+    manifest.testOwners,
+    (owner) => `${owner.source} → ${owner.tests.join(", ")}`,
+  );
   appendList(
     lines,
     "Fast checks",
@@ -258,40 +410,104 @@ function inferCapability(path, manifests, workspace) {
   return workspace.area;
 }
 
+function addTestSelection(selections, path, reason, confidence) {
+  if (!selections.has(path)) {
+    selections.set(path, { path, reason, confidence });
+  }
+}
+
 function adjacentTests(path, graph, reverseGraph, manifests) {
   const extension = extname(path);
   const pathWithoutExtension = path.slice(0, -extension.length);
   const directory = dirname(path);
   const basenameWithoutExtension = basename(pathWithoutExtension);
-  const candidates = new Set();
+  const selections = new Map();
 
-  for (const candidate of graph.keys()) {
-    if (!isTestPath(candidate)) {
-      continue;
-    }
-    if (
-      dirname(candidate) === directory &&
-      (basename(candidate).startsWith(`${basenameWithoutExtension}.test.`) ||
-        basename(candidate).startsWith(`${basenameWithoutExtension}.spec.`))
-    ) {
-      candidates.add(candidate);
-    }
-  }
-  for (const importer of reverseGraph.get(path) ?? []) {
-    if (isTestPath(importer)) {
-      candidates.add(importer);
-    }
-  }
-  if (candidates.size === 0) {
-    for (const manifest of manifests) {
-      for (const test of manifest.tests ?? []) {
-        if (graph.has(test)) {
-          candidates.add(test);
+  for (const manifest of manifests) {
+    for (const owner of manifest.testOwners) {
+      if (matchesRepoGlob(path, owner.source)) {
+        for (const test of owner.tests) {
+          if (graph.has(test)) {
+            addTestSelection(
+              selections,
+              test,
+              `explicit owner: ${owner.source}`,
+              "high",
+            );
+          }
         }
       }
     }
   }
-  return [...candidates].sort();
+
+  if (selections.size === 0) {
+    for (const candidate of graph.keys()) {
+      if (!isTestPath(candidate)) {
+        continue;
+      }
+      if (
+        dirname(candidate) === directory &&
+        (basename(candidate).startsWith(`${basenameWithoutExtension}.test.`) ||
+          basename(candidate).startsWith(`${basenameWithoutExtension}.spec.`))
+      ) {
+        addTestSelection(selections, candidate, "same basename", "high");
+      }
+    }
+  }
+
+  if (selections.size === 0) {
+    let frontier = new Set([path]);
+    const visited = new Set([path]);
+    for (let depth = 1; depth <= 2; depth += 1) {
+      const next = new Set();
+      for (const dependency of frontier) {
+        for (const importer of reverseGraph.get(dependency) ?? []) {
+          if (isTestPath(importer)) {
+            addTestSelection(
+              selections,
+              importer,
+              `reverse importer depth=${depth}`,
+              depth === 1 ? "high" : "medium",
+            );
+          } else if (!visited.has(importer)) {
+            visited.add(importer);
+            next.add(importer);
+          }
+        }
+      }
+      if (selections.size > 0) {
+        break;
+      }
+      frontier = next;
+    }
+  }
+
+  if (selections.size === 0) {
+    const featureMatch = path.match(
+      /^(apps\/web\/src\/features\/[^/]+|apps\/(?:api|worker)\/src\/[^/]+)\//,
+    );
+    if (featureMatch) {
+      for (const candidate of [...graph.keys()].sort()) {
+        if (
+          isTestPath(candidate) &&
+          candidate.startsWith(`${featureMatch[1]}/`)
+        ) {
+          addTestSelection(
+            selections,
+            candidate,
+            `same feature: ${featureMatch[1]}`,
+            "low",
+          );
+          if (selections.size >= 3) {
+            break;
+          }
+        }
+      }
+    }
+  }
+  return [...selections.values()].sort((left, right) =>
+    left.path.localeCompare(right.path),
+  );
 }
 
 function testCommand(path, workspace) {
@@ -331,6 +547,30 @@ function tierTwoCommands(workspace) {
   return [];
 }
 
+function workspaceTestCommand(workspace) {
+  if (workspace.language === "python") {
+    return "cd services/python-worker && uv run pytest";
+  }
+  if (workspace.packageName) {
+    return `pnpm turbo run test --filter=${workspace.packageName} --env-mode=loose`;
+  }
+  if (workspace.area === "agent-tool") {
+    return "pnpm test:agent";
+  }
+  return null;
+}
+
+function appliedAgentInstructions(root, path) {
+  const directories = dirname(path).split("/").filter(Boolean);
+  const candidates = ["AGENTS.md"];
+  let current = "";
+  for (const directory of directories) {
+    current = current ? `${current}/${directory}` : directory;
+    candidates.push(`${current}/AGENTS.md`);
+  }
+  return candidates.filter((candidate) => existsSync(resolve(root, candidate)));
+}
+
 export function createPathContext(rootDirectory, inputPath, options = {}) {
   const root = resolve(rootDirectory);
   const path = normalizeRepoPath(root, inputPath);
@@ -344,8 +584,10 @@ export function createPathContext(rootDirectory, inputPath, options = {}) {
     loadDomainCatalog(root, {
       domainDirectory: options.domainDirectory ?? DEFAULT_DOMAIN_DIRECTORY,
     });
-  const matchingDomains = catalog.filter((manifest) =>
-    manifest.ownedPaths.some((pattern) => matchesRepoGlob(path, pattern)),
+  const matchingDomains = catalog.filter(
+    (manifest) =>
+      manifest.ownedPaths.some((pattern) => matchesRepoGlob(path, pattern)) &&
+      !manifest.excludedPaths.some((pattern) => matchesRepoGlob(path, pattern)),
   );
   const graph =
     options.graph ??
@@ -355,28 +597,78 @@ export function createPathContext(rootDirectory, inputPath, options = {}) {
     });
   const reverseGraph = options.reverseGraph ?? reverseImportGraph(graph);
   const workspace = classifyWorkspace(path);
-  const tests = adjacentTests(path, graph, reverseGraph, matchingDomains);
+  const testSelections = adjacentTests(
+    path,
+    graph,
+    reverseGraph,
+    matchingDomains,
+  );
+  const tests = testSelections.map((selection) => selection.path);
   const directDependencies = [...(graph.get(path) ?? [])].sort();
   const reverseDependencies = [...(reverseGraph.get(path) ?? [])].sort();
   const dependencyClosure = collectDependencyClosure(graph, path);
-  const knownContracts = new Set(
-    catalog.flatMap((manifest) => manifest.contracts),
-  );
-  const contracts = [...knownContracts].filter(
-    (contract) => contract === path || dependencyClosure.has(contract),
-  );
-  const nearestAgentInstructions = findNearestFile(
-    root,
-    path,
-    "AGENTS.md",
-    existsSync,
-  );
+  const primaryContracts = [
+    ...new Set(
+      matchingDomains.flatMap((manifest) => manifest.primaryContracts),
+    ),
+  ].slice(0, 5);
+  const secondaryContracts = [
+    ...new Set(
+      matchingDomains.flatMap((manifest) => manifest.secondaryContracts),
+    ),
+  ]
+    .filter(
+      (contract) =>
+        contract === path ||
+        directDependencies.includes(contract) ||
+        (options.explainAll && dependencyClosure.has(contract)),
+    )
+    .slice(0, 5);
+  const legacyTransitiveContracts = [
+    ...new Set(
+      matchingDomains
+        .filter((manifest) => manifest.schemaVersion === 1)
+        .flatMap((manifest) => manifest.contracts),
+    ),
+  ].filter((contract) => contract === path || dependencyClosure.has(contract));
+  const contracts = [
+    ...new Set([
+      ...primaryContracts,
+      ...secondaryContracts,
+      ...legacyTransitiveContracts,
+    ]),
+  ];
+  const contractSelections = contracts.map((contract) => ({
+    path: contract,
+    tier: primaryContracts.includes(contract)
+      ? "primary"
+      : secondaryContracts.includes(contract)
+        ? "secondary"
+        : "transitive",
+    reason: primaryContracts.includes(contract)
+      ? "domain primary contract"
+      : contract === path
+        ? "target contract"
+        : directDependencies.includes(contract)
+          ? "direct dependency"
+          : "transitive dependency",
+  }));
+  const agentInstructions = appliedAgentInstructions(root, path);
+  const nearestAgentInstructions =
+    agentInstructions.at(-1) ??
+    findNearestFile(root, path, "AGENTS.md", existsSync);
+  const selectedTestCommands = tests
+    .map((test) => testCommand(test, classifyWorkspace(test)))
+    .filter(Boolean);
+  const fallbackTestCommand =
+    selectedTestCommands.length === 0 ? workspaceTestCommand(workspace) : null;
 
   return {
     path,
     workspace,
     capability: inferCapability(path, matchingDomains, workspace),
     nearestAgentInstructions,
+    appliedAgentInstructions: agentInstructions,
     ownership: {
       status:
         matchingDomains.length === 0
@@ -393,12 +685,15 @@ export function createPathContext(rootDirectory, inputPath, options = {}) {
       reverseCount: reverseDependencies.length,
     },
     tests: tests.slice(0, 20),
+    testSelections: testSelections.slice(0, 20),
     contracts: [...new Set(contracts)].sort(),
+    contractSelections,
     verification: {
       tier0: ["pnpm lint:boundaries", "pnpm lint:cycles", "pnpm format:check"],
-      tier1: tests
-        .map((test) => testCommand(test, classifyWorkspace(test)))
-        .filter(Boolean),
+      tier1:
+        selectedTestCommands.length > 0
+          ? selectedTestCommands
+          : [fallbackTestCommand].filter(Boolean),
       tier2: tierTwoCommands(workspace),
       escalationReasons: matchingDomains.flatMap(
         (manifest) => manifest.fullCheckTriggers,
@@ -426,6 +721,9 @@ export function renderPathContext(context) {
     `- workspace: ${context.workspace.area} (${context.workspace.root})`,
     `- capability: ${context.capability}`,
     `- AGENTS.md: ${context.nearestAgentInstructions ?? "없음"}`,
+    `- applied instructions: ${
+      context.appliedAgentInstructions.join(", ") || "없음"
+    }`,
     `- ownership: ${context.ownership.status} [${
       context.ownership.domains.join(", ") || "manifest 없음"
     }]`,
@@ -443,8 +741,22 @@ export function renderPathContext(context) {
     context.dependencies.reverse,
     context.dependencies.reverseCount,
   );
-  appendCountedList(lines, "Adjacent tests", context.tests);
-  appendCountedList(lines, "Contracts", context.contracts);
+  appendCountedList(
+    lines,
+    "Adjacent tests",
+    context.testSelections.map(
+      (selection) =>
+        `${selection.path} [${selection.confidence}] — ${selection.reason}`,
+    ),
+  );
+  appendCountedList(
+    lines,
+    "Contracts",
+    context.contractSelections.map(
+      (selection) =>
+        `${selection.path} [${selection.tier}] — ${selection.reason}`,
+    ),
+  );
   appendCountedList(lines, "Tier 0", context.verification.tier0);
   appendCountedList(lines, "Tier 1", context.verification.tier1);
   appendCountedList(lines, "Tier 2", context.verification.tier2);
@@ -462,6 +774,7 @@ function parseArguments(argv) {
     root: process.cwd(),
     domainDirectory: DEFAULT_DOMAIN_DIRECTORY,
     json: false,
+    explainAll: false,
     list: false,
     path: null,
   };
@@ -470,6 +783,8 @@ function parseArguments(argv) {
     const argument = argv[index];
     if (argument === "--json") {
       options.json = true;
+    } else if (argument === "--explain-all") {
+      options.explainAll = true;
     } else if (argument === "--list") {
       options.list = true;
     } else if (argument === "--root") {
@@ -518,6 +833,7 @@ function run() {
       const context = createPathContext(options.root, options.path, {
         catalog,
         domainDirectory: options.domainDirectory,
+        explainAll: options.explainAll,
       });
       process.stdout.write(
         options.json

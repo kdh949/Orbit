@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 2,
+  "id": "community-gallery",
+  "summary": "커뮤니티 템플릿 탐색, 게시, 적용과 저장 디자인 팩",
+  "owns": [
+    "apps/web/src/features/community-templates/**",
+    "apps/api/src/community-templates/**",
+    "apps/api/src/saved-design-packs/**",
+    "packages/shared/src/community-templates/**"
+  ],
+  "excludes": [],
+  "entrypoints": [
+    {
+      "area": "web",
+      "path": "apps/web/src/features/community-templates/CommunityGalleryPage.tsx"
+    },
+    {
+      "area": "api",
+      "path": "apps/api/src/community-templates/community-templates.module.ts"
+    }
+  ],
+  "primaryContracts": [
+    "packages/shared/src/community-templates/community-template.schema.ts",
+    "packages/shared/src/community-templates/community-template-api.schema.ts"
+  ],
+  "secondaryContracts": ["packages/shared/src/deck/deck.schema.ts"],
+  "testOwners": [
+    {
+      "source": "apps/web/src/features/community-templates/**",
+      "tests": [
+        "apps/web/src/features/community-templates/CommunityTemplateShelf.test.tsx"
+      ]
+    },
+    {
+      "source": "apps/api/src/community-templates/**",
+      "tests": [
+        "apps/api/src/community-templates/community-templates.service.spec.ts"
+      ]
+    }
+  ],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/features/community-templates/CommunityTemplateShelf.test.tsx",
+      "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/community-templates/community-templates.service.spec.ts"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
+  "fullCheckTriggers": [
+    "community template API schema 변경",
+    "publish authorization 또는 rate limit 변경"
+  ],
+  "allowedDependencies": [
+    "packages/shared/src/community-templates/**",
+    "packages/shared/src/deck/**"
+  ],
+  "forbiddenDependencies": ["apps/web/src/features/rehearsal/**"],
+  "boundaries": [
+    "게시와 적용 권한을 API에서 검증한다",
+    "template API shape는 shared schema를 사용한다"
+  ]
+}

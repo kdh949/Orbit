@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 2,
+  "id": "platform-runtime",
+  "summary": "API bootstrap, 공통 validation, config, database migration과 health 기반",
+  "owns": [
+    "apps/api/src/app.module.ts",
+    "apps/api/src/common/**",
+    "apps/api/src/config/**",
+    "apps/api/src/database/**",
+    "apps/api/src/health/**",
+    "apps/api/src/logging.ts",
+    "apps/api/src/main.ts",
+    "apps/api/src/runtime-config/**",
+    "packages/config/src/**",
+    "packages/shared/src/common/**",
+    "packages/shared/src/config/**"
+  ],
+  "excludes": [],
+  "entrypoints": [
+    {
+      "area": "api",
+      "path": "apps/api/src/app.module.ts"
+    },
+    {
+      "area": "config",
+      "path": "packages/config/src/index.ts"
+    }
+  ],
+  "primaryContracts": [
+    "packages/config/src/index.ts",
+    "packages/shared/src/common/time.schema.ts",
+    "docs/contracts/common.md"
+  ],
+  "secondaryContracts": [],
+  "testOwners": [],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run typecheck --filter=@orbit/api --env-mode=loose",
+      "node infra/scripts/check-env.mjs"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
+  "fullCheckTriggers": [
+    "database migration 또는 root module wiring 변경",
+    "환경변수와 공통 validation 계약 변경"
+  ],
+  "allowedDependencies": [
+    "packages/config/src/**",
+    "packages/shared/src/common/**"
+  ],
+  "forbiddenDependencies": ["apps/web/src/**"],
+  "boundaries": [
+    "DB 변경은 TypeORM migration으로 관리한다",
+    "환경값과 credential을 로그에 남기지 않는다"
+  ]
+}

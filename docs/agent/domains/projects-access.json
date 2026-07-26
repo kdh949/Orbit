@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 2,
+  "id": "projects-access",
+  "summary": "프로젝트 탐색, 소유권, 멤버 접근과 프로젝트 자산 진입",
+  "owns": [
+    "apps/web/src/features/projects/**",
+    "apps/api/src/projects/**",
+    "packages/shared/src/projects/**"
+  ],
+  "excludes": [],
+  "entrypoints": [
+    {
+      "area": "web",
+      "path": "apps/web/src/features/projects/ProjectHub.tsx"
+    },
+    {
+      "area": "api",
+      "path": "apps/api/src/projects/projects.module.ts"
+    }
+  ],
+  "primaryContracts": [
+    "packages/shared/src/projects/project.schema.ts",
+    "docs/contracts/common.md"
+  ],
+  "secondaryContracts": ["packages/shared/src/files/file.schema.ts"],
+  "testOwners": [
+    {
+      "source": "apps/web/src/features/projects/ProjectAccessContext.tsx",
+      "tests": ["apps/web/src/features/projects/ProjectAccessContext.test.tsx"]
+    },
+    {
+      "source": "apps/api/src/projects/**",
+      "tests": ["apps/api/src/projects/projects.service.spec.ts"]
+    }
+  ],
+  "verificationProfiles": {
+    "leaf": [
+      "pnpm turbo run test --filter=@orbit/web --env-mode=loose -- src/features/projects/ProjectAccessContext.test.tsx",
+      "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/projects/projects.service.spec.ts",
+      "pnpm turbo run typecheck --filter=@orbit/api --env-mode=loose"
+    ],
+    "crossBoundary": ["pnpm verify:affected"]
+  },
+  "fullCheckTriggers": [
+    "project ownership schema 변경",
+    "멤버 접근 또는 authorization 정책 변경"
+  ],
+  "allowedDependencies": [
+    "packages/shared/src/projects/**",
+    "packages/storage/src/**"
+  ],
+  "forbiddenDependencies": ["apps/api/src/auth/auth-session.store.ts"],
+  "boundaries": [
+    "모든 프로젝트 resource lookup에서 ownership을 검증한다",
+    "외부 사용자에게 resource 존재 여부를 누출하지 않는다"
+  ]
+}
