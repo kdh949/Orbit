@@ -23,6 +23,8 @@
     }
   ],
   "contracts": [
+    "docs/contracts/pptx.md",
+    "docs/contracts/common.md",
     "packages/shared/src/deck/pptx-ooxml-generation.schema.ts",
     "packages/shared/src/deck/pptx-ooxml-storage.schema.ts"
   ],

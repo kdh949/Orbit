@@ -12,6 +12,11 @@
     "apps/worker/AGENTS.md",
     "apps/worker/CLAUDE.md",
     "docs/contracts.md",
+    "docs/contracts/ai-deck.md",
+    "docs/contracts/common.md",
+    "docs/contracts/deck-editor.md",
+    "docs/contracts/pptx.md",
+    "docs/contracts/rehearsal.md",
     "docs/demo-standards.md",
     "docs/git-rules.md",
     "docs/architecture/local-first-stack.md",
@@ -19,7 +24,6 @@
     "docs/conventions/environment.md",
     "docs/conventions/logging.md",
     "docs/agent/benchmark.md",
-    "docs/plans/ai-agent-efficiency-refactoring.md",
     "docs/runbooks/local-development.md",
     "docs/testing/test-matrix.md",
     "docs/deployment.md",
@@ -41,7 +45,8 @@
     "apps/web/src/styles/tokens.css",
     "docs/agent/domains",
     "packages/shared/src",
-    "docs/contracts.md"
+    "docs/contracts.md",
+    "docs/contracts"
   ],
   "forbiddenReferences": [
     {

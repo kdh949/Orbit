@@ -162,6 +162,20 @@ export function inspectRepository(rootDirectory, options = {}) {
     });
   }
 
+  for (const document of activeDocs) {
+    const historicalRoot = config.historicalRoots.find(
+      (rootPath) =>
+        document === rootPath || document.startsWith(`${rootPath}/`),
+    );
+    if (historicalRoot) {
+      issues.push({
+        code: "ACTIVE_DOC_HISTORICAL",
+        file: document,
+        message: `active 문서는 historical root에 둘 수 없습니다: ${historicalRoot}`,
+      });
+    }
+  }
+
   for (const source of config.canonicalSources) {
     if (!existsSync(resolve(root, source))) {
       issues.push({

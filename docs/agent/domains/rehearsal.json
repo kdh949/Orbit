@@ -30,6 +30,8 @@
     }
   ],
   "contracts": [
+    "docs/contracts/rehearsal.md",
+    "docs/contracts/common.md",
     "packages/shared/src/rehearsals/rehearsal.schema.ts",
     "packages/shared/src/rehearsals/rehearsal-audio-analysis.schema.ts",
     "packages/shared/src/rehearsals/rehearsal-semantic-evidence.schema.ts"

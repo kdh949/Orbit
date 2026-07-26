@@ -49,6 +49,9 @@ direct/reverse dependency, 인접 test, 관련 contract와 verification tier가
 포함된다. manifest가 파일을 소유하지 않아도 경로 기반 fallback을 반환하며, 둘
 이상의 manifest가 일치하면 `overlap`으로 표시한다. `runtime/speech`처럼
 feature-neutral한 capability는 manifest domain보다 경로의 capability를 우선한다.
+domain context의 `Contracts`에는 root index 전체가 아니라 manifest가 선택한
+domain 계약 문서와 shared schema만 표시한다. 공통 File, Job, WebSocket 계약이
+필요한 domain만 `docs/contracts/common.md`를 함께 등록한다.
 
 ## Changed-file verification
 

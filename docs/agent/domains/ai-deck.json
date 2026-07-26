@@ -30,6 +30,8 @@
     }
   ],
   "contracts": [
+    "docs/contracts/ai-deck.md",
+    "docs/contracts/common.md",
     "packages/shared/src/deck/generate-deck.schema.ts",
     "packages/shared/src/deck/ai-deck-preview.schema.ts",
     "packages/shared/src/jobs/ai-deck-generation-stage.schema.ts"
