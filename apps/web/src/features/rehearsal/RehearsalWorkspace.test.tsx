@@ -37,6 +37,10 @@ import {
   selectRecordingMimeType,
 } from "./recording/recordingSession";
 import {
+  applyLiveTranscriptBias,
+  buildLiveSttBiasContext,
+} from "./stt/liveSttBias";
+import {
   applyLiveTranscriptEvent,
   confirmKeywordOccurrenceMatches,
   createKeywordOccurrenceAnimationCueEvent,
@@ -53,9 +57,7 @@ import {
   RehearsalReportPage,
   RehearsalWorkspace,
   SherpaLiveSttAdapter,
-  applyLiveTranscriptBias,
   buildP3SessionSlides,
-  buildLiveSttBiasContext,
   getRehearsalFinishPath,
   getHighlightedKeywordOccurrencesForSlide,
   getRehearsalPresenterWindowPath,
