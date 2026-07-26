@@ -29,11 +29,6 @@ type WorkerQueueSelectionConfig = Pick<
   "AI_DECK_EXECUTION_MODE" | "AI_DECK_WORKER_QUEUE"
 >;
 
-export interface WorkerQueueRuntimeOptions {
-  concurrency?: number;
-  maxStalledCount?: number;
-}
-
 export const allWorkerQueueNames = [
   referenceExtractQueueName,
   rehearsalSttQueueName,
@@ -88,19 +83,4 @@ export function selectWorkerQueueNames(
           )
         : [...allWorkerQueueNames];
   }
-}
-
-export function workerQueueRuntimeOptions(
-  queueName: string,
-): WorkerQueueRuntimeOptions {
-  return {
-    ...([pptxOoxmlGenerationQueueName, pptxOoxmlSyncQueueName].includes(
-      queueName,
-    )
-      ? { maxStalledCount: 4 }
-      : {}),
-    ...(queueName === slideQuestionGuideGenerationQueueName
-      ? { concurrency: 2 }
-      : {}),
-  };
 }
