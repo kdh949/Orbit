@@ -24,6 +24,8 @@
     }
   ],
   "contracts": [
+    "docs/contracts/deck-editor.md",
+    "docs/contracts/common.md",
     "packages/shared/src/deck/deck.schema.ts",
     "packages/shared/src/deck/patch.schema.ts",
     "docs/api/deck-persistence.md"

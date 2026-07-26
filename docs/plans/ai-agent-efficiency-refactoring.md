@@ -1,6 +1,6 @@
 # AI Agent 효율 리팩터링 후속 계획
 
-**상태:** In progress
+**상태:** Completed
 
 **작성일:** 2026-07-26
 
@@ -40,40 +40,38 @@ privacy를 우선한다.
 
 현재 구조는 `pnpm agent:benchmark snapshot --ref origin/develop`로 측정한다.
 
-## 남은 작업
+## 완료 결과
 
 ### Wave 0 — 측정과 검증 신뢰성
 
-- benchmark를 Git identity 전용 schema v3로 유지한다.
+- benchmark를 Git identity 전용 schema v3로 전환했다.
 - 삭제와 rename을 포함해 변경 영향을 계산한다.
 - 직접·전이 contract consumer를 선택하고 넓은 변경은 workspace 검증으로 승격한다.
-- `pnpm test`와 PR merge gate가 공개 로컬 검증 환경에서 동작하게 한다.
+- `pnpm test`와 PR merge gate가 공개 로컬 검증 환경에서 동작한다.
 
 ### Wave 1 — Rehearsal
 
 - Workspace public barrel을 없애고 leaf public API를 사용한다.
-- source 문자열 기반 통합 테스트를 architecture guard와 behavior test로 분리한다.
-- run/media, Live STT, tracking/presentation controller를 분리한다.
-- Workspace 500~900줄, direct dependency 25개 이하, integration test 800줄 이하를
-  목표로 한다.
+- source 문자열 기반 통합 테스트를 architecture guard와 behavior test로 분리했다.
+- run/media, Live STT, tracking/presentation controller를 분리했다.
 
 ### Wave 2 — Web과 package
 
-- Presentation, Editor, Companion에서 Rehearsal 내부로 들어가는 import를 0으로 만든다.
-- PresentationWorkspace, EditorShell, App routing 책임을 분리한다.
-- AST codemod로 production `@orbit/shared` root importer를 100개 이하로 줄인다.
+- Presentation, Editor, Companion에서 Rehearsal 내부로 들어가는 import를 0으로 만들었다.
+- PresentationWorkspace, EditorShell, App routing 책임을 분리했다.
+- AST codemod로 production `@orbit/shared` root importer를 0개로 줄였다.
 
 ### Wave 3 — Worker, API, Python
 
-- Worker registration, runtime option, recovery를 descriptor로 통합한다.
-- DecksService와 RehearsalsService를 use case별로 분리한다.
-- Python router를 capability별로 분리하고 PPTX facade 뒤 구현을 단계별 모듈로 나눈다.
+- Worker registration, runtime option, recovery를 descriptor로 통합했다.
+- DecksService와 RehearsalsService를 use case별로 분리했다.
+- Python router를 capability별로 분리하고 PPTX facade 뒤 구현을 capability 모듈로 나눴다.
 
 ### Wave 4 — CSS와 문서
 
-- CSS rule 이동과 시각 변경을 별도 PR로 수행한다.
-- `docs/contracts.md`를 index로 유지하며 domain 계약 문서로 분리한다.
-- 완료된 계획과 stale source는 active repository truth에서 제외한다.
+- CSS rule을 owner 파일로 이동하고 원본 cascade hash를 회귀 테스트로 고정했다.
+- `docs/contracts.md`를 index로 유지하며 domain 계약 문서로 분리했다.
+- 이 완료 계획을 active repository truth에서 제외했다.
 
 ## 실행 규칙
 
