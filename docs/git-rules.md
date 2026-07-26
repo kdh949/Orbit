@@ -5,6 +5,11 @@
 
 ## Git 워크플로
 
+- 기본 GitHub 원격 저장소는 `kdh949/Orbit`이다.
+- 사용자가 다른 저장소를 명시하지 않으면 원격 조회, push, PR, review, merge는
+  `kdh949/Orbit`만 대상으로 한다.
+- 로컬 Git 이력에 다른 저장소의 PR 번호처럼 보이는 merge subject가 있어도
+  해당 저장소를 추정해 조회하지 않는다.
 - 기본 전략은 GitHub Flow를 사용한다.
 - `main`에 직접 커밋하지 않는다.
 - 모든 작업은 브랜치에서 진행하고 PR로 병합한다.
