@@ -1,4 +1,4 @@
-import { createDemoDeck } from "../../../../../../../packages/editor-core/src/index";
+import { createDemoDeck } from "@orbit/editor-core";
 import type { Deck, DeckElement } from "@orbit/shared";
 import { describe, expect, it } from "vitest";
 

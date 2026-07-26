@@ -1,4 +1,8 @@
-import { createDemoDeck, getElementAnimations, validateSlideAnimations } from "../../../../../../../packages/editor-core/src/index";
+import {
+  createDemoDeck,
+  getElementAnimations,
+  validateSlideAnimations
+} from "@orbit/editor-core";
 import { createKeywordOccurrenceId } from "@orbit/shared";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";

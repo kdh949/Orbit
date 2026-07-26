@@ -76,16 +76,6 @@ export default defineConfig(({ mode }) => {
       // Browser semantic cue NLI is built separately as an ES module worker asset.
       format: "iife"
     },
-    resolve: {
-      alias: {
-        "@orbit/editor-core": fileURLToPath(
-          new URL("../../packages/editor-core/src/index.ts", import.meta.url)
-        ),
-        "@orbit/shared": fileURLToPath(
-          new URL("../../packages/shared/src/index.ts", import.meta.url)
-        )
-      }
-    },
     server: {
       host: "0.0.0.0",
       port: env.webPort,

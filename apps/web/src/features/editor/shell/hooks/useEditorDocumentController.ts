@@ -1,4 +1,4 @@
-import { applyDeckPatch } from "../../../../../../../packages/editor-core/src/index";
+import { applyDeckPatch } from "@orbit/editor-core";
 import type { ApplyDesignAgentProposalResponse, Deck, DeckPatch } from "@orbit/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { flushSync } from "react-dom";

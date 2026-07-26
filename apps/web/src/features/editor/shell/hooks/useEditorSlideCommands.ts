@@ -13,7 +13,7 @@ import {
   createUpsertAdvanceSlideKeywordActionPatch,
   findKeywordByTerm,
   getAnimationTimelineRoot
-} from "../../../../../../../packages/editor-core/src/index";
+} from "@orbit/editor-core";
 import { createKeywordOccurrenceId } from "@orbit/shared";
 import type {
   Deck,

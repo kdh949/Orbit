@@ -19,7 +19,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { IconFileText } from "@tabler/icons-react";
 import type { FormEvent, ReactNode } from "react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { createDemoDeck } from "../../../packages/editor-core/src/index";
+import { createDemoDeck } from "@orbit/editor-core";
 import {
   OrbitAppHeader,
   type OrbitAppNavigationItem,

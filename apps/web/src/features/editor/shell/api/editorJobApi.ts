@@ -11,7 +11,7 @@ import {
   type PptxImportPreference,
   type PptxOoxmlGenerationJobResult
 } from "@orbit/shared";
-import { jobSchema, type Job } from "../../../../../../../packages/shared/src/jobs/job.schema";
+import { jobSchema, type Job } from "@orbit/shared";
 
 import { uploadProjectAsset } from "../../../projects/ProjectAssetWorkspace";
 import { getPptxImportValidationMessage } from "../utils/editorFileValidation";
