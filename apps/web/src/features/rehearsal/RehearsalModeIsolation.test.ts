@@ -12,7 +12,12 @@ const rehearsalRoutesSource = fs.readFileSync(
   "utf8",
 );
 
-const rehearsalApiSource = fs.readFileSync(
+const webRehearsalApiSource = fs.readFileSync(
+  fileURLToPath(new URL("./api/rehearsalApi.ts", import.meta.url)),
+  "utf8",
+);
+
+const serverRehearsalApiSource = fs.readFileSync(
   fileURLToPath(
     new URL(
       "../../../../api/src/rehearsals/rehearsals.service.ts",
@@ -24,10 +29,10 @@ const rehearsalApiSource = fs.readFileSync(
 
 describe("rehearsal mode isolation", () => {
   it("keeps the existing rehearsal lifecycle on rehearsal-only endpoints", () => {
-    expect(rehearsalWorkspaceSource).toContain(
+    expect(webRehearsalApiSource).toContain(
       "/api/v1/projects/${encodeURIComponent(projectId)}/rehearsals",
     );
-    expect(rehearsalWorkspaceSource).toContain(
+    expect(webRehearsalApiSource).toContain(
       "/api/v1/rehearsals/${encodeURIComponent(runId)}/audio/complete",
     );
     expect(rehearsalRoutesSource).toContain(
@@ -35,12 +40,15 @@ describe("rehearsal mode isolation", () => {
     );
     expect(rehearsalWorkspaceSource).toContain('from "./rehearsalRoutes"');
     expect(rehearsalWorkspaceSource).not.toContain("presentation-runs");
+    expect(webRehearsalApiSource).not.toContain("presentation-runs");
   });
 
   it("keeps rehearsal analysis persistence independent from presentation runs", () => {
-    expect(rehearsalApiSource).toContain('type: "rehearsal-stt"');
-    expect(rehearsalApiSource).toContain("RehearsalRunEntity");
-    expect(rehearsalApiSource).not.toContain("PresentationRunEntity");
-    expect(rehearsalApiSource).not.toContain('type: "presentation-analysis"');
+    expect(serverRehearsalApiSource).toContain('type: "rehearsal-stt"');
+    expect(serverRehearsalApiSource).toContain("RehearsalRunEntity");
+    expect(serverRehearsalApiSource).not.toContain("PresentationRunEntity");
+    expect(serverRehearsalApiSource).not.toContain(
+      'type: "presentation-analysis"',
+    );
   });
 });
