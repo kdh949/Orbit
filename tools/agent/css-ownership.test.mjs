@@ -7,6 +7,7 @@ import test from "node:test";
 import {
   createCssOwnershipReport,
   extractCssSelectors,
+  resolveCssImportFiles,
 } from "./css-ownership.mjs";
 
 function writeFixture(root, path, content) {
@@ -76,4 +77,26 @@ test("파일별 selector와 중복 위치를 ownership report로 집계한다", 
     report.owners.find(({ owner }) => owner === ".button")?.occurrenceCount,
     2,
   );
+});
+
+test("entry stylesheet의 local import를 cascade 순서의 leaf 파일로 해석한다", () => {
+  const root = mkdtempSync(join(tmpdir(), "orbit-css-imports-"));
+  writeFixture(
+    root,
+    "styles.css",
+    '@import "./styles/base.css";\n@import "./features/panel.css";\n',
+  );
+  writeFixture(root, "styles/base.css", ".base { color: black; }\n");
+  writeFixture(
+    root,
+    "features/panel.css",
+    '@import "./shared.css";\n.panel { color: blue; }\n',
+  );
+  writeFixture(root, "features/shared.css", ".shared { color: gray; }\n");
+
+  assert.deepEqual(resolveCssImportFiles(root, ["styles.css"]), [
+    "styles/base.css",
+    "features/shared.css",
+    "features/panel.css",
+  ]);
 });
