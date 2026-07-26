@@ -7,7 +7,7 @@ import {
   type LiveSttCallbacks,
   type LiveSttStartOptions
 } from "../liveStt";
-import { LiveSttError } from "./liveSttPort";
+import { LiveSttError } from "../../../runtime/speech/stt/liveSttPort";
 import { runLiveSttPortContractTests } from "./liveSttPortContract";
 import { SherpaLiveSttPort } from "./sherpaLiveSttPort";
 

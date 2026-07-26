@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { defaultPresenterSettings } from "../settings/presenterSettings";
-import type { LiveSttResult } from "../stt/liveSttPort";
+import type { LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
 import {
   calculateFinalTranscriptWpm,
   createRehearsalTimingSnapshot,

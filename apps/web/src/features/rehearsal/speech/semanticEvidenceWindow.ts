@@ -1,4 +1,4 @@
-import type { LiveSttResult } from "../stt/liveSttPort";
+import type { LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
 
 export type SemanticEvidence = {
   transcript: string;

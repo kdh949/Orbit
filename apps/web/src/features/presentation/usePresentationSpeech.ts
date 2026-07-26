@@ -7,9 +7,9 @@ import {
 } from "../rehearsal/speech/speechTracker";
 import type { SpeechTrackerSnapshot } from "../rehearsal/speech/speechTrackingEvents";
 import { createLiveSttPort } from "../rehearsal/stt/liveSttEngineRegistry";
-import type { LiveSttPort } from "../rehearsal/stt/liveSttPort";
-import { normalizeLiveSttBiasPhrases } from "../rehearsal/stt/liveSttPort";
-import { fetchLiveSttRuntimeConfig } from "../rehearsal/stt/liveSttRuntimeConfig";
+import type { LiveSttPort } from "../../runtime/speech/stt/liveSttPort";
+import { normalizeLiveSttBiasPhrases } from "../../runtime/speech/stt/liveSttPort";
+import { fetchLiveSttRuntimeConfig } from "../../runtime/speech/stt/liveSttRuntimeConfig";
 
 type PresentationSpeechState = {
   error: string | null;

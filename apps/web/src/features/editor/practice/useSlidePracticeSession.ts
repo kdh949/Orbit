@@ -8,8 +8,8 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useFocusedPracticeAudio, type FocusedPracticeCapture } from "../../coaching/useFocusedPracticeAudio";
-import { fetchLiveSttRuntimeConfig } from "../../rehearsal/stt/liveSttRuntimeConfig";
-import type { LiveSttResult } from "../../rehearsal/stt/liveSttPort";
+import { fetchLiveSttRuntimeConfig } from "../../../runtime/speech/stt/liveSttRuntimeConfig";
+import type { LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
 import {
   getStableDeviceIdHash,
   getVoiceBaseline,

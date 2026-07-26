@@ -1,7 +1,7 @@
 import type { Deck, Slide } from "@orbit/shared";
 
 import type { AdviceEventType, PaceAdviceConfig } from "../speech/speechTrackingConfig";
-import type { LiveSttResult } from "../stt/liveSttPort";
+import type { LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
 
 export type RehearsalTimingSlide = Pick<Slide, "estimatedSeconds">;
 

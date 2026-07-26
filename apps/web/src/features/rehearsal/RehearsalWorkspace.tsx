@@ -149,10 +149,10 @@ import {
   type LiveSttEngineId,
   type LiveSttPort,
   type LiveSttResult,
-} from "./stt/liveSttPort";
+} from "../../runtime/speech/stt/liveSttPort";
 import { createLiveSttPort } from "./stt/liveSttEngineRegistry";
-import { fetchLiveSttRuntimeConfig } from "./stt/liveSttRuntimeConfig";
-import { normalizeLiveTranscriptText } from "./stt/liveTranscriptText";
+import { fetchLiveSttRuntimeConfig } from "../../runtime/speech/stt/liveSttRuntimeConfig";
+import { normalizeLiveTranscriptText } from "../../runtime/speech/stt/liveTranscriptText";
 import { SherpaLiveSttPort } from "./stt/sherpaLiveSttPort";
 import {
   getKeywordOccurrenceTriggerIdsForSlide,

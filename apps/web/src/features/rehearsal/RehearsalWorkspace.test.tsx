@@ -86,7 +86,7 @@ import {
 } from "./advance/advanceController";
 import { p0AnimationDeck } from "../../runtime/presentation/slideshow/__fixtures__/animationDeck";
 import { getNextPresenterStepState } from "../../runtime/presentation/slideshow/presenterStepNavigation";
-import { normalizeLiveTranscriptText } from "./stt/liveTranscriptText";
+import { normalizeLiveTranscriptText } from "../../runtime/speech/stt/liveTranscriptText";
 import { createPauseDetector } from "./speech/pauseDetector";
 import { matchKeywordOccurrenceTriggers } from "./speech/keywordOccurrenceRuntime";
 import {

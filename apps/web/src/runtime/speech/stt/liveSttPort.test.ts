@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   LiveSttError,
   mapPartialTranscriptToLiveSttResult,
-  normalizeLiveSttBiasPhrases
+  normalizeLiveSttBiasPhrases,
 } from "./liveSttPort";
 
 describe("liveSttPort", () => {
@@ -13,15 +13,15 @@ describe("liveSttPort", () => {
           type: "partial-transcript",
           transcript: "오르빗 발표",
           isFinal: true,
-          confidence: 0.72
+          confidence: 0.72,
         },
-        1500
-      )
+        1500,
+      ),
     ).toEqual({
       text: "오르빗 발표",
       isFinal: true,
       confidence: 0.72,
-      timestampMs: [1500, 1500]
+      timestampMs: [1500, 1500],
     });
   });
 
@@ -32,14 +32,14 @@ describe("liveSttPort", () => {
           type: "partial-transcript",
           transcript: "중간 인식",
           isFinal: false,
-          confidence: null
+          confidence: null,
         },
-        250
-      )
+        250,
+      ),
     ).toEqual({
       text: "중간 인식",
       isFinal: false,
-      timestampMs: [250, 250]
+      timestampMs: [250, 250],
     });
   });
 
@@ -49,11 +49,11 @@ describe("liveSttPort", () => {
         { text: "  오르빗  ", weight: 1 },
         { text: "오르빗", weight: 1 },
         { text: "Live   STT", weight: 1 },
-        { text: "", weight: 1 }
-      ])
+        { text: "", weight: 1 },
+      ]),
     ).toEqual([
       { text: "오르빗", weight: 1 },
-      { text: "Live STT", weight: 1 }
+      { text: "Live STT", weight: 1 },
     ]);
   });
 
@@ -65,34 +65,34 @@ describe("liveSttPort", () => {
           weight: 0.4,
           source: "keyword",
           keywordId: "kw_old",
-          canonicalText: "결재"
+          canonicalText: "결재",
         },
         {
           text: "결재",
           weight: 1.4,
           source: "synonym",
           keywordId: "kw_new",
-          canonicalText: "결제"
+          canonicalText: "결제",
         },
         {
           text: "Live   STT",
           weight: -0.2,
-          source: "legacy"
-        }
-      ])
+          source: "legacy",
+        },
+      ]),
     ).toEqual([
       {
         text: "결재",
         weight: 1,
         source: "synonym",
         keywordId: "kw_new",
-        canonicalText: "결제"
+        canonicalText: "결제",
       },
       {
         text: "Live STT",
         weight: 0,
-        source: "legacy"
-      }
+        source: "legacy",
+      },
     ]);
   });
 

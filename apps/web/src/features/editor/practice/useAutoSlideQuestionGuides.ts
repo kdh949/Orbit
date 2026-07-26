@@ -2,7 +2,7 @@ import { slideQuestionGuideDeckTextHashInput, type Deck } from "@orbit/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 
-import { fetchLiveSttRuntimeConfig } from "../../rehearsal/stt/liveSttRuntimeConfig"
+import { fetchLiveSttRuntimeConfig } from "../../../runtime/speech/stt/liveSttRuntimeConfig"
 import { fetchDeck } from "../shell/api/deckPersistenceApi"
 import {
   autoCreateSlideQuestionGuides,

@@ -1,5 +1,5 @@
 import { scoreBiasMatch } from "./koreanTextSimilarity";
-import type { LiveSttAlternative, LiveSttBiasPhrase } from "./liveSttPort";
+import type { LiveSttAlternative, LiveSttBiasPhrase } from "../../../runtime/speech/stt/liveSttPort";
 
 export type RerankDecision = {
   selected: LiveSttAlternative;

@@ -8,7 +8,7 @@ import {
   type LiveSttResult,
   type LiveSttSessionConfig,
   type LiveSttUnsubscribe
-} from "./liveSttPort";
+} from "../../../runtime/speech/stt/liveSttPort";
 import { RerankingLiveSttPort } from "./rerankingLiveSttPort";
 
 runLiveSttPortContractTests("Reranking", () => {

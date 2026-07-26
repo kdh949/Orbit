@@ -6,7 +6,7 @@ import type {
   BrowserSpeechRecognitionAvailabilityOptions,
   BrowserSpeechRecognitionGlobal
 } from "./browserSpeechRecognition";
-import type { LiveSttResult } from "./liveSttPort";
+import type { LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
 import {
   WEB_SPEECH_ON_DEVICE_POLICY,
   WebSpeechLiveSttPort

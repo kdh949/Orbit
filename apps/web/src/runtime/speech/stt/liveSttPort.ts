@@ -1,4 +1,4 @@
-import type { LiveSttPartialTranscriptEvent } from "@orbit/shared";
+import type { LiveSttPartialTranscriptEvent } from "@orbit/shared/rehearsals";
 
 export type LiveSttEngineId =
   | "openai-realtime"
@@ -71,7 +71,7 @@ export type LiveSttErrorCode =
 export class LiveSttError extends Error {
   constructor(
     readonly code: LiveSttErrorCode,
-    message: string
+    message: string,
   ) {
     super(message);
     this.name = "LiveSttError";
@@ -85,7 +85,9 @@ export type LiveSttPort = {
   readonly capabilities: LiveSttCapabilities;
   start: (config: LiveSttSessionConfig) => Promise<void>;
   stop: () => Promise<void>;
-  updateBiasPhrases: (phrases: readonly LiveSttBiasPhrase[]) => void | Promise<void>;
+  updateBiasPhrases: (
+    phrases: readonly LiveSttBiasPhrase[],
+  ) => void | Promise<void>;
   onResult: (cb: (result: LiveSttResult) => void) => LiveSttUnsubscribe;
   onError: (cb: (error: LiveSttError) => void) => LiveSttUnsubscribe;
   dispose: () => void | Promise<void>;
@@ -93,7 +95,7 @@ export type LiveSttPort = {
 
 export function mapPartialTranscriptToLiveSttResult(
   event: LiveSttPartialTranscriptEvent,
-  elapsedMs: number
+  elapsedMs: number,
 ): LiveSttResult {
   const confidence =
     typeof event.confidence === "number" ? event.confidence : undefined;
@@ -102,12 +104,12 @@ export function mapPartialTranscriptToLiveSttResult(
     text: event.transcript,
     isFinal: event.isFinal,
     timestampMs: [elapsedMs, elapsedMs],
-    ...(confidence === undefined ? {} : { confidence })
+    ...(confidence === undefined ? {} : { confidence }),
   };
 }
 
 export function normalizeLiveSttBiasPhrases(
-  phrases: readonly LiveSttBiasPhrase[] = []
+  phrases: readonly LiveSttBiasPhrase[] = [],
 ): LiveSttBiasPhrase[] {
   const normalized: LiveSttBiasPhrase[] = [];
   const indexesByText = new Map<string, number>();
@@ -135,7 +137,7 @@ export function normalizeLiveSttBiasPhrases(
 }
 
 function normalizeLiveSttBiasPhrase(
-  phrase: LiveSttBiasPhrase
+  phrase: LiveSttBiasPhrase,
 ): LiveSttBiasPhrase | null {
   const text = normalizeLiveSttBiasPhraseText(phrase.text);
   if (!text) {
@@ -153,7 +155,7 @@ function normalizeLiveSttBiasPhrase(
     ...(phrase.keywordId === undefined ? {} : { keywordId: phrase.keywordId }),
     ...(phrase.canonicalText === undefined
       ? {}
-      : { canonicalText: phrase.canonicalText })
+      : { canonicalText: phrase.canonicalText }),
   };
 }
 

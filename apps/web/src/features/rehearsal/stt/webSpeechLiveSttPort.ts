@@ -18,7 +18,7 @@ import {
   type LiveSttResult,
   type LiveSttSessionConfig,
   type LiveSttUnsubscribe
-} from "./liveSttPort";
+} from "../../../runtime/speech/stt/liveSttPort";
 import { applyWebSpeechPhrases, isWebSpeechPhrasesSupported } from "./webSpeechPhrases";
 import { resolveWebSpeechAudioTrack, startRecognitionWithAudioTrack } from "./webSpeechAudioTrack";
 

@@ -9,7 +9,7 @@ import {
   type HybridCoverageConfig,
   defaultSpeechTrackingConfig
 } from "../speech/speechTrackingConfig";
-import type { LiveSttEngineId } from "../stt/liveSttPort";
+import type { LiveSttEngineId } from "../../../runtime/speech/stt/liveSttPort";
 import { defaultLiveSttEngineId } from "../stt/liveSttEngineRegistry";
 
 export const presenterGlobalSettingsStorageKey = "orbit:presenter:global:v1";

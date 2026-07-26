@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { LiveSttResult } from "../stt/liveSttPort";
+import type { LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
 import { createPrompterFinalDeduplicator } from "./prompterFinalDeduplicator";
 
 describe("createPrompterFinalDeduplicator", () => {
