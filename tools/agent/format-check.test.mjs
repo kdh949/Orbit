@@ -109,6 +109,7 @@ test("명시한 경로만 format check 대상으로 파싱한다", () => {
     {
       base: "develop",
       paths: ["apps/web/src/App.tsx", "docs/current.md"],
+      trackedOnly: false,
     },
   );
 });

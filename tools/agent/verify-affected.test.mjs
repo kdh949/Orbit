@@ -9,12 +9,20 @@ import {
 } from "./verify-affected.mjs";
 
 test("일반 app 변경은 Turbo affected 검증을 선택한다", () => {
-  const classification = classifyAffectedPaths([
-    "apps/web/src/features/rehearsal/RehearsalRunNav.tsx",
-  ]);
+  const path = "apps/web/src/features/rehearsal/RehearsalRunNav.tsx";
+  const classification = classifyAffectedPaths([path], {
+    graph: new Map([
+      [path, new Set()],
+      [
+        "apps/web/src/features/rehearsal/RehearsalRunNav.test.tsx",
+        new Set([path]),
+      ],
+    ]),
+  });
   const plan = createAffectedVerificationPlan(classification, "origin/develop");
 
   assert.equal(classification.full, false);
+  assert.deepEqual(classification.contractImpacts, []);
   assert.deepEqual(plan.commands[0].argv, [
     "pnpm",
     "turbo",
@@ -52,18 +60,20 @@ test("공통 계약 변경은 전체 TypeScript와 Python 검증으로 승격한
 
 test("consumer matrix에 등록된 계약은 exact consumer test만 추가한다", () => {
   const path = "packages/shared/src/coaching/example.schema.ts";
+  const typescriptTest = "packages/shared/src/coaching/example.schema.test.ts";
   const classification = classifyAffectedPaths([path], {
     contractMatrix: {
-      contracts: {
+      crossLanguageOverrides: {
         [path]: {
-          consumers: ["shared", "python"],
-          tests: [
-            "packages/shared/src/coaching/example.schema.test.ts",
-            "services/python-worker/tests/test_example.py",
-          ],
+          consumers: ["python"],
+          tests: ["services/python-worker/tests/test_example.py"],
         },
       },
     },
+    graph: new Map([
+      [path, new Set()],
+      [typescriptTest, new Set([path])],
+    ]),
   });
   const plan = createAffectedVerificationPlan(classification, "develop");
 
@@ -77,6 +87,16 @@ test("consumer matrix에 등록된 계약은 exact consumer test만 추가한다
       "services/python-worker:uv run pytest tests/test_example.py",
     ],
   );
+});
+
+test("public barrel은 exact test 열거 대신 affected test로 승격한다", () => {
+  const classification = classifyAffectedPaths([
+    "packages/shared/src/index.ts",
+  ]);
+  const plan = createAffectedVerificationPlan(classification, "develop");
+
+  assert.equal(classification.broad, true);
+  assert.match(plan.commands[0].argv.join(" "), /test --affected/);
 });
 
 test("root config와 migration 변경의 승격 사유를 중복 없이 보고한다", () => {

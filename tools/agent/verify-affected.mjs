@@ -5,16 +5,18 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
-  collectChangedPaths,
+  collectChangedPathGroups,
   gitRefExists,
   resolveBaseRef as resolveGitBaseRef,
 } from "./lib/git-changes.mjs";
+import { buildImportGraph } from "./lib/import-graph.mjs";
 import {
   commandDescriptorForTestPath,
   contractImpactsForPaths,
   loadContractConsumerMatrix,
 } from "./lib/verification-impact.mjs";
 import { createVerificationEnvironment } from "./verification-env.mjs";
+import { isPublicBarrelPath } from "./verify-changed.mjs";
 
 const repositoryRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -51,12 +53,19 @@ function isPythonVerificationPath(path) {
 export function classifyAffectedPaths(paths, options = {}) {
   const uniquePaths = [...new Set(paths)].sort();
   const reasons = [];
-  const matrix = options.contractMatrix ?? { contracts: {} };
-  const contractImpacts = contractImpactsForPaths(uniquePaths, matrix);
+  const matrix = options.contractMatrix ?? { crossLanguageOverrides: {} };
+  const contractImpacts = contractImpactsForPaths(uniquePaths, matrix, {
+    graph: options.graph,
+  });
   const knownContracts = new Set(contractImpacts.map((impact) => impact.path));
   const unknownSharedContracts = uniquePaths.filter(
     (path) => isSharedContract(path) && !knownContracts.has(path),
   );
+  const exactTestCount = new Set(
+    contractImpacts.flatMap((impact) => impact.tests),
+  ).size;
+  const broad =
+    exactTestCount > 8 || uniquePaths.some((path) => isPublicBarrelPath(path));
 
   if (uniquePaths.some((path) => fullRootFiles.has(path))) {
     reasons.push("root lockfile 또는 compiler/build config 변경");
@@ -80,6 +89,7 @@ export function classifyAffectedPaths(paths, options = {}) {
   return {
     paths: uniquePaths,
     contractImpacts,
+    broad,
     full: reasons.length > 0,
     python:
       uniquePaths.some(isPythonVerificationPath) ||
@@ -98,7 +108,9 @@ function command(argv, options = {}) {
 
 export function createAffectedVerificationPlan(classification, baseRef) {
   const hasExactContractImpacts =
-    !classification.full && (classification.contractImpacts?.length ?? 0) > 0;
+    !classification.full &&
+    !classification.broad &&
+    (classification.contractImpacts?.length ?? 0) > 0;
   const commands = classification.full
     ? [
         command(["pnpm", "turbo", "run", "build", "--env-mode=loose"]),
@@ -149,7 +161,9 @@ export function createAffectedVerificationPlan(classification, baseRef) {
   const selectedCommands = new Set(
     commands.map((item) => item.argv.join("\0")),
   );
-  for (const impact of classification.contractImpacts ?? []) {
+  for (const impact of classification.full || classification.broad
+    ? []
+    : (classification.contractImpacts ?? [])) {
     for (const test of impact.tests) {
       const descriptor = commandDescriptorForTestPath(test);
       if (!descriptor) {
@@ -233,12 +247,15 @@ function parseArguments(argv) {
   const options = {
     base: undefined,
     dryRun: false,
+    trackedOnly: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--dry-run") {
       options.dryRun = true;
+    } else if (argument === "--tracked-only") {
+      options.trackedOnly = true;
     } else if (argument === "--base") {
       if (!argv[index + 1]) {
         throw new Error("--base 다음에 Git ref가 필요합니다.");
@@ -257,9 +274,16 @@ function run() {
     const options = parseArguments(process.argv.slice(2));
     const baseRef = resolveBaseRef(options.base);
     const contractMatrix = loadContractConsumerMatrix(repositoryRoot);
+    const graph = buildImportGraph(repositoryRoot, {
+      includeTests: true,
+      sourceRoots: ["apps", "packages", "services", "src", "tests", "tools"],
+    });
     const classification = classifyAffectedPaths(
-      collectChangedPaths(baseRef, { root: repositoryRoot }),
-      { contractMatrix },
+      collectChangedPathGroups(baseRef, {
+        includeUntracked: !options.trackedOnly,
+        root: repositoryRoot,
+      }).impactPaths,
+      { contractMatrix, graph },
     );
     const plan = createAffectedVerificationPlan(classification, baseRef);
     process.stdout.write(renderAffectedVerificationPlan(plan));

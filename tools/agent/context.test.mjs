@@ -135,7 +135,32 @@ test("파일 경로에서 workspace, domain, dependency와 인접 test를 추론
   assert.deepEqual(context.dependencies.reverse, ["src/index.test.ts"]);
   assert.ok(context.tests.includes("src/index.test.ts"));
   assert.equal(context.nearestAgentInstructions, "AGENTS.md");
+  assert.deepEqual(context.contracts, ["src/contract.ts"]);
   assert.match(renderPathContext(context), /## Tier 0/);
+});
+
+test("path context는 manifest 전체가 아닌 전이 의존 contract만 표시한다", () => {
+  const root = createRepositoryFixture();
+  writeFixture(root, "src/unused-contract.ts", "export const unused = 1;\n");
+  writeFixture(
+    root,
+    "docs/agent/domains/example.json",
+    JSON.stringify(
+      createManifest("example", {
+        contracts: ["src/contract.ts", "src/unused-contract.ts"],
+      }),
+    ),
+  );
+  writeFixture(
+    root,
+    "src/index.ts",
+    'import { contract } from "./contract";\nexport const value = contract;\n',
+  );
+  writeFixture(root, "src/contract.ts", "export const contract = 1;\n");
+
+  const context = createPathContext(root, "src/index.ts");
+
+  assert.deepEqual(context.contracts, ["src/contract.ts"]);
 });
 
 test("manifest 미소유 파일도 path fallback context를 반환한다", () => {

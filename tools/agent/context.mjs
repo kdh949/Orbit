@@ -5,7 +5,11 @@ import { basename, dirname, extname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { isTestPath } from "./lib/fs-walk.mjs";
-import { buildImportGraph, reverseImportGraph } from "./lib/import-graph.mjs";
+import {
+  buildImportGraph,
+  collectDependencyClosure,
+  reverseImportGraph,
+} from "./lib/import-graph.mjs";
 import {
   classifyWorkspace,
   findNearestFile,
@@ -354,14 +358,13 @@ export function createPathContext(rootDirectory, inputPath, options = {}) {
   const tests = adjacentTests(path, graph, reverseGraph, matchingDomains);
   const directDependencies = [...(graph.get(path) ?? [])].sort();
   const reverseDependencies = [...(reverseGraph.get(path) ?? [])].sort();
-  const contracts = [
-    ...matchingDomains.flatMap((manifest) => manifest.contracts),
-    ...directDependencies.filter(
-      (dependency) =>
-        dependency.startsWith("packages/shared/") &&
-        dependency.endsWith(".schema.ts"),
-    ),
-  ];
+  const dependencyClosure = collectDependencyClosure(graph, path);
+  const knownContracts = new Set(
+    catalog.flatMap((manifest) => manifest.contracts),
+  );
+  const contracts = [...knownContracts].filter(
+    (contract) => contract === path || dependencyClosure.has(contract),
+  );
   const nearestAgentInstructions = findNearestFile(
     root,
     path,
