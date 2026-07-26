@@ -19,7 +19,7 @@ import {
 import {
   clearPreparedRehearsalSlideSnapshots,
   readPreparedRehearsalSlideSnapshots,
-} from "../rehearsalSlideSnapshots";
+} from "../../../runtime/presentation/rehearsalSlideSnapshots";
 
 type RehearsalRunPhase = "uploading" | "processing" | "succeeded" | "failed";
 

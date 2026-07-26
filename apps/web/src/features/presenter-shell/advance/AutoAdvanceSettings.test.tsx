@@ -2,12 +2,12 @@ import { Children, isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { defaultAutoAdvancePolicy } from "./autoAdvanceConfig";
+import { defaultAutoAdvancePolicy } from "../../../runtime/presentation/advance/autoAdvanceConfig";
 import { AutoAdvanceSettings } from "./AutoAdvanceSettings";
 import {
   defaultPresenterSettings,
   type PresenterSettingsUpdater
-} from "../settings/presenterSettings";
+} from "../../rehearsal/settings/presenterSettings";
 
 describe("AutoAdvanceSettings", () => {
   it("renders mode toggles and a 5 percent threshold value", () => {

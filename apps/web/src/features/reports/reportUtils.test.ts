@@ -5,7 +5,7 @@ import {
   navigateTo,
   rehearsalNavigationRequestEvent,
   sortRehearsalRunsByCreatedAt,
-} from "./rehearsalUtils";
+} from "./reportUtils";
 
 afterEach(() => {
   vi.unstubAllGlobals();

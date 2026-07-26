@@ -19,9 +19,9 @@ import {
   fetchProjectRehearsalSummary,
   fetchRehearsalRunComparison,
   loadProjectReportRunSources,
-} from "./reportApi";
+} from "../reports/reportApi";
 import { fetchProjectDeck } from "./keywords/keywordEditorApi";
-import { RehearsalRunNav } from "./RehearsalRunNav";
+import { RehearsalRunNav } from "../reports/RehearsalRunNav";
 import { RehearsalProjectSummaryDashboard } from "./RehearsalProjectSummaryDashboard";
 import { buildRehearsalRunComparisonViewModel } from "./rehearsalRunComparisonModel";
 import { getRehearsalReportPath } from "./rehearsalRoutes";
@@ -35,7 +35,7 @@ import {
   getPresentationReportPath,
   navigateTo,
   sortRehearsalRunsByCreatedAt,
-} from "./rehearsalUtils";
+} from "../reports/reportUtils";
 import "./rehearsal-project-report.css";
 import "./rehearsal-project-overview.css";
 

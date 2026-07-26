@@ -41,14 +41,14 @@ import {
   getRehearsalPresenterWindowPath,
   getRehearsalReportPath,
 } from "./rehearsalRoutes";
-import { RehearsalScriptTeleprompter } from "./presenter/RehearsalScriptTeleprompter";
+import { RehearsalScriptTeleprompter } from "../presenter-shell/presenter/RehearsalScriptTeleprompter";
 import "./rehearsal-preflight.css";
-import "./rehearsal-report-detail.css";
+import "../reports/rehearsal-report-detail.css";
 import "./rehearsal-workspace-orbit.css";
 import {
   fetchProjectRehearsalReportRuns,
   fetchRehearsalRunComparison,
-} from "./reportApi";
+} from "../reports/reportApi";
 import { RehearsalCompletionScreen } from "./completion/RehearsalCompletionScreen";
 import { RehearsalPreflightScreen } from "./preflight/RehearsalPreflightScreen";
 import {
@@ -58,7 +58,7 @@ import {
   enterComparisonSlide,
   type ComparisonReminderState,
 } from "./rehearsalRunComparisonModel";
-import { sortRehearsalRunsByCreatedAt } from "./rehearsalUtils";
+import { sortRehearsalRunsByCreatedAt } from "../reports/reportUtils";
 import {
   logRehearsalValidationFailure,
   rehearsalDeckInvalidMessage,
@@ -95,7 +95,7 @@ import {
   getLiveKeywordOccurrenceStateForSlide,
   renderLiveTranscriptBuffer,
 } from "../../runtime/speech/tracking/liveTranscriptAnalysis";
-import { createRehearsalScriptPrompterRows } from "./panel/rehearsalScriptPrompter";
+import { createRehearsalScriptPrompterRows } from "../presenter-shell/panel/rehearsalScriptPrompter";
 import {
   getKeywordOccurrenceTriggerIdsForSlide,
   resolveCueTriggeredActions,
@@ -104,30 +104,30 @@ import {
   getTriggerAnimationIdsForSlide,
   restoreSlidePlaybackAtStep,
   resolveTriggeredActionPlaybackUpdate,
-} from "./playback/triggeredActionPlayback";
+} from "../../runtime/presentation/playback/triggeredActionPlayback";
 import {
   AnimationFlowNavigator,
   type AnimationFlowNavigation,
-} from "./presenter/AnimationFlowNavigator";
+} from "../presenter-shell/presenter/AnimationFlowNavigator";
 import {
   DisplayControls,
   type RequestDisplayScreensResult,
   type RequestSlideWindowFullscreenResult,
   type SlideDisplayOptions,
-} from "./presenter/DisplayControls";
+} from "../presenter-shell/presenter/DisplayControls";
 import {
   PresentWindowReceiver,
   requestPresentWindowFullscreen,
-} from "./presenter/PresentWindow";
-import { PresenterRemoteWindow } from "./presenter/PresenterRemoteWindow";
+} from "../presenter-shell/presenter/PresentWindow";
+import { PresenterRemoteWindow } from "../presenter-shell/presenter/PresenterRemoteWindow";
 import {
   createDisplayManager,
   type DisplayManagerErrorCode,
   type DisplayScreenDescriptor,
   type SlideWindowRef,
 } from "../../runtime/presentation/displayManager";
-import { SingleScreenPresenter } from "./presenter/SingleScreenPresenter";
-import { SlideshowRenderer } from "./presenter/SlideshowRenderer";
+import { SingleScreenPresenter } from "../presenter-shell/presenter/SingleScreenPresenter";
+import { SlideshowRenderer } from "../presenter-shell/presenter/SlideshowRenderer";
 import { createSlideshowAnimationPlan } from "../../runtime/presentation/slideshow/slideshowStepModel";
 import { getNextPresenterStepState } from "../../runtime/presentation/slideshow/presenterStepNavigation";
 import {
@@ -144,45 +144,45 @@ import {
   getCompanionPrompterTrackingStatus,
 } from "../presenter-companion/companionPrompterProjection";
 import type { AudienceStreamBridgeWindow } from "../../runtime/presentation/audienceStreamBridge";
-import { usePresenterKeyboard } from "./presenter/usePresenterKeyboard";
-import { AutoAdvanceSettings } from "./advance/AutoAdvanceSettings";
-import { AutoAdvanceStatus } from "./advance/AutoAdvanceStatus";
-import { defaultAutoAdvanceConfig } from "./advance/autoAdvanceConfig";
+import { usePresenterKeyboard } from "../presenter-shell/presenter/usePresenterKeyboard";
+import { AutoAdvanceSettings } from "../presenter-shell/advance/AutoAdvanceSettings";
+import { AutoAdvanceStatus } from "../presenter-shell/advance/AutoAdvanceStatus";
+import { defaultAutoAdvanceConfig } from "../../runtime/presentation/advance/autoAdvanceConfig";
 import {
   cancelAdvanceCountdown,
   createInitialAdvanceControllerState,
   evaluateAdvanceController,
   resetAdvanceControllerForSlide,
   type AdvanceControllerState,
-} from "./advance/advanceController";
-import { RehearsalPanel } from "./panel/RehearsalPanel";
+} from "../../runtime/presentation/advance/advanceController";
+import { RehearsalPanel } from "../presenter-shell/panel/RehearsalPanel";
 import {
   clearProjectSlideImageCache,
   preloadSlideAssets,
   retainSlideAssetWindow,
 } from "../slides/rendering";
-import { sanitizeLiveSttErrorMessage } from "./panel/rehearsalLiveSttRecovery";
+import { sanitizeLiveSttErrorMessage } from "../presenter-shell/panel/rehearsalLiveSttRecovery";
 import {
   createSemanticCapabilityStatusItems,
   getNextSemanticCapabilityRecoveryDelay,
   isSemanticAutoActionAllowed,
   type SemanticCapabilityStatusItem,
-} from "./panel/semanticCapabilityStatusModel";
+} from "../presenter-shell/panel/semanticCapabilityStatusModel";
 import {
   SemanticCueDebugPanel,
   shouldShowSemanticCueDebugPanel,
-} from "./panel/SemanticCueDebugPanel";
+} from "../presenter-shell/panel/SemanticCueDebugPanel";
 import {
   SemanticSpeechDebugPanel,
   semanticSpeechDebugPanelStorageKey,
   shouldShowSemanticSpeechDebugPanel,
-} from "./panel/SemanticSpeechDebugPanel";
+} from "../presenter-shell/panel/SemanticSpeechDebugPanel";
 import {
   calculateFinalTranscriptWpm,
   getDeckTargetSeconds as getRehearsalDeckTargetSeconds,
   getTimingAdviceState,
   type RehearsalTimingSnapshot,
-} from "./panel/rehearsalTiming";
+} from "../presenter-shell/panel/rehearsalTiming";
 import { usePresenterSettings } from "./settings/presenterSettings";
 import { createDefaultPhraseExtractor } from "../../runtime/speech/tracking/phraseExtractor";
 import {

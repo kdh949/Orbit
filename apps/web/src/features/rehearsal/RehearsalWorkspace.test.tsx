@@ -16,7 +16,7 @@ import type { ReactNode } from "react";
 import { forwardRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { RehearsalReportDocument } from "./RehearsalReportDocument";
+import { RehearsalReportDocument } from "../reports/RehearsalReportDocument";
 import {
   RehearsalFlowError,
   cancelRehearsalRun,
@@ -90,18 +90,18 @@ import {
   requestRehearsalMicrophoneStream,
   writeRehearsalMicrophoneDeviceId,
 } from "../presenter-shell/microphoneSettings";
-import { getRehearsalTeleprompterScrollBehavior } from "./presenter/RehearsalScriptTeleprompter";
+import { getRehearsalTeleprompterScrollBehavior } from "../presenter-shell/presenter/RehearsalScriptTeleprompter";
 import { LiveSttAdapterError } from "../../runtime/speech/stt/liveSttAdapter";
 import { SherpaLiveSttAdapter } from "../../runtime/speech/stt/sherpa/sherpaOnnxLiveSttAdapter";
 import {
   defaultAutoAdvanceConfig,
   defaultAutoAdvancePolicy,
-} from "./advance/autoAdvanceConfig";
+} from "../../runtime/presentation/advance/autoAdvanceConfig";
 import {
   cancelAdvanceCountdown,
   createInitialAdvanceControllerState,
   evaluateAdvanceController,
-} from "./advance/advanceController";
+} from "../../runtime/presentation/advance/advanceController";
 import { p0AnimationDeck } from "../../runtime/presentation/slideshow/__fixtures__/animationDeck";
 import { getNextPresenterStepState } from "../../runtime/presentation/slideshow/presenterStepNavigation";
 import { normalizeLiveTranscriptText } from "../../runtime/speech/stt/liveTranscriptText";
@@ -134,10 +134,13 @@ const editorShellSourcePath = fileURLToPath(
   new URL("../editor/shell/EditorShell.tsx", import.meta.url),
 );
 const rehearsalPanelSourcePath = fileURLToPath(
-  new URL("./panel/RehearsalPanel.tsx", import.meta.url),
+  new URL("../presenter-shell/panel/RehearsalPanel.tsx", import.meta.url),
 );
 const rehearsalTeleprompterSourcePath = fileURLToPath(
-  new URL("./presenter/RehearsalScriptTeleprompter.tsx", import.meta.url),
+  new URL(
+    "../presenter-shell/presenter/RehearsalScriptTeleprompter.tsx",
+    import.meta.url,
+  ),
 );
 const presenterScaffoldSourcePath = fileURLToPath(
   new URL("../presenter-shell/PresenterScaffold.tsx", import.meta.url),

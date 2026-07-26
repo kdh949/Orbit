@@ -1,12 +1,12 @@
 import { CalendarDays, Loader2 } from "lucide-react";
 import type { PresentationRun, RehearsalRun } from "@orbit/shared";
-import { getRehearsalReportPath } from "./rehearsalRoutes";
+import { getRehearsalReportPath } from "../rehearsal/rehearsalRoutes";
 import {
   navigateTo,
   formatRunDate,
   getPresentationReportPath,
   sortRehearsalRunsByCreatedAt,
-} from "./rehearsalUtils";
+} from "./reportUtils";
 
 type RehearsalRunNavProps = {
   runs: RehearsalRun[];

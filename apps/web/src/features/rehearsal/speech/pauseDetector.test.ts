@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { defaultPauseDetectorConfig } from "../advance/autoAdvanceConfig";
+import { defaultPauseDetectorConfig } from "../../../runtime/presentation/advance/autoAdvanceConfig";
 import { createPauseDetector } from "./pauseDetector";
 
 describe("pauseDetector", () => {

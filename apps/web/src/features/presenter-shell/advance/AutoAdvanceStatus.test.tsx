@@ -1,9 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { defaultAutoAdvancePolicy } from "./autoAdvanceConfig";
+import { defaultAutoAdvancePolicy } from "../../../runtime/presentation/advance/autoAdvanceConfig";
 import { AutoAdvanceStatus } from "./AutoAdvanceStatus";
-import type { AdvanceControllerState } from "./advanceController";
+import type { AdvanceControllerState } from "../../../runtime/presentation/advance/advanceController";
 
 describe("AutoAdvanceStatus", () => {
   it("renders presenter countdown status", () => {

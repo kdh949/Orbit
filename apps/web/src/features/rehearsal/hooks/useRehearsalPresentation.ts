@@ -9,7 +9,7 @@ import {
   createSlideAssetNavigationGate,
   type SlideNavigationRequest,
   type SlideNavigationResult,
-} from "../presenter/slideAssetNavigationGate";
+} from "../../presenter-shell/presenter/slideAssetNavigationGate";
 
 export type RehearsalDisplayRole =
   | "presenter"

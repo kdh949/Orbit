@@ -21,7 +21,7 @@ import { SherpaLiveSttPort } from "../../../runtime/speech/stt/sherpa/sherpaLive
 import {
   canRetryInitialRecordingLiveStt,
   createInitialLiveSttRetryCoordinator,
-} from "../panel/rehearsalLiveSttRecovery";
+} from "../../presenter-shell/panel/rehearsalLiveSttRecovery";
 import { buildLiveSttBiasContext } from "../stt/liveSttBias";
 import {
   downloadLiveSttDebugPcm,

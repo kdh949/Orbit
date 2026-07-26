@@ -64,11 +64,11 @@ import { RehearsalMicCheckModal } from "./features/rehearsal/preflight/Rehearsal
 import {
   isRehearsalEntryPath,
   rehearsalNavigationRequestEvent,
-} from "./features/rehearsal/rehearsalUtils";
+} from "./features/reports/reportUtils";
 import { PresentationWorkspace } from "./features/presentation/PresentationWorkspace";
 import { PresentationReportPage } from "./features/presentation/PresentationReportPage";
 import { AudienceSessionPage } from "./pages/audience/AudienceSessionPage";
-import { PresentWindow } from "./features/rehearsal/presenter/PresentWindow";
+import { PresentWindow } from "./features/presenter-shell/presenter/PresentWindow";
 import { ReadOnlySlideCanvas } from "./features/slides/rendering";
 import {
   ActivityAudiencePreviewPage,

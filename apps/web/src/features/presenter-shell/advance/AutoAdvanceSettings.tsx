@@ -3,11 +3,11 @@ import {
   autoAdvanceThresholdSteps,
   formatAutoAdvanceThresholdPercent,
   normalizeAutoAdvanceThreshold
-} from "./autoAdvanceConfig";
+} from "../../../runtime/presentation/advance/autoAdvanceConfig";
 import type {
   PresenterAdvancePolicySettings,
   PresenterSettingsUpdater
-} from "../settings/presenterSettings";
+} from "../../rehearsal/settings/presenterSettings";
 
 export function AutoAdvanceSettings(props: {
   policy: PresenterAdvancePolicySettings;

@@ -7,11 +7,11 @@ import type { ExtractedSentence } from "../../runtime/speech/tracking/speechTrac
 import type { PrompterProgressSnapshot } from "../../runtime/speech/tracking/prompterProgressTracker";
 import { getPresenterTimingProgress } from "../presenter-shell/PresenterScaffold";
 import { defaultRehearsalCommandConfig } from "./rehearsalCommands";
-import { getKeywordOccurrenceTriggerIdsForSlide } from "./playback/triggeredActionPlayback";
+import { getKeywordOccurrenceTriggerIdsForSlide } from "../../runtime/presentation/playback/triggeredActionPlayback";
 import {
   createRehearsalScriptPrompterRows,
   type RehearsalScriptPrompterRowStatus,
-} from "./panel/rehearsalScriptPrompter";
+} from "../presenter-shell/panel/rehearsalScriptPrompter";
 import { getRehearsalSlideBodyTexts } from "./rehearsalSlideText";
 
 export type RehearsalPrompterRows = {

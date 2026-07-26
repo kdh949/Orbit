@@ -5,7 +5,7 @@ import {
 } from "@orbit/editor-core/playback";
 import type { DeckSlideAction, Slide } from "@orbit/shared";
 
-import type { SlideshowAnimationPlan } from "../../../runtime/presentation/slideshow/slideshowStepModel";
+import type { SlideshowAnimationPlan } from "../slideshow/slideshowStepModel";
 
 export type TriggeredActionPlaybackUpdate = {
   playbackState: SlidePlaybackState;

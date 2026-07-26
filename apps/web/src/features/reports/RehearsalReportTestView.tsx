@@ -13,16 +13,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FillerMetricDetails,
   LongSilenceMetricDetails,
-} from "./RehearsalReportTestMetricDetails";
-import { RehearsalReportTestNavigator } from "./RehearsalReportTestNavigator";
-import { RehearsalReportTestOverview } from "./RehearsalReportTestOverview";
-import { RehearsalSlideCanvasPreview } from "./RehearsalSlideCanvasPreview";
-import { buildRehearsalTimingAssessment } from "./rehearsalReportTimingAssessment";
+} from "../rehearsal/RehearsalReportTestMetricDetails";
+import { RehearsalReportTestNavigator } from "../rehearsal/RehearsalReportTestNavigator";
+import { RehearsalReportTestOverview } from "../rehearsal/RehearsalReportTestOverview";
+import { RehearsalSlideCanvasPreview } from "../rehearsal/RehearsalSlideCanvasPreview";
+import { buildRehearsalTimingAssessment } from "../rehearsal/rehearsalReportTimingAssessment";
 import {
   buildRehearsalReportTestSlideMetrics,
   type TestMetricTone,
-} from "./rehearsalReportTestViewModel";
-import { navigateTo } from "./rehearsalUtils";
+} from "../rehearsal/rehearsalReportTestViewModel";
+import { navigateTo } from "./reportUtils";
 import "./rehearsal-report-test-view.css";
 
 type Props = {

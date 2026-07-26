@@ -15,8 +15,8 @@ import {
 import { fetchProjects } from "../projects/ProjectAssetWorkspace";
 import {
   loadProjectReportRunSources,
-} from "./reportApi";
-import { formatRunDate, navigateTo } from "./rehearsalUtils";
+} from "../reports/reportApi";
+import { formatRunDate, navigateTo } from "../reports/reportUtils";
 import "../projects/orbit-project-hub.css";
 import "./rehearsal-report-list.css";
 

@@ -343,8 +343,8 @@ function renderPanel(
     sentences?: ExtractedSentence[];
     snapshot?: SpeechTrackerSnapshot;
     semanticCapabilityItems?: import("./semanticCapabilityStatusModel").SemanticCapabilityStatusItem[];
-    semanticCueItems?: import("../speech/p3RehearsalSession").P3SemanticCueProgressItem[];
-    comparisonReminder?: import("../rehearsalRunComparisonModel").ComparisonReminder;
+    semanticCueItems?: import("../../rehearsal/speech/p3RehearsalSession").P3SemanticCueProgressItem[];
+    comparisonReminder?: import("../../rehearsal/rehearsalRunComparisonModel").ComparisonReminder;
   } = {}
 ) {
   void overrides.transcriptText;
