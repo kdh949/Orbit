@@ -108,7 +108,9 @@ async function collectRuleOccurrences(root, filePaths) {
         }
         const lineStart = source.lastIndexOf("\n", start - 1) + 1;
         const removalStart =
-          source.slice(lineStart, start).trim().length === 0 ? lineStart : start;
+          source.slice(lineStart, start).trim().length === 0
+            ? lineStart
+            : start;
         const raw = source.slice(start, end);
         occurrences.push({
           context,

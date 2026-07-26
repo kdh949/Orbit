@@ -87,10 +87,7 @@ test("서로 독립적인 entry bundle 사이의 동일 rule은 제거하지 않
 });
 
 test("production CSS bundle의 no-op cleanup과 cascade fingerprint를 고정한다", async () => {
-  const repositoryRoot = join(
-    dirname(fileURLToPath(import.meta.url)),
-    "../..",
-  );
+  const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
   const reports = await cleanupCssBundles(repositoryRoot);
 
   assert.deepEqual(
