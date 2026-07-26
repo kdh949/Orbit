@@ -16,7 +16,7 @@ import { createPauseDetector } from "./pauseDetector";
 import type { SemanticCueDebugEvent } from "./semanticCueDebugEvents";
 import { createSemanticCueEmbeddingIndex } from "./semanticCueEmbeddingIndex";
 import { createSemanticCueRuntime } from "./semanticCueRuntime";
-import { createMockSemanticCueNliProvider } from "./mockSemanticCueNliProvider";
+import { createMockSemanticCueNliProvider } from "../../../runtime/speech/semantic/nli/mockSemanticCueNliProvider";
 import type { SemanticUtteranceDebugState } from "../../../runtime/speech/semantic/semanticSpeechDebug";
 import type { SemanticUtteranceDecision } from "../../../runtime/speech/semantic/semanticUtteranceDecision";
 import type { SemanticUtteranceMatcher, SemanticUtteranceMatch } from "../../../runtime/speech/semantic/semanticUtteranceMatcher";

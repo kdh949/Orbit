@@ -1,9 +1,9 @@
-import { createBrowserTransformersSemanticCueNliProvider } from "./browserSemanticCueNliProvider";
+import { createBrowserTransformersSemanticCueNliProvider } from "../../../runtime/speech/semantic/nli/browserSemanticCueNliProvider";
 import {
   buildSemanticCueNliBenchmarkResult,
   evaluateSemanticCueNliBenchmarkGate,
 } from "./semanticCueNliBenchmark";
-import type { BrowserSemanticCueNliDevice } from "./browserSemanticCueNliWorkerProtocol";
+import type { BrowserSemanticCueNliDevice } from "../../../runtime/speech/semantic/nli/browserSemanticCueNliWorkerProtocol";
 
 const MODEL_ID = "MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli";
 const MODEL_BYTES = 428_000_000;

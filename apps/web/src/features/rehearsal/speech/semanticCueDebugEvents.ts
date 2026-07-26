@@ -3,7 +3,7 @@ import type {
   SemanticMeasurementMode
 } from "@orbit/shared";
 
-import type { SemanticCueNliProviderId } from "./semanticCueNliProvider";
+import type { SemanticCueNliProviderId } from "../../../runtime/speech/semantic/nli/semanticCueNliProvider";
 
 export type SemanticCueDebugEvent = {
   eventId: string;

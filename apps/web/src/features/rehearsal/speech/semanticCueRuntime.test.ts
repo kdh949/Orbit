@@ -8,7 +8,7 @@ import { createSemanticCueRuntime } from "./semanticCueRuntime";
 import {
   SemanticCueNliProviderError,
   type SemanticCueNliProvider
-} from "./semanticCueNliProvider";
+} from "../../../runtime/speech/semantic/nli/semanticCueNliProvider";
 
 describe("semanticCueRuntime fallback", () => {
   it("semantic matching toggle이 꺼지면 기존 발표 추적에 decision을 추가하지 않는다", async () => {

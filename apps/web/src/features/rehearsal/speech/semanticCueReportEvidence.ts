@@ -2,7 +2,7 @@ import type { RehearsalSemanticCueDecision } from "@orbit/shared";
 
 import type { SemanticCueCandidate } from "./semanticCueCandidateSelector";
 import type { SemanticCueScoreCombination } from "./semanticCueScoreCombiner";
-import type { SemanticCueNliDecision } from "./semanticCueNliProvider";
+import type { SemanticCueNliDecision } from "../../../runtime/speech/semantic/nli/semanticCueNliProvider";
 
 export function buildSemanticCueReportEvidence(options: {
   slideId: string;

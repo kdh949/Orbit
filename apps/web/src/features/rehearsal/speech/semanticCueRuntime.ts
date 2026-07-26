@@ -19,7 +19,7 @@ import {
   SemanticCueNliProviderError,
   type SemanticCueNliDecision,
   type SemanticCueNliProvider
-} from "./semanticCueNliProvider";
+} from "../../../runtime/speech/semantic/nli/semanticCueNliProvider";
 import {
   buildSemanticCueReportEvidence,
   normalizeBoundedText
