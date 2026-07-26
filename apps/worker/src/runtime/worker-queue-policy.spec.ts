@@ -5,17 +5,13 @@ import {
   aiDeckResearchContentQueueName,
   designImageGenerationQueueName,
   generateDeckQueueName,
-  pptxOoxmlGenerationQueueName,
-  pptxOoxmlSyncQueueName,
   referenceExtractQueueName,
-  slideQuestionGuideGenerationQueueName,
 } from "@orbit/job-queue";
 import { describe, expect, it } from "vitest";
 
 import {
   allWorkerQueueNames,
   selectWorkerQueueNames,
-  workerQueueRuntimeOptions,
 } from "./worker-queue-policy";
 
 describe("worker queue policy", () => {
@@ -55,18 +51,5 @@ describe("worker queue policy", () => {
     expect(selectedQueues).not.toContain(aiDeckDesignLayoutQueueName);
     expect(selectedQueues).not.toContain(aiDeckImageQueueName);
     expect(selectedQueues).not.toContain(aiDeckQaFinalizeQueueName);
-  });
-
-  it("preserves stalled recovery and concurrency overrides", () => {
-    expect(workerQueueRuntimeOptions(pptxOoxmlGenerationQueueName)).toEqual({
-      maxStalledCount: 4,
-    });
-    expect(workerQueueRuntimeOptions(pptxOoxmlSyncQueueName)).toEqual({
-      maxStalledCount: 4,
-    });
-    expect(
-      workerQueueRuntimeOptions(slideQuestionGuideGenerationQueueName),
-    ).toEqual({ concurrency: 2 });
-    expect(workerQueueRuntimeOptions(referenceExtractQueueName)).toEqual({});
   });
 });

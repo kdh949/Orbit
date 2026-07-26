@@ -35,5 +35,15 @@ describe("practice worker registrations", () => {
     expect(new Set(registrations.map(({ queueName }) => queueName)).size).toBe(
       registrations.length,
     );
+    expect(
+      registrations.every(
+        ({ acceptedJobNames }) => acceptedJobNames.length > 0,
+      ),
+    ).toBe(true);
+    expect(
+      registrations.find(
+        ({ queueName }) => queueName === slideQuestionGuideGenerationQueueName,
+      )?.runtimeOptions,
+    ).toEqual({ concurrency: 2 });
   });
 });
