@@ -41,6 +41,10 @@ import {
   buildLiveSttBiasContext,
 } from "./stt/liveSttBias";
 import {
+  RehearsalReportPage,
+  shouldLoadPracticeGoalSummary,
+} from "./report/RehearsalReportPage";
+import {
   applyLiveTranscriptEvent,
   confirmKeywordOccurrenceMatches,
   createKeywordOccurrenceAnimationCueEvent,
@@ -54,7 +58,6 @@ import {
   LiveSttAdapterError,
   RehearsalFailureScreen,
   RehearsalCompletionScreen,
-  RehearsalReportPage,
   RehearsalWorkspace,
   SherpaLiveSttAdapter,
   buildP3SessionSlides,
@@ -78,7 +81,6 @@ import {
   requestRehearsalMicrophoneStream,
   resetRehearsalTimerState,
   setMediaStreamTracksEnabled,
-  shouldLoadPracticeGoalSummary,
   shouldRenderRehearsalThumbnailImage,
   shouldShowLiveSttDebugPcmDownload,
   writeRehearsalMicrophoneDeviceId,
