@@ -14,6 +14,11 @@ const skippedDirectories = new Set([
 ]);
 const stringLiteralPattern = /["']([^"'\r\n]+)["']/g;
 const packageSourcePattern = /(?:^|\/)packages\/[^/]+\/src(?:\/|$)/;
+const rehearsalConsumerRoots = new Set([
+  "editor",
+  "presentation",
+  "presenter-companion",
+]);
 
 function toRepoPath(root, absolutePath) {
   return relative(root, absolutePath).split(sep).join("/");
@@ -88,6 +93,49 @@ export function findWebRuntimeFeatureImports(content, filePath, rootDirectory) {
   return findings;
 }
 
+export function findForbiddenWebFeatureImports(
+  content,
+  filePath,
+  rootDirectory,
+) {
+  const root = resolve(rootDirectory);
+  const featureRoot = resolve(root, "apps/web/src/features");
+  const rehearsalRoot = resolve(featureRoot, "rehearsal");
+  const absoluteFile = resolve(filePath);
+  const relativeFeaturePath = relative(featureRoot, absoluteFile);
+  const [consumerRoot] = relativeFeaturePath.split(sep);
+
+  if (
+    relativeFeaturePath.startsWith("..") ||
+    !rehearsalConsumerRoots.has(consumerRoot) ||
+    !codeExtensions.has(extname(absoluteFile))
+  ) {
+    return [];
+  }
+
+  const findings = [];
+  for (const match of content.matchAll(stringLiteralPattern)) {
+    const specifier = match[1];
+    if (!specifier.startsWith(".")) {
+      continue;
+    }
+    const target = resolve(dirname(absoluteFile), specifier);
+    const relativeRehearsalPath = relative(rehearsalRoot, target);
+    if (
+      relativeRehearsalPath.startsWith("..") ||
+      relativeRehearsalPath === ""
+    ) {
+      continue;
+    }
+    const offset = match.index ?? 0;
+    findings.push({
+      line: content.slice(0, offset).split("\n").length,
+      specifier,
+    });
+  }
+  return findings;
+}
+
 export function checkImportBoundaries(rootDirectory, options = {}) {
   const root = resolve(rootDirectory);
   const sourceRoots = options.sourceRoots ?? ["apps", "services"];
@@ -108,6 +156,17 @@ export function checkImportBoundaries(rootDirectory, options = {}) {
           ...finding,
           file: toRepoPath(root, file),
           code: "FORBIDDEN_WEB_RUNTIME_FEATURE_IMPORT",
+        });
+      }
+      for (const finding of findForbiddenWebFeatureImports(
+        content,
+        file,
+        root,
+      )) {
+        findings.push({
+          ...finding,
+          file: toRepoPath(root, file),
+          code: "FORBIDDEN_WEB_FEATURE_IMPORT",
         });
       }
     }

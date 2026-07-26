@@ -16,7 +16,7 @@ import {
 } from "./RehearsalReportTestMetricDetails";
 import { resolveOverallSpeakingRate } from "./rehearsalReportOverallSpeakingRate";
 import { buildRehearsalTimingAssessment } from "./rehearsalReportTimingAssessment";
-import { navigateTo } from "./rehearsalUtils";
+import { navigateTo } from "../reports/reportUtils";
 
 type Props = {
   audioPlaybackAvailable: boolean;

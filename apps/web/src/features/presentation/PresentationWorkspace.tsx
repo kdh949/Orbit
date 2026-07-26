@@ -50,16 +50,16 @@ import {
   getSlideTargetSeconds,
   type RehearsalTimingSnapshot,
   type TimingAdviceState,
-} from "../rehearsal/panel/rehearsalTiming";
+} from "../presenter-shell/panel/rehearsalTiming";
 import { createSlideshowAnimationPlan } from "../../runtime/presentation/slideshow/slideshowStepModel";
-import { usePresenterKeyboard } from "../rehearsal/presenter/usePresenterKeyboard";
-import { AudienceOutputControls } from "../rehearsal/presenter/AudienceOutputControls";
+import { usePresenterKeyboard } from "../presenter-shell/presenter/usePresenterKeyboard";
+import { AudienceOutputControls } from "../presenter-shell/presenter/AudienceOutputControls";
 import {
   DisplayControls,
   type RequestDisplayScreensResult,
   type RequestSlideWindowFullscreenResult,
   type SlideDisplayOptions,
-} from "../rehearsal/presenter/DisplayControls";
+} from "../presenter-shell/presenter/DisplayControls";
 import {
   createDisplayManager,
   type DisplayManagerErrorCode,
@@ -78,8 +78,8 @@ import type {
 import {
   PresentWindowReceiver,
   requestPresentWindowFullscreen,
-} from "../rehearsal/presenter/PresentWindow";
-import { PresenterRemoteWindow } from "../rehearsal/presenter/PresenterRemoteWindow";
+} from "../presenter-shell/presenter/PresentWindow";
+import { PresenterRemoteWindow } from "../presenter-shell/presenter/PresenterRemoteWindow";
 import type { AudienceStreamBridgeWindow } from "../../runtime/presentation/audienceStreamBridge";
 import { useLivePresentationOutput } from "./useLivePresentationOutput";
 import { PresenterCompanionSetup } from "../presenter-companion/PresenterCompanionSetup";
@@ -89,7 +89,7 @@ import {
   createCompanionPrompterProjection,
   getCompanionPrompterTrackingStatus,
 } from "../presenter-companion/companionPrompterProjection";
-import { createRehearsalScriptPrompterRows } from "../rehearsal/panel/rehearsalScriptPrompter";
+import { createRehearsalScriptPrompterRows } from "../presenter-shell/panel/rehearsalScriptPrompter";
 import {
   getTriggerAnimationIdsForSlide,
   getKeywordOccurrenceTriggerIdsForSlide,
@@ -98,20 +98,20 @@ import {
   resolveKeywordOccurrenceTriggeredActions,
   resolveKeywordTriggeredActions,
   resolveTriggeredActionPlaybackUpdate,
-} from "../rehearsal/playback/triggeredActionPlayback";
-import type { AnimationFlowNavigation } from "../rehearsal/presenter/AnimationFlowNavigator";
-import { AutoAdvanceStatus } from "../rehearsal/advance/AutoAdvanceStatus";
+} from "../../runtime/presentation/playback/triggeredActionPlayback";
+import type { AnimationFlowNavigation } from "../presenter-shell/presenter/AnimationFlowNavigator";
+import { AutoAdvanceStatus } from "../presenter-shell/advance/AutoAdvanceStatus";
 import {
   defaultAutoAdvanceConfig,
   defaultAutoAdvancePolicy,
-} from "../rehearsal/advance/autoAdvanceConfig";
+} from "../../runtime/presentation/advance/autoAdvanceConfig";
 import {
   cancelAdvanceCountdown,
   createInitialAdvanceControllerState,
   evaluateAdvanceController,
   resetAdvanceControllerForSlide,
   type AdvanceControllerState,
-} from "../rehearsal/advance/advanceController";
+} from "../../runtime/presentation/advance/advanceController";
 import { createDefaultPhraseExtractor } from "../../runtime/speech/tracking/phraseExtractor";
 import {
   estimateScriptProgressOffset,

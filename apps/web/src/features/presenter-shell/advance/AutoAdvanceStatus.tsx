@@ -1,5 +1,5 @@
 import { AlertCircle, FastForward, Flag, TimerReset } from "lucide-react";
-import type { AdvanceControllerState } from "./advanceController";
+import type { AdvanceControllerState } from "../../../runtime/presentation/advance/advanceController";
 
 export function AutoAdvanceStatus(props: {
   countdownMs: number;

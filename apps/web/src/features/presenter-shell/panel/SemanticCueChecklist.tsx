@@ -5,7 +5,7 @@ import {
   CircleSlash2
 } from "lucide-react";
 
-import type { P3SemanticCueProgressItem } from "../speech/p3RehearsalSession";
+import type { P3SemanticCueProgressItem } from "../../rehearsal/speech/p3RehearsalSession";
 
 export function SemanticCueChecklist(props: {
   items: readonly P3SemanticCueProgressItem[];

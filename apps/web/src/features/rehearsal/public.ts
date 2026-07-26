@@ -97,4 +97,4 @@ export {
   buildLiveSttBiasContext,
   getLiveSttBiasMode,
 } from "./stt/liveSttBias";
-export { getRehearsalTeleprompterScrollBehavior } from "./presenter/RehearsalScriptTeleprompter";
+export { getRehearsalTeleprompterScrollBehavior } from "../presenter-shell/presenter/RehearsalScriptTeleprompter";

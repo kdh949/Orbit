@@ -9,11 +9,11 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 
-import { createRehearsalScriptPrompterRows } from "../../../rehearsal/panel/rehearsalScriptPrompter";
+import { createRehearsalScriptPrompterRows } from "../../../presenter-shell/panel/rehearsalScriptPrompter";
 import {
   RehearsalScriptTeleprompter,
   type RehearsalScriptTeleprompterRow
-} from "../../../rehearsal/presenter/RehearsalScriptTeleprompter";
+} from "../../../presenter-shell/presenter/RehearsalScriptTeleprompter";
 import { createDefaultPhraseExtractor } from "../../../../runtime/speech/tracking/phraseExtractor";
 import type { SpeechTrackerSnapshot } from "../../../../runtime/speech/tracking/speechTrackingEvents";
 import {

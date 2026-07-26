@@ -1,8 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { RehearsalPanel } from "../panel/RehearsalPanel";
-import type { RehearsalTimingSnapshot, TimingAdviceState } from "../panel/rehearsalTiming";
+import { RehearsalPanel } from "../../presenter-shell/panel/RehearsalPanel";
+import type {
+  RehearsalTimingSnapshot,
+  TimingAdviceState,
+} from "../../presenter-shell/panel/rehearsalTiming";
 import type { LiveSttPort, LiveSttResult } from "../../../runtime/speech/stt/liveSttPort";
 import {
   p3AsrLikeFinalTranscript,

@@ -313,7 +313,7 @@ describe("SlideshowRenderer", () => {
 
   it("keeps renderer imports away from editor interaction modules", () => {
     const filesToCheck = [
-      "src/features/rehearsal/presenter/SlideshowRenderer.tsx",
+      "src/features/presenter-shell/presenter/SlideshowRenderer.tsx",
       "src/features/slides/rendering/ReadOnlySlideCanvas.tsx",
       "src/features/slides/rendering/elementRendering.tsx"
     ];
@@ -338,7 +338,7 @@ describe("SlideshowRenderer", () => {
     const source = fs.readFileSync(
       path.join(
         process.cwd(),
-        "src/features/rehearsal/presenter/SlideshowRenderer.tsx"
+        "src/features/presenter-shell/presenter/SlideshowRenderer.tsx"
       ),
       "utf8"
     );

@@ -5,8 +5,8 @@ import { ArrowLeft, BarChart3 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { PracticeGoalSummary } from "../../coaching/PracticeGoalSummary";
 import { JobProgressDisplay } from "../JobProgressDisplay";
-import { RehearsalReportDocument } from "../RehearsalReportDocument";
-import { RehearsalRunNav } from "../RehearsalRunNav";
+import { RehearsalReportDocument } from "../../reports/RehearsalReportDocument";
+import { RehearsalRunNav } from "../../reports/RehearsalRunNav";
 import {
   RehearsalFlowError,
   fetchProjectRehearsalRuns,
@@ -20,9 +20,9 @@ import {
 import {
   getRehearsalRunNumber,
   sortRehearsalRunsByCreatedAt,
-} from "../rehearsalUtils";
+} from "../../reports/reportUtils";
 import { useJobSmoothProgress } from "../useJobSmoothProgress";
-import "../rehearsal-report-detail.css";
+import "../../reports/rehearsal-report-detail.css";
 
 export function RehearsalReportPage(props: {
   initialDeck?: Deck;

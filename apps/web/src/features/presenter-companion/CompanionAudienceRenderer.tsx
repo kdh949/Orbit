@@ -3,7 +3,7 @@ import type {
   PresentationCompanionOutputState,
 } from "@orbit/shared";
 import { useEffect, useMemo, useState } from "react";
-import { AudienceOutputRenderer } from "../rehearsal/presenter/AudienceOutputRenderer";
+import { AudienceOutputRenderer } from "../presenter-shell/presenter/AudienceOutputRenderer";
 import type { PresenterSlideshowState } from "../../runtime/presentation/channel/presenterStateStore";
 import {
   materializeCompanionDeck,

@@ -4,7 +4,7 @@ import {
   defaultAutoAdvancePolicy,
   defaultPauseDetectorConfig,
   normalizeAutoAdvanceThreshold
-} from "../advance/autoAdvanceConfig";
+} from "../../../runtime/presentation/advance/autoAdvanceConfig";
 import {
   type HybridCoverageConfig,
   defaultSpeechTrackingConfig

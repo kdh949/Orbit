@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   checkImportBoundaries,
+  findForbiddenWebFeatureImports,
   findPackageSourceImports,
   findWebRuntimeFeatureImports,
 } from "./check-import-boundaries.mjs";
@@ -110,6 +111,40 @@ test("Web runtime에서 feature 내부로 향하는 import를 거부한다", () 
       {
         file: "apps/web/src/runtime/presentation/displayManager.ts",
         code: "FORBIDDEN_WEB_RUNTIME_FEATURE_IMPORT",
+      },
+    ],
+  );
+});
+
+test("Presentation, Editor, Companion에서 Rehearsal feature import를 거부한다", () => {
+  const root = mkdtempSync(join(tmpdir(), "orbit-import-boundaries-"));
+  const presentationFile = join(
+    root,
+    "apps/web/src/features/presentation/PresentationWorkspace.tsx",
+  );
+  writeFixture(
+    root,
+    "apps/web/src/features/presentation/PresentationWorkspace.tsx",
+    'import { helper } from "../rehearsal/helper";\n' +
+      'import { shell } from "../presenter-shell/public";\n' +
+      'import type { Run } from "@orbit/shared/rehearsals";\n',
+  );
+
+  assert.deepEqual(
+    findForbiddenWebFeatureImports(
+      readFileSync(presentationFile, "utf8"),
+      presentationFile,
+      root,
+    ),
+    [{ line: 1, specifier: "../rehearsal/helper" }],
+  );
+
+  assert.deepEqual(
+    checkImportBoundaries(root).map(({ file, code }) => ({ file, code })),
+    [
+      {
+        file: "apps/web/src/features/presentation/PresentationWorkspace.tsx",
+        code: "FORBIDDEN_WEB_FEATURE_IMPORT",
       },
     ],
   );

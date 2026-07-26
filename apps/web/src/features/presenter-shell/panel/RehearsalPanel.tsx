@@ -28,15 +28,18 @@ import {
   type KeywordHighlightOccurrence,
   type KeywordHighlightKeyword
 } from "../../shared/KeywordHighlightedText";
-import { PresenterScriptList, type PresenterScriptListRow } from "../presenter/PresenterScriptList";
+import {
+  PresenterScriptList,
+  type PresenterScriptListRow,
+} from "../presenter/PresenterScriptList";
 import {
   createRehearsalScriptPrompterRows,
   getRehearsalScriptFocusSentenceId
 } from "./rehearsalScriptPrompter";
 import { SemanticCapabilityStatus } from "./SemanticCapabilityStatus";
 import type { SemanticCapabilityStatusItem } from "./semanticCapabilityStatusModel";
-import type { ComparisonReminder } from "../rehearsalRunComparisonModel";
-import type { P3SemanticCueProgressItem } from "../speech/p3RehearsalSession";
+import type { ComparisonReminder } from "../../rehearsal/rehearsalRunComparisonModel";
+import type { P3SemanticCueProgressItem } from "../../rehearsal/speech/p3RehearsalSession";
 import { SemanticCueChecklist } from "./SemanticCueChecklist";
 
 export type RehearsalPanelMode = "rehearsal" | "live";

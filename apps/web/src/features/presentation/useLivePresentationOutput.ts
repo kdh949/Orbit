@@ -17,7 +17,7 @@ import type {
   AudienceOutputMode,
   PresenterSlideshowState,
 } from "../../runtime/presentation/channel/presenterStateStore";
-import { useAudienceScreenShare } from "../rehearsal/presenter/useAudienceScreenShare";
+import { useAudienceScreenShare } from "../presenter-shell/presenter/useAudienceScreenShare";
 import { usePresentationChannelPublisher } from "../../runtime/presentation/channel/usePresentationChannelPublisher";
 import { usePresenterCompanionAuthority } from "../presenter-companion/usePresenterCompanionAuthority";
 import { usePresenterCompanionWebRtc } from "../presenter-companion/usePresenterCompanionWebRtc";

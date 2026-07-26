@@ -6,11 +6,11 @@ import {
   defaultAutoAdvanceConfig,
   defaultAutoAdvancePolicy,
   defaultPauseDetectorConfig
-} from "../advance/autoAdvanceConfig";
+} from "../../../runtime/presentation/advance/autoAdvanceConfig";
 import {
   createInitialAdvanceControllerState,
   evaluateAdvanceController
-} from "../advance/advanceController";
+} from "../../../runtime/presentation/advance/advanceController";
 import { createP3RehearsalSession, type P3RehearsalSessionSlide } from "./p3RehearsalSession";
 import { createPauseDetector } from "./pauseDetector";
 import type { SemanticCueDebugEvent } from "../../../runtime/speech/semantic/cue/semanticCueDebugEvents";

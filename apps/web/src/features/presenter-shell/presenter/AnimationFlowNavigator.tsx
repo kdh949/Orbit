@@ -12,7 +12,7 @@ import {
   createSlideshowAnimationPlan,
   type PlannedSlideshowAnimation,
 } from "../../../runtime/presentation/slideshow/slideshowStepModel";
-import { getTriggerAnimationIdsForSlide } from "../playback/triggeredActionPlayback";
+import { getTriggerAnimationIdsForSlide } from "../../../runtime/presentation/playback/triggeredActionPlayback";
 
 export type AnimationFlowNavigation = {
   kind: "animation-step" | "slide";
