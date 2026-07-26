@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const workspaceSourcePath = fileURLToPath(
-  new URL("../RehearsalWorkspace.tsx", import.meta.url),
+  new URL("../RehearsalWorkspaceController.tsx", import.meta.url),
 );
 const lifecycleSourcePath = fileURLToPath(
   new URL("../hooks/useRehearsalRunLifecycle.ts", import.meta.url),

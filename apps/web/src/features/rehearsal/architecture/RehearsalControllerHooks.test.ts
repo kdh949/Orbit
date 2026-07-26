@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const workspaceSourcePath = fileURLToPath(
-  new URL("../RehearsalWorkspace.tsx", import.meta.url),
+  new URL("../RehearsalWorkspaceController.tsx", import.meta.url),
 );
 
 describe("RehearsalWorkspace controller hook boundaries", () => {
