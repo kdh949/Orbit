@@ -4,7 +4,7 @@ import {
   type DeckElement,
   type Slide
 } from "@orbit/shared";
-import { normalizeElementFrameDraft } from "@orbit/editor-core";
+import { normalizeElementFrameDraft } from "@orbit/editor-core/patches";
 
 export function getRenderableSlideElements(slide: Slide, canvas: DeckCanvas) {
   if (usesSourceSlideSnapshot(slide)) {

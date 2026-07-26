@@ -3,8 +3,8 @@ import { isDeepStrictEqual } from "node:util";
 import {
   applyDeckPatch,
   removeLegacyAiGeneratedTitleAnimations,
-} from "@orbit/editor-core";
-import type { ApplyDeckPatchError } from "@orbit/editor-core";
+} from "@orbit/editor-core/patches";
+import type { ApplyDeckPatchError } from "@orbit/editor-core/patches";
 import { loadOrbitConfig } from "@orbit/config";
 import {
   enqueueDeckExportJob,

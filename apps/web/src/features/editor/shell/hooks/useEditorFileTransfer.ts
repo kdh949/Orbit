@@ -2,7 +2,7 @@ import {
   createAddElementPatch,
   createElementId,
   createUpdateElementPropsPatch
-} from "@orbit/editor-core";
+} from "@orbit/editor-core/patches";
 import type {
   Deck,
   DeckCanvas,

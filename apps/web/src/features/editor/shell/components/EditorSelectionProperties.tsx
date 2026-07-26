@@ -1,4 +1,4 @@
-import { validateSlideAnimations } from "@orbit/editor-core";
+import { validateSlideAnimations } from "@orbit/editor-core/patches";
 import type {
   CustomShapeElementProps,
   Deck,

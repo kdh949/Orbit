@@ -13,7 +13,7 @@ import {
   IconUserCircle,
   IconUsers
 } from "@tabler/icons-react";
-import { createDemoDeck } from "@orbit/editor-core";
+import { createDemoDeck } from "@orbit/editor-core/fixtures";
 import type { FocusedPracticeAttempt, PracticePlanResponse } from "@orbit/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";

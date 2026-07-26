@@ -3,7 +3,7 @@ import {
   getAnimationActionTriggerKeys,
   type AnimationTimelineDiagnostic,
   type PlannedAnimationTimelineEffect
-} from "@orbit/editor-core";
+} from "@orbit/editor-core/playback";
 import type { Deck, DeckAnimation, DeckElement, Slide } from "@orbit/shared";
 import type { ElementPresentationState } from "../../slides/rendering/presentationState";
 import { normalizeRenderableElement } from "../../slides/rendering/elementNormalization";

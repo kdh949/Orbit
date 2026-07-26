@@ -1,4 +1,4 @@
-import { createAnimationTimeline } from "@orbit/editor-core";
+import { createAnimationTimeline } from "@orbit/editor-core/playback";
 import type { DeckAnimation } from "@orbit/shared";
 
 export type SlideshowTransitionAnimation = DeckAnimation & {

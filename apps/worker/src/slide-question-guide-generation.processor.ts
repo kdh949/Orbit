@@ -14,7 +14,7 @@ import {
   slideQuestionGuideWebSourceRefSchema,
   type Job,
 } from "@orbit/shared";
-import { applyDeckPatch } from "@orbit/editor-core";
+import { applyDeckPatch } from "@orbit/editor-core/patches";
 import { createHash } from "node:crypto";
 import type { DataSource } from "typeorm";
 import { z } from "zod";

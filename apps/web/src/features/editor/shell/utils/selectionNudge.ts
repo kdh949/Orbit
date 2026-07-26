@@ -1,7 +1,7 @@
 import {
   createGroupedElementFramePatch,
   normalizeElementFrameDraft,
-} from "@orbit/editor-core";
+} from "@orbit/editor-core/patches";
 import type {
   Deck,
   DeckElement,
