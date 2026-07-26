@@ -232,6 +232,10 @@ import {
 import type { PptxImportState } from "./components/PptxImportQualityPanel";
 import "../../../styles/tokens.css";
 import "../editor-shell.css";
+import "../styles/editor-slide-rehearsal.css";
+import "../styles/selection-inspector.css";
+import "../styles/editor-panel-visibility.css";
+import "../styles/editor-ai-chat-scroll.css";
 
 declare global {
   interface Window {
