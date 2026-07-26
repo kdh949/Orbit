@@ -3,9 +3,9 @@ import type { LiveSttAudioLevelEvent } from "../liveStt";
 import { type LiveSttEngineId, type LiveSttPort } from "../../../runtime/speech/stt/liveSttPort";
 import { MoonshineLiveSttPort } from "./moonshineLiveSttPort";
 import { OpenAiRealtimeLiveSttPort } from "./openAiRealtimeLiveSttPort";
-import { RerankingLiveSttPort } from "./rerankingLiveSttPort";
+import { RerankingLiveSttPort } from "../../../runtime/speech/stt/rerankingLiveSttPort";
 import { createSherpaLiveSttPort } from "./sherpaLiveSttPort";
-import { WebSpeechLiveSttPort } from "./webSpeechLiveSttPort";
+import { WebSpeechLiveSttPort } from "../../../runtime/speech/stt/webSpeechLiveSttPort";
 
 export const defaultLiveSttEngineId: LiveSttEngineId = "openai-realtime";
 

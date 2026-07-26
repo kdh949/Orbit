@@ -1,16 +1,16 @@
 import type {
   BrowserSpeechRecognition,
   BrowserSpeechRecognitionGlobal,
-  BrowserSpeechRecognitionPhrase
+  BrowserSpeechRecognitionPhrase,
 } from "./browserSpeechRecognition";
-import type { LiveSttBiasPhrase } from "../../../runtime/speech/stt/liveSttPort";
+import type { LiveSttBiasPhrase } from "./liveSttPort";
 
 export const WEB_SPEECH_MIN_BOOST = 1;
 export const WEB_SPEECH_MAX_BOOST = 5;
 
 export function isWebSpeechPhrasesSupported(
   recognition: BrowserSpeechRecognition,
-  globalScope: BrowserSpeechRecognitionGlobal = getBrowserSpeechRecognitionGlobal()
+  globalScope: BrowserSpeechRecognitionGlobal = getBrowserSpeechRecognitionGlobal(),
 ) {
   return (
     "phrases" in recognition &&
@@ -20,7 +20,7 @@ export function isWebSpeechPhrasesSupported(
 
 export function toWebSpeechPhrases(
   phrases: readonly LiveSttBiasPhrase[],
-  globalScope: BrowserSpeechRecognitionGlobal = getBrowserSpeechRecognitionGlobal()
+  globalScope: BrowserSpeechRecognitionGlobal = getBrowserSpeechRecognitionGlobal(),
 ): BrowserSpeechRecognitionPhrase[] {
   const SpeechRecognitionPhrase = globalScope.SpeechRecognitionPhrase;
   if (!SpeechRecognitionPhrase) {
@@ -29,14 +29,17 @@ export function toWebSpeechPhrases(
 
   return phrases.map(
     (phrase) =>
-      new SpeechRecognitionPhrase(phrase.text, biasWeightToWebSpeechBoost(phrase.weight))
+      new SpeechRecognitionPhrase(
+        phrase.text,
+        biasWeightToWebSpeechBoost(phrase.weight),
+      ),
   );
 }
 
 export function applyWebSpeechPhrases(
   recognition: BrowserSpeechRecognition,
   phrases: readonly LiveSttBiasPhrase[],
-  globalScope: BrowserSpeechRecognitionGlobal = getBrowserSpeechRecognitionGlobal()
+  globalScope: BrowserSpeechRecognitionGlobal = getBrowserSpeechRecognitionGlobal(),
 ) {
   if (!isWebSpeechPhrasesSupported(recognition, globalScope)) {
     return false;

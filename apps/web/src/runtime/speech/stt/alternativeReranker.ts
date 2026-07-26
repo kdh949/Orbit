@@ -1,5 +1,5 @@
 import { scoreBiasMatch } from "./koreanTextSimilarity";
-import type { LiveSttAlternative, LiveSttBiasPhrase } from "../../../runtime/speech/stt/liveSttPort";
+import type { LiveSttAlternative, LiveSttBiasPhrase } from "./liveSttPort";
 
 export type RerankDecision = {
   selected: LiveSttAlternative;
@@ -11,7 +11,7 @@ export type RerankDecision = {
 
 export function rerankAlternatives(
   alternatives: readonly LiveSttAlternative[],
-  phrases: readonly LiveSttBiasPhrase[]
+  phrases: readonly LiveSttBiasPhrase[],
 ): RerankDecision | null {
   const original = alternatives[0];
   if (!original) {
@@ -25,7 +25,7 @@ export function rerankAlternatives(
       selectedIndex: 0,
       originalScore,
       selectedScore: originalScore,
-      changed: false
+      changed: false,
     };
   }
 
@@ -38,7 +38,7 @@ export function rerankAlternatives(
 
       return currentBest;
     },
-    { alternative: original, index: 0, score: originalScore }
+    { alternative: original, index: 0, score: originalScore },
   );
 
   const changed = best.score > originalScore && best.score >= 0.75;
@@ -47,7 +47,7 @@ export function rerankAlternatives(
     selectedIndex: changed ? best.index : 0,
     originalScore,
     selectedScore: changed ? best.score : originalScore,
-    changed
+    changed,
   };
 }
 
@@ -61,7 +61,7 @@ function isBetterAlternative(
     alternative: LiveSttAlternative;
     index: number;
     score: number;
-  }
+  },
 ) {
   if (candidate.score !== current.score) {
     return candidate.score > current.score;

@@ -3,7 +3,7 @@ import type { BrowserSpeechRecognition } from "./browserSpeechRecognition";
 export type WebSpeechStartMode = "track" | "default";
 
 export function resolveWebSpeechAudioTrack(
-  stream: MediaStream | null | undefined
+  stream: MediaStream | null | undefined,
 ): MediaStreamTrack | null {
   if (!stream) {
     return null;
@@ -19,7 +19,7 @@ export function resolveWebSpeechAudioTrack(
 
 export function startRecognitionWithAudioTrack(
   recognition: BrowserSpeechRecognition,
-  track: MediaStreamTrack | null
+  track: MediaStreamTrack | null,
 ): WebSpeechStartMode {
   if (!track) {
     recognition.start();
@@ -32,7 +32,7 @@ export function startRecognitionWithAudioTrack(
   } catch (error) {
     console.debug(
       "[orbit-live-stt] Web Speech start(audioTrack) failed; falling back to default microphone.",
-      error
+      error,
     );
     recognition.start();
     return "default";

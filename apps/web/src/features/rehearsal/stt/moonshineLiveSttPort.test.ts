@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { runLiveSttPortContractTests } from "./liveSttPortContract";
+import { runLiveSttPortContractTests } from "../../../runtime/speech/stt/liveSttPortContract";
 import { MoonshineLiveSttPort, type MoonshineRuntime } from "./moonshineLiveSttPort";
 
 runLiveSttPortContractTests("Moonshine", () => {

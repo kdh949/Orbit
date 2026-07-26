@@ -7,8 +7,8 @@ import {
   type LiveSttPort,
   type LiveSttResult,
   type LiveSttSessionConfig,
-  type LiveSttUnsubscribe
-} from "../../../runtime/speech/stt/liveSttPort";
+  type LiveSttUnsubscribe,
+} from "./liveSttPort";
 import { RerankingLiveSttPort } from "./rerankingLiveSttPort";
 
 runLiveSttPortContractTests("Reranking", () => {
@@ -20,7 +20,7 @@ runLiveSttPortContractTests("Reranking", () => {
     audioSource: fakeMediaStream(),
     emitResult: (result) => inner.emitResult(toLiveSttResult(result)),
     emitError: (error) => inner.emitError(error),
-    readBiasPhrases: () => inner.biasPhrases
+    readBiasPhrases: () => inner.biasPhrases,
   };
 });
 
@@ -34,7 +34,7 @@ describe("RerankingLiveSttPort", () => {
     await port.start({
       language: "ko",
       audioSource: fakeMediaStream(),
-      biasPhrases: [{ text: "결제 승인", weight: 1 }]
+      biasPhrases: [{ text: "결제 승인", weight: 1 }],
     });
     inner.emitResult({
       text: "이번 결재 승인 결과",
@@ -43,8 +43,8 @@ describe("RerankingLiveSttPort", () => {
       confidence: 0.9,
       alternatives: [
         { text: "이번 결재 승인 결과", confidence: 0.9 },
-        { text: "이번 결제 승인 결과", confidence: 0.6 }
-      ]
+        { text: "이번 결제 승인 결과", confidence: 0.6 },
+      ],
     });
 
     expect(results).toEqual([
@@ -52,8 +52,8 @@ describe("RerankingLiveSttPort", () => {
         text: "이번 결제 승인 결과",
         isFinal: true,
         timestampMs: [0, 0],
-        confidence: 0.6
-      }
+        confidence: 0.6,
+      },
     ]);
   });
 
@@ -66,7 +66,7 @@ describe("RerankingLiveSttPort", () => {
     await port.start({
       language: "ko",
       audioSource: fakeMediaStream(),
-      biasPhrases: [{ text: "결제 승인", weight: 1 }]
+      biasPhrases: [{ text: "결제 승인", weight: 1 }],
     });
     inner.emitResult({
       text: "중간 결재",
@@ -74,26 +74,26 @@ describe("RerankingLiveSttPort", () => {
       timestampMs: [0, 0],
       alternatives: [
         { text: "중간 결재", confidence: 0.5 },
-        { text: "중간 결제", confidence: 0.4 }
-      ]
+        { text: "중간 결제", confidence: 0.4 },
+      ],
     });
     inner.emitResult({
       text: "마지막 결과",
       isFinal: true,
-      timestampMs: [1, 1]
+      timestampMs: [1, 1],
     });
 
     expect(results).toEqual([
       {
         text: "중간 결재",
         isFinal: false,
-        timestampMs: [0, 0]
+        timestampMs: [0, 0],
       },
       {
         text: "마지막 결과",
         isFinal: true,
-        timestampMs: [1, 1]
-      }
+        timestampMs: [1, 1],
+      },
     ]);
   });
 
@@ -117,7 +117,7 @@ class FakeInnerPort implements LiveSttPort {
     onDevice: true,
     streaming: true,
     keywordBiasing: true,
-    languages: ["ko"]
+    languages: ["ko"],
   };
   readonly resultSubscribers = new Set<(result: LiveSttResult) => void>();
   readonly errorSubscribers = new Set<(error: LiveSttError) => void>();
@@ -173,7 +173,7 @@ function toLiveSttResult(result: {
     timestampMs: [0, 0],
     ...(typeof result.confidence === "number"
       ? { confidence: result.confidence }
-      : {})
+      : {}),
   };
 }
 

@@ -6,8 +6,8 @@ import {
   type LiveSttPort,
   type LiveSttResult,
   type LiveSttSessionConfig,
-  type LiveSttUnsubscribe
-} from "../../../runtime/speech/stt/liveSttPort";
+  type LiveSttUnsubscribe,
+} from "./liveSttPort";
 
 export class RerankingLiveSttPort implements LiveSttPort {
   private biasPhrases: LiveSttBiasPhrase[] = [];
@@ -26,7 +26,7 @@ export class RerankingLiveSttPort implements LiveSttPort {
     this.biasPhrases = normalizeLiveSttBiasPhrases(config.biasPhrases);
     await this.inner.start({
       ...config,
-      biasPhrases: this.biasPhrases
+      biasPhrases: this.biasPhrases,
     });
   }
 
@@ -52,7 +52,8 @@ export class RerankingLiveSttPort implements LiveSttPort {
   }
 
   private rerankResult(result: LiveSttResult): LiveSttResult {
-    const { alternatives: _alternatives, ...resultWithoutAlternatives } = result;
+    const { alternatives: _alternatives, ...resultWithoutAlternatives } =
+      result;
     if (
       !result.isFinal ||
       !result.alternatives ||
@@ -67,13 +68,14 @@ export class RerankingLiveSttPort implements LiveSttPort {
       return resultWithoutAlternatives;
     }
 
-    const { confidence: _confidence, ...baseResult } = resultWithoutAlternatives;
+    const { confidence: _confidence, ...baseResult } =
+      resultWithoutAlternatives;
     return {
       ...baseResult,
       text: decision.selected.text,
       ...(typeof decision.selected.confidence === "number"
         ? { confidence: decision.selected.confidence }
-        : {})
+        : {}),
     };
   }
 }

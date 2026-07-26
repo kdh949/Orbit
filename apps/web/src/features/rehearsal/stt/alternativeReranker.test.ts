@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { rerankAlternatives } from "./alternativeReranker";
+import { rerankAlternatives } from "../../../runtime/speech/stt/alternativeReranker";
 import { buildSpeechTrackingBiasPhrases } from "../speech/speechBiasPhrases";
 
 describe("alternativeReranker", () => {

@@ -1,5 +1,5 @@
-import { normalizeLiveTranscriptText } from "../../../runtime/speech/stt/liveTranscriptText";
-import type { LiveSttBiasPhrase } from "../../../runtime/speech/stt/liveSttPort";
+import { normalizeLiveTranscriptText } from "./liveTranscriptText";
+import type { LiveSttBiasPhrase } from "./liveSttPort";
 
 export const KOREAN_BIAS_SIMILARITY_THRESHOLD = 0.75;
 
@@ -21,7 +21,7 @@ export function jamoEditSimilarity(left: string, right: string) {
 
 export function scoreBiasMatch(
   candidateText: string,
-  phrases: readonly LiveSttBiasPhrase[]
+  phrases: readonly LiveSttBiasPhrase[],
 ) {
   const normalizedCandidate = normalizeKoreanBiasText(candidateText);
   if (!normalizedCandidate || phrases.length === 0) {
@@ -38,7 +38,10 @@ export function scoreBiasMatch(
       return score;
     }
 
-    const similarity = scorePhraseSimilarity(normalizedCandidate, normalizedPhrase);
+    const similarity = scorePhraseSimilarity(
+      normalizedCandidate,
+      normalizedPhrase,
+    );
     if (similarity < KOREAN_BIAS_SIMILARITY_THRESHOLD) {
       return score;
     }
@@ -55,7 +58,11 @@ function scorePhraseSimilarity(candidate: string, phrase: string) {
   let best = 0;
   const minLength = Math.max(1, phrase.length - 2);
   const maxLength = phrase.length + 2;
-  for (let windowLength = minLength; windowLength <= maxLength; windowLength += 1) {
+  for (
+    let windowLength = minLength;
+    windowLength <= maxLength;
+    windowLength += 1
+  ) {
     if (windowLength > candidate.length) {
       continue;
     }
@@ -70,7 +77,10 @@ function scorePhraseSimilarity(candidate: string, phrase: string) {
 }
 
 function editDistance(left: string, right: string) {
-  const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+  const previous = Array.from(
+    { length: right.length + 1 },
+    (_, index) => index,
+  );
   const current = Array.from({ length: right.length + 1 }, () => 0);
 
   for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
@@ -81,7 +91,7 @@ function editDistance(left: string, right: string) {
       current[rightIndex] = Math.min(
         previous[rightIndex] + 1,
         current[rightIndex - 1] + 1,
-        previous[rightIndex - 1] + substitutionCost
+        previous[rightIndex - 1] + substitutionCost,
       );
     }
 

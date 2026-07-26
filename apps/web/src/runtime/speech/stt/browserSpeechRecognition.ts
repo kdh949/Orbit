@@ -31,7 +31,7 @@ export type BrowserSpeechRecognitionPhrase = {
 
 export type BrowserSpeechRecognitionPhraseConstructor = new (
   phrase: string,
-  boost: number
+  boost: number,
 ) => BrowserSpeechRecognitionPhrase;
 
 export type BrowserSpeechRecognition = {
@@ -69,10 +69,10 @@ export type BrowserSpeechRecognitionAvailabilityOptions = {
 export type BrowserSpeechRecognitionConstructor = {
   new (): BrowserSpeechRecognition;
   available?: (
-    options: BrowserSpeechRecognitionAvailabilityOptions
+    options: BrowserSpeechRecognitionAvailabilityOptions,
   ) => Promise<BrowserSpeechRecognitionAvailability>;
   install?: (
-    options: BrowserSpeechRecognitionAvailabilityOptions
+    options: BrowserSpeechRecognitionAvailabilityOptions,
   ) => Promise<boolean>;
 };
 
@@ -89,7 +89,10 @@ declare global {
 }
 
 export function getBrowserSpeechRecognitionConstructor(
-  source: Pick<Window, "SpeechRecognition" | "webkitSpeechRecognition"> = window
+  source: Pick<
+    Window,
+    "SpeechRecognition" | "webkitSpeechRecognition"
+  > = window,
 ) {
   return source.SpeechRecognition ?? source.webkitSpeechRecognition ?? null;
 }
