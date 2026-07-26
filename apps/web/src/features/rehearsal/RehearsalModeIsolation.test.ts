@@ -7,6 +7,11 @@ const rehearsalWorkspaceSource = fs.readFileSync(
   "utf8",
 );
 
+const rehearsalRoutesSource = fs.readFileSync(
+  fileURLToPath(new URL("./rehearsalRoutes.ts", import.meta.url)),
+  "utf8",
+);
+
 const rehearsalApiSource = fs.readFileSync(
   fileURLToPath(
     new URL(
@@ -25,9 +30,10 @@ describe("rehearsal mode isolation", () => {
     expect(rehearsalWorkspaceSource).toContain(
       "/api/v1/rehearsals/${encodeURIComponent(runId)}/audio/complete",
     );
-    expect(rehearsalWorkspaceSource).toContain(
+    expect(rehearsalRoutesSource).toContain(
       "/rehearsal/${encodeURIComponent(projectId)}/report/${encodeURIComponent(runId)}",
     );
+    expect(rehearsalWorkspaceSource).toContain('from "./rehearsalRoutes"');
     expect(rehearsalWorkspaceSource).not.toContain("presentation-runs");
   });
 
