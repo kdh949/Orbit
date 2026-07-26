@@ -1,7 +1,7 @@
 import {
   createCanonicalScriptSentenceIndex,
   type CanonicalScriptSentence
-} from "../../../runtime/speech/tracking/canonicalScriptSentenceIndex";
+} from "../tracking/canonicalScriptSentenceIndex";
 
 export type SemanticScriptSentence = CanonicalScriptSentence;
 

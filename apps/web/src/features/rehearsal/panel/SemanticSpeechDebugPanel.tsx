@@ -1,4 +1,4 @@
-import type { SemanticUtteranceDebugState } from "../speech/semanticSpeechDebug";
+import type { SemanticUtteranceDebugState } from "../../../runtime/speech/semantic/semanticSpeechDebug";
 
 export const semanticSpeechDebugPanelStorageKey =
   "orbit.semanticSpeech.debugPanel";

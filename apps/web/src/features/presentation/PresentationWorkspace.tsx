@@ -118,7 +118,7 @@ import {
   matchKeywordOccurrenceTriggers,
 } from "../../runtime/speech/tracking/keywordOccurrenceRuntime";
 import type { SpeechTrackerSnapshot } from "../../runtime/speech/tracking/speechTrackingEvents";
-import { createIdleSemanticDebugState } from "../rehearsal/speech/semanticSpeechDebug";
+import { createIdleSemanticDebugState } from "../../runtime/speech/semantic/semanticSpeechDebug";
 import {
   PresenterStatusShell,
   type PresenterInfoCardItem,

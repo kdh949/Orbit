@@ -280,16 +280,16 @@ import { createBrowserTransformersSemanticCueNliProvider } from "./speech/browse
 import {
   getE5EmbeddingService,
   type E5EmbeddingService,
-} from "./speech/e5EmbeddingService";
+} from "../../runtime/speech/semantic/e5EmbeddingService";
 import {
   createIdleSemanticDebugState,
   createSemanticDebugState,
   markSemanticModelReady,
-} from "./speech/semanticSpeechDebug";
+} from "../../runtime/speech/semantic/semanticSpeechDebug";
 import {
   createSemanticUtteranceMatcher,
   type SemanticUtteranceMatcher,
-} from "./speech/semanticUtteranceMatcher";
+} from "../../runtime/speech/semantic/semanticUtteranceMatcher";
 import {
   createPauseDetector,
   type PauseDetector,

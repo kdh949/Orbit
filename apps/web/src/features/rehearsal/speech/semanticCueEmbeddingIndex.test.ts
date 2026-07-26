@@ -2,7 +2,7 @@ import type { SemanticCue } from "@orbit/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import { semanticCueEmbeddingRecallFixture } from "./__fixtures__/semanticCueEmbeddingFixture";
-import type { E5EmbeddingService } from "./e5EmbeddingService";
+import type { E5EmbeddingService } from "../../../runtime/speech/semantic/e5EmbeddingService";
 import { createSemanticCueEmbeddingIndex } from "./semanticCueEmbeddingIndex";
 
 describe("createSemanticCueEmbeddingIndex", () => {
