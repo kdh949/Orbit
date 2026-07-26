@@ -2,7 +2,7 @@ import {
   resolveTriggeredActions,
   executeSlideAction,
   type SlidePlaybackState
-} from "@orbit/editor-core";
+} from "@orbit/editor-core/playback";
 import type { DeckSlideAction, Slide } from "@orbit/shared";
 
 import type { SlideshowAnimationPlan } from "../presenter/slideshowStepModel";

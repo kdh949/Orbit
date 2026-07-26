@@ -3,7 +3,7 @@ import {
   CommunityTemplateSanitizationError,
   materializeCommunityTemplate,
   sanitizeCommunityTemplate,
-} from "@orbit/editor-core";
+} from "@orbit/editor-core/community-templates";
 import {
   communityTemplateApiErrorCodeSchema,
   communityTemplateApiErrorSchema,

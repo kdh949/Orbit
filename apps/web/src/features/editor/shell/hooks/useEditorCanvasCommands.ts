@@ -1,21 +1,25 @@
 import {
-  createAddElementPatch,
-  createAddSlidePatch,
   createActivityResultsSlide,
   createActivitySlide,
+} from "@orbit/editor-core/activities";
+import {
+  createAddElementPatch,
+  createAddSlidePatch,
   createElementId,
   createElementFramePatch,
   createGroupedElementFramePatch,
   createSlideId,
-  createTableOperationPatch,
   getGroupChildElements,
   getGroupedSelectionBounds,
+  normalizeElementFrameDraft,
+} from "@orbit/editor-core/patches";
+import {
+  createTableOperationPatch,
   getTableOperationCapability,
   getTableStructureCapability,
-  normalizeElementFrameDraft,
   type TableOperation,
   type TableCellRange,
-} from "@orbit/editor-core";
+} from "@orbit/editor-core/table";
 import type {
   Chart,
   CustomShapeNode,

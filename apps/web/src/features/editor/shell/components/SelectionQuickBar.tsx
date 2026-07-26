@@ -43,9 +43,9 @@ import {
   measureTextContentBounds,
 } from "../../canvas/text/textLayout";
 import {
-  getTableOperationCapability,
   type SlideAnimationDiagnostics
-} from "@orbit/editor-core";
+} from "@orbit/editor-core/patches";
+import { getTableOperationCapability } from "@orbit/editor-core/table";
 import { resolveRedesignPalette } from "../../../../styles/redesignPalette";
 import { IdBadge } from "./EditorIdBadge";
 import type { ElementLayerOrderAction } from "../utils/elementLayerOrder";

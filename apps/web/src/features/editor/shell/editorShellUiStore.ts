@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { TableCellRange } from "@orbit/editor-core";
+import type { TableCellRange } from "@orbit/editor-core/table";
 
 import { defaultAnimationPaneWidth } from "./components/animation/utils/layout";
 

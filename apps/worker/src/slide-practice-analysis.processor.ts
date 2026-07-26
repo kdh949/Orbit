@@ -23,7 +23,7 @@ import {
   type SlidePracticeCoachingIssueCode,
   type SlidePracticeReport,
 } from "@orbit/shared";
-import { applyDeckPatch } from "@orbit/editor-core";
+import { applyDeckPatch } from "@orbit/editor-core/patches";
 import { createHash, randomUUID } from "node:crypto";
 import type { DataSource } from "typeorm";
 import { z } from "zod";

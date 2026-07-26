@@ -1,4 +1,5 @@
-import { applyDeckPatch, createDemoDeck } from "@orbit/editor-core";
+import { createDemoDeck } from "@orbit/editor-core/fixtures";
+import { applyDeckPatch } from "@orbit/editor-core/patches";
 import {
   appendDeckPatchAckResponseSchema,
   appendDeckPatchRequestSchema,

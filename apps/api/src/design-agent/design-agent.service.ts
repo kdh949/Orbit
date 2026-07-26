@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { applyDeckPatch } from "@orbit/editor-core";
+import { applyDeckPatch } from "@orbit/editor-core/patches";
 import {
   applyDesignAgentProposalResponseSchema,
   createDesignAgentMessageResponseSchema,

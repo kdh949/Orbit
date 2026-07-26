@@ -7,7 +7,7 @@ import {
   type RichTextCharacterStylePatch,
   type RichTextParagraphStylePatch,
   type RichTextRange,
-} from "@orbit/editor-core";
+} from "@orbit/editor-core/text";
 import type {
   Deck,
   DeckElement,
