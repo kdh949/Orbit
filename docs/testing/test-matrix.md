@@ -6,19 +6,22 @@
 
 ## Verification Policy
 
+2026-07-26 현재 이 저장소에는 GitHub Actions workflow가 없다. 아래 검증은 PR 작성자가
+로컬 또는 별도 실행 환경에서 수행하고 결과를 PR 본문에 기록한다. 자동 CI와 배포
+workflow를 다시 도입할 때는 실제 workflow 경로와 이 표를 같은 PR에서 갱신한다.
+
 | 시점 | 실행 항목 | 목적 |
 | --- | --- | --- |
 | docs-only PR | 변경 Markdown UTF-8 읽기 확인 | 구현과 무관한 PR에서 코드 테스트 미실행 사유를 PR 본문에 남김 |
-| 모든 PR | Environment Contract CI: wrapper `bash -n`, `node infra/scripts/check-env.mjs`, `node --test infra/scripts/personal-staging-env.test.mjs infra/scripts/personal-staging-wrapper.test.mjs` | 환경 예시 파일의 키 누락·불일치·중복·필수값 공백, 개인 서버 source/delivery 정책·Compose 전달 누락과 자동 동기화 wiring, root wrapper의 문법·절대경로·인자 전달·최소 권한 계약을 빠르게 차단 |
-| automation-only PR | Environment Contract CI와 automation JSON 확인, Node script syntax check, 필요한 경우 `pnpm lint` | workflow/script/schema 변경 자체를 검증 |
-| app/API/shared/worker/compose/env/lockfile PR | Environment Contract CI; TypeScript CI: `pnpm build`, `pnpm lint`, `pnpm test`; 수동: Python `ruff/mypy/pytest`, `docker compose config --quiet` 중 변경 경로와 관련된 명령 | 환경 계약과 빠른 TypeScript 회귀를 자동 확인하고, Python/Compose 계층은 필요 시 수동 확인 |
-| `develop` push | Environment Contract CI direct job과 TypeScript CI 자동 실행, 안전한 repo default의 Doppler 동기화, 개인 서버 full 배포, 공통 `personal-staging-deploy` concurrency | merge 후 환경 계약과 base branch TypeScript 조합을 검증하고 reusable secret 경계 없이 누락된 일반 설정을 적용한 뒤 전체 배포를 직렬화 |
-| personal staging 수동 복구 | 기존 `Deploy Personal Staging`을 `develop`, `full`, `manual`로 새 실행해 Doppler sync와 full 배포 | 기본 브랜치의 기존 dispatch entrypoint로 새 run ID를 만들고 갱신된 Environment secret 주입과 전체 배포를 동일 concurrency group에서 검증 |
-| Doppler `orbit / stg` 변경 | `Deploy Personal Staging`의 `environment-only` 실행, stable wrapper의 mode·SHA 전달, 서버 env preflight, Compose config, API/root health check | 유효한 secret 변경만 앱 컨테이너에 재적용하고 누락·공백이면 기존 컨테이너 유지 |
-| `main` push | 자동 CI 없음 | release branch 조합 검증은 필요 시 수동으로 실행 |
+| Agent/repository tooling PR | `node --test tools/agent/*.test.mjs`, `pnpm repo:doctor` | Agent가 사용하는 경로·문서·검증 도구의 회귀 차단 |
+| TypeScript app/package PR | 변경 package의 `typecheck`, targeted `test`, 필요한 경우 `build` | 변경 범위의 타입·동작·빌드 회귀 확인 |
+| Python worker PR | `uv run ruff check .`, `uv run mypy app`, targeted `uv run pytest` | Python style, type, domain 회귀 확인 |
+| env/compose/automation PR | `node infra/scripts/check-env.mjs`, 관련 Node test, `docker compose config --quiet`, shell syntax check | 환경 키, Compose 전달, wrapper 계약 확인 |
+| `develop` 또는 `main` push | 자동 검증·배포 없음 | 필요한 검증과 배포는 현재 수동으로 실행하고 근거를 별도 기록 |
 | 수동 또는 scheduled | `pnpm test:smoke`, 전체 Playwright E2E, 1000명 load test, 실제 브라우저 STT 측정 | 무겁거나 환경 의존적인 검증 |
 
-현재 GitHub Actions CI는 모든 PR의 Environment Contract CI와 변경 경로 기반 TypeScript CI를 자동 실행한다. Python worker, Docker Compose, Playwright smoke처럼 환경 의존성이 큰 검증이 필요하면 로컬 또는 별도 실행 환경에서 실행하고 PR 본문에 결과를 남긴다.
+Python worker, Docker Compose, Playwright smoke처럼 환경 의존성이 큰 검증을 실행하지
+못하면 PR 본문에 미실행 사유와 남은 검증 범위를 남긴다.
 
 ## PR Review Rule
 

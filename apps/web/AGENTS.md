@@ -1,9 +1,9 @@
 # Orbit Web UI Rules
 
 These rules govern the integrated **Redesign System** described in
-`apps/web/DESIGN.md`. The legacy `apps/web/src/design-system/` implementation
-has been replaced; product UI must use the canonical tokens and primitives
-listed below instead of introducing a parallel token or component system.
+`apps/web/DESIGN.md`. The legacy design-system implementation has been
+replaced; product UI must use the canonical tokens and primitives listed below
+instead of introducing a parallel token or component system.
 
 ## UI architecture
 

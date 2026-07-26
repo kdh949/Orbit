@@ -12,6 +12,7 @@
     "docs/architecture/tech-stack-versions.md",
     "docs/conventions/environment.md",
     "docs/conventions/logging.md",
+    "docs/plans/ai-agent-efficiency-refactoring.md",
     "docs/runbooks/local-development.md",
     "docs/testing/test-matrix.md",
     "docs/deployment.md",

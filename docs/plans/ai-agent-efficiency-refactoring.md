@@ -152,7 +152,7 @@ Repository truth
 **Acceptance criteria:**
 
 - active 문서가 없는 workflow를 현재 실행 중이라고 서술하면 검사가 실패한다.
-- active 문서가 `apps/web/src/design-system`을 canonical source로 선언하면 실패한다.
+- active 문서가 삭제된 legacy 디자인 시스템 경로를 canonical source로 선언하면 실패한다.
 - 현재 자동 CI 부재와 수동 검증 범위가 문서에서 명확하다.
 
 **Verification:**
