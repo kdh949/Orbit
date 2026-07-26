@@ -55,10 +55,8 @@ import { ProjectAccessProvider } from "./features/projects/ProjectAccessContext"
 import { PptxImportProvider } from "./features/projects/PptxImportProvider";
 import "./features/projects/orbit-create-deck.css";
 import "./features/projects/orbit-project-access.css";
-import {
-  RehearsalReportPage,
-  RehearsalWorkspace,
-} from "./features/rehearsal/RehearsalWorkspace";
+import { RehearsalWorkspace } from "./features/rehearsal/RehearsalWorkspace";
+import { RehearsalReportPage } from "./features/rehearsal/report/RehearsalReportPage";
 import { RehearsalReportListPage } from "./features/rehearsal/RehearsalReportListPage";
 import { RehearsalProjectPickerPage } from "./features/rehearsal/RehearsalProjectPickerPage";
 import { RehearsalProjectOverviewPage } from "./features/rehearsal/RehearsalProjectOverviewPage";
