@@ -83,34 +83,14 @@ import { deleteExpiredSlidePracticeData } from "./slide-practice-retention";
 import { processDesignImageGenerationJob } from "./design-image-generation.processor";
 import { dispatchDueActivityRetentionJobs } from "./activity-retention.dispatcher";
 import { processActivityResponseRetentionJob } from "./activity-retention.processor";
+import {
+  selectWorkerQueueNames,
+  workerQueueRuntimeOptions,
+} from "./runtime/worker-queue-policy";
 
 @Injectable()
 export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly config = loadOrbitConfig(process.env, { service: "worker" });
-  private readonly allQueueNames = [
-    referenceExtractQueueName,
-    rehearsalSttQueueName,
-    presentationAnalysisQueueName,
-    rehearsalSemanticEvaluationQueueName,
-    generateDeckQueueName,
-    deckExportQueueName,
-    semanticCueExtractionQueueName,
-    speakerNotesSuggestionQueueName,
-    pptxOoxmlGenerationQueueName,
-    pptxOoxmlSyncQueueName,
-    workerHealthCheckQueueName,
-    focusedPracticeAnalysisQueueName,
-    slidePracticeAnalysisQueueName,
-    challengeQnaGenerationQueueName,
-    challengeQnaAnswerAnalysisQueueName,
-    slideQuestionGuideGenerationQueueName,
-    aiDeckResearchContentQueueName,
-    aiDeckDesignLayoutQueueName,
-    aiDeckImageQueueName,
-    aiDeckQaFinalizeQueueName,
-    designImageGenerationQueueName,
-    activityResponseRetentionQueueName,
-  ];
   private readonly workerId = `worker-${randomUUID()}`;
   private queueNames: string[] = [];
   private workers: BullMqWorker[] = [];
@@ -175,7 +155,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    this.queueNames = this.aiDeckQueueNames();
+    this.queueNames = selectWorkerQueueNames(this.config);
     const storage = workerStorage();
     const imageRuntime = createImageAssetRuntime(this.config);
     const reconcileDeletions = () => {
@@ -703,14 +683,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       (job) => this.processJob(queueName, job, () => handler(job)),
       {
         connection: redisConnectionOptions(this.config.REDIS_URL),
-        ...([pptxOoxmlGenerationQueueName, pptxOoxmlSyncQueueName].includes(
-          queueName,
-        )
-          ? { maxStalledCount: 4 }
-          : {}),
-        ...(queueName === slideQuestionGuideGenerationQueueName
-          ? { concurrency: 2 }
-          : {}),
+        ...workerQueueRuntimeOptions(queueName),
       },
     );
 
@@ -1130,31 +1103,6 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private aiDeckQueueNames(): string[] {
-    switch (this.config.AI_DECK_WORKER_QUEUE) {
-      case "reference-extract":
-        return [generateDeckQueueName, referenceExtractQueueName];
-      case "research-content":
-        return [aiDeckResearchContentQueueName];
-      case "design-layout":
-        return [aiDeckDesignLayoutQueueName];
-      case "image":
-        return [aiDeckImageQueueName, designImageGenerationQueueName];
-      case "qa-finalize":
-        return [aiDeckQaFinalizeQueueName];
-      default:
-        return this.config.AI_DECK_EXECUTION_MODE === "pg"
-          ? this.allQueueNames.filter(
-              (queueName) =>
-                queueName !== generateDeckQueueName &&
-                queueName !== aiDeckResearchContentQueueName &&
-                queueName !== aiDeckDesignLayoutQueueName &&
-                queueName !== aiDeckImageQueueName &&
-                queueName !== aiDeckQaFinalizeQueueName,
-            )
-          : this.allQueueNames;
-    }
-  }
 }
 
 function isFinalBullMqAttempt(job: BullMqJob): boolean {
