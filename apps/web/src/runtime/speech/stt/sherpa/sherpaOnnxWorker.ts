@@ -1,4 +1,4 @@
-import type { LiveSttBiasContext, LiveSttDecodingMethod } from "../../runtime/speech/stt/liveSttAdapter";
+import type { LiveSttBiasContext, LiveSttDecodingMethod } from "../liveSttAdapter";
 
 type SherpaAudioFrame = {
   sampleRate: number;

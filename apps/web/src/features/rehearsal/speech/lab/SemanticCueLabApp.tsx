@@ -21,7 +21,7 @@ import {
   defaultSemanticCueCombinerConfig,
   type SemanticCueCombinerConfig
 } from "../semanticCueScoreCombiner";
-import { createLiveSttPort } from "../../stt/liveSttEngineRegistry";
+import { createLiveSttPort } from "../../../../runtime/speech/stt/liveSttEngineRegistry";
 import type { LiveSttEngineId, LiveSttPort } from "../../../../runtime/speech/stt/liveSttPort";
 import { semanticCueLabPresets } from "./semanticCueLabPresets";
 

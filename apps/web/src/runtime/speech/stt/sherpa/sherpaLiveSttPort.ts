@@ -4,9 +4,9 @@ import {
   type LiveSttAudioLevelEvent,
   type LiveSttBiasContext,
   type LiveSttDecodingMethod
-} from "../../../runtime/speech/stt/liveSttAdapter";
-import type { LiveSttDebugPcmRecording } from "../../../runtime/speech/stt/liveSttPcmDebug";
-import { SherpaOnnxLiveSttAdapter } from "../sherpaOnnxLiveSttAdapter";
+} from "../liveSttAdapter";
+import type { LiveSttDebugPcmRecording } from "../liveSttPcmDebug";
+import { SherpaOnnxLiveSttAdapter } from "./sherpaOnnxLiveSttAdapter";
 import {
   LiveSttError,
   mapPartialTranscriptToLiveSttResult,
@@ -18,7 +18,7 @@ import {
   type LiveSttResult,
   type LiveSttSessionConfig,
   type LiveSttUnsubscribe
-} from "../../../runtime/speech/stt/liveSttPort";
+} from "../liveSttPort";
 
 type SherpaLiveSttPortOptions = {
   adapter?: LiveSttAdapter;

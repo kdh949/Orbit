@@ -1,7 +1,7 @@
 import {
   liveSttPartialTranscriptEventSchema,
   type LiveSttPartialTranscriptEvent
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import {
   LiveSttAdapterError,
   type LiveSttAdapter,
@@ -9,12 +9,12 @@ import {
   type LiveSttCallbacks,
   type LiveSttDecodingMethod,
   type LiveSttStartOptions
-} from "../../runtime/speech/stt/liveSttAdapter";
-import { calculatePcmAudioLevel } from "../../runtime/speech/stt/liveSttAudioLevel";
+} from "../liveSttAdapter";
+import { calculatePcmAudioLevel } from "../liveSttAudioLevel";
 import {
   createLiveSttPcmDebugRecorder,
   isLiveSttPcmDebugEnabled
-} from "../../runtime/speech/stt/liveSttPcmDebug";
+} from "../liveSttPcmDebug";
 import {
   defaultSherpaOnnxManifestUrl,
   loadSherpaOnnxModelManifest,

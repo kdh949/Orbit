@@ -1,4 +1,4 @@
-import type { LiveSttPartialTranscriptEvent } from "@orbit/shared";
+import type { LiveSttPartialTranscriptEvent } from "@orbit/shared/rehearsals";
 import { describe, expect, it, vi } from "vitest";
 import {
   LiveSttAdapterError,
@@ -6,9 +6,9 @@ import {
   type LiveSttBiasContext,
   type LiveSttCallbacks,
   type LiveSttStartOptions
-} from "../../../runtime/speech/stt/liveSttAdapter";
-import { LiveSttError } from "../../../runtime/speech/stt/liveSttPort";
-import { runLiveSttPortContractTests } from "../../../runtime/speech/stt/liveSttPortContract";
+} from "../liveSttAdapter";
+import { LiveSttError } from "../liveSttPort";
+import { runLiveSttPortContractTests } from "../liveSttPortContract";
 import { SherpaLiveSttPort } from "./sherpaLiveSttPort";
 
 runLiveSttPortContractTests("Sherpa", () => {

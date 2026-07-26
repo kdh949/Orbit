@@ -10,7 +10,7 @@ import {
   defaultSpeechTrackingConfig
 } from "../speech/speechTrackingConfig";
 import type { LiveSttEngineId } from "../../../runtime/speech/stt/liveSttPort";
-import { defaultLiveSttEngineId } from "../stt/liveSttEngineRegistry";
+import { defaultLiveSttEngineId } from "../../../runtime/speech/stt/liveSttEngineRegistry";
 
 export const presenterGlobalSettingsStorageKey = "orbit:presenter:global:v1";
 export const presenterDeckSettingsStorageKeyPrefix = "orbit:presenter:deck:";

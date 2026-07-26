@@ -4,7 +4,7 @@ import {
   defaultAutoAdvancePolicy,
   defaultPauseDetectorConfig
 } from "../advance/autoAdvanceConfig";
-import { defaultLiveSttEngineId } from "../stt/liveSttEngineRegistry";
+import { defaultLiveSttEngineId } from "../../../runtime/speech/stt/liveSttEngineRegistry";
 import { defaultSpeechTrackingConfig } from "../speech/speechTrackingConfig";
 import {
   defaultPresenterSettings,

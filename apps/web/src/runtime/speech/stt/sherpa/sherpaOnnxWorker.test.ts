@@ -7,13 +7,13 @@ import * as vm from "node:vm";
 import { createServer, type ViteDevServer } from "vite";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../..");
 const adapterEntryPath =
-  "/src/features/rehearsal/sherpaOnnxLiveSttAdapter.ts";
+  "/src/runtime/speech/stt/sherpa/sherpaOnnxLiveSttAdapter.ts";
 const workerFilePath =
-  "/src/features/rehearsal/sherpaOnnxWorker.ts?worker_file&type=classic";
+  "/src/runtime/speech/stt/sherpa/sherpaOnnxWorker.ts?worker_file&type=classic";
 const audioWorkletPath =
-  "/src/features/rehearsal/liveSttPcmCapture.worklet.js?no-inline";
+  "/src/runtime/speech/stt/sherpa/liveSttPcmCapture.worklet.js?no-inline";
 
 describe("sherpaOnnxWorker classic worker output", () => {
   let server: ViteDevServer | null = null;
@@ -26,7 +26,10 @@ describe("sherpaOnnxWorker classic worker output", () => {
   it("lets Vite own the default worker URL in the adapter entry", async () => {
     server = await createTestServer();
     const source = await readFile(
-      resolve(webRoot, "src/features/rehearsal/sherpaOnnxLiveSttAdapter.ts"),
+      resolve(
+        webRoot,
+        "src/runtime/speech/stt/sherpa/sherpaOnnxLiveSttAdapter.ts"
+      ),
       "utf8"
     );
 
@@ -78,7 +81,7 @@ describe("sherpaOnnxWorker classic worker output", () => {
   it("reports a clear setup error before loading pthread sherpa runtimes without SharedArrayBuffer", async () => {
     server = await createWorkerTransformServer();
     const result = await server.transformRequest(
-      "/src/features/rehearsal/sherpaOnnxWorker.ts?worker_file&type=classic"
+      "/src/runtime/speech/stt/sherpa/sherpaOnnxWorker.ts?worker_file&type=classic"
     );
     const executableCode = stripInlineSourceMap(result?.code ?? "");
     const posted: Array<Record<string, unknown>> = [];
@@ -128,7 +131,7 @@ describe("sherpaOnnxWorker classic worker output", () => {
   it("keeps the active recognizer usable when update-bias recreation fails", async () => {
     server = await createWorkerTransformServer();
     const result = await server.transformRequest(
-      "/src/features/rehearsal/sherpaOnnxWorker.ts?worker_file&type=classic"
+      "/src/runtime/speech/stt/sherpa/sherpaOnnxWorker.ts?worker_file&type=classic"
     );
     const executableCode = stripInlineSourceMap(result?.code ?? "");
     const posted: Array<Record<string, unknown>> = [];
@@ -204,7 +207,7 @@ describe("sherpaOnnxWorker classic worker output", () => {
   it("falls back to greedy_search when the hotword recognizer fails to build", async () => {
     server = await createWorkerTransformServer();
     const result = await server.transformRequest(
-      "/src/features/rehearsal/sherpaOnnxWorker.ts?worker_file&type=classic"
+      "/src/runtime/speech/stt/sherpa/sherpaOnnxWorker.ts?worker_file&type=classic"
     );
     const executableCode = stripInlineSourceMap(result?.code ?? "");
     const posted: Array<Record<string, unknown>> = [];
