@@ -933,9 +933,11 @@ describe("RehearsalWorkspace", () => {
     const resetBody = source.slice(resetStart, resetEnd);
 
     expect(resetBody).toContain("resetSlideDisplayToBeginning()");
-    expect(resetBody).toContain("resetLiveSessionTranscript()");
+    expect(resetBody).toContain("speechTracking.resetSessionTranscript()");
     expect(resetBody).toContain("resetLivePlaybackForSlide(firstSlide)");
-    expect(resetBody).toContain("resetSlideTranscriptSnapshots(deck, 0)");
+    expect(resetBody).toContain(
+      "speechTracking.resetSlideTranscriptSnapshots(deck, 0)",
+    );
   });
 
   it("keeps the presence avatar as the socket status dialog trigger", () => {
@@ -2430,7 +2432,7 @@ describe("RehearsalWorkspace", () => {
   it("delegates auto-advance policy to the P4 controller instead of keyword coverage timers", () => {
     const source = fs.readFileSync(rehearsalWorkspaceSourcePath, "utf8");
     const start = source.indexOf("function handleLivePartialTranscript");
-    const end = source.indexOf("function resetLiveTranscriptForSlide");
+    const end = source.indexOf("function resetLivePlaybackForSlide");
     const handlerBody = source.slice(start, end);
 
     expect(handlerBody).not.toContain("shouldAutoAdvanceLiveSlide");
