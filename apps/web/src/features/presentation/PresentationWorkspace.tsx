@@ -51,7 +51,7 @@ import {
   type RehearsalTimingSnapshot,
   type TimingAdviceState,
 } from "../rehearsal/panel/rehearsalTiming";
-import { createSlideshowAnimationPlan } from "../rehearsal/presenter/slideshowStepModel";
+import { createSlideshowAnimationPlan } from "../../runtime/presentation/slideshow/slideshowStepModel";
 import { usePresenterKeyboard } from "../rehearsal/presenter/usePresenterKeyboard";
 import { AudienceOutputControls } from "../rehearsal/presenter/AudienceOutputControls";
 import {

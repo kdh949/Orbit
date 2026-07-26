@@ -1,6 +1,6 @@
 import type { Deck, Slide } from "@orbit/shared";
 import { resolveEditorAssetUrl } from "../../editor/shared/editorAssetUrl";
-import { usesSourceSlideSnapshot } from "./elementNormalization";
+import { usesSourceSlideSnapshot } from "../../../runtime/presentation/slideshow/elementNormalization";
 
 export type SlideImagePriority = "high" | "low";
 

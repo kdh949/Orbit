@@ -191,8 +191,8 @@ import {
   type SlideNavigationRequest,
   type SlideNavigationResult,
 } from "./presenter/slideAssetNavigationGate";
-import { createSlideshowAnimationPlan } from "./presenter/slideshowStepModel";
-import { getNextPresenterStepState } from "./presenter/presenterStepNavigation";
+import { createSlideshowAnimationPlan } from "../../runtime/presentation/slideshow/slideshowStepModel";
+import { getNextPresenterStepState } from "../../runtime/presentation/slideshow/presenterStepNavigation";
 import {
   createAudiencePresenterState,
   createSlideWindowDeckSnapshot,

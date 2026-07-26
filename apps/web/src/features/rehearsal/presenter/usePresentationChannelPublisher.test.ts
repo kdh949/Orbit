@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { p0AnimationDeck } from "./__fixtures__/animationDeck";
+import { p0AnimationDeck } from "../../../runtime/presentation/slideshow/__fixtures__/animationDeck";
 import { createPresenterSlideshowState } from "./presenterStateStore";
 import {
   createPresenterCommandMessage,

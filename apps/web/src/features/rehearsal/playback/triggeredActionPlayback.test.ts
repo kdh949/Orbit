@@ -10,7 +10,7 @@ import {
   resolveKeywordOccurrenceTriggeredActions,
   resolveKeywordTriggeredActions
 } from "./triggeredActionPlayback";
-import { createSlideshowAnimationPlan } from "../presenter/slideshowStepModel";
+import { createSlideshowAnimationPlan } from "../../../runtime/presentation/slideshow/slideshowStepModel";
 
 describe("triggeredActionPlayback", () => {
   it("keeps legacy keyword and keyword occurrence trigger resolution separate", () => {

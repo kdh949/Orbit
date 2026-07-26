@@ -1,7 +1,7 @@
 import { createActivitySlide } from "@orbit/editor-core";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { p0AnimationDeck } from "./__fixtures__/animationDeck";
+import { p0AnimationDeck } from "../../../runtime/presentation/slideshow/__fixtures__/animationDeck";
 import {
   applyPresenterRemoteMessage,
   getPresenterRemoteCurrentSentenceIndex,

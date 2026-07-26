@@ -5,7 +5,7 @@ import { forwardRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { Deck } from "@orbit/shared";
-import { p0AnimationDeck } from "./__fixtures__/animationDeck";
+import { p0AnimationDeck } from "../../../runtime/presentation/slideshow/__fixtures__/animationDeck";
 import {
   applyPresentWindowScreenShareFailure,
   applyPresentWindowMessage,

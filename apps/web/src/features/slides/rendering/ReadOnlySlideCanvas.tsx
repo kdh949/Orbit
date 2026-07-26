@@ -10,10 +10,10 @@ import { ElementNodeContent } from "./elementRendering";
 import {
   getRenderableSlideElements,
   usesSourceSlideSnapshot
-} from "./elementNormalization";
+} from "../../../runtime/presentation/slideshow/elementNormalization";
 import { resolveGroupedElementPresentationStates } from "./groupPresentationState";
 import { getHighlightOverlayElements } from "./highlightOverlayElements";
-import type { ElementPresentationState } from "./presentationState";
+import type { ElementPresentationState } from "../../../runtime/presentation/slideshow/elementPresentationState";
 import { SlideBackground } from "./SlideBackground";
 import { getActiveHighlightElementIds, HighlightOverlay } from "./highlightOverlay";
 

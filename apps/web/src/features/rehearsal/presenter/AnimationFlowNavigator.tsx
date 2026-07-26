@@ -11,7 +11,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import {
   createSlideshowAnimationPlan,
   type PlannedSlideshowAnimation,
-} from "./slideshowStepModel";
+} from "../../../runtime/presentation/slideshow/slideshowStepModel";
 import { getTriggerAnimationIdsForSlide } from "../playback/triggeredActionPlayback";
 
 export type AnimationFlowNavigation = {

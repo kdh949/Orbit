@@ -7,8 +7,8 @@ import {
   type SlideRuntimeHighlight
 } from "../../slides/rendering";
 import { resolveEditorAssetUrl } from "../../editor/shared/editorAssetUrl";
-import { useReducedMotion } from "./useReducedMotion";
-import { useSlideshowTransitions } from "./useSlideshowTransitions";
+import { useReducedMotion } from "../../../runtime/presentation/slideshow/useReducedMotion";
+import { useSlideshowTransitions } from "../../../runtime/presentation/slideshow/useSlideshowTransitions";
 import {
   ActivityAudienceRuntime,
   ActivityResultRuntime

@@ -1,13 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { DeckAnimation } from "@orbit/shared";
+import type { DeckAnimation } from "@orbit/shared/deck";
 import { describe, expect, it } from "vitest";
 import {
   createSlideshowEntryTransitionTimeline,
   createSlideshowTransitionStartStates,
   getSlideshowTransitionDurationMs,
   interpolateSlideshowTransitionStates,
-  resolveSlideshowDisplayStates
+  resolveSlideshowDisplayStates,
 } from "./useSlideshowTransitions";
 
 const fadeOutAnimation: DeckAnimation = {
@@ -17,7 +17,7 @@ const fadeOutAnimation: DeckAnimation = {
   order: 1,
   durationMs: 800,
   delayMs: 200,
-  easing: "ease-out"
+  easing: "ease-out",
 };
 
 describe("useSlideshowTransitions helpers", () => {
@@ -32,8 +32,8 @@ describe("useSlideshowTransitions helpers", () => {
           opacity: 0,
           scaleX: 1,
           scaleY: 1,
-          visible: false
-        }
+          visible: false,
+        },
       },
       [fadeOutAnimation],
       {
@@ -41,16 +41,16 @@ describe("useSlideshowTransitions helpers", () => {
           opacity: 0.55,
           scaleX: 1,
           scaleY: 1,
-          visible: true
-        }
-      }
+          visible: true,
+        },
+      },
     );
 
     expect(startStates.el_target).toMatchObject({
       opacity: 0.55,
       scaleX: 1,
       scaleY: 1,
-      visible: true
+      visible: true,
     });
   });
 
@@ -62,28 +62,28 @@ describe("useSlideshowTransitions helpers", () => {
       order: 1,
       durationMs: 400,
       delayMs: 0,
-      easing: "ease-out"
+      easing: "ease-out",
     };
     const targetStates = {
       el_target: {
         rotation: 15,
-        visible: true
-      }
+        visible: true,
+      },
     };
     const startStates = createSlideshowTransitionStartStates(targetStates, [
-      animation
+      animation,
     ]);
     const half = interpolateSlideshowTransitionStates({
       animations: [animation],
       progress: 0.5,
       startStates,
-      targetStates
+      targetStates,
     });
     const done = interpolateSlideshowTransitionStates({
       animations: [animation],
       progress: 1,
       startStates,
-      targetStates
+      targetStates,
     });
 
     expect(half.el_target?.rotation).toBe(195);
@@ -98,7 +98,7 @@ describe("useSlideshowTransitions helpers", () => {
       order: 1,
       durationMs: 200,
       delayMs: 0,
-      easing: "ease-out"
+      easing: "ease-out",
     };
     const longAnimation: DeckAnimation = {
       animationId: "anim_long",
@@ -107,15 +107,15 @@ describe("useSlideshowTransitions helpers", () => {
       order: 1,
       durationMs: 500,
       delayMs: 0,
-      easing: "ease-out"
+      easing: "ease-out",
     };
     const startStates = {
       el_short: { opacity: 0, visible: true },
-      el_long: { opacity: 0, visible: true }
+      el_long: { opacity: 0, visible: true },
     };
     const targetStates = {
       el_short: { opacity: 1, visible: true },
-      el_long: { opacity: 1, visible: true }
+      el_long: { opacity: 1, visible: true },
     };
 
     const states = interpolateSlideshowTransitionStates({
@@ -123,7 +123,7 @@ describe("useSlideshowTransitions helpers", () => {
       progress: 0.4,
       startStates,
       targetStates,
-      transitionDurationMs: 500
+      transitionDurationMs: 500,
     });
 
     expect(states.el_short?.opacity).toBe(1);
@@ -138,22 +138,24 @@ describe("useSlideshowTransitions helpers", () => {
       order: 1,
       durationMs: 400,
       delayMs: 400,
-      easing: "ease-out"
+      easing: "ease-out",
     };
     const startStates = {
-      el_delayed: { opacity: 0, visible: true }
+      el_delayed: { opacity: 0, visible: true },
     };
     const targetStates = {
-      el_delayed: { opacity: 1, visible: true }
+      el_delayed: { opacity: 1, visible: true },
     };
-    const transitionDurationMs = getSlideshowTransitionDurationMs([delayedAnimation]);
+    const transitionDurationMs = getSlideshowTransitionDurationMs([
+      delayedAnimation,
+    ]);
 
     const states = interpolateSlideshowTransitionStates({
       animations: [delayedAnimation],
       progress: 1,
       startStates,
       targetStates,
-      transitionDurationMs
+      transitionDurationMs,
     });
 
     expect(states.el_delayed).toMatchObject({ opacity: 1, visible: true });
@@ -170,7 +172,7 @@ describe("useSlideshowTransitions helpers", () => {
         durationMs: 100,
         delayMs: 0,
         easing: "linear" as const,
-        transitionDelayMs: 0
+        transitionDelayMs: 0,
       },
       {
         animationId: "anim_exit",
@@ -181,19 +183,19 @@ describe("useSlideshowTransitions helpers", () => {
         durationMs: 100,
         delayMs: 0,
         easing: "linear" as const,
-        transitionDelayMs: 100
-      }
+        transitionDelayMs: 100,
+      },
     ];
     const baseStates = {
-      el_target: { opacity: 1, visible: true }
+      el_target: { opacity: 1, visible: true },
     };
     const targetStates = {
-      el_target: { opacity: 0, visible: false }
+      el_target: { opacity: 0, visible: false },
     };
     const startStates = createSlideshowTransitionStartStates(
       targetStates,
       animations,
-      baseStates
+      baseStates,
     );
     const opacityAt = (progress: number) =>
       interpolateSlideshowTransitionStates({
@@ -202,7 +204,7 @@ describe("useSlideshowTransitions helpers", () => {
         progress,
         startStates,
         targetStates,
-        transitionDurationMs: 200
+        transitionDurationMs: 200,
       }).el_target?.opacity;
 
     expect(opacityAt(0.25)).toBe(0.5);
@@ -220,7 +222,7 @@ describe("useSlideshowTransitions helpers", () => {
       startMode: "on-slide-enter",
       durationMs: 100,
       delayMs: 0,
-      easing: "ease-out"
+      easing: "ease-out",
     };
     const secondOrder: DeckAnimation = {
       animationId: "anim_second",
@@ -230,7 +232,7 @@ describe("useSlideshowTransitions helpers", () => {
       startMode: "with-previous",
       durationMs: 100,
       delayMs: 50,
-      easing: "ease-out"
+      easing: "ease-out",
     };
     const sameSecondOrder: DeckAnimation = {
       animationId: "anim_same_second",
@@ -240,34 +242,32 @@ describe("useSlideshowTransitions helpers", () => {
       startMode: "after-previous",
       durationMs: 200,
       delayMs: 0,
-      easing: "ease-out"
+      easing: "ease-out",
     };
 
     const timeline = createSlideshowEntryTransitionTimeline([
       firstOrder,
       sameSecondOrder,
-      secondOrder
+      secondOrder,
     ]);
 
     expect(timeline.map((animation) => animation.animationId)).toEqual([
       "anim_first",
       "anim_same_second",
-      "anim_second"
+      "anim_second",
     ]);
     expect(timeline.map((animation) => animation.transitionDelayMs)).toEqual([
-      0,
-      100,
-      150
+      0, 100, 150,
     ]);
     expect(getSlideshowTransitionDurationMs(timeline)).toBe(300);
   });
 
   it("uses the new slide's settled state on the first reduced-motion commit", () => {
     const oldDisplayStates = {
-      el_old: { opacity: 1, visible: true }
+      el_old: { opacity: 1, visible: true },
     };
     const newTargetStates = {
-      el_new: { opacity: 0, visible: false }
+      el_new: { opacity: 0, visible: false },
     };
 
     expect(
@@ -279,8 +279,8 @@ describe("useSlideshowTransitions helpers", () => {
         reducedMotion: true,
         slideId: "slide_new",
         stepIndex: 0,
-        targetStates: newTargetStates
-      })
+        targetStates: newTargetStates,
+      }),
     ).toBe(newTargetStates);
   });
 
@@ -288,14 +288,16 @@ describe("useSlideshowTransitions helpers", () => {
     const source = fs.readFileSync(
       path.join(
         process.cwd(),
-        "src/features/rehearsal/presenter/useSlideshowTransitions.ts"
+        "src/runtime/presentation/slideshow/useSlideshowTransitions.ts",
       ),
-      "utf8"
+      "utf8",
     );
     const effectStart = source.indexOf("useEffect(() =>");
     const effectEnd = source.indexOf("const startStates =");
     const transitionSelectionBlock = source.slice(effectStart, effectEnd);
 
-    expect(transitionSelectionBlock).toContain("isSlideChange && args.stepIndex === 0");
+    expect(transitionSelectionBlock).toContain(
+      "isSlideChange && args.stepIndex === 0",
+    );
   });
 });

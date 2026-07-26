@@ -2,8 +2,8 @@ import {
   deckElementSchema,
   type DeckCanvas,
   type DeckElement,
-  type Slide
-} from "@orbit/shared";
+  type Slide,
+} from "@orbit/shared/deck";
 import { normalizeElementFrameDraft } from "@orbit/editor-core/patches";
 
 export function getRenderableSlideElements(slide: Slide, canvas: DeckCanvas) {
@@ -22,7 +22,7 @@ export function usesSourceSlideSnapshot(slide: Slide) {
 
 export function normalizeRenderableElement(
   canvas: DeckCanvas,
-  element: unknown
+  element: unknown,
 ): DeckElement {
   const elementDraft = element as DeckElement;
   const frame = normalizeElementFrameDraft(canvas, elementDraft, {});
@@ -38,6 +38,6 @@ export function normalizeRenderableElement(
     opacity: frame.opacity ?? elementDraft.opacity,
     zIndex: frame.zIndex ?? elementDraft.zIndex,
     locked: frame.locked ?? elementDraft.locked,
-    visible: frame.visible ?? elementDraft.visible
+    visible: frame.visible ?? elementDraft.visible,
   });
 }

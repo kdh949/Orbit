@@ -2,11 +2,16 @@ import {
   createAnimationTimeline,
   getAnimationActionTriggerKeys,
   type AnimationTimelineDiagnostic,
-  type PlannedAnimationTimelineEffect
+  type PlannedAnimationTimelineEffect,
 } from "@orbit/editor-core/playback";
-import type { Deck, DeckAnimation, DeckElement, Slide } from "@orbit/shared";
-import type { ElementPresentationState } from "../../slides/rendering/presentationState";
-import { normalizeRenderableElement } from "../../slides/rendering/elementNormalization";
+import type {
+  Deck,
+  DeckAnimation,
+  DeckElement,
+  Slide,
+} from "@orbit/shared/deck";
+import { normalizeRenderableElement } from "./elementNormalization";
+import type { ElementPresentationState } from "./elementPresentationState";
 
 export type SlideshowModelInput = {
   slide: Slide;
@@ -44,7 +49,7 @@ export type SlideshowAnimationPlan = {
 };
 
 export function createSlideshowAnimationPlan(
-  input: SlideshowModelInput
+  input: SlideshowModelInput,
 ): SlideshowAnimationPlan {
   const triggerAnimationIds = [...(input.triggerAnimationIds ?? [])];
   const timeline = createAnimationTimeline({
@@ -53,19 +58,19 @@ export function createSlideshowAnimationPlan(
     legacyOnClickAnimationIds: triggerAnimationIds,
     targetElementIds: input.slide.elements.map((element) => element.elementId),
     transitionDurationMs:
-      input.transitionDurationMs ?? input.slide.transition?.durationMs ?? 0
+      input.transitionDurationMs ?? input.slide.transition?.durationMs ?? 0,
   });
   const animations = timeline.effects.map(toPlannedSlideshowAnimation);
   const entryRoots = timeline.entryRoots;
   const triggerRoots = timeline.clickSteps;
   const entryAnimations = entryRoots.flatMap((root) =>
-    root.effects.map(toPlannedSlideshowAnimation)
+    root.effects.map(toPlannedSlideshowAnimation),
   );
   const triggerSteps = triggerRoots.map((root) => ({
     animations: root.effects.map(toPlannedSlideshowAnimation),
     durationMs: root.durationMs,
     order: root.effects[0]?.order ?? 0,
-    rootAnimationId: root.rootAnimationId
+    rootAnimationId: root.rootAnimationId,
   }));
 
   return {
@@ -78,7 +83,7 @@ export function createSlideshowAnimationPlan(
     entryAnimations,
     entryDurationMs: Math.max(0, ...entryRoots.map((root) => root.durationMs)),
     maxStepIndex: triggerSteps.length,
-    triggerSteps
+    triggerSteps,
   };
 }
 
@@ -90,7 +95,7 @@ export function computeSettledElementStates(args: {
 }): Record<string, ElementPresentationState> {
   const plan = createSlideshowAnimationPlan({
     slide: args.slide,
-    triggerAnimationIds: args.triggerAnimationIds
+    triggerAnimationIds: args.triggerAnimationIds,
   });
   const baseStates = createBaseElementStates(args.deck, args.slide);
   const states = createInitialElementStates(baseStates, plan.animations);
@@ -113,12 +118,18 @@ export function computeSettledElementStates(args: {
   return states;
 }
 
-export function clampSlideshowStepIndex(stepIndex: number, maxStepIndex: number) {
+export function clampSlideshowStepIndex(
+  stepIndex: number,
+  maxStepIndex: number,
+) {
   if (!Number.isFinite(stepIndex)) {
     return 0;
   }
 
-  return Math.min(Math.max(0, Math.trunc(stepIndex)), Math.max(0, maxStepIndex));
+  return Math.min(
+    Math.max(0, Math.trunc(stepIndex)),
+    Math.max(0, maxStepIndex),
+  );
 }
 
 export function createBaseElementStates(deck: Deck, slide: Slide) {
@@ -126,7 +137,8 @@ export function createBaseElementStates(deck: Deck, slide: Slide) {
 
   for (const element of slide.elements) {
     const normalizedElement = normalizeRenderableElement(deck.canvas, element);
-    states[normalizedElement.elementId] = createBaseElementState(normalizedElement);
+    states[normalizedElement.elementId] =
+      createBaseElementState(normalizedElement);
   }
 
   return states;
@@ -134,7 +146,7 @@ export function createBaseElementStates(deck: Deck, slide: Slide) {
 
 function createInitialElementStates(
   baseStates: Record<string, ElementPresentationState>,
-  animations: DeckAnimation[]
+  animations: DeckAnimation[],
 ) {
   const states = cloneElementStates(baseStates);
   const firstAnimationsByElementId = new Map<string, DeckAnimation>();
@@ -171,7 +183,9 @@ function createInitialElementStates(
   return states;
 }
 
-function createBaseElementState(element: DeckElement): ElementPresentationState {
+function createBaseElementState(
+  element: DeckElement,
+): ElementPresentationState {
   return {
     height: element.height,
     opacity: element.opacity,
@@ -181,14 +195,14 @@ function createBaseElementState(element: DeckElement): ElementPresentationState 
     visible: element.visible,
     width: element.width,
     x: element.x,
-    y: element.y
+    y: element.y,
   };
 }
 
 function applySettledAnimation(
   states: Record<string, ElementPresentationState>,
   animation: DeckAnimation,
-  baseState: ElementPresentationState | undefined
+  baseState: ElementPresentationState | undefined,
 ) {
   const state = states[animation.elementId];
 
@@ -224,17 +238,20 @@ function applySettledAnimation(
 
 function cloneElementStates(states: Record<string, ElementPresentationState>) {
   return Object.fromEntries(
-    Object.entries(states).map(([elementId, state]) => [elementId, { ...state }])
+    Object.entries(states).map(([elementId, state]) => [
+      elementId,
+      { ...state },
+    ]),
   );
 }
 
 function toPlannedSlideshowAnimation(
-  animation: PlannedAnimationTimelineEffect
+  animation: PlannedAnimationTimelineEffect,
 ): PlannedSlideshowAnimation {
   return {
     ...animation,
     animationIndex: animation.sourceIndex,
     timelineStartMs: animation.startMs,
-    transitionDelayMs: animation.startMs
+    transitionDelayMs: animation.startMs,
   };
 }
