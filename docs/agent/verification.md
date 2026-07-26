@@ -80,6 +80,21 @@ pnpm test:import-boundaries
 제공한다. package 내부 파일을 옮길 때 app import가 함께 깨지는 우회를 만들지
 않도록 새 직접 참조는 `lint:boundaries`에서 실패한다.
 
+## Source cycle
+
+production TypeScript/JavaScript의 상대 import graph에는 type-only dependency를
+포함한 순환 참조를 허용하지 않는다.
+
+```bash
+pnpm lint:cycles
+pnpm test:source-cycles
+```
+
+검사는 `apps`, `packages`, `services`의 source를 대상으로 하며 test/spec,
+dependency, build 산출물은 제외한다. 공통 타입이나 계약 때문에 cycle이 생기면
+구현 파일 또는 root barrel을 역참조하지 않고 양쪽이 참조할 수 있는 중립 모듈로
+이동한다.
+
 ## Format check
 
 `pnpm format:check`도 같은 기준으로 변경 파일만 검사한다. 새 파일이 포맷되지

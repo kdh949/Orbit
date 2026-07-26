@@ -4,6 +4,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { findSourceCycles } from "./check-source-cycles.mjs";
+
 const CODE_EXTENSIONS = new Set([".js", ".mjs", ".ts", ".tsx"]);
 const SKIPPED_DIRECTORIES = new Set([
   ".git",
@@ -145,6 +147,7 @@ export function collectStructuralMetrics(rootDirectory) {
       sourceFiles,
       /(?:from\s+["']@orbit\/editor-core["']|require\(["']@orbit\/editor-core["']\))/
     ),
+    sourceCycles: findSourceCycles(root).length,
     githubWorkflowFiles: countFiles(
       resolve(root, ".github/workflows"),
       (file) => file.endsWith(".yml") || file.endsWith(".yaml")
@@ -202,6 +205,7 @@ export function validateBenchmarkSnapshot(snapshot) {
       "directPackageSourceImportFiles",
       "sharedRootImportFiles",
       "editorCoreRootImportFiles",
+      "sourceCycles",
       "githubWorkflowFiles",
       "agentDomainManifests",
       "scopedAgentInstructionFiles"

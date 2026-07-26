@@ -46,6 +46,7 @@ test("구조 지표를 파일 단위로 계산한다", () => {
   assert.equal(metrics.directPackageSourceImportFiles, 1);
   assert.equal(metrics.sharedRootImportFiles, 1);
   assert.equal(metrics.editorCoreRootImportFiles, 1);
+  assert.equal(metrics.sourceCycles, 0);
   assert.equal(metrics.githubWorkflowFiles, 1);
   assert.equal(metrics.agentDomainManifests, 1);
   assert.equal(metrics.scopedAgentInstructionFiles, 2);
