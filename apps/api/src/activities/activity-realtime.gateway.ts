@@ -1,7 +1,7 @@
 import { loadOrbitConfig } from "@orbit/config";
 import {
   presentationAudienceRoomId,
-  presentationPresenterRoomId
+  presentationPresenterRoomId,
 } from "@orbit/realtime";
 import {
   ConnectedSocket,
@@ -9,7 +9,7 @@ import {
   OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
-  WebSocketServer
+  WebSocketServer,
 } from "@nestjs/websockets";
 import cookieParser from "cookie-parser";
 import type { Server, Socket } from "socket.io";
@@ -19,9 +19,9 @@ import { AuthService } from "../auth/auth.service";
 import { resolveAllowedWebOrigins } from "../common/web-origin";
 import {
   audienceAccessCookieName,
-  verifyAudienceAccessToken
+  verifyAudienceAccessToken,
 } from "../presentation-sessions/audience-access-cookie";
-import { PresentationSessionsService } from "../presentation-sessions/presentation-sessions.service";
+import { PresentationSessionAccessService } from "../presentation-sessions/presentation-session-access.service";
 import { ProjectsService } from "../projects/projects.service";
 import { ActivityRealtimePublisher } from "./activity-realtime.publisher";
 
@@ -30,8 +30,8 @@ const config = loadOrbitConfig(process.env, { service: "api" });
 @WebSocketGateway({
   cors: {
     credentials: true,
-    origin: resolveAllowedWebOrigins(config.WEB_ORIGIN)
-  }
+    origin: resolveAllowedWebOrigins(config.WEB_ORIGIN),
+  },
 })
 export class ActivityRealtimeGateway implements OnGatewayInit {
   @WebSocketServer()
@@ -40,8 +40,8 @@ export class ActivityRealtimeGateway implements OnGatewayInit {
   constructor(
     private readonly authService: AuthService,
     private readonly projectsService: ProjectsService,
-    private readonly presentationSessionsService: PresentationSessionsService,
-    private readonly publisher: ActivityRealtimePublisher
+    private readonly presentationSessionAccess: PresentationSessionAccessService,
+    private readonly publisher: ActivityRealtimePublisher,
   ) {}
 
   afterInit(server: Server): void {
@@ -51,22 +51,29 @@ export class ActivityRealtimeGateway implements OnGatewayInit {
   @SubscribeMessage("presentation:presenter:join")
   async joinPresenter(
     @ConnectedSocket() client: Socket,
-    @MessageBody() body: unknown
+    @MessageBody() body: unknown,
   ) {
     const input = readJoinInput(body);
     const authSessionId = readSignedCookie(client, authSessionCookieName);
     if (!input || !authSessionId) return emitPresentationError(client);
     try {
       const { user } = await this.authService.me(authSessionId);
-      await this.projectsService.assertCanWriteProject(input.projectId, user.userId);
-      await this.presentationSessionsService.getSessionForPresenter(
+      await this.projectsService.assertCanWriteProject(
         input.projectId,
-        input.sessionId
+        user.userId,
+      );
+      await this.presentationSessionAccess.assertPresenterSession(
+        input.projectId,
+        input.sessionId,
       );
       await client.join(presentationPresenterRoomId(input.sessionId));
       client.data.presentationSessionId = input.sessionId;
       client.data.presentationRole = "presenter";
-      return { joined: true, sessionId: input.sessionId, role: "presenter" as const };
+      return {
+        joined: true,
+        sessionId: input.sessionId,
+        role: "presenter" as const,
+      };
     } catch {
       return emitPresentationError(client);
     }
@@ -75,24 +82,36 @@ export class ActivityRealtimeGateway implements OnGatewayInit {
   @SubscribeMessage("presentation:audience:join")
   async joinAudience(
     @ConnectedSocket() client: Socket,
-    @MessageBody() body: unknown
+    @MessageBody() body: unknown,
   ) {
     const input = readJoinInput(body);
     const token = readSignedCookie(client, audienceAccessCookieName);
     if (!input || !token) return emitPresentationError(client);
-    const payload = verifyAudienceAccessToken(config, token, readUserAgent(client));
-    if (!payload || payload.sessionId !== input.sessionId || payload.projectId !== input.projectId) {
+    const payload = verifyAudienceAccessToken(
+      config,
+      token,
+      readUserAgent(client),
+    );
+    if (
+      !payload ||
+      payload.sessionId !== input.sessionId ||
+      payload.projectId !== input.projectId
+    ) {
       return emitPresentationError(client);
     }
     try {
-      await this.presentationSessionsService.getAudienceAccess(
+      await this.presentationSessionAccess.assertAudienceAccess(
         input.sessionId,
-        input.projectId
+        input.projectId,
       );
       await client.join(presentationAudienceRoomId(input.sessionId));
       client.data.presentationSessionId = input.sessionId;
       client.data.presentationRole = "audience";
-      return { joined: true, sessionId: input.sessionId, role: "audience" as const };
+      return {
+        joined: true,
+        sessionId: input.sessionId,
+        role: "audience" as const,
+      };
     } catch {
       return emitPresentationError(client);
     }
@@ -139,7 +158,7 @@ function readUserAgent(client: Socket): string {
 }
 
 function firstHeader(value: string | string[] | undefined): string {
-  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
 function emitPresentationError(client: Socket) {

@@ -6,9 +6,9 @@ import { parseRequest } from "../common/zod-request";
 import {
   assertAudienceJsonSameOrigin,
   requireAudienceIdentity,
-  type SignedCookieRequest
+  type SignedCookieRequest,
 } from "../presentation-sessions/audience-request-security";
-import { PresentationSessionsService } from "../presentation-sessions/presentation-sessions.service";
+import { PresentationSessionAccessService } from "../presentation-sessions/presentation-session-access.service";
 import { ActivityResponsesService } from "./activity-responses.service";
 import { ActivityResultsService } from "./activity-results.service";
 
@@ -19,25 +19,25 @@ export class AudienceActivityController {
   constructor(
     private readonly activityResponsesService: ActivityResponsesService,
     private readonly activityResultsService: ActivityResultsService,
-    private readonly presentationSessionsService: PresentationSessionsService
+    private readonly presentationSessionAccess: PresentationSessionAccessService,
   ) {}
 
   @Get(":activityId")
   async getActivity(
     @Param("sessionId") sessionId: string,
     @Param("activityId") activityId: string,
-    @Req() request: SignedCookieRequest
+    @Req() request: SignedCookieRequest,
   ) {
     const identity = requireAudienceIdentity(this.config, request, sessionId);
-    await this.presentationSessionsService.getAudienceAccess(
+    await this.presentationSessionAccess.assertAudienceAccess(
       sessionId,
-      identity.projectId
+      identity.projectId,
     );
     return this.activityResultsService.getAudienceActivity(
       identity.projectId,
       sessionId,
       activityId,
-      identity.audienceId
+      identity.audienceId,
     );
   }
 
@@ -46,13 +46,13 @@ export class AudienceActivityController {
     @Param("sessionId") sessionId: string,
     @Param("activityId") activityId: string,
     @Body() body: unknown,
-    @Req() request: SignedCookieRequest
+    @Req() request: SignedCookieRequest,
   ) {
     assertAudienceJsonSameOrigin(this.config, request);
     const identity = requireAudienceIdentity(this.config, request, sessionId);
-    await this.presentationSessionsService.getAudienceAccess(
+    await this.presentationSessionAccess.assertAudienceAccess(
       sessionId,
-      identity.projectId
+      identity.projectId,
     );
     const input = parseRequest(upsertActivityResponseRequestSchema, body ?? {});
     return this.activityResponsesService.upsert(
@@ -60,7 +60,7 @@ export class AudienceActivityController {
       sessionId,
       activityId,
       identity.audienceId,
-      input
+      input,
     );
   }
 }
