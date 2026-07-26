@@ -9,7 +9,7 @@ import {
   collectStructuralMetrics,
   compareSnapshots,
   createBenchmarkSnapshot,
-  validateBenchmarkSnapshot
+  validateBenchmarkSnapshot,
 } from "./benchmark.mjs";
 
 function writeFixture(root, path, content = "") {
@@ -24,14 +24,18 @@ function createRepositoryFixture() {
     root,
     "apps/web/src/App.tsx",
     'import { deckSchema } from "@orbit/shared";\n' +
-      'import { createDemoDeck } from "../../../packages/editor-core/src/index";\n'
+      'import { createDemoDeck } from "../../../packages/editor-core/src/index";\n',
+  );
+  writeFixture(
+    root,
+    "apps/web/src/App.test.tsx",
+    'import { deckSchema } from "@orbit/shared";\nreadFileSync("App.tsx");\n',
   );
   writeFixture(
     root,
     "apps/api/src/main.ts",
     'import { applyDeckPatch } from "@orbit/editor-core";\n' +
-      'import { Deck } from "@orbit/shared/deck";\n' +
-      'import { createSlidePlaybackState } from "@orbit/editor-core/playback";\n'
+      'import { Deck } from "@orbit/shared/deck";\n',
   );
   writeFixture(root, "docs/agent/domains/example.json", "{}\n");
   writeFixture(root, "AGENTS.md", "# Root\n");
@@ -40,82 +44,107 @@ function createRepositoryFixture() {
   return root;
 }
 
-test("구조 지표를 파일 단위로 계산한다", () => {
-  const root = createRepositoryFixture();
+const gitIdentity = {
+  headCommit: "a".repeat(40),
+  treeHash: "b".repeat(40),
+  workingTreeDirty: false,
+};
 
-  const metrics = collectStructuralMetrics(root);
+test("구조 지표를 production과 test 파일로 분리해 계산한다", () => {
+  const metrics = collectStructuralMetrics(createRepositoryFixture());
 
   assert.equal(metrics.directPackageSourceImportFiles, 1);
-  assert.equal(metrics.sharedRootImportFiles, 1);
+  assert.equal(metrics.sharedRootImportFiles, 2);
+  assert.equal(metrics.productionSharedRootImportFiles, 1);
+  assert.equal(metrics.testSharedRootImportFiles, 1);
   assert.equal(metrics.sharedSubpathImportFiles, 1);
   assert.equal(metrics.editorCoreRootImportFiles, 1);
-  assert.equal(metrics.editorCoreSubpathImportFiles, 1);
-  assert.equal(metrics.sourceCycles, 0);
+  assert.equal(metrics.sourceInspectionTestFiles, 1);
   assert.equal(metrics.githubWorkflowFiles, 1);
   assert.equal(metrics.agentDomainManifests, 1);
   assert.equal(metrics.scopedAgentInstructionFiles, 2);
 });
 
-test("고정 benchmark 작업 8개를 빈 run으로 생성한다", () => {
-  const root = createRepositoryFixture();
-
-  const snapshot = createBenchmarkSnapshot(root, {
+test("schema v2 snapshot에 Git tree identity와 대표 task 4개를 기록한다", () => {
+  const snapshot = createBenchmarkSnapshot(createRepositoryFixture(), {
     capturedAt: "2026-07-26T00:00:00.000Z",
-    sourceCommit: "test"
+    gitIdentity,
+    sourceArchiveSha256: "c".repeat(64),
   });
 
-  assert.equal(BENCHMARK_TASKS.length, 8);
-  assert.equal(snapshot.manualBenchmark.tasks.length, 8);
-  assert.ok(snapshot.manualBenchmark.tasks.every((task) => task.runs.length === 0));
+  assert.equal(BENCHMARK_TASKS.length, 4);
+  assert.equal(snapshot.schemaVersion, 2);
+  assert.equal(snapshot.toolVersion, 2);
+  assert.equal(snapshot.headCommit, gitIdentity.headCommit);
+  assert.equal(snapshot.treeHash, gitIdentity.treeHash);
+  assert.equal(snapshot.manualBenchmark.initialRunsPerTask, 1);
   assert.deepEqual(validateBenchmarkSnapshot(snapshot), []);
 });
 
-test("현재 구조 지표와 baseline delta를 계산한다", () => {
+test("dirty working tree snapshot을 기본 거부하고 명시한 경우 기록한다", () => {
   const root = createRepositoryFixture();
-  const baseline = createBenchmarkSnapshot(root, {
-    capturedAt: "2026-07-26T00:00:00.000Z"
+  const dirtyIdentity = { ...gitIdentity, workingTreeDirty: true };
+
+  assert.throws(
+    () => createBenchmarkSnapshot(root, { gitIdentity: dirtyIdentity }),
+    /dirty working tree/,
+  );
+  assert.equal(
+    createBenchmarkSnapshot(root, {
+      allowDirty: true,
+      gitIdentity: dirtyIdentity,
+    }).workingTreeDirty,
+    true,
+  );
+});
+
+test("현재 구조 지표와 baseline의 nested delta를 계산한다", () => {
+  const baseline = createBenchmarkSnapshot(createRepositoryFixture(), {
+    gitIdentity,
   });
   const current = structuredClone(baseline);
-  current.structural.directPackageSourceImportFiles = 0;
+  current.structural.manifestCoverage.ownedProductionSourceFiles = 2;
 
   const comparison = compareSnapshots(baseline, current);
-  const directImport = comparison.find(
-    (row) => row.metric === "directPackageSourceImportFiles"
+  assert.equal(
+    comparison.find(
+      (row) => row.metric === "manifestCoverage:ownedProductionSourceFiles",
+    ).delta,
+    2,
   );
-
-  assert.equal(directImport.delta, -1);
 });
 
-test("새 지표가 없는 legacy baseline과 현재 지표를 비교한다", () => {
-  const root = createRepositoryFixture();
-  const baseline = createBenchmarkSnapshot(root, {
-    capturedAt: "2026-07-26T00:00:00.000Z"
-  });
-  delete baseline.structural.sharedSubpathImportFiles;
-  delete baseline.structural.editorCoreSubpathImportFiles;
-  delete baseline.structural.sourceCycles;
-
-  assert.deepEqual(validateBenchmarkSnapshot(baseline), []);
-
-  const comparison = compareSnapshots(baseline, createBenchmarkSnapshot(root));
-  const sharedSubpath = comparison.find(
-    (row) => row.metric === "sharedSubpathImportFiles"
-  );
-
-  assert.equal(sharedSubpath.baseline, null);
-  assert.equal(sharedSubpath.current, 1);
-  assert.equal(sharedSubpath.delta, null);
-});
-
-test("잘못된 snapshot schema를 거부한다", () => {
+test("legacy schema와 잘못된 archive hash를 거부한다", () => {
   const issues = validateBenchmarkSnapshot({
-    schemaVersion: 2,
+    schemaVersion: 1,
+    toolVersion: 1,
     capturedAt: "",
+    headCommit: "",
+    treeHash: "",
+    workingTreeDirty: "no",
+    sourceArchiveSha256: "invalid",
     structural: {},
-    manualBenchmark: { tasks: [] }
+    macroRuns: [],
+    manualBenchmark: { tasks: [] },
   });
 
   assert.ok(issues.some((issue) => issue.includes("schemaVersion")));
-  assert.ok(issues.some((issue) => issue.includes("capturedAt")));
-  assert.ok(issues.some((issue) => issue.includes("sharedRootImportFiles")));
+  assert.ok(issues.some((issue) => issue.includes("toolVersion")));
+  assert.ok(issues.some((issue) => issue.includes("sourceArchiveSha256")));
+  assert.ok(issues.some((issue) => issue.includes("manifestCoverage")));
+});
+
+test("Git metadata가 없는 source archive snapshot identity를 허용한다", () => {
+  const snapshot = createBenchmarkSnapshot(createRepositoryFixture(), {
+    gitIdentity: {
+      headCommit: null,
+      treeHash: null,
+      workingTreeDirty: false,
+    },
+    sourceArchiveSha256: "d".repeat(64),
+  });
+
+  assert.equal(snapshot.headCommit, null);
+  assert.equal(snapshot.treeHash, null);
+  assert.deepEqual(validateBenchmarkSnapshot(snapshot), []);
 });

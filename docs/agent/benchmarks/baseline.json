@@ -1,14 +1,51 @@
 {
-  "schemaVersion": 1,
-  "capturedAt": "2026-07-26T07:17:47.219Z",
-  "sourceCommit": "52640827aeacb7c9675f148281d609e874e8c6c0",
+  "schemaVersion": 2,
+  "toolVersion": 2,
+  "capturedAt": "2026-07-26T11:40:49.585Z",
+  "headCommit": null,
+  "treeHash": null,
+  "workingTreeDirty": false,
+  "sourceArchiveSha256": "7b5b3df6dba8d115933cd531b864396081f01eaf461e6f54d26b14ab4c32e27d",
   "structural": {
+    "agentDomainManifests": 0,
+    "cssDuplicateOccurrences": 1895,
+    "cssDuplicateSelectors": 726,
     "directPackageSourceImportFiles": 20,
-    "sharedRootImportFiles": 648,
     "editorCoreRootImportFiles": 104,
+    "editorCoreSubpathImportFiles": 0,
     "githubWorkflowFiles": 0,
-    "agentDomainManifests": 4,
-    "scopedAgentInstructionFiles": 7,
+    "hotspotContext": {
+      "apps/web/src/features/rehearsal/RehearsalWorkspace.tsx": {
+        "directDependencies": 77,
+        "reachableFiles": 333,
+        "reachableLines": 76059
+      },
+      "apps/web/src/features/editor/shell/EditorShell.tsx": {
+        "directDependencies": 73,
+        "reachableFiles": 388,
+        "reachableLines": 77057
+      },
+      "apps/web/src/features/presentation/PresentationWorkspace.tsx": {
+        "directDependencies": 41,
+        "reachableFiles": 290,
+        "reachableLines": 61862
+      },
+      "apps/worker/src/worker.service.ts": {
+        "directDependencies": 40,
+        "reachableFiles": 172,
+        "reachableLines": 51779
+      },
+      "services/python-worker/app/main.py": {
+        "directDependencies": 32,
+        "reachableFiles": 61,
+        "reachableLines": 48263
+      },
+      "services/python-worker/app/ai/pptx_ooxml_generation.py": {
+        "directDependencies": 7,
+        "reachableFiles": 8,
+        "reachableLines": 9028
+      }
+    },
     "hotspotLines": {
       "apps/web/src/features/rehearsal/RehearsalWorkspace.tsx": 7711,
       "apps/web/src/features/rehearsal/RehearsalWorkspace.test.tsx": 3612,
@@ -20,11 +57,35 @@
       "apps/worker/src/worker.service.ts": 1285,
       "services/python-worker/app/main.py": 1843,
       "services/python-worker/app/ai/pptx_ooxml_generation.py": 7189
-    }
+    },
+    "manifestCoverage": {
+      "ownedProductionSourceFiles": 0,
+      "percent": 0,
+      "productionSourceFiles": 1000
+    },
+    "productionSharedRootImportFiles": 475,
+    "scopedAgentInstructionFiles": 2,
+    "sharedRootImportFiles": 648,
+    "sharedSubpathImportFiles": 0,
+    "sourceCycles": 7,
+    "sourceInspectionTestFiles": 32,
+    "testSharedRootImportFiles": 173
   },
+  "macroRuns": [
+    {
+      "kind": "macro-refactor",
+      "elapsedSeconds": 13020,
+      "reportedTokens": 3257365,
+      "sourceArchiveSha256": "7b5b3df6dba8d115933cd531b864396081f01eaf461e6f54d26b14ab4c32e27d",
+      "resultArchiveSha256": "b97049970af3573a71cc499785a176de468d0f6d11cc90c25d51415bc94b9367",
+      "filesAdded": 238,
+      "filesRemoved": 132,
+      "filesChanged": 169
+    }
+  ],
   "manualBenchmark": {
     "status": "pending",
-    "runsPerTask": 3,
+    "initialRunsPerTask": 1,
     "tokenUsage": {
       "status": "unavailable",
       "note": "실제 Agent 실행 환경이 제공한 값만 기록하고 추정하지 않는다."
@@ -40,51 +101,27 @@
     ],
     "tasks": [
       {
-        "id": "rehearsal-copy",
-        "description": "리허설 UI 문구 변경",
-        "scope": "web:rehearsal",
-        "runs": []
-      },
-      {
         "id": "web-speech-retry",
         "description": "Web Speech retry 조건 변경",
-        "scope": "web:rehearsal",
+        "path": "apps/web/src/runtime/speech/stt/koreanTextSimilarity.ts",
         "runs": []
       },
       {
         "id": "rehearsal-response-field",
         "description": "RehearsalRun response 필드 추가",
-        "scope": "rehearsal",
+        "path": "packages/shared/src/rehearsals/rehearsal.schema.ts",
         "runs": []
       },
       {
         "id": "worker-retry-option",
         "description": "Worker retry option 변경",
-        "scope": "worker",
-        "runs": []
-      },
-      {
-        "id": "python-audio-validation",
-        "description": "Python audio validation 추가",
-        "scope": "python:audio",
-        "runs": []
-      },
-      {
-        "id": "editor-slide-patch",
-        "description": "Editor slide patch 변경",
-        "scope": "editor",
-        "runs": []
-      },
-      {
-        "id": "environment-variable",
-        "description": "환경변수 추가",
-        "scope": "config",
+        "path": "apps/worker/src/rehearsal-stt.processor.ts",
         "runs": []
       },
       {
         "id": "pptx-error-mapping",
         "description": "PPTX sync error mapping 변경",
-        "scope": "pptx",
+        "path": "services/python-worker/app/ai/pptx_ooxml_generation.py",
         "runs": []
       }
     ]
