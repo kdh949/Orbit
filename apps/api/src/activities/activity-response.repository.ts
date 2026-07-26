@@ -1,4 +1,4 @@
-import type { ActivityAnswer } from "@orbit/shared";
+import type { ActivityAnswer } from "@orbit/shared/activities";
 import { Injectable } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource, EntityManager } from "typeorm";

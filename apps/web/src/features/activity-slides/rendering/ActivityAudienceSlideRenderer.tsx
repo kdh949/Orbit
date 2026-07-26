@@ -3,9 +3,8 @@ import type {
   ActivityPublicResult,
   ActivityRatingAggregateItem,
   ActivityRuntimeStatus,
-  ActivitySlide,
-  Deck
-} from "@orbit/shared";
+} from "@orbit/shared/activities";
+import type { ActivitySlide, Deck } from "@orbit/shared/deck";
 import {
   IconChartBar,
   IconCircleFilled,

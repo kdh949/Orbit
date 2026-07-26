@@ -1,4 +1,4 @@
-import type { Deck } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
 import { useEffect, useRef, useState } from "react";
 import orbitLogoWhite from "../../../assets/orbit-logo-white.png";
 import {

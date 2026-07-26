@@ -6,7 +6,7 @@ import {
   type FocusedPracticeAttemptSummary,
   type FocusedPracticeSession,
   type PracticePlanResponse,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
 import { normalizeCoachingAudioMimeType } from "./coachingAudioMimeType";
 
 const jsonHeaders = { "content-type": "application/json" };

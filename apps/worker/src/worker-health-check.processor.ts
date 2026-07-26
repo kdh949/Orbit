@@ -1,4 +1,4 @@
-import type { Job } from "@orbit/shared";
+import type { Job } from "@orbit/shared/jobs";
 import type { DataSource } from "typeorm";
 import { z } from "zod";
 

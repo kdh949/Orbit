@@ -2,8 +2,8 @@ import type {
   TextElementBullet,
   TextElementParagraph,
   TextElementProps,
-  TextElementRun
-} from "@orbit/shared";
+  TextElementRun,
+} from "@orbit/shared/deck";
 
 export type RichTextRange = { end: number; start: number };
 

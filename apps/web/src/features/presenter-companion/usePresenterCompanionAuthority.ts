@@ -16,7 +16,7 @@ import {
   type PresentationCompanionNavigationAck,
   type PresentationCompanionNavigationCommand,
   type PresentationCompanionSignal,
-} from "@orbit/shared";
+} from "@orbit/shared/realtime";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import type { PresenterSlideshowState } from "../../runtime/presentation/channel/presenterStateStore";

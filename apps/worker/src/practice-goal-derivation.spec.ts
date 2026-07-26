@@ -2,13 +2,15 @@ import {
   criterionResultSchema,
   evaluationCriterionSchema,
   rehearsalFocusProfileSnapshotSchema,
-  rehearsalEvaluationSnapshotSchema,
-  rehearsalReportSchema,
   reportObservationSchema,
   type EvaluationCriterion,
+} from "@orbit/shared/coaching";
+import {
+  rehearsalEvaluationSnapshotSchema,
+  rehearsalReportSchema,
   type RehearsalEvaluationSnapshot,
   type RehearsalReport,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import { describe, expect, it, vi } from "vitest";
 
 import {

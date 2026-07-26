@@ -1,4 +1,4 @@
-import type { SemanticCue, Slide } from "@orbit/shared";
+import type { SemanticCue, Slide } from "@orbit/shared/deck";
 import type { FormEvent } from "react";
 
 import {

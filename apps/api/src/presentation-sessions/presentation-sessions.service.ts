@@ -7,16 +7,16 @@ import {
   listPresentationSessionsResponseSchema,
   presentationSessionResponseSchema,
   presentationSessionWithAudienceUrlResponseSchema,
-  presenterAccessResponseSchema
-} from "@orbit/shared";
+  presenterAccessResponseSchema,
+} from "@orbit/shared/presentation";
 import type {
   CreatePresentationSessionRequest,
   GetCurrentPresentationSessionResponse,
   PresentationSession,
   PresentationSessionPurpose,
   PresentationSessionWithAudienceUrlResponse,
-  UpdatePresentationSessionAccessRequest
-} from "@orbit/shared";
+  UpdatePresentationSessionAccessRequest,
+} from "@orbit/shared/presentation";
 import {
   BadRequestException,
   Injectable,
@@ -24,7 +24,7 @@ import {
   Optional,
   UnauthorizedException
 } from "@nestjs/common";
-import type { JoinAudiencePresentationRequest } from "@orbit/shared";
+import type { JoinAudiencePresentationRequest } from "@orbit/shared/presentation";
 import { InjectPinoLogger, PinoLogger } from "nestjs-pino";
 
 import { DecksService } from "../decks/decks.service";

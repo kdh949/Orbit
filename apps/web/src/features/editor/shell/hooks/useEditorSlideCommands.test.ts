@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createDemoDeck } from "@orbit/editor-core";
-import type { DeckPatch } from "@orbit/shared";
+import type { DeckPatch } from "@orbit/shared/deck";
 
 import { useEditorSlideCommands } from "./useEditorSlideCommands";
 

@@ -1,4 +1,5 @@
-import { slideQuestionGuideDeckTextHashInput, type Deck } from "@orbit/shared"
+import { type Deck } from "@orbit/shared/deck";
+import { slideQuestionGuideDeckTextHashInput } from "@orbit/shared/slide-practice";
 import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 

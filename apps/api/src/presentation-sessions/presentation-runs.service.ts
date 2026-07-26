@@ -1,9 +1,9 @@
 import { loadOrbitConfig } from "@orbit/config";
 import type { EnqueuePresentationAnalysisJobInput } from "@orbit/job-queue";
+import { createAssetUploadUrlRequestSchema } from "@orbit/shared/files";
 import {
   completePresentationAudioRequestSchema,
   completePresentationAudioResponseSchema,
-  createAssetUploadUrlRequestSchema,
   createPresentationAudioUploadRequestSchema,
   createPresentationAudioUploadResponseSchema,
   createPresentationRunRequestSchema,
@@ -12,7 +12,7 @@ import {
   getPresentationRunResponseSchema,
   listPresentationRunsResponseSchema,
   type PresentationRun,
-} from "@orbit/shared";
+} from "@orbit/shared/presentation";
 import {
   BadRequestException,
   ConflictException,

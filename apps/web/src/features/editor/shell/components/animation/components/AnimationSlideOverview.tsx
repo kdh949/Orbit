@@ -1,4 +1,4 @@
-import type { DeckAnimation, DeckElement } from "@orbit/shared";
+import type { DeckAnimation, DeckElement } from "@orbit/shared/deck";
 import { IconTrash } from "@tabler/icons-react";
 
 import { IdBadge } from "../../EditorIdBadge";

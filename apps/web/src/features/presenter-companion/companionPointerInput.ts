@@ -1,7 +1,7 @@
 import type {
   PresentationCompanionPoint,
   PresentationCompanionStroke,
-} from "@orbit/shared";
+} from "@orbit/shared/realtime";
 
 export type ActiveCompanionPointer = {
   pointerId: number;

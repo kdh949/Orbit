@@ -3,7 +3,7 @@ import {
   getElementAnimations,
   validateSlideAnimations
 } from "@orbit/editor-core";
-import { createKeywordOccurrenceId } from "@orbit/shared";
+import { createKeywordOccurrenceId } from "@orbit/shared/deck";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 

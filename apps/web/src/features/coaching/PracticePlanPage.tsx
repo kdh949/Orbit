@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { coachingCapabilitiesResponseSchema, type PracticePlanResponse } from "@orbit/shared";
+import { type PracticePlanResponse } from "@orbit/shared/coaching";
+import { coachingCapabilitiesResponseSchema } from "@orbit/shared/config";
 import {
   IconAlertCircle,
   IconArrowLeft,

@@ -4,7 +4,7 @@ import type {
   RehearsalProjectRunMetricPoint,
   RehearsalProjectSummary,
   RehearsalProjectTimingOverrun,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import type { RehearsalRunComparisonViewModel } from "./rehearsalRunComparisonModel";
 
 const SLIDE_TIMING_NEEDS_IMPROVEMENT_RATE = 0.4;

@@ -9,15 +9,15 @@ import {
   challengeQnaSessionSchema,
   challengeQnaSourceSnapshotSchema,
   completeChallengeQnaAudioRequestSchema,
-  createAssetUploadUrlRequestSchema,
   createChallengeQnaAnswerAttemptRequestSchema,
   createChallengeQnaSessionRequestSchema,
-  deckSchema,
   retryChallengeQnaGenerationRequestSchema,
   revealAssistanceRequestSchema,
   type ChallengeQnaAnswerAttempt,
   type ChallengeQnaSession,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
+import { deckSchema } from "@orbit/shared/deck";
+import { createAssetUploadUrlRequestSchema } from "@orbit/shared/files";
 import { ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { InjectPinoLogger, PinoLogger } from "nestjs-pino";
 import { randomUUID } from "node:crypto";

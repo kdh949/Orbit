@@ -3,7 +3,8 @@ import type {
   JobQueuePort,
   UpdateJobInput
 } from "@orbit/job-queue";
-import { demoIds, jobSchema, nowIso, type Job } from "@orbit/shared";
+import { demoIds, nowIso } from "@orbit/shared/common";
+import { jobSchema, type Job } from "@orbit/shared/jobs";
 import { randomUUID } from "node:crypto";
 import type { DataSource } from "typeorm";
 

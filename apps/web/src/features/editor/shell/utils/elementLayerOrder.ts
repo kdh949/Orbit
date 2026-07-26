@@ -1,4 +1,4 @@
-import type { DeckElement } from "@orbit/shared";
+import type { DeckElement } from "@orbit/shared/deck";
 
 export type ElementLayerOrderAction =
   | "bring-to-front"

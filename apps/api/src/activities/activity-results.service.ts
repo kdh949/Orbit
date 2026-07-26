@@ -12,9 +12,13 @@ import {
   getPresentationSessionResultsResponseSchema,
   type DeletePresentationSessionResultsRequest,
   getAudienceActiveActivityResponseSchema,
-  getAudienceActivityResponseSchema
-} from "@orbit/shared";
-import type { ActivityAnswer, ActivityPresenterResult, ActivityPublicResult } from "@orbit/shared";
+  getAudienceActivityResponseSchema,
+} from "@orbit/shared/activities";
+import type {
+  ActivityAnswer,
+  ActivityPresenterResult,
+  ActivityPublicResult,
+} from "@orbit/shared/activities";
 import {
   ConflictException,
   Injectable,

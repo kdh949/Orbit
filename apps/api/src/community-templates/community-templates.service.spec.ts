@@ -7,9 +7,9 @@ import {
 import type {
   CommunityTemplateCategory,
   CommunityTemplateSnapshot,
-  Project,
-} from "@orbit/shared";
-import { deckSchema } from "@orbit/shared";
+} from "@orbit/shared/community-templates";
+import type { Project } from "@orbit/shared/projects";
+import { deckSchema } from "@orbit/shared/deck";
 import type { PinoLogger } from "nestjs-pino";
 import type { DataSource, EntityManager } from "typeorm";
 import { describe, expect, it, vi } from "vitest";

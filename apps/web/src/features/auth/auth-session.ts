@@ -2,7 +2,7 @@ import {
   projectTagDefinitionsResponseSchema,
   type CreateProjectTagDefinitionRequest,
   type ProjectTagDefinitionsResponse,
-} from "@orbit/shared";
+} from "@orbit/shared/projects";
 import type { QueryClient } from "@tanstack/react-query";
 
 type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;

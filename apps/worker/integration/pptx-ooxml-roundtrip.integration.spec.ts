@@ -8,13 +8,12 @@ import type { AddressInfo } from "node:net";
 import {
   PPTX_OOXML_SYNC_CAPABILITY_VERSION,
   deckSchema,
-  jobSchema,
   pptxOoxmlGenerationJobResultSchema,
   templateBlueprintSchema,
   type Deck,
   type DeckElement,
-  type Job,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
+import { jobSchema, type Job } from "@orbit/shared/jobs";
 import type {
   StorageObject,
   StoragePort,

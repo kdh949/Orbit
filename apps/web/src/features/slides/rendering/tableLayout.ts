@@ -1,4 +1,4 @@
-import type { TableCellProps, TableElementProps } from "@orbit/shared";
+import type { TableCellProps, TableElementProps } from "@orbit/shared/deck";
 
 export type TableCellLayout = {
   cell: TableCellProps;

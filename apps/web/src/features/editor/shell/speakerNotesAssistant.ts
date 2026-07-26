@@ -1,10 +1,10 @@
 import {
   createSpeakerNotesSuggestionJobResponseSchema,
-  jobSchema,
   speakerNotesSuggestionResultSchema,
   type SpeakerNotesSuggestionRequest,
   type SpeakerNotesSuggestionResult,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
+import { jobSchema } from "@orbit/shared/jobs";
 
 export type SpeakerNotesLengthGuidance = {
   characterCount: number;

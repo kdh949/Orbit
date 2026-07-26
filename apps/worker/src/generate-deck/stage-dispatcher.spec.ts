@@ -1,4 +1,4 @@
-import type { AiDeckGenerationStageMessage } from "@orbit/shared";
+import type { AiDeckGenerationStageMessage } from "@orbit/shared/jobs";
 import { describe, expect, it, vi } from "vitest";
 
 import { dispatchAiDeckGenerationStages } from "./stage-dispatcher";

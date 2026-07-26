@@ -1,4 +1,4 @@
-import type { ProjectTagColor } from "@orbit/shared";
+import type { ProjectTagColor } from "@orbit/shared/projects";
 import { IconCheck } from "@tabler/icons-react";
 
 type ProjectTagChipProps = {

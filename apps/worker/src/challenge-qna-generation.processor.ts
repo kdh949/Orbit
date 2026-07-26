@@ -3,9 +3,8 @@ import {
   challengeQnaGenerationJobPayloadSchema,
   challengeQnaGenerationJobResultSchema,
   challengeSourceReferenceSchema,
-  jobSchema,
-  type Job,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
+import { jobSchema, type Job } from "@orbit/shared/jobs";
 import type { DataSource } from "typeorm";
 import { z } from "zod";
 

@@ -1,4 +1,4 @@
-import type { DeckSnapshot } from "@orbit/shared";
+import type { DeckSnapshot } from "@orbit/shared/deck";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../slides/rendering", () => ({

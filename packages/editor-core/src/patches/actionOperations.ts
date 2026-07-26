@@ -5,9 +5,9 @@ import type {
   DeckSlideAction,
   DeckSlideActionTrigger,
   Keyword,
-  Slide
-} from "@orbit/shared";
-import { keywordSchema } from "@orbit/shared";
+  Slide,
+} from "@orbit/shared/deck";
+import { keywordSchema } from "@orbit/shared/deck";
 
 export type DerivedKeywordUsage = {
   advancesSlide: boolean;

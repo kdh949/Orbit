@@ -1,11 +1,13 @@
 import type {
   ActivityPresenterResult,
   ActivityPublicResult,
-  ActivityResultsSlide,
   ActivityRun,
+} from "@orbit/shared/activities";
+import type {
+  ActivityResultsSlide,
   ActivitySlide,
-  Deck
-} from "@orbit/shared";
+  Deck,
+} from "@orbit/shared/deck";
 import {
   IconBroadcast,
   IconChartBar,

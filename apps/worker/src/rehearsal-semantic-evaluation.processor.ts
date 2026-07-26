@@ -1,12 +1,12 @@
+import { type Job } from "@orbit/shared/jobs";
 import {
   rehearsalEvaluationSnapshotSchema,
   rehearsalReportSchema,
   rehearsalRunMetaSchema,
   rehearsalSemanticEvaluationJobPayloadSchema,
-  type Job,
   type RehearsalEvaluationSnapshot,
-  type RehearsalReport
-} from "@orbit/shared";
+  type RehearsalReport,
+} from "@orbit/shared/rehearsals";
 import type { DataSource } from "typeorm";
 import { z } from "zod";
 import {

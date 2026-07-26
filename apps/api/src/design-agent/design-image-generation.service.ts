@@ -11,7 +11,7 @@ import {
   type DesignImageReferenceAttachment,
   type SelectedDesignImageReference,
   type Slide,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import {
   BadRequestException,
   ConflictException,

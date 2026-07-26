@@ -16,15 +16,15 @@ import {
   createAnimationTimeline,
   getAnimationTimelineRoot
 } from "@orbit/editor-core/playback";
-import { createKeywordOccurrenceId } from "@orbit/shared";
+import { createKeywordOccurrenceId } from "@orbit/shared/deck";
 import type {
   Deck,
   DeckAnimation,
   DeckPatch,
   Keyword,
   Slide,
-  SlideTransition
-} from "@orbit/shared";
+  SlideTransition,
+} from "@orbit/shared/deck";
 import type { MutableRefObject } from "react";
 
 import type { EditorShellUiUpdater } from "../editorShellUiStore";

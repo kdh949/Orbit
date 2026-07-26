@@ -1,4 +1,4 @@
-import type { VerifyAudienceAccessSessionResponse } from "@orbit/shared";
+import type { VerifyAudienceAccessSessionResponse } from "@orbit/shared/presentation";
 
 export async function getAudienceSessionAccess(
   sessionId: string

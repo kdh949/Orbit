@@ -1,7 +1,7 @@
 import {
   referenceExtractionRequestSchema,
-  type ReferenceExtractionRequest
-} from "@orbit/shared";
+  type ReferenceExtractionRequest,
+} from "@orbit/shared/deck";
 import { Body, Controller, Param, Post, Req } from "@nestjs/common";
 import { AuthService } from "../auth/auth.service";
 import {

@@ -1,4 +1,8 @@
-import { createKeywordOccurrenceId, deckSchema, type Deck } from "@orbit/shared";
+import {
+  createKeywordOccurrenceId,
+  deckSchema,
+  type Deck,
+} from "@orbit/shared/deck";
 import { describe, expect, it } from "vitest";
 
 import { createActivitySlide, createDemoDeck } from "../index";

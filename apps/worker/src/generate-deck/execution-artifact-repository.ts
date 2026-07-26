@@ -3,7 +3,7 @@ import {
   aiDeckGenerationStageMessageSchema,
   type AiDeckExecutionArtifactReference,
   type AiDeckGenerationStageMessage,
-} from "@orbit/shared";
+} from "@orbit/shared/jobs";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 

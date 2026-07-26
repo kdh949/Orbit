@@ -1,4 +1,4 @@
-import type { PptxOoxmlStoredAsset } from "@orbit/shared";
+import type { PptxOoxmlStoredAsset } from "@orbit/shared/deck";
 import type { StoragePort } from "@orbit/storage";
 import { createHash } from "node:crypto";
 import type { EntityManager } from "typeorm";

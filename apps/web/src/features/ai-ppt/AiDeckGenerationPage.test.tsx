@@ -1,4 +1,4 @@
-import type { AiDeckPreviewResponse, Deck } from "@orbit/shared";
+import type { AiDeckPreviewResponse, Deck } from "@orbit/shared/deck";
 import { describe, expect, it } from "vitest";
 
 import {

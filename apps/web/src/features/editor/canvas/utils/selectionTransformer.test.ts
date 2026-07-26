@@ -1,4 +1,4 @@
-import type { DeckElement } from "@orbit/shared";
+import type { DeckElement } from "@orbit/shared/deck";
 import { describe, expect, it } from "vitest";
 import {
   getSelectionTransformerConfig,

@@ -1,5 +1,5 @@
 import { applyDeckPatch, createDemoDeck } from "@orbit/editor-core";
-import type { SemanticCue } from "@orbit/shared";
+import type { SemanticCue } from "@orbit/shared/deck";
 import {
   isValidElement,
   type FormEvent,

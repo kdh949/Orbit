@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { PresentationCompanionBootstrap } from "@orbit/shared";
+import type { PresentationCompanionBootstrap } from "@orbit/shared/presentation";
 import {
   IconAlertCircle,
   IconDeviceIpadHorizontal,

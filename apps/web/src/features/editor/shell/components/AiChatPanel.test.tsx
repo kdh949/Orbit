@@ -1,5 +1,5 @@
 import { createActivitySlide, createDemoDeck } from "@orbit/editor-core";
-import { deckElementSchema } from "@orbit/shared";
+import { deckElementSchema } from "@orbit/shared/deck";
 import fs from "node:fs";
 import path from "node:path";
 import { renderToString } from "react-dom/server";

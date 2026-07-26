@@ -1,4 +1,4 @@
-import type { SmartArtLayoutType } from "@orbit/shared";
+import type { SmartArtLayoutType } from "@orbit/shared/deck";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { LessThanOrEqual, MoreThanOrEqual, Repository } from "typeorm";

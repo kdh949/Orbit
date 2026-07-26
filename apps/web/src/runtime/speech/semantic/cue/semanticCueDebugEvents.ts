@@ -1,7 +1,7 @@
 import type {
   SemanticFallbackReason,
-  SemanticMeasurementMode
-} from "@orbit/shared";
+  SemanticMeasurementMode,
+} from "@orbit/shared/rehearsals";
 
 import type { SemanticCueNliProviderId } from "../nli/semanticCueNliProvider";
 

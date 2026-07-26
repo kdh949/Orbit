@@ -1,13 +1,13 @@
+import { legacyRehearsalSlideSpeakingRate } from "@orbit/shared/coaching";
 import {
   legacyRehearsalReportMetricsDefaults,
   legacyRehearsalSilenceAnalysis,
-  legacyRehearsalSlideSpeakingRate,
   legacyRehearsalVolumeAnalysis,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import type {
   RehearsalReport,
   RehearsalSemanticCueOutcome,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import { describe, expect, it } from "vitest";
 import { buildRehearsalRunComparison } from "./rehearsal-run-comparison";
 

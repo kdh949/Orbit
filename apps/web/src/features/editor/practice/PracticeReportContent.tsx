@@ -3,7 +3,7 @@ import type {
   SlidePracticeLoudnessSample,
   SlidePracticeReport,
   SlidePracticeSpeedSample,
-} from "@orbit/shared";
+} from "@orbit/shared/slide-practice";
 
 const graphWidth = 700;
 const graphHeight = 270;

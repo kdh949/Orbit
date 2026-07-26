@@ -1,4 +1,4 @@
-import type { Job } from "@orbit/shared";
+import type { Job } from "@orbit/shared/jobs";
 import { PATH_METADATA } from "@nestjs/common/constants";
 import { describe, expect, it, vi } from "vitest";
 import { authSessionCookieName } from "../auth/auth.constants";

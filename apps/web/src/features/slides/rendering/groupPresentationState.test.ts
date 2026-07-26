@@ -1,4 +1,4 @@
-import type { DeckElement, Slide } from "@orbit/shared";
+import type { DeckElement, Slide } from "@orbit/shared/deck";
 import { describe, expect, it } from "vitest";
 import { p0AnimationDeck } from "../../../runtime/presentation/slideshow/__fixtures__/animationDeck";
 import { resolveGroupedElementPresentationStates } from "./groupPresentationState";

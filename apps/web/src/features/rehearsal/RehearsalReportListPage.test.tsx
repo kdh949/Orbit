@@ -1,4 +1,6 @@
-import type { PresentationRun, Project, RehearsalRun } from "@orbit/shared";
+import type { PresentationRun } from "@orbit/shared/presentation";
+import type { Project } from "@orbit/shared/projects";
+import type { RehearsalRun } from "@orbit/shared/rehearsals";
 import { describe, expect, it } from "vitest";
 import {
   buildProjectReportItems,

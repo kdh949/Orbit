@@ -7,8 +7,8 @@ import type {
   ShapeElementProps,
   TableElementProps,
   Slide,
-  TextElementProps
-} from "@orbit/shared";
+  TextElementProps,
+} from "@orbit/shared/deck";
 import type Konva from "konva";
 import {
   Arrow as KonvaArrowComponent,

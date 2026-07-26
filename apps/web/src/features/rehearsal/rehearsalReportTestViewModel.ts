@@ -1,4 +1,5 @@
-import type { Deck, RehearsalReport } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
+import type { RehearsalReport } from "@orbit/shared/rehearsals";
 import { buildFiveSecondLongSilenceCountBySlide } from "./rehearsalSlideAnalysisModel";
 
 export type TestMetricTone = "danger" | "muted" | "success" | "warning";

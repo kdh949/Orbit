@@ -1,9 +1,6 @@
-import type {
-  Job,
-  PptxImportPreference,
-  Project,
-  ProjectListItem,
-} from "@orbit/shared";
+import type { PptxImportPreference } from "@orbit/shared/deck";
+import type { Job } from "@orbit/shared/jobs";
+import type { Project, ProjectListItem } from "@orbit/shared/projects";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   IconBell,

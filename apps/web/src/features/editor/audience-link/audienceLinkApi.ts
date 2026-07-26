@@ -1,14 +1,14 @@
 import {
   getCurrentPresentationSessionResponseSchema,
   presentationSessionResponseSchema,
-  presentationSessionWithAudienceUrlResponseSchema
-} from "@orbit/shared";
+  presentationSessionWithAudienceUrlResponseSchema,
+} from "@orbit/shared/presentation";
 import type {
   GetCurrentPresentationSessionResponse,
   PresentationAccessMode,
   PresentationSession,
-  PresentationSessionWithAudienceUrlResponse
-} from "@orbit/shared";
+  PresentationSessionWithAudienceUrlResponse,
+} from "@orbit/shared/presentation";
 
 export async function fetchCurrentAudienceAccessSession(
   projectId: string,

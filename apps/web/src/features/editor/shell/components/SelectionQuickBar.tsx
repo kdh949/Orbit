@@ -11,7 +11,7 @@ import type {
   Slide,
   TableElementProps,
   TextElementProps,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import {
   IconAlignBoxCenterBottom as AlignBottom,
   IconAlignBoxCenterMiddle as AlignMiddle,

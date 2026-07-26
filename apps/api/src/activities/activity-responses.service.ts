@@ -3,9 +3,12 @@ import {
   activityAnswerSchema,
   activityDefinitionSchema,
   activityResponseSchema,
-  upsertActivityResponseResponseSchema
-} from "@orbit/shared";
-import type { ActivityAnswer, UpsertActivityResponseRequest } from "@orbit/shared";
+  upsertActivityResponseResponseSchema,
+} from "@orbit/shared/activities";
+import type {
+  ActivityAnswer,
+  UpsertActivityResponseRequest,
+} from "@orbit/shared/activities";
 import { BadRequestException, ConflictException, Injectable, Optional } from "@nestjs/common";
 import { InjectPinoLogger, PinoLogger } from "nestjs-pino";
 

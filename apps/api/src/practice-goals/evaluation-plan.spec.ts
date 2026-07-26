@@ -1,9 +1,9 @@
 import {
-  createRehearsalEvaluationSnapshot,
-  deckSchema,
   presentationBriefSchema,
   rehearsalFocusProfileSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
+import { deckSchema } from "@orbit/shared/deck";
+import { createRehearsalEvaluationSnapshot } from "@orbit/shared/rehearsals";
 import { describe, expect, it } from "vitest";
 
 import {

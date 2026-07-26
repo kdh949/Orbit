@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Slide } from "@orbit/shared";
+import type { Slide } from "@orbit/shared/deck";
 
 import {
   getTriggerAnimationIdsForSlide,

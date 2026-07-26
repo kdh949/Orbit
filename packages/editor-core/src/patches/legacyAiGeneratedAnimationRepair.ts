@@ -1,4 +1,4 @@
-import type { Deck, DeckAnimation, Slide } from "@orbit/shared";
+import type { Deck, DeckAnimation, Slide } from "@orbit/shared/deck";
 
 export function removeLegacyAiGeneratedTitleAnimations(deck: Deck): Deck {
   if (deck.metadata.sourceType !== "ai" || deck.metadata.generatedBy !== "ai") {

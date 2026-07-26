@@ -1,5 +1,5 @@
 import { createDemoDeck } from "@orbit/editor-core";
-import type { SlideQuestionGuide } from "@orbit/shared";
+import type { SlideQuestionGuide } from "@orbit/shared/slide-practice";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 

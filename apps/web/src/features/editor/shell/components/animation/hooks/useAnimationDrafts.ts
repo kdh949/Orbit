@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { DeckAnimationStartMode } from "@orbit/shared";
+import type { DeckAnimationStartMode } from "@orbit/shared/deck";
 
 import type { SupportedAnimationType } from "../types";
 

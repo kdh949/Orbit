@@ -1,5 +1,6 @@
 import { createRealtimeEvent } from "@orbit/realtime";
-import { demoIds, slideChangedPayloadSchema } from "@orbit/shared";
+import { demoIds } from "@orbit/shared/common";
+import { slideChangedPayloadSchema } from "@orbit/shared/realtime";
 import { loadOrbitConfig } from "@orbit/config";
 import {
   ConnectedSocket,

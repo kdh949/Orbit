@@ -3,7 +3,8 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
-import { Project, demoIds } from "@orbit/shared";
+import { demoIds } from "@orbit/shared/common";
+import { Project } from "@orbit/shared/projects";
 import { StoragePort } from "@orbit/storage";
 import { Readable } from "node:stream";
 import { Repository } from "typeorm";

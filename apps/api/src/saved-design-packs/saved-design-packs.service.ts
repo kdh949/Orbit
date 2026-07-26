@@ -9,8 +9,8 @@ import {
   type SavedDesignPack,
   type SavedDesignPackPreferences,
   type SavedDesignPackSnapshot,
-  type UpdateSavedDesignPackRequest
-} from "@orbit/shared";
+  type UpdateSavedDesignPackRequest,
+} from "@orbit/shared/deck";
 import {
   ConflictException,
   ForbiddenException,

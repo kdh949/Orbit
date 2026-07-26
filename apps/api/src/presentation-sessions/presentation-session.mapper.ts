@@ -1,4 +1,4 @@
-import type { PresentationSession } from "@orbit/shared";
+import type { PresentationSession } from "@orbit/shared/presentation";
 import { NotFoundException } from "@nestjs/common";
 
 import type { PresentationSessionRow } from "./presentation-session.repository";

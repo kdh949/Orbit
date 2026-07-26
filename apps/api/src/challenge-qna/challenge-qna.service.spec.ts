@@ -1,4 +1,4 @@
-import { deckSchema } from "@orbit/shared";
+import { deckSchema } from "@orbit/shared/deck";
 import type { EntityManager } from "typeorm";
 import { describe, expect, it, vi } from "vitest";
 import type { DataSource } from "typeorm";

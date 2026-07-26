@@ -1,4 +1,4 @@
-import type { Slide } from "@orbit/shared";
+import type { Slide } from "@orbit/shared/deck";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { LiveSttAudioLevelEvent } from "../../../../runtime/speech/stt/liveSttAdapter";

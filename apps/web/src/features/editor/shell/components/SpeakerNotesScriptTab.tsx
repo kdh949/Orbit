@@ -1,4 +1,4 @@
-import type { Keyword, Slide } from "@orbit/shared";
+import type { Keyword, Slide } from "@orbit/shared/deck";
 import {
   IconCheck as Check,
   IconWand as Wand,

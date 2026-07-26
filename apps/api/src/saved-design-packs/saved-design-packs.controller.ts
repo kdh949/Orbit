@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from "@nestjs/common";
-import { duplicateSavedDesignPackRequestSchema } from "@orbit/shared";
+import { duplicateSavedDesignPackRequestSchema } from "@orbit/shared/deck";
 import { AuthService } from "../auth/auth.service";
 import { getCurrentUser, type SignedCookieRequest } from "../auth/current-user";
 import { parseRequest } from "../common/zod-request";

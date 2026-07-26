@@ -1,13 +1,13 @@
 import { loadOrbitConfig } from "@orbit/config";
 import {
   authResponseSchema,
-  createProjectTagDefinitionRequestSchema,
   loginRequestSchema,
   logoutResponseSchema,
   registerRequestSchema,
-  updateProfileRequestSchema
-} from "@orbit/shared";
-import type { AuthResponse } from "@orbit/shared";
+  updateProfileRequestSchema,
+} from "@orbit/shared/auth";
+import { createProjectTagDefinitionRequestSchema } from "@orbit/shared/projects";
+import type { AuthResponse } from "@orbit/shared/auth";
 import {
   BadRequestException,
   Body,

@@ -1,26 +1,22 @@
 import {
-  Job,
-  type ActiveJobType,
-  type AiDeckExecutionMode,
-  type AiDeckGenerationStage,
-  type AiDeckGenerationStageMessage,
-  aiDeckGenerationStageMessageSchema,
-  deckSchema,
-  demoIds,
-  deckExportFormatSchema,
-  generateDeckRequestSchema,
-  jobSchema,
-  semanticCueExtractionJobPayloadSchema,
-  speakerNotesSuggestionJobPayloadSchema,
-  rehearsalSemanticEvaluationJobPayloadSchema,
+  activityResponseRetentionJobPayloadSchema,
+  type ActivityResponseRetentionJobPayload,
+} from "@orbit/shared/activities";
+import {
   focusedPracticeAnalysisJobPayloadSchema,
   slidePracticeAnalysisJobPayloadSchema,
   challengeQnaGenerationJobPayloadSchema,
   challengeQnaAnswerAnalysisJobPayloadSchema,
-  slideQuestionGuideJobPayloadSchema,
+} from "@orbit/shared/coaching";
+import { demoIds, nowIso } from "@orbit/shared/common";
+import { type AiDeckExecutionMode } from "@orbit/shared/config";
+import {
+  deckSchema,
+  deckExportFormatSchema,
+  generateDeckRequestSchema,
+  semanticCueExtractionJobPayloadSchema,
+  speakerNotesSuggestionJobPayloadSchema,
   designImageGenerationJobPayloadSchema,
-  activityResponseRetentionJobPayloadSchema,
-  nowIso,
   type Deck,
   type DeckExportFormat,
   type PptxOoxmlGenerationRequest,
@@ -28,12 +24,25 @@ import {
   type SavedDesignPackSnapshot,
   type SemanticCueExtractionJobPayload,
   type SpeakerNotesSuggestionJobPayload,
-  type RehearsalSemanticEvaluationJobPayload,
+  type DesignImageGenerationJobPayload,
+} from "@orbit/shared/deck";
+import {
+  Job,
+  type ActiveJobType,
+  type AiDeckGenerationStage,
+  type AiDeckGenerationStageMessage,
+  aiDeckGenerationStageMessageSchema,
+  jobSchema,
+} from "@orbit/shared/jobs";
+import {
   presentationAnalysisJobPayloadSchema,
   type PresentationAnalysisJobPayload,
-  type DesignImageGenerationJobPayload,
-  type ActivityResponseRetentionJobPayload,
-} from "@orbit/shared";
+} from "@orbit/shared/presentation";
+import {
+  rehearsalSemanticEvaluationJobPayloadSchema,
+  type RehearsalSemanticEvaluationJobPayload,
+} from "@orbit/shared/rehearsals";
+import { slideQuestionGuideJobPayloadSchema } from "@orbit/shared/slide-practice";
 import { Queue } from "bullmq";
 
 export interface EnqueueJobInput {
@@ -133,7 +142,7 @@ export interface RehearsalSttBullMqPayload {
   deckId: string;
   audioFileId: string;
   liveTranscript?: string | null;
-  slideTranscriptSnapshots?: import("@orbit/shared").SlideTranscriptSnapshot[];
+  slideTranscriptSnapshots?: import("@orbit/shared/rehearsals").SlideTranscriptSnapshot[];
 }
 
 export interface EnqueueRehearsalSttJobInput extends RehearsalSttBullMqPayload {

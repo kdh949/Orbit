@@ -2,7 +2,7 @@ import {
   createGroupedElementFramePatch,
   normalizeElementFrameDraft
 } from "@orbit/editor-core/patches";
-import type { Deck, DeckElement, DeckPatch, Slide } from "@orbit/shared";
+import type { Deck, DeckElement, DeckPatch, Slide } from "@orbit/shared/deck";
 
 export type DistributeAxis = "x" | "y";
 

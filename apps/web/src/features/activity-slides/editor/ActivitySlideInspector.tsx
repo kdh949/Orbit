@@ -1,4 +1,9 @@
-import type { ActivityDefinition, ActivityQuestion, ActivityQuestionType, ActivitySlide, Deck } from "@orbit/shared";
+import type {
+  ActivityDefinition,
+  ActivityQuestion,
+  ActivityQuestionType,
+} from "@orbit/shared/activities";
+import type { ActivitySlide, Deck } from "@orbit/shared/deck";
 import { IconArrowDown, IconArrowUp, IconExternalLink, IconMessageQuestion, IconTrash } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 

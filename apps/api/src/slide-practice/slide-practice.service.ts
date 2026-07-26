@@ -12,7 +12,7 @@ import {
   upsertVoiceBaselineRequestSchema,
   voiceBaselineRecordSchema,
   slideQuestionGuideTextHashInput,
-} from "@orbit/shared";
+} from "@orbit/shared/slide-practice";
 import { loadOrbitConfig } from "@orbit/config";
 import { enqueueSlidePracticeAnalysisJob } from "@orbit/job-queue";
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";

@@ -6,14 +6,14 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { Deck } from "@orbit/shared/deck";
+import type { PresentationRun } from "@orbit/shared/presentation";
+import type { Project } from "@orbit/shared/projects";
 import type {
-  Deck,
-  PresentationRun,
-  Project,
   RehearsalProjectSummary,
   RehearsalRun,
   RehearsalRunComparison,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import {
   fetchReportProjects,
   fetchProjectRehearsalSummary,

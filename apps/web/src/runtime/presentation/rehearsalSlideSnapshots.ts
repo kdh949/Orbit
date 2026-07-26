@@ -1,4 +1,4 @@
-import type { CreateRehearsalRunRequest } from "@orbit/shared";
+import type { CreateRehearsalRunRequest } from "@orbit/shared/rehearsals";
 
 type SlideSnapshots = NonNullable<CreateRehearsalRunRequest["slideSnapshots"]>;
 

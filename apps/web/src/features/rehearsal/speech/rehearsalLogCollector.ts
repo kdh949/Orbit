@@ -1,8 +1,8 @@
 import type {
   RehearsalRunMeta,
   RehearsalSemanticCueDecision,
-  SemanticCapabilityEvent
-} from "@orbit/shared";
+  SemanticCapabilityEvent,
+} from "@orbit/shared/rehearsals";
 import type { AdviceEventType } from "../../../runtime/speech/tracking/speechTrackingConfig";
 
 export type RehearsalLogSlide = {

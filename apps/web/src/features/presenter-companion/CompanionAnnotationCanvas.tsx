@@ -4,7 +4,7 @@ import type {
   PresentationCompanionOutputState,
   PresentationCompanionPoint,
   PresentationCompanionStroke,
-} from "@orbit/shared";
+} from "@orbit/shared/realtime";
 import {
   useEffect,
   useMemo,

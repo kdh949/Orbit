@@ -1,4 +1,4 @@
-import type { Deck, GroupElementProps, Slide } from "@orbit/shared";
+import type { Deck, GroupElementProps, Slide } from "@orbit/shared/deck";
 import type { ElementPresentationState } from "../../../runtime/presentation/slideshow/elementPresentationState";
 import {
   normalizeRenderableElement,

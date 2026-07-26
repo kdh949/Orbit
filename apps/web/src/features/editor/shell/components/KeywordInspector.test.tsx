@@ -1,4 +1,4 @@
-import { createKeywordOccurrenceId, type Keyword } from "@orbit/shared";
+import { createKeywordOccurrenceId, type Keyword } from "@orbit/shared/deck";
 import fs from "node:fs";
 import path from "node:path";
 import { renderToString } from "react-dom/server";

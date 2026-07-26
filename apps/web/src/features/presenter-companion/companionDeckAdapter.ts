@@ -1,8 +1,5 @@
-import {
-  deckSchema,
-  type CompanionDeckSnapshot,
-  type Deck,
-} from "@orbit/shared";
+import { deckSchema, type Deck } from "@orbit/shared/deck";
+import { type CompanionDeckSnapshot } from "@orbit/shared/presentation";
 
 export function materializeCompanionDeck(
   snapshot: CompanionDeckSnapshot,

@@ -1,4 +1,4 @@
-import type { Deck, DeckAnimation, Slide } from "@orbit/shared";
+import type { Deck, DeckAnimation, Slide } from "@orbit/shared/deck";
 
 const genericExportAnimationTypes = new Set<DeckAnimation["type"]>([
   "appear",

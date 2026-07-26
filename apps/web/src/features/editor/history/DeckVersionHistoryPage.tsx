@@ -1,4 +1,8 @@
-import type { DeckSnapshot, DeckSnapshotDetail, DeckSnapshotReason } from "@orbit/shared";
+import type {
+  DeckSnapshot,
+  DeckSnapshotDetail,
+  DeckSnapshotReason,
+} from "@orbit/shared/deck";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   IconArrowLeft,

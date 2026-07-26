@@ -1,8 +1,8 @@
 import {
   authResponseSchema,
   updateOfficialAvatarRequestSchema,
-} from "@orbit/shared";
-import type { AuthUser } from "@orbit/shared";
+} from "@orbit/shared/auth";
+import type { AuthUser } from "@orbit/shared/auth";
 import {
   BadRequestException,
   Body,

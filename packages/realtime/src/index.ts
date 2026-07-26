@@ -1,15 +1,14 @@
+import { demoIds, nowIso } from "@orbit/shared/common";
+import { CompanionAccessScope } from "@orbit/shared/presentation";
 import {
   WebsocketEvent,
   WebsocketEventType,
   PresentationActivityEvent,
-  CompanionAccessScope,
   PresentationCompanionEvent,
-  demoIds,
-  nowIso,
   presentationActivityEventSchema,
   presentationCompanionEventSchema,
-  websocketEventSchema
-} from "@orbit/shared";
+  websocketEventSchema,
+} from "@orbit/shared/realtime";
 
 export function projectRoomId(projectId = demoIds.projectId): string {
   return projectId;

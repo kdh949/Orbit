@@ -1,4 +1,4 @@
-import type { ActivitySlide, Deck } from "@orbit/shared";
+import type { ActivitySlide, Deck } from "@orbit/shared/deck";
 import type { CSSProperties } from "react";
 
 type ActivityThemeProperties = CSSProperties &

@@ -1,4 +1,5 @@
-import { demoIds, type PublishCommunityTemplateRequest } from "@orbit/shared";
+import { demoIds } from "@orbit/shared/common";
+import { type PublishCommunityTemplateRequest } from "@orbit/shared/community-templates";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 

@@ -1,5 +1,5 @@
 import { createActivitySlide, createDemoDeck } from "@orbit/editor-core";
-import type { ActivityPresenterResult } from "@orbit/shared";
+import type { ActivityPresenterResult } from "@orbit/shared/activities";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 

@@ -1,7 +1,5 @@
-import {
-  rehearsalSemanticCueDecisionSchema,
-  type SemanticCue
-} from "@orbit/shared";
+import { type SemanticCue } from "@orbit/shared/deck";
+import { rehearsalSemanticCueDecisionSchema } from "@orbit/shared/rehearsals";
 import { describe, expect, it, vi } from "vitest";
 
 import { createSemanticCueRuntime } from "./semanticCueRuntime";

@@ -1,4 +1,4 @@
-import type { SemanticCue } from "@orbit/shared";
+import type { SemanticCue } from "@orbit/shared/deck";
 import { describe, expect, it, vi } from "vitest";
 
 import { semanticCueEmbeddingRecallFixture } from "./__fixtures__/semanticCueEmbeddingFixture";

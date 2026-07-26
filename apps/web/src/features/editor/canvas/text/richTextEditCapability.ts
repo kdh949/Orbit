@@ -1,4 +1,4 @@
-import type { Deck, DeckElement } from "@orbit/shared";
+import type { Deck, DeckElement } from "@orbit/shared/deck";
 
 type TextElement = Extract<DeckElement, { type: "text" }>;
 

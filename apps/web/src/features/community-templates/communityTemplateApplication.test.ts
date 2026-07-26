@@ -1,5 +1,5 @@
 import { createDemoDeck, sanitizeCommunityTemplate } from "@orbit/editor-core";
-import type { CommunityTemplateCard } from "@orbit/shared";
+import type { CommunityTemplateCard } from "@orbit/shared/community-templates";
 import { describe, expect, it, vi } from "vitest";
 
 import {

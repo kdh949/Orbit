@@ -5,10 +5,10 @@ import {
   semanticCueExtractionSlideStatusSchema,
   semanticCueSchema,
   type Deck,
-  type Job,
   type SemanticCue,
-  type SemanticCueExtractionResult
-} from "@orbit/shared";
+  type SemanticCueExtractionResult,
+} from "@orbit/shared/deck";
+import { type Job } from "@orbit/shared/jobs";
 import type { DataSource } from "typeorm";
 import { z } from "zod";
 

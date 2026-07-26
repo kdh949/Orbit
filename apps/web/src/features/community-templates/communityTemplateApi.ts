@@ -15,7 +15,7 @@ import {
   type CommunityTemplateApiErrorCode,
   type CommunityTemplateListQuery,
   type CommunityTemplateTagListQuery,
-} from "@orbit/shared";
+} from "@orbit/shared/community-templates";
 
 export type CommunityTemplateFetcher = (
   input: RequestInfo | URL,

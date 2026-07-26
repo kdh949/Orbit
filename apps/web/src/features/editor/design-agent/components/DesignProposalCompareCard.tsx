@@ -1,4 +1,4 @@
-import type { Deck } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
 import { IconArrowRight, IconArrowsMaximize, IconX } from "@tabler/icons-react";
 import { ReadOnlySlideCanvas } from "../../../slides/rendering";
 import {

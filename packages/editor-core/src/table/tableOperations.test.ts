@@ -1,4 +1,8 @@
-import type { Deck, TableCellProps, TableElementProps } from "@orbit/shared";
+import type {
+  Deck,
+  TableCellProps,
+  TableElementProps,
+} from "@orbit/shared/deck";
 import { describe, expect, it } from "vitest";
 import { createDemoDeck } from "../index";
 import { applyDeckPatch } from "../patches/applyPatch";

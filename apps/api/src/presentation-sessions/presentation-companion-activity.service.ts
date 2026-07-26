@@ -1,8 +1,8 @@
+import { activityIdSchema } from "@orbit/shared/activities";
 import {
-  activityIdSchema,
   presentationCompanionActivityProjectionSchema,
   type PresentationCompanionActivityProjection,
-} from "@orbit/shared";
+} from "@orbit/shared/presentation";
 import { Injectable, NotFoundException } from "@nestjs/common";
 
 import { ActivityResultsService } from "../activities/activity-results.service";

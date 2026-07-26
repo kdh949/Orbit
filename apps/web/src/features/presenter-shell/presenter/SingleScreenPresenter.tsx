@@ -1,4 +1,4 @@
-import type { Deck } from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
 import { IconMaximize as Maximize2, IconX as X } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import type { SlideRuntimeHighlight } from "../../slides/rendering";

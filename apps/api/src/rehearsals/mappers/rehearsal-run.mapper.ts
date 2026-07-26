@@ -1,8 +1,8 @@
 import {
   rehearsalFocusProfileSchema,
   type RehearsalFocusProfile,
-  type RehearsalRun,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
+import { type RehearsalRun } from "@orbit/shared/rehearsals";
 
 import type { RehearsalRunEntity } from "../rehearsal-run.entity";
 

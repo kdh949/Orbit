@@ -1,9 +1,5 @@
-import {
-  deckSchema,
-  type Deck,
-  type Job,
-  type SemanticCue
-} from "@orbit/shared";
+import { deckSchema, type Deck, type SemanticCue } from "@orbit/shared/deck";
+import { type Job } from "@orbit/shared/jobs";
 import type { DataSource } from "typeorm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { processSemanticCueExtractionJob } from "./semantic-cue-extraction.processor";

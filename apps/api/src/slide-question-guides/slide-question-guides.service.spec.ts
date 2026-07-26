@@ -1,9 +1,9 @@
+import { deckSchema } from "@orbit/shared/deck";
+import { type Job } from "@orbit/shared/jobs";
 import {
-  deckSchema,
   slideQuestionGuideDeckTextHashInput,
   slideQuestionGuideTextHashInput,
-  type Job,
-} from "@orbit/shared";
+} from "@orbit/shared/slide-practice";
 import { ForbiddenException } from "@nestjs/common";
 import type { DataSource } from "typeorm";
 import { beforeEach, describe, expect, it, vi } from "vitest";

@@ -1,6 +1,9 @@
 import { loadOrbitConfig } from "@orbit/config";
 import { createDemoDeck } from "@orbit/editor-core";
-import { rehearsalEvaluationSnapshotSchema, rehearsalReportSchema } from "@orbit/shared";
+import {
+  rehearsalEvaluationSnapshotSchema,
+  rehearsalReportSchema,
+} from "@orbit/shared/rehearsals";
 import { describe,expect,it } from "vitest";
 import { buildRehearsalEvaluationPlan } from "../practice-goals/evaluation-plan";
 import {

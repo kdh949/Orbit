@@ -1,4 +1,4 @@
-import type { RehearsalProjectSummary } from "@orbit/shared";
+import type { RehearsalProjectSummary } from "@orbit/shared/rehearsals";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { RehearsalProjectSummaryDashboard } from "./RehearsalProjectSummaryDashboard";

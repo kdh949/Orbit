@@ -1,4 +1,4 @@
-import type { ActivitySlide, Deck } from "@orbit/shared";
+import type { ActivitySlide, Deck } from "@orbit/shared/deck";
 import { useQuery } from "@tanstack/react-query";
 import { IconArrowLeft, IconCheck, IconEye } from "@tabler/icons-react";
 import { useEffect, useState } from "react";

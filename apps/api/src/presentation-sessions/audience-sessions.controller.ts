@@ -8,7 +8,7 @@ import {
   Req,
   Res
 } from "@nestjs/common";
-import { joinAudiencePresentationRequestSchema } from "@orbit/shared";
+import { joinAudiencePresentationRequestSchema } from "@orbit/shared/presentation";
 import type { Response } from "express";
 
 import { parseRequest } from "../common/zod-request";

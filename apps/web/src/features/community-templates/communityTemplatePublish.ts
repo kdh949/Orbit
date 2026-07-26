@@ -2,7 +2,7 @@ import {
   publishCommunityTemplateRequestSchema,
   type CommunityTemplateCategory,
   type PublishCommunityTemplateRequest,
-} from "@orbit/shared";
+} from "@orbit/shared/community-templates";
 
 export type CommunityTemplatePublishDraft = {
   sourceProjectId: string;

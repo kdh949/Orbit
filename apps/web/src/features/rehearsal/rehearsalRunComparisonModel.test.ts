@@ -1,7 +1,7 @@
 import type {
   RehearsalComparisonIssue,
   RehearsalRunComparison,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import { createDemoDeck } from "@orbit/editor-core";
 import { describe, expect, it } from "vitest";
 import {

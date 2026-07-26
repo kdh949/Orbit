@@ -1,4 +1,4 @@
-import type { QualityReport, SlideImportRenderMode } from "@orbit/shared";
+import type { QualityReport, SlideImportRenderMode } from "@orbit/shared/deck";
 
 export type PptxImportState =
   | { status: "idle"; warnings: string[]; qualityReport: null; message: string }

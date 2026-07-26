@@ -1,4 +1,7 @@
-import { projectApiErrorSchema, type ProjectApiError } from "@orbit/shared";
+import {
+  projectApiErrorSchema,
+  type ProjectApiError,
+} from "@orbit/shared/projects";
 import { Injectable, ServiceUnavailableException } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";

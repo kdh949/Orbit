@@ -1,8 +1,8 @@
+import type { Deck } from "@orbit/shared/deck";
 import type {
-  Deck,
   RehearsalComparisonIssue,
   RehearsalRunComparison,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 
 export type RehearsalRunComparisonItemViewModel = RehearsalComparisonIssue & {
   categoryLabel: string;

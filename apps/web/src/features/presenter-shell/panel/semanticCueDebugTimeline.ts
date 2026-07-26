@@ -3,8 +3,8 @@ import type {
   SemanticCapabilityEvent,
   SemanticCapabilityState,
   SemanticFallbackReason,
-  SemanticMeasurementMode
-} from "@orbit/shared";
+  SemanticMeasurementMode,
+} from "@orbit/shared/rehearsals";
 
 import type { SemanticCueDebugEvent } from "../../../runtime/speech/semantic/cue/semanticCueDebugEvents";
 

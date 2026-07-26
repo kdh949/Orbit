@@ -3,9 +3,8 @@ import {
   challengeQnaAnswerAnalysisJobPayloadSchema,
   challengeQnaAnswerAnalysisJobResultSchema,
   coachingErrorCodeSchema,
-  jobSchema,
-  type Job,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
+import { jobSchema, type Job } from "@orbit/shared/jobs";
 import { createHash } from "node:crypto";
 import type { DataSource } from "typeorm";
 import { z } from "zod";

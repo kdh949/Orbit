@@ -1,5 +1,5 @@
 import { createDemoDeck } from "@orbit/editor-core";
-import type { Deck, TextElementProps } from "@orbit/shared";
+import type { Deck, TextElementProps } from "@orbit/shared/deck";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 

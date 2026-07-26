@@ -20,10 +20,10 @@ import {
   type TableOperation,
   type TableCellRange,
 } from "@orbit/editor-core/table";
+import type { ActivityTemplate } from "@orbit/shared/activities";
 import type {
   Chart,
   CustomShapeNode,
-  ActivityTemplate,
   Deck,
   DeckElement,
   DeckElementRole,
@@ -33,7 +33,7 @@ import type {
   Slide,
   TableCellProps,
   TableElementProps,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import { useEffect, useRef, type MutableRefObject } from "react";
 
 import { resolveRedesignPalette } from "../../../../styles/redesignPalette";

@@ -1,8 +1,8 @@
 import type {
   DeckAnimation,
   DeckAnimationStartMode,
-  DeckElement
-} from "@orbit/shared";
+  DeckElement,
+} from "@orbit/shared/deck";
 import type { AnimationKeywordTriggerOption } from "./models";
 
 export type SupportedAnimationType = "fade-in" | "fade-out";

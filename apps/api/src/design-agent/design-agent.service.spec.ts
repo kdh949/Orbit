@@ -1,5 +1,5 @@
 import { applyDeckPatch, createDemoDeck } from "@orbit/editor-core";
-import { deckElementSchema, type DeckPatch } from "@orbit/shared";
+import { deckElementSchema, type DeckPatch } from "@orbit/shared/deck";
 import type { Repository } from "typeorm";
 import { describe, expect, it, vi } from "vitest";
 import type { DecksService } from "../decks/decks.service";

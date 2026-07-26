@@ -1,7 +1,5 @@
-import type {
-  Deck,
-  PresentationCompanionAnnotationSnapshot,
-} from "@orbit/shared";
+import type { Deck } from "@orbit/shared/deck";
+import type { PresentationCompanionAnnotationSnapshot } from "@orbit/shared/realtime";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   observeAudienceStreamInWindow,

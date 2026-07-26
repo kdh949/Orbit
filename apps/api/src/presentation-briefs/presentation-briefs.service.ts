@@ -6,7 +6,7 @@ import {
   type ApprovedReferenceSnapshotRef,
   type BriefRequirement,
   type PutPresentationBriefRequest,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { createHash, randomUUID } from "node:crypto";

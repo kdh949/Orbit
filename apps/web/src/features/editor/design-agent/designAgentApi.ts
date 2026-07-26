@@ -3,14 +3,14 @@ import {
   createDesignAgentMessageResponseSchema,
   createDesignImageGenerationResponseSchema,
   designImageGenerationResultSchema,
-  jobSchema,
   type ApplyDesignAgentProposalResponse,
   type CreateDesignAgentMessageRequest,
   type CreateDesignAgentMessageResponse,
   type CreateDesignImageGenerationRequest,
   type CreateDesignImageGenerationResponse,
-  type DesignImageGenerationResult
-} from "@orbit/shared";
+  type DesignImageGenerationResult,
+} from "@orbit/shared/deck";
+import { jobSchema } from "@orbit/shared/jobs";
 
 export async function createDesignAgentMessage(
   projectId: string,

@@ -1,4 +1,4 @@
-import type { CommunityTemplateCard as CommunityTemplateCardValue } from "@orbit/shared";
+import type { CommunityTemplateCard as CommunityTemplateCardValue } from "@orbit/shared/community-templates";
 
 import { OrbitButton } from "../../components/ui";
 import { CommunityTemplateCard } from "./CommunityTemplateCard";

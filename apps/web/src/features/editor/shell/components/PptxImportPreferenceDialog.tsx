@@ -1,4 +1,4 @@
-import type { PptxImportPreference } from "@orbit/shared";
+import type { PptxImportPreference } from "@orbit/shared/deck";
 import { useEffect, useState } from "react";
 
 import { OrbitButton, OrbitDialog } from "../../../../components/ui";

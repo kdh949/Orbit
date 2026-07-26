@@ -1,9 +1,9 @@
+import type { Deck } from "@orbit/shared/deck";
 import type {
-  Deck,
   RehearsalReport,
   RehearsalSemanticCueOutcome,
   SemanticFallbackReason,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 
 type SemanticTone = "success" | "warning" | "danger" | "muted";
 

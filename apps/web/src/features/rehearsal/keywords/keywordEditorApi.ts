@@ -2,9 +2,9 @@ import {
   appendDeckPatchResponseSchema,
   deckApiErrorSchema,
   getDeckResponseSchema,
-  putDeckResponseSchema
-} from "@orbit/shared";
-import type { Deck, GetDeckResponse } from "@orbit/shared";
+  putDeckResponseSchema,
+} from "@orbit/shared/deck";
+import type { Deck, GetDeckResponse } from "@orbit/shared/deck";
 
 import { applyKeywordsToDeck, buildReplaceKeywordsRequest } from "./keywordEditorModel";
 

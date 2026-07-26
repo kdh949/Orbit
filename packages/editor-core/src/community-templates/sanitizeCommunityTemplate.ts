@@ -3,19 +3,21 @@ import {
   communityTemplateFontFamilySchema,
   communityTemplatePatternPresetSchema,
   communityTemplateSnapshotSchema,
-  deckSchema,
   maxCommunityTemplateSlides,
   maxCommunityTemplateSnapshotBytes,
-} from "@orbit/shared";
+} from "@orbit/shared/community-templates";
+import { deckSchema } from "@orbit/shared/deck";
 import type {
   CommunityTemplateElement,
   CommunityTemplateSnapshot,
+} from "@orbit/shared/community-templates";
+import type {
   Deck,
   DeckElement,
   DeckElementPaint,
   DeckTheme,
   ShapeElementProps,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 
 export type CommunityTemplateSanitizationErrorCode =
   | "COMMUNITY_TEMPLATE_ACTIVITY_UNSUPPORTED"

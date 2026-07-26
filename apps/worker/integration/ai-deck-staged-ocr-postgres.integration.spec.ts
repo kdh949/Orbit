@@ -1,4 +1,4 @@
-import { referenceExtractionResultSchema } from "@orbit/shared";
+import { referenceExtractionResultSchema } from "@orbit/shared/deck";
 import { DataSource } from "typeorm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 

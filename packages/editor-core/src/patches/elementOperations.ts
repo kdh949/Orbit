@@ -1,4 +1,4 @@
-import type { Deck, DeckElement, DeckPatch } from "@orbit/shared";
+import type { Deck, DeckElement, DeckPatch } from "@orbit/shared/deck";
 
 type ElementIdKind = "element";
 

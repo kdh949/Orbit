@@ -1,6 +1,6 @@
 import { loadOrbitConfig } from "@orbit/config";
 import { Body, Controller, Get, Param, Put, Req } from "@nestjs/common";
-import { upsertActivityResponseRequestSchema } from "@orbit/shared";
+import { upsertActivityResponseRequestSchema } from "@orbit/shared/activities";
 
 import { parseRequest } from "../common/zod-request";
 import {

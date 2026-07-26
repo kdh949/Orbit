@@ -1,13 +1,13 @@
 import { normalizeRichTextProps } from "@orbit/editor-core/text";
 import {
-  maxAssetUploadSizeBytes,
   type CustomShapeNode,
   type Deck,
   type DeckCanvas,
   type DeckElement,
   type Slide,
   type TextElementProps,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
+import { maxAssetUploadSizeBytes } from "@orbit/shared/files";
 import type Konva from "konva";
 import type { Box as TransformerBox } from "konva/lib/shapes/Transformer";
 import {

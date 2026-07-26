@@ -2,7 +2,7 @@ import { createDemoDeck } from "@orbit/editor-core";
 import {
   slideQuestionGuideTextHashInput,
   type SlidePracticeReportV3,
-} from "@orbit/shared";
+} from "@orbit/shared/slide-practice";
 import { ConflictException } from "@nestjs/common";
 import type { DataSource } from "typeorm";
 import { beforeEach, describe, expect, it, vi } from "vitest";

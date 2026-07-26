@@ -214,11 +214,19 @@ function renderImport({
   if (elements.length > 0) {
     parts.push(`{ ${elements.join(", ")} }`);
   }
-  return `import ${isTypeOnly ? "type " : ""}${parts.join(", ")} from ${quote}${specifier}${quote};`;
+  const statement = `import ${isTypeOnly ? "type " : ""}${parts.join(", ")} from ${quote}${specifier}${quote};`;
+  if (statement.length <= 80 || defaultImport || elements.length <= 1) {
+    return statement;
+  }
+  return `import ${isTypeOnly ? "type " : ""}{\n  ${elements.join(",\n  ")},\n} from ${quote}${specifier}${quote};`;
 }
 
 function renderExport({ elements, isTypeOnly, quote, specifier }) {
-  return `export ${isTypeOnly ? "type " : ""}{ ${elements.join(", ")} } from ${quote}${specifier}${quote};`;
+  const statement = `export ${isTypeOnly ? "type " : ""}{ ${elements.join(", ")} } from ${quote}${specifier}${quote};`;
+  if (statement.length <= 80 || elements.length <= 1) {
+    return statement;
+  }
+  return `export ${isTypeOnly ? "type " : ""}{\n  ${elements.join(",\n  ")},\n} from ${quote}${specifier}${quote};`;
 }
 
 function conflictFor(file, sourceFile, node, details) {

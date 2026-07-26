@@ -25,7 +25,7 @@ import {
   updateCommunityTemplateReportRequestSchema,
   updateCommunityTemplateRequestSchema,
   useCommunityTemplateRequestSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/community-templates";
 import { z } from "zod";
 
 import { AuthService } from "../auth/auth.service";

@@ -3,7 +3,7 @@ import type {
   DeckPatch,
   TableCellProps,
   TableElementProps,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 
 export type TableStructureDisabledReason =
   | "empty-grid"

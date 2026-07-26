@@ -1,5 +1,6 @@
 import { CalendarDays, Loader2 } from "lucide-react";
-import type { PresentationRun, RehearsalRun } from "@orbit/shared";
+import type { PresentationRun } from "@orbit/shared/presentation";
+import type { RehearsalRun } from "@orbit/shared/rehearsals";
 import { getRehearsalReportPath } from "../rehearsal/rehearsalRoutes";
 import {
   navigateTo,

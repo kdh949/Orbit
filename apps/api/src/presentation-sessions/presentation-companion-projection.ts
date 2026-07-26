@@ -1,10 +1,8 @@
+import { type Deck, type DeckElement, type Slide } from "@orbit/shared/deck";
 import {
   companionDeckSnapshotSchema,
   type CompanionDeckSnapshot,
-  type Deck,
-  type DeckElement,
-  type Slide,
-} from "@orbit/shared";
+} from "@orbit/shared/presentation";
 
 export type PresentationCompanionProjection = {
   deck: CompanionDeckSnapshot;

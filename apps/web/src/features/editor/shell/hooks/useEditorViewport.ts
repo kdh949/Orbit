@@ -1,4 +1,4 @@
-import type { DeckCanvas } from "@orbit/shared";
+import type { DeckCanvas } from "@orbit/shared/deck";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {

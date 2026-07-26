@@ -3,7 +3,7 @@ import {
   legacyRehearsalReportMetricsDefaults,
   rehearsalEvaluationSnapshotSchema,
   rehearsalReportSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import type { DataSource } from "typeorm";
 import { describe, expect, it, vi } from "vitest";
 

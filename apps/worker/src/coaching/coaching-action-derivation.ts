@@ -5,7 +5,7 @@ import {
   type EvaluationCriterion,
   type PracticeGoal,
   type ReportObservation,
-} from "@orbit/shared";
+} from "@orbit/shared/coaching";
 import { createHash } from "node:crypto";
 
 export function deriveCoachingActions(input: {

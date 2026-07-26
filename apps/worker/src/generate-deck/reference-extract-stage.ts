@@ -1,12 +1,12 @@
+import { generateDeckStoredJobPayloadSchema } from "@orbit/shared/deck";
+import { allowedAssetMimeTypes } from "@orbit/shared/files";
 import {
   aiDeckGenerationStageMessageSchema,
-  allowedAssetMimeTypes,
-  generateDeckStoredJobPayloadSchema,
   jobErrorSchema,
   type AiDeckGenerationStageMessage,
   type Job,
   type JobError,
-} from "@orbit/shared";
+} from "@orbit/shared/jobs";
 import type { StoragePort } from "@orbit/storage";
 import type { DataSource } from "typeorm";
 import { z } from "zod";

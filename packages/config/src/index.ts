@@ -13,8 +13,8 @@ import {
   openAiRealtimeTranscriptionDelaySchema,
   openAiRehearsalAudioMaxBytes,
   reportSttProviderSchema,
-  storageDriverSchema
-} from "@orbit/shared";
+  storageDriverSchema,
+} from "@orbit/shared/config";
 import { ZodError, z } from "zod";
 
 const booleanStringSchema = z.preprocess((value) => {

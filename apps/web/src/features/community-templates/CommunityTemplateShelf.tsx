@@ -1,4 +1,4 @@
-import type { CommunityTemplateCard as CommunityTemplateCardValue } from "@orbit/shared";
+import type { CommunityTemplateCard as CommunityTemplateCardValue } from "@orbit/shared/community-templates";
 import { IconChevronRight, IconPlus } from "@tabler/icons-react";
 
 import { CommunityTemplateCard } from "./CommunityTemplateCard";

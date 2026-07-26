@@ -1,4 +1,4 @@
-import type { SlidePracticeReportRecord } from "@orbit/shared";
+import type { SlidePracticeReportRecord } from "@orbit/shared/slide-practice";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { submitSlidePracticeAudio } from "./slidePracticeApi";

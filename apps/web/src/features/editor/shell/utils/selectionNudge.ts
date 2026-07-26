@@ -8,7 +8,7 @@ import type {
   DeckPatch,
   GroupElementProps,
   Slide,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 
 export function createSelectionNudgePatch(args: {
   deck: Deck;

@@ -1,4 +1,4 @@
-import type { ActivitySlide, Deck } from "@orbit/shared";
+import type { ActivitySlide, Deck } from "@orbit/shared/deck";
 import { useEffect, useState } from "react";
 
 import { createActivityThemeStyle } from "../rendering/activityThemeStyle";

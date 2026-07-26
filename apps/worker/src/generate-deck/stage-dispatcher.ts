@@ -3,7 +3,7 @@ import {
   type AiDeckGenerationStageEnqueueResult,
   type EnqueueAiDeckGenerationStageJobInput,
 } from "@orbit/job-queue";
-import type { AiDeckGenerationStageMessage } from "@orbit/shared";
+import type { AiDeckGenerationStageMessage } from "@orbit/shared/jobs";
 
 import type { DispatchableAiDeckGenerationStage } from "./stage-checkpoint-repository";
 

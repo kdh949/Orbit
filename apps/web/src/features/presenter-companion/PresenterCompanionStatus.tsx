@@ -7,7 +7,7 @@ import { useState } from "react";
 import type {
   PresentationCompanionStatus as CompanionStatus,
   PresentationSessionPurpose,
-} from "@orbit/shared";
+} from "@orbit/shared/presentation";
 import { disconnectPresenterCompanion } from "./presenterCompanionApi";
 import {
   PresenterCompanionSetup,

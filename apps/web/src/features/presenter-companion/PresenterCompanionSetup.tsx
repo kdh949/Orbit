@@ -17,7 +17,7 @@ import {
 import type {
   PresentationCompanionPairingResponse,
   PresentationSessionPurpose,
-} from "@orbit/shared";
+} from "@orbit/shared/presentation";
 import { GradientButton } from "../../components/ui";
 import { createPresenterCompanionPairing } from "./presenterCompanionApi";
 import {

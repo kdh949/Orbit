@@ -1,4 +1,4 @@
-import type { Keyword } from "@orbit/shared";
+import type { Keyword } from "@orbit/shared/deck";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 

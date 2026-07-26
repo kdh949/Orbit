@@ -4,7 +4,7 @@ import {
   presentationCompanionMaxPrompterRows,
   type PresentationCompanionPrompterRow,
   type PresentationCompanionPrompterState,
-} from "@orbit/shared";
+} from "@orbit/shared/realtime";
 
 export type CompanionPrompterProjection = Omit<
   PresentationCompanionPrompterState,

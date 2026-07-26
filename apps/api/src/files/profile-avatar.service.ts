@@ -1,4 +1,4 @@
-import { avatarFileIdSchema, type AuthAvatar } from "@orbit/shared";
+import { avatarFileIdSchema, type AuthAvatar } from "@orbit/shared/auth";
 import { StoragePort } from "@orbit/storage";
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";

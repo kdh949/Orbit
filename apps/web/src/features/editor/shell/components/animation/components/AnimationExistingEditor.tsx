@@ -1,4 +1,4 @@
-import type { DeckAnimation } from "@orbit/shared";
+import type { DeckAnimation } from "@orbit/shared/deck";
 
 import { AnimationPanelSection } from "./AnimationPanelSection";
 import { getAnimationTypeLabel } from "../utils/animationUi";

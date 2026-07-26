@@ -1,7 +1,5 @@
-import type {
-  ActivitySessionResultItem,
-  PresentationRunStatus,
-} from "@orbit/shared";
+import type { ActivitySessionResultItem } from "@orbit/shared/activities";
+import type { PresentationRunStatus } from "@orbit/shared/presentation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   IconArrowLeft,

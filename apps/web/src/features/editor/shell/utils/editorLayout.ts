@@ -3,8 +3,8 @@ import type {
   DeckCanvas,
   DeckElement,
   ImageElementProps,
-  Slide
-} from "@orbit/shared";
+  Slide,
+} from "@orbit/shared/deck";
 import type { CSSProperties } from "react";
 
 import { resolveEditorAssetUrl } from "../../shared/editorAssetUrl";

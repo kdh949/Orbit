@@ -1,6 +1,6 @@
 import { loadOrbitConfig } from "@orbit/config";
-import { authSessionSchema } from "@orbit/shared";
-import type { AuthSession } from "@orbit/shared";
+import { authSessionSchema } from "@orbit/shared/auth";
+import type { AuthSession } from "@orbit/shared/auth";
 import { Injectable, OnModuleDestroy } from "@nestjs/common";
 import { createHmac } from "node:crypto";
 import Redis from "ioredis";

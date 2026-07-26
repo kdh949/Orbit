@@ -1,17 +1,19 @@
 import {
-  aiDeckGenerationStageSchema,
-  aiDeckGenerationStageStatusSchema,
   aiDeckPreviewResponseSchema,
   deckShellSchema,
   deckSchema,
   effectiveGeneratedSlideCountRange,
   generateDeckResponseSchema,
   generateDeckStoredJobPayloadSchema,
-  jobErrorSchema,
   slideSchema,
   type AiDeckPreviewResponse,
   type Deck,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
+import {
+  aiDeckGenerationStageSchema,
+  aiDeckGenerationStageStatusSchema,
+  jobErrorSchema,
+} from "@orbit/shared/jobs";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import type { DataSource } from "typeorm";

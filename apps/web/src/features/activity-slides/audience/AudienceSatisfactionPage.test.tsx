@@ -4,8 +4,8 @@ import { createActivitySlide, createDemoDeck } from "@orbit/editor-core";
 import {
   activityPublicResultSchema,
   activityResponseSchema,
-  activityRunSchema
-} from "@orbit/shared";
+  activityRunSchema,
+} from "@orbit/shared/activities";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 

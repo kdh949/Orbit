@@ -7,7 +7,7 @@ import type {
   DeckPatchOperation,
   SemanticCue,
   Slide,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 
 import { createDemoDeck } from "../index";
 import { applyRichTextCharacterStyle } from "../text/richTextOperations";

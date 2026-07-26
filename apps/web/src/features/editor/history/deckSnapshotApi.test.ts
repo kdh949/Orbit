@@ -1,5 +1,5 @@
 import { createDemoDeck } from "@orbit/editor-core";
-import type { DeckSnapshot } from "@orbit/shared";
+import type { DeckSnapshot } from "@orbit/shared/deck";
 import { describe, expect, it, vi } from "vitest";
 
 import { fetchDeckSnapshot, fetchDeckSnapshots, restoreDeckSnapshot } from "./deckSnapshotApi";

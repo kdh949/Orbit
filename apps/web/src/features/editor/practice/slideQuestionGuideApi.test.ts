@@ -1,5 +1,5 @@
 import { createDemoDeck } from "@orbit/editor-core";
-import { slideQuestionGuideTextHashInput } from "@orbit/shared";
+import { slideQuestionGuideTextHashInput } from "@orbit/shared/slide-practice";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {

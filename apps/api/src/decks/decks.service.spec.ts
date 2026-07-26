@@ -5,13 +5,13 @@ import {
   deckApiErrorSchema,
   deckSchema,
   createKeywordOccurrenceId,
-  jobSchema,
   type Deck,
   type DeckApiError,
   type DeckElement,
   type DeckPatch,
   type DeckSnapshotReason,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
+import { jobSchema } from "@orbit/shared/jobs";
 import type { DataSource, EntityManager } from "typeorm";
 import type { PinoLogger } from "nestjs-pino";
 import { afterEach, describe, expect, it, vi } from "vitest";

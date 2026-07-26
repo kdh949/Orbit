@@ -3,7 +3,7 @@ import {
   generateDeckDesignSelectionSchema,
   generateDeckJobResultSchema,
   generateDeckStoredJobPayloadSchema,
-} from "@orbit/shared";
+} from "@orbit/shared/deck";
 import { ServiceUnavailableException } from "@nestjs/common";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DesignSelectionService } from "./design-selection.service";

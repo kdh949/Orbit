@@ -1,4 +1,4 @@
-import type { TextElementProps } from "@orbit/shared";
+import type { TextElementProps } from "@orbit/shared/deck";
 import { describe, expect, it, vi } from "vitest";
 import {
   measureRichTextFragment,

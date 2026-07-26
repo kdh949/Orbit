@@ -1,11 +1,13 @@
 import {
   generateDeckStoredJobPayloadSchema,
+  type GenerateDeckRequest,
+} from "@orbit/shared/deck";
+import {
   jobErrorSchema,
   jobSchema,
   jobStatusSchema,
-  type GenerateDeckRequest,
   type Job,
-} from "@orbit/shared";
+} from "@orbit/shared/jobs";
 import type { DataSource } from "typeorm";
 import { z } from "zod";
 
