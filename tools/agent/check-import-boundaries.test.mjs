@@ -8,6 +8,7 @@ import {
   checkImportBoundaries,
   findForbiddenWebFeatureImports,
   findPackageSourceImports,
+  findSharedRootImports,
   findWebRuntimeFeatureImports,
 } from "./check-import-boundaries.mjs";
 
@@ -38,6 +39,49 @@ import { Deck } from "@orbit/shared";
 import { helper } from "./src/helper";
 `),
     [],
+  );
+});
+
+test("production shared root import를 막고 subpath와 test compatibility는 허용한다", () => {
+  const root = mkdtempSync(join(tmpdir(), "orbit-import-boundaries-"));
+  const productionFile = join(root, "apps/api/src/example.ts");
+  const testFile = join(root, "apps/api/src/example.test.ts");
+
+  assert.deepEqual(
+    findSharedRootImports(
+      'import { Deck } from "@orbit/shared";\n' +
+        'import { Job } from "@orbit/shared/jobs";\n',
+      productionFile,
+      root,
+    ),
+    [{ line: 1, specifier: "@orbit/shared" }],
+  );
+  assert.deepEqual(
+    findSharedRootImports(
+      'import { Deck } from "@orbit/shared";\n',
+      testFile,
+      root,
+    ),
+    [],
+  );
+});
+
+test("신규 shared root importer를 경계 위반으로 보고한다", () => {
+  const root = mkdtempSync(join(tmpdir(), "orbit-import-boundaries-"));
+  writeFixture(
+    root,
+    "packages/example/src/index.ts",
+    'export { Deck } from "@orbit/shared";\n',
+  );
+
+  assert.deepEqual(
+    checkImportBoundaries(root).map(({ file, code }) => ({ file, code })),
+    [
+      {
+        file: "packages/example/src/index.ts",
+        code: "FORBIDDEN_SHARED_ROOT_IMPORT",
+      },
+    ],
   );
 });
 
