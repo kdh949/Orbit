@@ -3,7 +3,10 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const editorShellSource = fs.readFileSync(
-  path.join(process.cwd(), "src/features/editor/shell/EditorShell.tsx"),
+  path.join(
+    process.cwd(),
+    "src/features/editor/shell/EditorShellController.tsx",
+  ),
   "utf8",
 );
 
