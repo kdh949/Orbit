@@ -36,6 +36,9 @@ These rules apply to `services/python-worker`.
 ## Testing
 
 - Add or update the narrowest pytest module for each behavior change.
+- When the domain is registered, prefer
+  `pnpm verify:scope python:<domain> --dry-run` from the repository root,
+  followed by the same command without `--dry-run`.
 - Run focused checks first:
 
 ```bash

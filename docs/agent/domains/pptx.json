@@ -33,8 +33,10 @@
     "services/python-worker/tests/test_pptx_ooxml_sync_api.py"
   ],
   "fastChecks": [
-    "pnpm turbo run test --filter=@orbit/api -- src/pptx-ooxml-generations/pptx-ooxml-generations.service.spec.ts",
-    "pnpm turbo run test --filter=@orbit/worker -- src/pptx-ooxml-sync.processor.spec.ts",
+    "pnpm turbo run typecheck --filter=@orbit/api --env-mode=loose",
+    "pnpm turbo run test --filter=@orbit/api --env-mode=loose -- src/pptx-ooxml-generations/pptx-ooxml-generations.service.spec.ts",
+    "pnpm turbo run typecheck --filter=@orbit/worker --env-mode=loose",
+    "pnpm turbo run test --filter=@orbit/worker --env-mode=loose -- src/pptx-ooxml-sync.processor.spec.ts",
     "cd services/python-worker && uv run pytest tests/test_pptx_ooxml_sync_api.py"
   ],
   "fullCheckTriggers": [

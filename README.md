@@ -199,6 +199,8 @@ docs/               Architecture, conventions, runbooks, and research
 | ---------------------------------- | -------------------- |
 | `pnpm build`                       | workspace 전체 빌드  |
 | `pnpm format:check`                | 변경 파일 포맷 검사  |
+| `pnpm verify:scope <scope>`        | domain별 빠른 검증   |
+| `pnpm verify:affected`             | 변경 영향 범위 검증  |
 | `pnpm test`                        | workspace 테스트     |
 | `pnpm typecheck`                   | TypeScript typecheck |
 | `node infra/scripts/check-env.mjs` | 환경변수 계약 검증   |

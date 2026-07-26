@@ -100,6 +100,11 @@
 root build 설정, lockfile처럼 여러 workspace에 영향을 주는 변경만 전체 검증으로
 승격한다.
 
+등록된 domain 작업은 `pnpm agent:context <domain>`으로 범위를 확인하고
+`pnpm verify:scope <area>:<domain>`으로 검증한다. 여러 workspace에 걸친 변경은
+`pnpm verify:affected`를 사용하며, 실행 전 `--dry-run`으로 승격 여부를 확인할 수
+있다. 상세 규칙은 `docs/agent/verification.md`를 따른다.
+
 전체 TypeScript 검증이 필요한 경우:
 
 ```bash
