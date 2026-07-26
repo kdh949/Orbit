@@ -53,6 +53,8 @@
 
 ## Git, 브랜치, PR 규칙
 
+- 별도 언급이 없으면 GitHub 원격 조회, push, PR, review, merge는 `kdh949/Orbit`만 대상으로 한다.
+- 다른 fork, upstream, 조직 저장소는 사용자가 명시적으로 요청한 경우에만 조회하거나 변경한다.
 - 기본 브랜치 전략은 GitHub Flow를 사용한다.
 - `main`에 직접 커밋하지 않는다.
 - 모든 작업은 브랜치에서 진행하고 PR로 병합한다.

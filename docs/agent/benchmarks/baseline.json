@@ -1,11 +1,10 @@
 {
-  "schemaVersion": 2,
-  "toolVersion": 2,
-  "capturedAt": "2026-07-26T11:40:49.585Z",
-  "headCommit": null,
-  "treeHash": null,
+  "schemaVersion": 3,
+  "toolVersion": 3,
+  "capturedAt": "2026-07-26T12:27:55.011Z",
+  "headCommit": "3b045d7b8fdcf7adb1121227879adf316c865c4c",
+  "treeHash": "78eb72732526a350f3381ab9226ecfca430d36fa",
   "workingTreeDirty": false,
-  "sourceArchiveSha256": "7b5b3df6dba8d115933cd531b864396081f01eaf461e6f54d26b14ab4c32e27d",
   "structural": {
     "agentDomainManifests": 0,
     "cssDuplicateOccurrences": 1895,
@@ -71,18 +70,6 @@
     "sourceInspectionTestFiles": 32,
     "testSharedRootImportFiles": 173
   },
-  "macroRuns": [
-    {
-      "kind": "macro-refactor",
-      "elapsedSeconds": 13020,
-      "reportedTokens": 3257365,
-      "sourceArchiveSha256": "7b5b3df6dba8d115933cd531b864396081f01eaf461e6f54d26b14ab4c32e27d",
-      "resultArchiveSha256": "b97049970af3573a71cc499785a176de468d0f6d11cc90c25d51415bc94b9367",
-      "filesAdded": 238,
-      "filesRemoved": 132,
-      "filesChanged": 169
-    }
-  ],
   "manualBenchmark": {
     "status": "pending",
     "initialRunsPerTask": 1,
