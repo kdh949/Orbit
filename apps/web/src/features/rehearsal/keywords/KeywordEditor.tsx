@@ -1,4 +1,4 @@
-import { createDemoDeck } from "@orbit/editor-core";
+import { createDemoDeck } from "@orbit/editor-core/fixtures";
 import { demoIds } from "@orbit/shared";
 import type { Deck, Keyword } from "@orbit/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

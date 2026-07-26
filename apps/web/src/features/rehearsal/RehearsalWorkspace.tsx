@@ -1,29 +1,38 @@
 import {
   createSlidePlaybackState,
   type SlidePlaybackState,
-} from "@orbit/editor-core";
+} from "@orbit/editor-core/playback";
+import { deriveKeywordOccurrences } from "@orbit/editor-core/keywords";
+import { demoIds } from "@orbit/shared/common";
+import { type AssetUploadUrlResponse } from "@orbit/shared/files";
 import {
-  deriveKeywordOccurrences,
-  demoIds,
-  createRehearsalEvaluationSnapshot,
   matchPronunciationAliases,
   normalizePronunciationText,
-  type AssetUploadUrlResponse,
+  type PronunciationLexiconSnapshot,
+} from "@orbit/shared/pronunciation";
+import {
+  type Deck,
+  type DeckElement,
+  type GetDeckResponse,
+  type Keyword,
+  type PutDeckResponse,
+  type Slide,
+} from "@orbit/shared/deck";
+import {
+  type BriefRef,
+  type EvaluatorLensRef,
+} from "@orbit/shared/coaching";
+import { type Job } from "@orbit/shared/jobs";
+import {
+  createRehearsalEvaluationSnapshot,
   type CompleteRehearsalAudioUploadResponse,
   type CreateRehearsalAudioUploadUrlResponse,
   type CreateRehearsalRunResponse,
-  type Deck,
-  type DeckElement,
   type GetRehearsalReportResponse,
-  type GetDeckResponse,
-  type Job,
-  type Keyword,
   type LiveSttAnimationCueEvent,
   type LiveSttKeywordDetectedEvent,
   type LiveSttPartialTranscriptEvent,
   type LiveSttSlideAdvanceEvent,
-  type PutDeckResponse,
-  type PronunciationLexiconSnapshot,
   type RehearsalReport,
   type RehearsalRunComparison,
   type RehearsalEvaluationSnapshot,
@@ -31,12 +40,9 @@ import {
   type RehearsalRunMeta,
   type RetryRehearsalSemanticEvaluationResponse,
   type SemanticCapabilityEvent,
-  type Slide,
   type SlideTranscriptSnapshot,
   type UpdateRehearsalRunMetaRequest,
-  type BriefRef,
-  type EvaluatorLensRef,
-} from "@orbit/shared";
+} from "@orbit/shared/rehearsals";
 import {
   ArrowLeft,
   BarChart3,
