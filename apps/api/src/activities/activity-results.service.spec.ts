@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { PresentationSessionRepository } from "../presentation-sessions/presentation-session.repository";
 import type { ActivityResultsRepository } from "./activity-results.repository";
 import { ActivityResultsService } from "./activity-results.service";
 
@@ -142,37 +143,47 @@ function createService(
       }
     ])
   } as unknown as ActivityResultsRepository;
-  const presentationSessionsService = {
-    getSessionForPresenter: vi.fn().mockImplementation(async () => ({
-      sessionId: "session_1",
-      projectId: "project_1",
-      deckId: "deck_1",
-      deckVersion: 1,
-      presenterUserId: "user_owner",
-      createdBy: "user_owner",
+  const presentationSessions = {
+    findByIdForRead: vi.fn().mockImplementation(async () => ({
+      session_id: "session_1",
+      project_id: "project_1",
+      deck_id: "deck_1",
+      deck_version: 1,
+      presenter_user_id: "user_owner",
+      created_by: "user_owner",
       status: "ended",
-      accessMode: "public",
-      startsAt: "2026-07-17T00:00:00.000Z",
-      expiresAt: "2026-07-18T00:00:00.000Z",
-      activeActivityRunId: null,
-      startedAt: "2026-07-17T00:00:00.000Z",
-      endedAt: "2026-07-17T00:20:00.000Z",
-      closedAt: "2026-07-17T00:20:00.000Z",
-      rawResponsesDeleteAfter: "2026-10-15T00:20:00.000Z",
-      rawResponsesDeletedAt: retention === "aggregate-only" ? "2026-10-15T00:20:00.000Z" : null,
-      resultsDeletedAt: resultsDeleted ? "2026-07-17T00:21:00.000Z" : null,
-      createdAt: "2026-07-17T00:00:00.000Z",
-      updatedAt: "2026-07-17T00:21:00.000Z"
+      session_purpose: "presentation",
+      audience_access_enabled: true,
+      access_mode: "public",
+      session_password_hash: null,
+      session_password_display_ciphertext: null,
+      session_password_key_version: null,
+      starts_at: "2026-07-17T00:00:00.000Z",
+      expires_at: "2026-07-18T00:00:00.000Z",
+      active_activity_run_id: null,
+      started_at: "2026-07-17T00:00:00.000Z",
+      ended_at: "2026-07-17T00:20:00.000Z",
+      closed_at: "2026-07-17T00:20:00.000Z",
+      raw_responses_delete_after: "2026-10-15T00:20:00.000Z",
+      raw_responses_deleted_at:
+        retention === "aggregate-only"
+          ? "2026-10-15T00:20:00.000Z"
+          : null,
+      results_deleted_at: resultsDeleted
+        ? "2026-07-17T00:21:00.000Z"
+        : null,
+      created_at: "2026-07-17T00:00:00.000Z",
+      updated_at: "2026-07-17T00:21:00.000Z"
     }))
-  };
+  } as unknown as PresentationSessionRepository;
   const logger = { info: vi.fn() };
   return {
     logger,
-    presentationSessionsService,
+    presentationSessions,
     repository,
     service: new ActivityResultsService(
       repository,
-      presentationSessionsService as never,
+      presentationSessions,
       logger as never
     )
   };

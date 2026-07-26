@@ -4,7 +4,7 @@ import type {
   ImageAssetCandidate,
   OfficialImageProvider,
   PublicImageSearchProvider
-} from "./index";
+} from "./provider-contracts";
 import { X509Certificate } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { request as httpsRequest } from "node:https";
