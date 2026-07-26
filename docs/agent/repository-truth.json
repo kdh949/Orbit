@@ -38,6 +38,7 @@
   "canonicalSources": [
     "apps/web/src/components/ui",
     "apps/web/src/styles/tokens.css",
+    "docs/agent/domains",
     "packages/shared/src",
     "docs/contracts.md"
   ],

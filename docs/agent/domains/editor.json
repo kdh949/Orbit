@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "id": "editor",
+  "summary": "Deck 편집 shell, canvas command, patch, 저장, history",
+  "ownedPaths": [
+    "apps/web/src/features/editor/**",
+    "packages/editor-core/src/**",
+    "apps/api/src/decks/**",
+    "packages/shared/src/deck/**"
+  ],
+  "entrypoints": [
+    {
+      "area": "web",
+      "path": "apps/web/src/features/editor/shell/EditorShell.tsx"
+    },
+    {
+      "area": "core",
+      "path": "packages/editor-core/src/index.ts"
+    },
+    {
+      "area": "api",
+      "path": "apps/api/src/decks/decks.module.ts"
+    }
+  ],
+  "contracts": [
+    "packages/shared/src/deck/deck.schema.ts",
+    "packages/shared/src/deck/patch.schema.ts",
+    "docs/api/deck-persistence.md"
+  ],
+  "tests": [
+    "apps/web/src/features/editor/shell/EditorShell.test.tsx",
+    "packages/editor-core/src/patches/applyPatch.test.ts",
+    "apps/api/src/decks/decks.service.spec.ts"
+  ],
+  "fastChecks": [
+    "pnpm --filter @orbit/web test -- src/features/editor/shell/EditorShell.test.tsx",
+    "pnpm --filter @orbit/editor-core test -- src/patches/applyPatch.test.ts",
+    "pnpm --filter @orbit/api test -- src/decks/decks.service.spec.ts"
+  ],
+  "fullCheckTriggers": [
+    "Deck 또는 Patch schema 변경",
+    "snapshot persistence 계약 변경",
+    "PPTX import·export 경계 변경",
+    "editor-core public export 변경"
+  ],
+  "boundaries": [
+    "Deck JSON의 source of truth는 packages/shared schema다",
+    "editor-core는 React, DOM, network, storage를 import하지 않는다",
+    "UI extraction과 patch 동작 변경을 같은 PR에 넣지 않는다"
+  ]
+}

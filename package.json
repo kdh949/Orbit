@@ -8,6 +8,7 @@
     "pnpm": ">=10.0.0"
   },
   "scripts": {
+    "agent:context": "node tools/agent/context.mjs",
     "build": "turbo run build",
     "clean": "turbo run clean && rm -rf node_modules",
     "compose:down": "docker compose down --remove-orphans",
@@ -30,6 +31,7 @@
     "py:test": "cd services/python-worker && uv run pytest",
     "repo:doctor": "node tools/agent/repo-doctor.mjs",
     "test": "turbo run test",
+    "test:agent-context": "node --test tools/agent/context.test.mjs",
     "test:repo-doctor": "node --test tools/agent/repo-doctor.test.mjs",
     "test:activity-slides:e2e": "node infra/scripts/run-playwright-test.mjs activity-slides.spec.ts",
     "test:env-contract": "node --test infra/scripts/personal-staging-env.test.mjs infra/scripts/personal-staging-wrapper.test.mjs infra/scripts/personal-staging-deploy.test.mjs",

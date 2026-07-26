@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "id": "rehearsal",
+  "summary": "리허설 실행, 녹음, 실시간·보고서 STT, 발화 추적, 리포트",
+  "ownedPaths": [
+    "apps/web/src/features/rehearsal/**",
+    "apps/api/src/rehearsals/**",
+    "apps/worker/src/rehearsal-*.ts",
+    "services/python-worker/app/rehearsal.py",
+    "services/python-worker/app/semantic_rehearsal.py",
+    "packages/shared/src/rehearsals/**"
+  ],
+  "entrypoints": [
+    {
+      "area": "web",
+      "path": "apps/web/src/features/rehearsal/RehearsalWorkspace.tsx"
+    },
+    {
+      "area": "api",
+      "path": "apps/api/src/rehearsals/rehearsals.module.ts"
+    },
+    {
+      "area": "worker",
+      "path": "apps/worker/src/rehearsal-stt.processor.ts"
+    },
+    {
+      "area": "python",
+      "path": "services/python-worker/app/rehearsal.py"
+    }
+  ],
+  "contracts": [
+    "packages/shared/src/rehearsals/rehearsal.schema.ts",
+    "packages/shared/src/rehearsals/rehearsal-audio-analysis.schema.ts",
+    "packages/shared/src/rehearsals/rehearsal-semantic-evidence.schema.ts"
+  ],
+  "tests": [
+    "apps/web/src/features/rehearsal/RehearsalWorkspace.test.tsx",
+    "apps/api/src/rehearsals/rehearsals.service.spec.ts",
+    "apps/worker/src/rehearsal-stt.processor.spec.ts",
+    "services/python-worker/tests/test_rehearsal_analyze.py"
+  ],
+  "fastChecks": [
+    "pnpm --filter @orbit/web test -- src/features/rehearsal/RehearsalWorkspace.test.tsx",
+    "pnpm --filter @orbit/api test -- src/rehearsals/rehearsals.service.spec.ts",
+    "pnpm --filter @orbit/worker test -- src/rehearsal-stt.processor.spec.ts",
+    "cd services/python-worker && uv run pytest tests/test_rehearsal_analyze.py"
+  ],
+  "fullCheckTriggers": [
+    "rehearsal shared schema 변경",
+    "STT 또는 semantic Job payload 변경",
+    "DB migration 변경",
+    "TypeScript와 Python 사이 response 계약 변경"
+  ],
+  "boundaries": [
+    "raw audio와 transcript 원문을 서버 로그에 남기지 않는다",
+    "발표자 script를 audience API 또는 slide window로 전달하지 않는다",
+    "Deck·Job payload 변경은 packages/shared를 먼저 갱신한다"
+  ]
+}
