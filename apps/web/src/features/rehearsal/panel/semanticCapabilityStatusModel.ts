@@ -1,23 +1,12 @@
 import type {
   SemanticCapability,
-  SemanticCapabilityEvent,
-  SemanticMeasurementMode
-} from "@orbit/shared";
+  SemanticCapabilityEvent
+} from "@orbit/shared/rehearsals";
 
 import { getSemanticCapabilityCopy } from "./semanticCapabilityCopy";
+import type { SemanticCapabilityStatusItem } from "../../../runtime/speech/semantic/semanticCapabilityStatus";
 
-export type SemanticCapabilityStatusItem = {
-  key: SemanticCapability;
-  severity: "info" | "warning" | "error";
-  shortLabel: string;
-  detail: string;
-  retryable: boolean;
-  affectedCount: number;
-  source: "system-status";
-  actionLabel?: "마이크 권한 확인" | "재시도" | "Cue 검토로 이동" | "서버 재평가";
-  recovered: boolean;
-  measurementMode: SemanticMeasurementMode;
-};
+export type { SemanticCapabilityStatusItem } from "../../../runtime/speech/semantic/semanticCapabilityStatus";
 
 const capabilityPriority: SemanticCapability[] = [
   "stt",

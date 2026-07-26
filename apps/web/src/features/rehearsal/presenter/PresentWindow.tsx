@@ -30,7 +30,7 @@ import {
   slideWindowFullscreenRequestType,
   type SlideWindowFullscreenRequestMessage,
 } from "../../../runtime/presentation/displayManager";
-import type { PresenterSlideshowState } from "./presenterStateStore";
+import type { PresenterSlideshowState } from "../../../runtime/presentation/channel/presenterStateStore";
 import type { ActivityElementRuntime } from "../../activity-slides/rendering/ActivityElementRuntimeContext";
 import {
   createSlideWindowHeartbeatMessage,
@@ -42,7 +42,7 @@ import {
   type PresentationChannelIdentity,
   type PresentationChannelMessage,
   type ScreenShareEndedReason,
-} from "./presentationChannel";
+} from "../../../runtime/presentation/channel/presentationChannel";
 
 export type PresentWindowSnapshot = {
   activityElementRuntime?: ActivityElementRuntime | null;

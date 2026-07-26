@@ -1,8 +1,8 @@
-import type { Deck } from "@orbit/shared";
-import type { SemanticUtteranceDebugState } from "../../../runtime/speech/semantic/semanticSpeechDebug";
-import type { SpeechTrackerSnapshot } from "../../../runtime/speech/tracking/speechTrackingEvents";
-import type { SemanticCapabilityStatusItem } from "../panel/semanticCapabilityStatusModel";
-import { clampSlideshowStepIndex } from "../../../runtime/presentation/slideshow/slideshowStepModel";
+import type { Deck } from "@orbit/shared/deck";
+import type { SemanticCapabilityStatusItem } from "../../speech/semantic/semanticCapabilityStatus";
+import type { SemanticUtteranceDebugState } from "../../speech/semantic/semanticSpeechDebug";
+import type { SpeechTrackerSnapshot } from "../../speech/tracking/speechTrackingEvents";
+import { clampSlideshowStepIndex } from "../slideshow/slideshowStepModel";
 
 export type PresenterHighlightState = {
   active: boolean;

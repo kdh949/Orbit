@@ -12,13 +12,13 @@ import {
   createLivePresentationHostIdentity,
   type PresenterRemoteCommand,
   type ScreenShareEndedReason,
-} from "../rehearsal/presenter/presentationChannel";
+} from "../../runtime/presentation/channel/presentationChannel";
 import type {
   AudienceOutputMode,
   PresenterSlideshowState,
-} from "../rehearsal/presenter/presenterStateStore";
+} from "../../runtime/presentation/channel/presenterStateStore";
 import { useAudienceScreenShare } from "../rehearsal/presenter/useAudienceScreenShare";
-import { usePresentationChannelPublisher } from "../rehearsal/presenter/usePresentationChannelPublisher";
+import { usePresentationChannelPublisher } from "../../runtime/presentation/channel/usePresentationChannelPublisher";
 import { usePresenterCompanionAuthority } from "../presenter-companion/usePresenterCompanionAuthority";
 import { usePresenterCompanionWebRtc } from "../presenter-companion/usePresenterCompanionWebRtc";
 import type { CompanionPrompterProjection } from "../presenter-companion/companionPrompterProjection";

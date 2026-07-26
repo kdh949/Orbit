@@ -5,8 +5,8 @@ import {
   ActivityAudienceRuntime,
   ActivityResultRuntime
 } from "../../activity-slides";
-import type { ScreenShareEndedReason } from "./presentationChannel";
-import type { PresenterSlideshowState } from "./presenterStateStore";
+import type { ScreenShareEndedReason } from "../../../runtime/presentation/channel/presentationChannel";
+import type { PresenterSlideshowState } from "../../../runtime/presentation/channel/presenterStateStore";
 import { SlideshowRenderer } from "./SlideshowRenderer";
 import type { SurfaceSize } from "../../presenter-companion/surfaceGeometry";
 import type { ActivityElementRuntime } from "../../activity-slides/rendering/ActivityElementRuntimeContext";

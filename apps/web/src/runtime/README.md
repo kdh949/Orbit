@@ -4,7 +4,8 @@
 workspace package를 사용할 수 있지만 `features/**` 내부 구현을 import하지
 않는다.
 
-- `presentation/`: 발표 창 배치, 화면 공유 bridge, presentation channel identity
+- `presentation/`: 발표 창 배치, 화면 공유 bridge, activity runtime contract
+- `presentation/channel/`: presenter state, BroadcastChannel protocol과 publisher
 - `presentation/slideshow/`: 슬라이드 step, 전환 상태, 렌더링 정규화
 - `speech/stt/`: Live STT port, engine registry, audio/PCM, Web Speech, OpenAI,
   Moonshine, Sherpa, reranking

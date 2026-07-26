@@ -2,21 +2,21 @@ import {
   presentationCompanionAnnotationCommandSchema,
   presentationCompanionAnnotationSnapshotSchema,
   presentationCompanionLaserSchema,
-  type Deck,
   type PresentationCompanionAnnotationCommand,
   type PresentationCompanionAnnotationSnapshot,
   type PresentationCompanionLaser,
-} from "@orbit/shared";
+} from "@orbit/shared/realtime";
+import type { Deck } from "@orbit/shared/deck";
 import type {
   AudienceOutputMode,
   PresenterSlideshowState,
 } from "./presenterStateStore";
-import type { ActivityElementRuntime } from "../../activity-slides/rendering/ActivityElementRuntimeContext";
-import type { PresentationChannelIdentity } from "../../../runtime/presentation/presentationChannelIdentity";
+import type { ActivityElementRuntime } from "../activityElementRuntime";
+import type { PresentationChannelIdentity } from "../presentationChannelIdentity";
 
 export const presentationChannelPrefix = "orbit:presenter-screen";
 
-export type { PresentationChannelIdentity } from "../../../runtime/presentation/presentationChannelIdentity";
+export type { PresentationChannelIdentity } from "../presentationChannelIdentity";
 
 export type LivePresentationHostIdentity = {
   localChannel: PresentationChannelIdentity;

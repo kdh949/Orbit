@@ -8,7 +8,7 @@ import {
   AudienceOutputRenderer,
   attachAudienceVideoStream,
 } from "./AudienceOutputRenderer";
-import { createPresenterSlideshowState } from "./presenterStateStore";
+import { createPresenterSlideshowState } from "../../../runtime/presentation/channel/presenterStateStore";
 
 vi.mock("./SlideshowRenderer", () => ({
   SlideshowRenderer: (props: {
