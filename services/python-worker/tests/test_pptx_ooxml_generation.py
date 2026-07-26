@@ -28,6 +28,9 @@ from app.ai.pptx_ooxml_generation import (
 )
 from app.ai.pptx_design_importer import ImportedDesignAsset
 from app.ai import pptx_ooxml_generation, pptx_rendering
+from app.ai.pptx_ooxml import notes as pptx_notes
+from app.ai.pptx_ooxml import orchestration as pptx_orchestration
+from app.ai.pptx_ooxml import rendering as pptx_ooxml_rendering
 from app.ai.pptx_rendering import (
     PptxNotesRenderError,
     PptxNotesRenderErrorCode,
@@ -376,7 +379,7 @@ def test_notes_and_source_bitmap_decode_timeouts_use_bounded_codes(
     pdf_path = tmp_path / "source.pdf"
     write_test_pdf(pdf_path, page_count=1)
     monkeypatch.setattr(
-        pptx_ooxml_generation,
+        pptx_ooxml_rendering,
         "run_bitmap_decode_with_timeout",
         decode_timeout,
     )
@@ -393,12 +396,12 @@ def test_generate_pptx_ooxml_maps_notes_preview_only_after_proven_render(
 ) -> None:
     notes_asset = make_test_png_asset("notes_render_1", "notes-01.png")
     monkeypatch.setattr(
-        pptx_ooxml_generation,
+        pptx_ooxml_rendering,
         "render_pptx_to_png_assets",
         lambda _package, _canvas: [make_test_png_asset("slide_render_1", "slide-01.png")],
     )
     monkeypatch.setattr(
-        pptx_ooxml_generation,
+        pptx_orchestration,
         "render_pptx_notes_to_png_assets",
         lambda *_args, **_kwargs: [notes_asset],
     )
@@ -432,12 +435,12 @@ def test_generation_preserves_unsafe_source_but_sanitizes_renderer_input(
         return [make_test_png_asset("slide_render_1", "slide-01.png")]
 
     monkeypatch.setattr(
-        pptx_ooxml_generation,
+        pptx_ooxml_rendering,
         "render_pptx_to_png_assets",
         capture_render,
     )
     monkeypatch.setattr(
-        pptx_ooxml_generation,
+        pptx_orchestration,
         "render_pptx_notes_to_png_assets",
         lambda *_args, **_kwargs: [
             make_test_png_asset("notes_render_1", "notes-01.png")
@@ -472,7 +475,7 @@ def test_generate_pptx_ooxml_preserves_package_when_notes_render_is_unavailable(
     code: PptxNotesRenderErrorCode,
 ) -> None:
     monkeypatch.setattr(
-        pptx_ooxml_generation,
+        pptx_ooxml_rendering,
         "render_pptx_to_png_assets",
         lambda _package, _canvas: [make_test_png_asset("slide_render_1", "slide-01.png")],
     )
@@ -481,7 +484,7 @@ def test_generate_pptx_ooxml_preserves_package_when_notes_render_is_unavailable(
         raise PptxNotesRenderError(code)
 
     monkeypatch.setattr(
-        pptx_ooxml_generation,
+        pptx_orchestration,
         "render_pptx_notes_to_png_assets",
         unavailable,
     )
@@ -839,14 +842,14 @@ def test_sync_pptx_ooxml_regenerates_notes_preview_after_body_edit(
         render=False,
     )
     monkeypatch.setattr(
-        pptx_ooxml_generation,
+        pptx_ooxml_rendering,
         "render_pptx_to_png_assets",
         lambda *_args, **_kwargs: [
             make_test_png_asset("slide_render_1", "slide-01.png")
         ],
     )
     monkeypatch.setattr(
-        pptx_ooxml_generation,
+        pptx_orchestration,
         "render_pptx_notes_to_png_assets",
         lambda *_args, **_kwargs: [
             make_test_png_asset("notes_render_1", "notes-01.png")
@@ -1141,7 +1144,7 @@ def test_sync_pptx_ooxml_rejects_unsafe_minimal_notes_master_atomically(
         render=False,
     )
     monkeypatch.setattr(
-        pptx_ooxml_generation,
+        pptx_notes,
         "minimal_notes_package_template",
         lambda: None,
     )
