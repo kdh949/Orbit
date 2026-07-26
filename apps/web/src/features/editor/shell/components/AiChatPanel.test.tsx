@@ -21,6 +21,10 @@ const editorShellCssPath = path.join(
   process.cwd(),
   "src/features/editor/editor-shell.css"
 );
+const editorAiChatScrollCssPath = path.join(
+  process.cwd(),
+  "src/features/editor/styles/editor-ai-chat-scroll.css"
+);
 
 describe("AiChatPanel", () => {
   it("renders the history and message composer", () => {
@@ -93,6 +97,7 @@ describe("AiChatPanel", () => {
 
   it("keeps assistant suggestion and mode controls compact", () => {
     const css = fs.readFileSync(editorShellCssPath, "utf8");
+    const scrollCss = fs.readFileSync(editorAiChatScrollCssPath, "utf8");
 
     expect(css).toMatch(
       /\.editor-ai-assistant-panel\s*\.ai-chat-suggestions\s*\{[^}]*gap:\s*var\(--redesign-space-2\);[^}]*padding:\s*0 var\(--redesign-space-4\) var\(--redesign-space-3\);/s
@@ -112,7 +117,7 @@ describe("AiChatPanel", () => {
     expect(css).toMatch(
       /\.editor-ai-assistant-panel\s*\.ai-chat-message\.user\s*\.ai-chat-message-stack\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*78%;/s
     );
-    expect(css).toMatch(
+    expect(scrollCss).toMatch(
       /\.editor-ai-assistant-panel\s*\.ai-chat-scroll-content\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s
     );
   });

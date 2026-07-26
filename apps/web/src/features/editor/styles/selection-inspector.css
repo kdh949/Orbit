@@ -1,0 +1,36 @@
+.orbit-shell.editor-professional .compact-selection-trigger {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--redesign-space-2);
+  min-height: 36px;
+  padding: 0 var(--redesign-space-3);
+  border: 1px solid var(--redesign-color-outline-variant);
+  border-radius: var(--redesign-radius-sm);
+  background: var(--redesign-color-primary-container);
+  color: var(--redesign-color-on-primary-container);
+  white-space: nowrap;
+}
+
+.orbit-shell.editor-professional .compact-selection-trigger span:last-child {
+  color: var(--redesign-color-on-surface-variant);
+  font-size: var(--redesign-type-label-sm-size);
+}
+
+.orbit-shell.editor-professional .compact-selection-trigger:focus-visible,
+.orbit-shell.editor-professional .selection-inspector:focus-visible {
+  outline: 2px solid var(--redesign-color-primary);
+  outline-offset: 2px;
+}
+
+.orbit-shell.editor-professional .selection-inspector {
+  display: grid;
+  gap: var(--redesign-space-3);
+  min-width: 0;
+}
+
+.orbit-shell.editor-professional .selection-inspector-read-only-summary {
+  margin: 0;
+  color: var(--redesign-color-on-surface-variant);
+  line-height: 1.6;
+}
