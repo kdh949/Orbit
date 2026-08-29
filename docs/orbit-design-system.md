@@ -283,3 +283,6 @@ Semantic color는 작은 status와 validation에만 쓴다. 큰 배경 면으로
 - Signup mockup: `/mockup/signup`
 
 새 제품 화면은 가능한 한 위 토큰과 primitive를 직접 사용한다. 기존 화면을 마이그레이션할 때는 기능 변경과 디자인 시스템 적용을 작은 PR로 분리한다.
+
+Storybook에서 컴포넌트와 화면 상태를 추가하는 절차는
+`docs/storybook-design-system.md`를 따른다.
