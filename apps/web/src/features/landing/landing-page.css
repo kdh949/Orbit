@@ -73,7 +73,9 @@
   font-size: var(--redesign-type-body-sm-size);
   font-weight: 600;
   cursor: pointer;
-  transition: color var(--redesign-duration-fast) var(--redesign-ease-standard), background-color var(--redesign-duration-fast) var(--redesign-ease-standard);
+  transition:
+    color var(--redesign-duration-fast) var(--redesign-ease-standard),
+    background-color var(--redesign-duration-fast) var(--redesign-ease-standard);
 }
 
 .landing-login:hover {
@@ -100,7 +102,8 @@
   z-index: 2;
   padding: calc(var(--redesign-space-12) + var(--redesign-space-4)) 0
     calc(var(--redesign-space-12) * 3);
-  animation: landing-rise var(--redesign-duration-slow) var(--redesign-ease-emphasized) both;
+  animation: landing-rise var(--redesign-duration-slow)
+    var(--redesign-ease-emphasized) both;
 }
 
 .landing-hero h1 {
@@ -152,8 +155,8 @@
   border-radius: var(--redesign-radius-xl) var(--redesign-radius-xl) 0 0;
   background: var(--redesign-color-surface-container-low);
   box-shadow: var(--redesign-shadow-overlay);
-  animation: landing-preview-rise var(--redesign-duration-slow) var(--redesign-duration-instant) var(--redesign-ease-emphasized)
-    both;
+  animation: landing-preview-rise var(--redesign-duration-slow)
+    var(--redesign-duration-instant) var(--redesign-ease-emphasized) both;
 }
 
 .landing-preview-topbar {
@@ -390,7 +393,7 @@
 
 .landing-slide-copy p {
   margin: 0 0 var(--redesign-space-4);
-  color: var(--redesign-color-primary);
+  color: var(--redesign-color-primary-emphasis);
   font-size: var(--redesign-type-label-sm-size);
   font-weight: 700;
   letter-spacing: 0.15em;
@@ -407,7 +410,7 @@
 
 .landing-slide-copy > span {
   margin-top: var(--redesign-space-12);
-  color: var(--redesign-color-outline);
+  color: var(--redesign-color-on-surface-variant);
   font-size: var(--redesign-type-label-sm-size);
 }
 
@@ -454,7 +457,11 @@
   border: 1px solid
     color-mix(in srgb, var(--redesign-color-surface) 64%, transparent);
   border-radius: var(--redesign-radius-lg);
-  background: color-mix(in srgb, var(--redesign-color-surface) 78%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-surface) 78%,
+    transparent
+  );
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -617,7 +624,11 @@
   padding: var(--redesign-space-4);
   border: 1px solid var(--redesign-color-outline-variant);
   border-radius: var(--redesign-radius-lg);
-  background: color-mix(in srgb, var(--redesign-color-surface) 94%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-surface) 94%,
+    transparent
+  );
   box-shadow: var(--redesign-shadow-overlay);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -929,7 +940,8 @@
   display: grid;
   min-height: 0;
   overflow: hidden;
-  padding: var(--redesign-space-18) var(--redesign-space-6) var(--redesign-space-6);
+  padding: var(--redesign-space-18) var(--redesign-space-6)
+    var(--redesign-space-6);
   background-color: var(--landing-preview-stage);
   background-image: radial-gradient(
     circle,
@@ -1371,15 +1383,22 @@
   }
 }
 
-
 /* Production editor layout mapped onto the landing preview. */
 .landing-product-preview {
   --landing-editor-chrome: var(--redesign-color-dark-surface);
   --landing-editor-panel: var(--redesign-color-dark-surface-raised);
-  --landing-editor-stage: color-mix(in srgb, var(--redesign-color-on-dark) 32%, var(--redesign-color-dark-surface));
+  --landing-editor-stage: color-mix(
+    in srgb,
+    var(--redesign-color-on-dark) 32%,
+    var(--redesign-color-dark-surface)
+  );
   --landing-editor-line: var(--redesign-color-dark-surface-high);
   --landing-editor-text: var(--redesign-color-on-dark);
-  --landing-editor-muted: color-mix(in srgb, var(--redesign-color-on-dark) 66%, transparent);
+  --landing-editor-muted: color-mix(
+    in srgb,
+    var(--redesign-color-on-dark) 66%,
+    transparent
+  );
   --landing-editor-selected: var(--redesign-color-inverse-primary);
   overflow: hidden;
   border-color: var(--redesign-color-dark-surface-high);
@@ -1414,7 +1433,9 @@
 }
 
 .landing-product-preview .landing-preview-actions > i:hover,
-.landing-product-preview .landing-preview-filebar .landing-preview-top-icon:hover {
+.landing-product-preview
+  .landing-preview-filebar
+  .landing-preview-top-icon:hover {
   background: var(--redesign-color-dark-surface-high);
 }
 
@@ -1446,7 +1467,9 @@
   white-space: nowrap;
 }
 
-.landing-product-preview .landing-preview-actions > .landing-preview-present-more {
+.landing-product-preview
+  .landing-preview-actions
+  > .landing-preview-present-more {
   display: grid;
   width: 28px;
   height: 30px;
@@ -1455,7 +1478,11 @@
   padding: 0;
   overflow: visible;
   border: 1px solid var(--redesign-color-primary-outline);
-  border-left-color: color-mix(in srgb, var(--redesign-color-on-primary-fixed) 22%, transparent);
+  border-left-color: color-mix(
+    in srgb,
+    var(--redesign-color-on-primary-fixed) 22%,
+    transparent
+  );
   border-radius: 0 var(--redesign-radius-md) var(--redesign-radius-md) 0;
   place-items: center;
 }
@@ -1513,7 +1540,8 @@
 .landing-product-preview .landing-preview-thumbnail {
   grid-template-columns: 18px minmax(0, 1fr);
   gap: calc(var(--redesign-space-1) + 1px);
-  margin: calc(var(--redesign-space-2) - 1px) calc(var(--redesign-space-2) + 2px);
+  margin: calc(var(--redesign-space-2) - 1px)
+    calc(var(--redesign-space-2) + 2px);
   color: var(--landing-editor-muted);
 }
 
@@ -1533,7 +1561,9 @@
   color: var(--landing-editor-text);
 }
 
-.landing-product-preview .landing-preview-thumbnail.is-active .landing-thumbnail-art {
+.landing-product-preview
+  .landing-preview-thumbnail.is-active
+  .landing-thumbnail-art {
   border-color: var(--landing-editor-selected);
   box-shadow: var(--redesign-shadow-outline-primary);
 }
@@ -1594,8 +1624,16 @@
 }
 
 .landing-product-preview .landing-preview-toolbar .is-selected {
-  border-color: color-mix(in srgb, var(--landing-editor-selected) 55%, var(--landing-editor-chrome));
-  background: color-mix(in srgb, var(--landing-editor-selected) 14%, transparent);
+  border-color: color-mix(
+    in srgb,
+    var(--landing-editor-selected) 55%,
+    var(--landing-editor-chrome)
+  );
+  background: color-mix(
+    in srgb,
+    var(--landing-editor-selected) 14%,
+    transparent
+  );
   color: var(--landing-editor-selected);
 }
 
@@ -1607,6 +1645,10 @@
 }
 
 .landing-product-preview .landing-preview-zoom > svg {
+  color: var(--redesign-color-on-dark);
+}
+
+.landing-product-preview .landing-preview-zoom > strong {
   color: var(--redesign-color-on-dark);
 }
 
@@ -1626,6 +1668,10 @@
   color: var(--landing-editor-muted);
 }
 
+.landing-product-preview .landing-preview-script strong {
+  color: var(--landing-editor-text);
+}
+
 .landing-product-preview .landing-preview-ai {
   display: grid;
   grid-template-rows: 44px minmax(0, 1fr);
@@ -1636,7 +1682,9 @@
   color: var(--landing-editor-text);
 }
 
-.landing-product-preview .landing-preview-ai > .landing-preview-inspector-header {
+.landing-product-preview
+  .landing-preview-ai
+  > .landing-preview-inspector-header {
   min-height: 44px;
   padding: 0 var(--redesign-space-2) 0 var(--redesign-space-3);
   border-bottom: 1px solid var(--landing-editor-line);
@@ -1654,8 +1702,16 @@
 }
 
 .landing-product-preview .landing-preview-inspector-header i.is-selected {
-  border-color: color-mix(in srgb, var(--landing-editor-selected) 42%, var(--landing-editor-chrome));
-  background: color-mix(in srgb, var(--landing-editor-selected) 10%, var(--landing-editor-panel));
+  border-color: color-mix(
+    in srgb,
+    var(--landing-editor-selected) 42%,
+    var(--landing-editor-chrome)
+  );
+  background: color-mix(
+    in srgb,
+    var(--landing-editor-selected) 10%,
+    var(--landing-editor-panel)
+  );
   color: var(--landing-editor-selected);
 }
 
@@ -1742,7 +1798,11 @@
 }
 
 .landing-product-preview .landing-ai-message i {
-  background: color-mix(in srgb, var(--landing-editor-selected) 30%, var(--landing-editor-panel));
+  background: color-mix(
+    in srgb,
+    var(--landing-editor-selected) 30%,
+    var(--landing-editor-panel)
+  );
   color: var(--landing-editor-selected);
 }
 
@@ -1798,7 +1858,11 @@
 
 .landing-product-preview .landing-ai-composer nav span.is-active {
   border-color: var(--landing-editor-selected);
-  background: color-mix(in srgb, var(--landing-editor-selected) 12%, var(--landing-editor-panel));
+  background: color-mix(
+    in srgb,
+    var(--landing-editor-selected) 12%,
+    var(--landing-editor-panel)
+  );
   color: var(--landing-editor-selected);
 }
 

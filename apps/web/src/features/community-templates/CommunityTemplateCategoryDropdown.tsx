@@ -66,6 +66,13 @@ export function CommunityTemplateCategoryDropdown(props: {
   return (
     <div className="community-template-category-dropdown" ref={rootRef}>
       <button
+        aria-label={
+          selected
+            ? `대표 주제: ${selected.name}`
+            : categories.isLoading
+              ? "대표 주제 불러오는 중"
+              : "대표 주제 선택"
+        }
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-invalid={props.invalid || undefined}

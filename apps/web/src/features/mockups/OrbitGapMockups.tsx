@@ -176,7 +176,7 @@ const practiceGoals = [
   { category: "전달", problem: "전환 구간의 긴 멈춤 줄이기", action: "다음 장표의 첫 문장을 미리 소리 내어 연결하세요.", success: "전환 멈춤이 2초 이내로 유지" }
 ];
 
-const previewDeck = createDemoDeck();
+export const previewDeck = createDemoDeck();
 const previewGoalSetId = "preview-goal-set";
 const previewGoals = practiceGoals.map((goal, index) => ({
   goalId: `preview-goal-${index + 1}`,
@@ -200,7 +200,7 @@ const previewGoals = practiceGoals.map((goal, index) => ({
   unavailableReason: null,
 }));
 
-const previewPracticePlan = {
+export const previewPracticePlan = {
   status: "ready",
   sourceFullRunId: "preview-run",
   goalSet: {
@@ -220,7 +220,7 @@ const previewPracticePlan = {
   fullRehearsalCta: { projectId: "preview-project", sourceGoalSetId: previewGoalSetId },
 } as Extract<PracticePlanResponse, { status: "ready" }>;
 
-const previewFocusedAttempts = [{
+export const previewFocusedAttempts = [{
   attemptId: "preview-attempt-1",
   attemptNumber: 1,
   status: "succeeded",
@@ -228,7 +228,7 @@ const previewFocusedAttempts = [{
   durationMs: 18_000,
 }] as unknown as FocusedPracticeAttempt[];
 
-const previewQnaView = {
+export const previewQnaView = {
   session: {
     qnaSessionId: "preview-qna",
     status: "active",

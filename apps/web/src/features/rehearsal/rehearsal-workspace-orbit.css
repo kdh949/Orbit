@@ -412,13 +412,13 @@ main.rehearsal-presenter-shell {
 }
 
 :is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timer-header {
-  background: var(--redesign-color-primary);
+  background: var(--redesign-color-primary-emphasis);
   color: var(--redesign-color-light-surface);
   padding: var(--redesign-space-4);
 }
 
 :is(.rehearsal-presenter-shell, .presenter-remote-shell) .rehearsal-side-timer-title {
-  color: color-mix(in srgb, var(--redesign-color-light-surface) 82%, transparent);
+  color: var(--redesign-color-on-primary);
   font-size: var(--redesign-type-body-sm-size);
 }
 

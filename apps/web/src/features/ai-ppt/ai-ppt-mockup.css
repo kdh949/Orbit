@@ -1486,7 +1486,7 @@
 
 .ai-ppt-error {
   background: var(--redesign-color-error-container);
-  color: var(--redesign-color-error);
+  color: var(--redesign-color-on-error-container);
 }
 
 .ai-ppt-status {
@@ -2227,7 +2227,6 @@
   font-weight: 400;
   line-height: var(--redesign-type-label-sm-line-height);
   margin: 0;
-  opacity: 0.78;
 }
 
 .ai-ppt-context-panel .ai-ppt-attachments {

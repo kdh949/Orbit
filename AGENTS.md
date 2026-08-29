@@ -23,6 +23,8 @@
 ## 저장소 구조와 앱 경계
 
 - Web 작업은 기본적으로 `apps/web`, 필요한 경우 `packages/shared`, `packages/editor-core`, `packages/realtime` 안에서 처리한다.
+- Web UI/Storybook 작업 전 Storybook MCP를 반드시 사용하고, 세부 절차는
+  `apps/web/AGENTS.md`를 따른다.
 - Web redesign의 공통 primitive 컴포넌트는 `apps/web/src/components/ui`에 컴포넌트별 파일로 두고 `index.ts`에서 공개한다. 조합형 공통 패턴은 `apps/web/src/components/patterns`, 기능 전용 UI는 `apps/web/src/features/<feature-name>`에 둔다. redesign 토큰은 `apps/web/src/styles/tokens.css`를 사용하며 삭제된 legacy 디자인 시스템을 다시 만들지 않는다.
 - API 작업은 기본적으로 `apps/api`, 필요한 경우 `packages/shared`, `packages/config`, `packages/storage`, `packages/job-queue`, `packages/realtime` 안에서 처리한다.
 - Worker 작업은 기본적으로 `apps/worker`, 필요한 경우 `packages/shared`, `packages/job-queue`, `packages/storage`, `packages/ai` 안에서 처리한다.

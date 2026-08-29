@@ -36,6 +36,7 @@ import {
   OrbitFailureState,
   OrbitIconButton,
   OrbitInput,
+  OrbitLoadingState,
 } from "../../components/ui";
 import {
   createProject,
@@ -49,10 +50,7 @@ import {
   pptxImportAccept,
 } from "../editor/shell/utils/editorFileValidation";
 import { ProjectGalleryCard } from "./ProjectGalleryCard";
-import {
-  mergePptxImportProject,
-  usePptxImport,
-} from "./PptxImportProvider";
+import { mergePptxImportProject, usePptxImport } from "./PptxImportProvider";
 import "./orbit-project-hub.css";
 
 const ProjectRowSlidePreview = lazy(() => import("./ProjectSlidePreview"));
@@ -120,7 +118,9 @@ export function ProjectListPage(props: {
       props.onNavigate(projectPath(project));
     } catch (cause) {
       setMutationError(
-        cause instanceof Error ? cause.message : "프로젝트를 만들지 못했습니다.",
+        cause instanceof Error
+          ? cause.message
+          : "프로젝트를 만들지 못했습니다.",
       );
     } finally {
       setIsCreating(false);
@@ -162,7 +162,9 @@ export function ProjectListPage(props: {
       await projects.refetch();
     } catch (cause) {
       setMutationError(
-        cause instanceof Error ? cause.message : "프로젝트를 삭제하지 못했습니다.",
+        cause instanceof Error
+          ? cause.message
+          : "프로젝트를 삭제하지 못했습니다.",
       );
     } finally {
       setDeletingId(null);
@@ -307,7 +309,8 @@ export function ProjectListPage(props: {
                   const file = event.currentTarget.files?.[0];
                   event.currentTarget.value = "";
                   if (!file) return;
-                  const validationMessage = getPptxImportValidationMessage(file);
+                  const validationMessage =
+                    getPptxImportValidationMessage(file);
                   if (validationMessage) {
                     setMutationError(validationMessage);
                     return;
@@ -374,10 +377,9 @@ function ProjectCommandbarAction(props: {
   loading?: boolean;
   onClick: () => void;
 }) {
-  const className = [
-    "orbit-project-commandbar-action",
-    props.className,
-  ].filter(Boolean).join(" ");
+  const className = ["orbit-project-commandbar-action", props.className]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <OrbitButton
@@ -442,7 +444,9 @@ function ProjectSortMenu(props: {
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const selected = projectSortOptions.find((option) => option.value === props.value);
+  const selected = projectSortOptions.find(
+    (option) => option.value === props.value,
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -570,9 +574,11 @@ function ProjectState(props: {
 }) {
   if (props.query.isLoading) {
     return (
-      <div className="orbit-project-state" role="status">
-        프로젝트를 불러오는 중입니다.
-      </div>
+      <OrbitLoadingState
+        className="orbit-project-state"
+        description="프로젝트와 미리보기를 안전하게 불러오고 있습니다."
+        title="프로젝트를 불러오는 중입니다."
+      />
     );
   }
   if (props.query.isError) {

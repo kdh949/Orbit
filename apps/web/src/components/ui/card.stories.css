@@ -1,0 +1,23 @@
+.card-story-frame {
+  width: min(90vw, calc(var(--redesign-space-24) * 4));
+}
+
+.card-story-frame .redesign-card {
+  display: grid;
+  gap: var(--redesign-space-3);
+  padding: var(--redesign-space-6);
+}
+
+.card-story-frame h3,
+.card-story-frame p {
+  margin: 0;
+}
+
+.card-story-frame p {
+  color: var(--redesign-color-on-surface-variant);
+  line-height: var(--redesign-type-body-md-line-height);
+}
+
+.card-story-frame .redesign-button {
+  justify-self: start;
+}

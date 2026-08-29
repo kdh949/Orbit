@@ -16,6 +16,13 @@ instead of introducing a parallel token or component system.
   workspace packages but must not import from `apps/web/src/features`.
 - `components/ui` must never import from `features`.
 
+## Storybook MCP
+
+- UI/Storybook 작업 전 `list-all-documentation`, 관련 `get-documentation`,
+  `get-storybook-story-instructions`를 반드시 확인하고 문서화되지 않은 props를 추측하지 않는다.
+- 변경 후 `preview-stories`와 `run-story-tests`로 검증한다.
+- 정보가 부족하면 `storybook.js.org/docs` 공식 문서만 웹 검색해 확인한다.
+
 ## Styling
 
 - Use CSS variables from `apps/web/src/styles/tokens.css`.

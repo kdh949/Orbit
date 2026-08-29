@@ -70,7 +70,10 @@ export function SlideNavigatorPane(props: {
   }, [isAddMenuOpen]);
 
   return (
-    <aside className={`slides-pane ${props.isCollapsed ? "collapsed" : ""}`}>
+    <section
+      aria-label="슬라이드 목록"
+      className={`slides-pane ${props.isCollapsed ? "collapsed" : ""}`}
+    >
       <div className="slides-pane-header">
         {!props.isCollapsed ? (
           <div className="slides-pane-title">
@@ -254,7 +257,7 @@ export function SlideNavigatorPane(props: {
         type="button"
         onPointerDown={props.onResizeStart}
       />
-    </aside>
+    </section>
   );
 }
 

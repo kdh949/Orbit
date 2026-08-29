@@ -136,6 +136,7 @@ export function CommunityGalleryPage(props: {
 
       <section className="community-gallery-shell">
         <WorkspaceContainer as="div" className="community-gallery" width="content">
+          <h2 className="community-template-visually-hidden">커뮤니티 자료</h2>
           <div className="community-gallery-toolbar">
             <div aria-label="커뮤니티 정렬" className="community-gallery-sort" role="tablist">
               {sortOptions.map((option) => (
@@ -261,6 +262,7 @@ function CommunityGalleryCard(props: {
   return (
     <article className="community-gallery-card">
       <button
+        aria-label={`${props.card.title} 미리보기 열기`}
         className="community-gallery-card-preview"
         data-visual-variant={props.visualVariant}
         onClick={props.onOpen}

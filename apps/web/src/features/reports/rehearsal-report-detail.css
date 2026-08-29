@@ -144,7 +144,7 @@ body .rehearsal-report-page .rehearsal-report-nav-history .rehearsal-report-nav-
 }
 
 body .rehearsal-report-page .rehearsal-report-nav-item.active {
-  background: var(--redesign-color-primary);
+  background: var(--redesign-color-primary-emphasis);
   border-radius: var(--redesign-radius);
   box-shadow: var(--redesign-glow-secondary);
   color: var(--redesign-color-on-primary);

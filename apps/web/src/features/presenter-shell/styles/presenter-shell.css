@@ -1322,23 +1322,23 @@
 .rehearsal-recording-status {
   background: var(--redesign-color-secondary-container);
   border: 1px solid var(--redesign-color-secondary-container);
-  color: var(--redesign-color-secondary);
+  color: var(--redesign-color-on-secondary-container);
   font-size: var(--redesign-type-body-sm-size);
   font-weight: 700;
 }
 
 .rehearsal-recording-status span {
-  background: var(--redesign-color-secondary);
+  background: var(--redesign-color-on-secondary-container);
 }
 
 .rehearsal-recording-status-active {
   background: var(--redesign-color-error-container);
   border-color: var(--redesign-color-error-container);
-  color: var(--redesign-color-error);
+  color: var(--redesign-color-on-error-container);
 }
 
 .rehearsal-recording-status-active span {
-  background: var(--redesign-color-error);
+  background: var(--redesign-color-on-error-container);
 }
 
 .rehearsal-exit-button,
@@ -1528,7 +1528,7 @@
 }
 
 .rehearsal-side-timer-title {
-  color: var(--redesign-color-primary-container);
+  color: var(--redesign-color-on-primary);
   font-size: var(--redesign-type-body-sm-size);
   font-weight: 700;
 }
@@ -1562,7 +1562,7 @@
 }
 
 .rehearsal-side-timer-meta {
-  color: color-mix(in srgb, var(--redesign-color-primary-container) 82%, transparent);
+  color: var(--redesign-color-on-primary);
   font-size: var(--redesign-type-body-sm-size);
 }
 

@@ -1,7 +1,7 @@
 export {
   DropdownMenu,
   DropdownMenuAccount,
-  DropdownMenuItem
+  DropdownMenuItem,
 } from "./DropdownMenu";
 export { OrbitButton, OrbitButtonLink } from "./Button";
 export type { OrbitButtonSize, OrbitButtonVariant } from "./Button";
@@ -11,12 +11,19 @@ export { isOrbitDialogDismissAllowed, OrbitDialog } from "./Dialog";
 export { OrbitEmptyState } from "./EmptyState";
 export { OrbitFailureState } from "./FailureState";
 export type { OrbitFailureStateProps } from "./FailureState";
-export { OrbitField, OrbitInput, OrbitSelect, OrbitTextarea } from "./FormControls";
+export {
+  OrbitField,
+  OrbitInput,
+  OrbitSelect,
+  OrbitTextarea,
+} from "./FormControls";
 export { GradientButton } from "./GradientButton";
 export { OrbitIconLabel } from "./IconLabel";
 export type { OrbitIconLabelProps } from "./IconLabel";
 export { OrbitIconButton } from "./IconButton";
 export type { OrbitIconButtonVariant } from "./IconButton";
+export { OrbitLoadingState } from "./LoadingState";
+export type { OrbitLoadingStateProps } from "./LoadingState";
 export { OrbitBrand } from "./OrbitBrand";
 export { OrbitStatus } from "./Status";
 export type { OrbitStatusTone } from "./Status";

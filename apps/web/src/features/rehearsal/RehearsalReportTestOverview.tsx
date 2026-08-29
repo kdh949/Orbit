@@ -206,7 +206,7 @@ export function RehearsalReportTestOverview({
           </div>
         </article>
 
-        <aside className="rrd-test-card rrd-test-summary">
+        <section className="rrd-test-card rrd-test-summary">
           <header>
             <span>AT A GLANCE</span>
             <h3>전체 발표 핵심 요약</h3>
@@ -274,7 +274,7 @@ export function RehearsalReportTestOverview({
               ? "모든 슬라이드의 실전 발표 분석 결과를 합산합니다."
               : "모든 슬라이드의 리허설 분석 결과를 합산합니다."}
           </p>
-        </aside>
+        </section>
       </div>
 
       <section className="rrd-test-findings">

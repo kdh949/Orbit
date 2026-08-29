@@ -186,7 +186,7 @@ export function PresentationScreen(props: {
           totalSlides={props.totalSlides}
         />
 
-        <aside className="rehearsal-presenter-side">
+        <div className="rehearsal-presenter-side">
           <PresenterTimerCard
             ariaLabel="발표 타이머"
             currentTimeLabel="발표 시간 설정"
@@ -231,7 +231,7 @@ export function PresentationScreen(props: {
               wordsPerMinute={props.wordsPerMinute}
             />
           )}
-        </aside>
+        </div>
 
         <RehearsalScriptTeleprompter
           focusScopeId={props.currentSlide?.slideId ?? "presentation-empty"}

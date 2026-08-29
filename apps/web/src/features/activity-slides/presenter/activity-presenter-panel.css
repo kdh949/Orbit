@@ -16,7 +16,7 @@
 }
 
 .activity-presenter-panel-heading > div { display: grid; gap: 3px; min-width: 0; }
-.activity-presenter-panel-heading div > span { color: var(--redesign-color-primary); font-size: var(--redesign-type-label-sm-size); font-weight: 950; letter-spacing: 0.1em; }
+.activity-presenter-panel-heading div > span { color: var(--redesign-color-primary-emphasis); font-size: var(--redesign-type-label-sm-size); font-weight: 950; letter-spacing: 0.1em; }
 .activity-presenter-panel-heading div > strong { color: var(--redesign-color-on-surface); font-size: var(--redesign-type-body-md-size); overflow-wrap: anywhere; }
 
 .activity-presenter-status {
@@ -38,7 +38,7 @@
 .activity-presenter-metrics span { color: var(--redesign-color-on-surface-variant); font-size: var(--redesign-type-label-sm-size); font-weight: 850; }
 .activity-presenter-metrics strong { color: var(--redesign-color-on-surface); font-size: var(--redesign-type-title-lg-size); }
 
-.activity-presenter-panel > a { align-items: center; color: var(--redesign-color-primary); display: inline-flex; font-size: var(--redesign-type-label-sm-size); font-weight: 850; gap: var(--redesign-space-1); justify-content: center; margin-top: auto; order: 2; overflow-wrap: anywhere; }
+.activity-presenter-panel > a { align-items: center; color: var(--redesign-color-primary-emphasis); display: inline-flex; font-size: var(--redesign-type-label-sm-size); font-weight: 850; gap: var(--redesign-space-1); justify-content: center; margin-top: auto; order: 2; overflow-wrap: anywhere; }
 .activity-presenter-error { color: var(--redesign-color-warning); font-size: var(--redesign-type-label-sm-size); font-weight: 750; line-height: 1.4; margin: 0; }
 
 .activity-presenter-primary-command.redesign-button-primary {

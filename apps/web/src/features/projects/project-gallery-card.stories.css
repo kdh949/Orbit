@@ -1,0 +1,7 @@
+.project-card-story-list {
+  width: min(90vw, calc(var(--redesign-space-24) * 4));
+}
+
+.project-card-story-list .orbit-project-gallery-card {
+  min-width: 0;
+}

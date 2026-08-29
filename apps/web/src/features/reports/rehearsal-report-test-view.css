@@ -320,6 +320,18 @@
   align-content: start;
 }
 
+.rrd-test-visually-hidden {
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
 .rrd-test-summary-list {
   display: grid;
   gap: var(--redesign-space-3);
@@ -445,7 +457,7 @@
 
 .rrd-test-next-practice button {
   align-items: center;
-  background: var(--redesign-color-primary);
+  background: var(--redesign-color-primary-emphasis);
   border: 0;
   border-radius: var(--redesign-radius-lg);
   color: var(--redesign-color-on-primary);
