@@ -157,6 +157,7 @@ function SlideshowRendererContent(props: {
       data-slide-title={slide.title}
       data-step-index={stepIndex}
       data-transition-active={crossFade ? "true" : "false"}
+      role="group"
       style={{
         height: deck.canvas.height * scale,
         overflow: "hidden",

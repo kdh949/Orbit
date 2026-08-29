@@ -19,7 +19,7 @@
 .focused-practice-controls small { color: var(--redesign-color-secondary); font-weight: 750; }
 .focused-practice-controls strong { font-size: var(--redesign-type-title-lg-size); line-height: 1.45; }
 .focused-practice-duration-guidance { background: var(--redesign-color-secondary-container); border-radius: var(--redesign-radius-xl); display: grid; gap: var(--redesign-space-1); margin-top: var(--redesign-space-2); padding: var(--redesign-space-3) var(--redesign-space-4); }
-.focused-practice-duration-guidance span { color: var(--redesign-color-secondary); font-size: var(--redesign-type-label-sm-size); font-weight: 750; }
+.focused-practice-duration-guidance span { color: var(--redesign-color-on-secondary-container); font-size: var(--redesign-type-label-sm-size); font-weight: 750; }
 .focused-practice-duration-guidance strong { font-family: var(--redesign-font-family); font-size: var(--redesign-type-headline-md-size); font-variant-numeric: tabular-nums; }
 .focused-practice-controls .focused-practice-duration-guidance p { margin: 0; }
 .focused-practice-timer-label { color: var(--redesign-color-on-surface-variant); font-size: var(--redesign-type-body-sm-size); margin-top: var(--redesign-space-2); }

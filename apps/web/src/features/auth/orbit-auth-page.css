@@ -181,7 +181,7 @@
   border: 0;
   border-radius: var(--redesign-radius-sm);
   background: transparent;
-  color: var(--redesign-color-primary);
+  color: var(--redesign-color-primary-emphasis);
   font-family: inherit;
   font-size: var(--redesign-type-label-md-size);
   font-weight: var(--redesign-type-label-md-weight);

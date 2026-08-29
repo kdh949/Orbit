@@ -27,7 +27,7 @@ describe("CSS cascade order", () => {
       ].join("\n"),
     );
     expect(sha256(readCssBundle(globalStylesPath))).toBe(
-      "33d1acfe0fd657a2a80ad16ac2572eb3dc6ec77ea301ffc7f420c0d2e9a8804e",
+      "0ac67fffaf768e9bbf613ebc028f6c6ca186d3eb04d1e72ad0a658ddc183bce7",
     );
   });
 

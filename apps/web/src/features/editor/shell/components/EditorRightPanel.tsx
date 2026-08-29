@@ -178,7 +178,8 @@ export function EditorRightPanel(props: EditorRightPanelProps) {
         : "AI 어시스턴트";
 
   return (
-    <aside
+    <section
+      aria-label={activePanelLabel}
       className={`ai-pane ${props.isOpen ? "" : "collapsed"} ${props.rehearsalPanel ? "rehearsal-mode" : ""}`}
       id="editor-selection-inspector-pane"
     >
@@ -449,6 +450,6 @@ export function EditorRightPanel(props: EditorRightPanelProps) {
           </div>
         </>
       ) : null}
-    </aside>
+    </section>
   );
 }

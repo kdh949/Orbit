@@ -51,7 +51,7 @@
 }
 
 .orbit-project-commandbar-ai {
-  background: var(--redesign-color-primary);
+  background: var(--redesign-color-primary-emphasis);
 }
 
 .orbit-project-commandbar-ai:hover:not(:disabled) {
@@ -118,7 +118,8 @@
   display: flex;
   gap: var(--redesign-space-4);
   justify-content: space-between;
-  padding: var(--redesign-space-5) var(--redesign-space-5) var(--redesign-space-4);
+  padding: var(--redesign-space-5) var(--redesign-space-5)
+    var(--redesign-space-4);
 }
 
 .orbit-rehearsal-section-heading h2 {
@@ -221,7 +222,8 @@
   border-radius: var(--redesign-radius-lg);
   background: var(--redesign-color-surface-container-low);
   cursor: pointer;
-  transition: border-color var(--redesign-duration-fast) var(--redesign-ease-standard),
+  transition:
+    border-color var(--redesign-duration-fast) var(--redesign-ease-standard),
     box-shadow var(--redesign-duration-fast) var(--redesign-ease-standard),
     transform var(--redesign-duration-normal) var(--redesign-ease-emphasized);
 }
@@ -281,7 +283,11 @@
   display: grid;
   gap: var(--redesign-space-2);
   padding: var(--redesign-space-3) var(--redesign-space-4);
-  background: color-mix(in srgb, var(--redesign-color-inverse-surface) 91%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-inverse-surface) 91%,
+    transparent
+  );
   color: var(--redesign-color-inverse-on-surface);
   text-align: left;
 }
@@ -311,11 +317,19 @@
   overflow: hidden;
   border: 0;
   border-radius: var(--redesign-radius-full);
-  background: color-mix(in srgb, var(--redesign-color-light-surface) 20%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-light-surface) 20%,
+    transparent
+  );
 }
 
 .orbit-project-gallery-progress progress::-webkit-progress-bar {
-  background: color-mix(in srgb, var(--redesign-color-light-surface) 20%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--redesign-color-light-surface) 20%,
+    transparent
+  );
 }
 
 .orbit-project-gallery-progress progress::-webkit-progress-value {
@@ -403,7 +417,8 @@
   gap: var(--redesign-space-1);
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--redesign-duration-fast) var(--redesign-ease-standard);
+  transition: opacity var(--redesign-duration-fast)
+    var(--redesign-ease-standard);
 }
 
 .orbit-project-gallery-card:hover .orbit-project-gallery-hover-actions,
@@ -545,11 +560,7 @@
 }
 
 .orbit-project-row.is-pinned {
-  background: color-mix(
-    in srgb,
-    var(--redesign-color-primary) 5%,
-    transparent
-  );
+  background: color-mix(in srgb, var(--redesign-color-primary) 5%, transparent);
 }
 
 .orbit-project-practice-cta.redesign-button {
@@ -591,7 +602,8 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
-  transition: background-color var(--redesign-duration-fast) var(--redesign-ease-standard),
+  transition:
+    background-color var(--redesign-duration-fast) var(--redesign-ease-standard),
     color var(--redesign-duration-fast) var(--redesign-ease-standard),
     border-color var(--redesign-duration-fast) var(--redesign-ease-standard);
 }

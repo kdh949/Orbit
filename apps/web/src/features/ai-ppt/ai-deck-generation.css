@@ -95,7 +95,7 @@
   place-items: center;
   border-radius: var(--redesign-radius-xl);
   background: var(--redesign-color-secondary-container);
-  color: var(--redesign-color-secondary);
+  color: var(--redesign-color-on-secondary-container);
   font-size: var(--redesign-type-label-sm-size);
   font-weight: 800;
 }

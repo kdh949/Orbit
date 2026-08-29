@@ -37,8 +37,8 @@ export function ProjectGalleryCard(props: {
   const isPptxFailed = props.pptxImport?.stage === "failed";
   const isProcessing = Boolean(
     isPptxCard &&
-      (serverPptxGeneration ||
-        (props.pptxImport && !isPptxComplete && !isPptxFailed)),
+    (serverPptxGeneration ||
+      (props.pptxImport && !isPptxComplete && !isPptxFailed)),
   );
   const progress =
     props.pptxImport?.progress ?? serverPptxGeneration?.progress ?? null;
@@ -68,12 +68,12 @@ export function ProjectGalleryCard(props: {
   }, []);
 
   return (
-    <article
-      className={
-        `${props.isPinned
+    <div
+      className={`${
+        props.isPinned
           ? "orbit-project-gallery-card is-pinned"
-          : "orbit-project-gallery-card"}${isPptxCard ? " is-pptx-processing" : ""}`
-      }
+          : "orbit-project-gallery-card"
+      }${isPptxCard ? " is-pptx-processing" : ""}`}
       role="listitem"
     >
       <button
@@ -106,10 +106,24 @@ export function ProjectGalleryCard(props: {
         {isPptxCard ? (
           <span className="orbit-project-gallery-progress">
             <span>
-              <span>{isPptxComplete ? "미리보기 준비 완료" : isPptxFailed ? "변환 실패" : "미리보기 만드는 중"}</span>
-              <strong>{progress === null ? "업로드 중" : `${progress}%`}</strong>
+              <span>
+                {isPptxComplete
+                  ? "미리보기 준비 완료"
+                  : isPptxFailed
+                    ? "변환 실패"
+                    : "미리보기 만드는 중"}
+              </span>
+              <strong>
+                {progress === null ? "업로드 중" : `${progress}%`}
+              </strong>
             </span>
-            <progress aria-label={`${props.project.title} PPTX 변환 진행률`} max="100" value={progress ?? undefined}>{progress ?? 0}%</progress>
+            <progress
+              aria-label={`${props.project.title} PPTX 변환 진행률`}
+              max="100"
+              value={progress ?? undefined}
+            >
+              {progress ?? 0}%
+            </progress>
           </span>
         ) : null}
       </button>
@@ -165,8 +179,14 @@ export function ProjectGalleryCard(props: {
 
       <div className="orbit-project-gallery-meta">
         {isPptxCard ? (
-          <span className={`orbit-project-gallery-status${isPptxComplete ? " is-complete" : isPptxFailed ? " is-failed" : ""}`}>
-            {isPptxComplete ? "변환 완료" : isPptxFailed ? "변환 실패" : "PPTX 변환 중"}
+          <span
+            className={`orbit-project-gallery-status${isPptxComplete ? " is-complete" : isPptxFailed ? " is-failed" : ""}`}
+          >
+            {isPptxComplete
+              ? "변환 완료"
+              : isPptxFailed
+                ? "변환 실패"
+                : "PPTX 변환 중"}
           </span>
         ) : null}
         <button
@@ -178,8 +198,10 @@ export function ProjectGalleryCard(props: {
           <strong>{props.project.title}</strong>
           <small>{props.createdAtLabel}</small>
         </button>
-        {isPptxCard ? <p className="orbit-project-gallery-message">{message}</p> : null}
+        {isPptxCard ? (
+          <p className="orbit-project-gallery-message">{message}</p>
+        ) : null}
       </div>
-    </article>
+    </div>
   );
 }

@@ -193,7 +193,7 @@
 .audience-error {
   background: var(--redesign-color-error-container);
   border-radius: var(--redesign-radius);
-  color: var(--redesign-color-error);
+  color: var(--redesign-color-on-error-container);
   font-size: var(--redesign-type-body-sm-size);
   margin: 0;
   padding: var(--redesign-space-3) var(--redesign-space-3);

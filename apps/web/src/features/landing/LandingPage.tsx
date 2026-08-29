@@ -82,8 +82,7 @@ export function LandingPage(props: { onNavigate: Navigate }) {
           <div className="landing-hero-bottom">
             <div className="landing-hero-copy">
               <p className="landing-intro">
-                AI로 아이디어를 슬라이드로 만들고,{" "}
-                <br />
+                AI로 아이디어를 슬라이드로 만들고, <br />
                 리허설과 피드백까지 하나의 흐름에서 완성하세요.
               </p>
               <GradientButton
@@ -95,7 +94,6 @@ export function LandingPage(props: { onNavigate: Navigate }) {
                 <IconArrowRight aria-hidden="true" size={16} />
               </GradientButton>
             </div>
-
           </div>
         </section>
 
@@ -137,11 +135,21 @@ function ProductPreview() {
           <span className="landing-preview-avatar">
             <img alt="" src="/avatars/orbit-01.png" />
           </span>
-          <i><IconHistory size={13} /></i>
-          <i><IconDeviceFloppy size={13} /></i>
-          <i><IconRefresh size={13} /></i>
-          <i className="is-primary"><IconMicrophone size={13} /></i>
-          <i><IconShare size={13} /></i>
+          <i>
+            <IconHistory size={13} />
+          </i>
+          <i>
+            <IconDeviceFloppy size={13} />
+          </i>
+          <i>
+            <IconRefresh size={13} />
+          </i>
+          <i className="is-primary">
+            <IconMicrophone size={13} />
+          </i>
+          <i>
+            <IconShare size={13} />
+          </i>
           <strong>
             <IconPlayerPlay size={12} />
             발표하기
@@ -153,9 +161,11 @@ function ProductPreview() {
       </header>
 
       <div className="landing-preview-workspace">
-        <aside aria-label="슬라이드 목록" className="landing-preview-rail">
+        <div aria-label="슬라이드 목록" className="landing-preview-rail">
           <div className="landing-preview-rail-heading">
-            <span><strong>슬라이드</strong> 7</span>
+            <span>
+              <strong>슬라이드</strong> 7
+            </span>
             <IconLayoutSidebarLeftCollapse aria-hidden="true" size={13} />
           </div>
 
@@ -175,18 +185,29 @@ function ProductPreview() {
             </div>
           ))}
           <footer className="landing-preview-rail-footer">
-            <span className="is-selected"><IconLayoutGrid aria-hidden="true" size={13} /></span>
-            <span><IconLayoutSidebarLeftCollapse aria-hidden="true" size={13} /></span>
-            <span><IconPlus aria-hidden="true" size={14} /></span>
+            <span className="is-selected">
+              <IconLayoutGrid aria-hidden="true" size={13} />
+            </span>
+            <span>
+              <IconLayoutSidebarLeftCollapse aria-hidden="true" size={13} />
+            </span>
+            <span>
+              <IconPlus aria-hidden="true" size={14} />
+            </span>
           </footer>
-        </aside>
+        </div>
 
         <section className="landing-preview-editor">
           <div className="landing-preview-stage">
-            <div aria-hidden="true" className="landing-preview-toolbar redesign-dark">
+            <div
+              aria-hidden="true"
+              className="landing-preview-toolbar redesign-dark"
+            >
               <IconArrowLeft size={14} />
               <IconArrowRight size={14} />
-              <span className="is-selected"><IconPointer size={12} /></span>
+              <span className="is-selected">
+                <IconPointer size={12} />
+              </span>
               <i />
               <IconTypography size={14} />
               <IconShape size={14} />
@@ -195,7 +216,10 @@ function ProductPreview() {
               <IconSparkles size={14} />
             </div>
 
-            <div aria-hidden="true" className="landing-preview-zoom redesign-dark">
+            <div
+              aria-hidden="true"
+              className="landing-preview-zoom redesign-dark"
+            >
               <IconZoomOut size={13} />
               <IconFocusCentered size={13} />
               <strong>51%</strong>
@@ -237,14 +261,24 @@ function ProductPreview() {
           </footer>
         </section>
 
-        <aside aria-label="AI 어시스턴트" className="landing-preview-ai">
+        <div aria-label="AI 어시스턴트" className="landing-preview-ai">
           <header className="landing-preview-inspector-header">
-            <span><IconMessageCircle aria-hidden="true" size={13} /> AI 어시스턴트</span>
+            <span>
+              <IconMessageCircle aria-hidden="true" size={13} /> AI 어시스턴트
+            </span>
             <div aria-hidden="true">
-              <i><IconAdjustmentsHorizontal size={12} /></i>
-              <i><IconLayoutGrid size={12} /></i>
-              <i className="is-selected"><IconMessageCircle size={12} /></i>
-              <i><IconLayoutSidebarRightCollapse size={12} /></i>
+              <i>
+                <IconAdjustmentsHorizontal size={12} />
+              </i>
+              <i>
+                <IconLayoutGrid size={12} />
+              </i>
+              <i className="is-selected">
+                <IconMessageCircle size={12} />
+              </i>
+              <i>
+                <IconLayoutSidebarRightCollapse size={12} />
+              </i>
             </div>
           </header>
 
@@ -254,15 +288,24 @@ function ProductPreview() {
                 <IconSparkles aria-hidden="true" size={18} />
               </span>
               <h3>이 슬라이드를 더 설득력 있게</h3>
-              <p>내용은 유지하면서 현재 장표에 어울리는 디자인 제안을 준비해 드려요.</p>
+              <p>
+                내용은 유지하면서 현재 장표에 어울리는 디자인 제안을 준비해
+                드려요.
+              </p>
               <button className="landing-ai-primary" type="button">
                 <IconSparkles aria-hidden="true" size={13} />
                 슬라이드 다시 디자인
               </button>
               <div className="landing-ai-quick-actions">
-                <button type="button"><IconLayoutGrid size={12} /> 레이아웃 정리</button>
-                <button type="button"><IconTargetArrow size={12} /> 핵심 메시지 강조</button>
-                <button type="button"><IconPlayerPlay size={12} /> 애니메이션 추천</button>
+                <button type="button">
+                  <IconLayoutGrid size={12} /> 레이아웃 정리
+                </button>
+                <button type="button">
+                  <IconTargetArrow size={12} /> 핵심 메시지 강조
+                </button>
+                <button type="button">
+                  <IconPlayerPlay size={12} /> 애니메이션 추천
+                </button>
               </div>
             </div>
             <div className="landing-ai-message">
@@ -275,7 +318,9 @@ function ProductPreview() {
               </button>
               <nav aria-label="AI 생성 유형">
                 <span className="is-active">디자인</span>
-                <span><IconPhotoPlus aria-hidden="true" size={11} /> 이미지 생성</span>
+                <span>
+                  <IconPhotoPlus aria-hidden="true" size={11} /> 이미지 생성
+                </span>
               </nav>
               <div className="landing-ai-input">
                 <span>바꾸고 싶은 디자인을 말씀해 주세요</span>
@@ -283,9 +328,8 @@ function ProductPreview() {
               </div>
             </div>
           </section>
-        </aside>
+        </div>
       </div>
-
     </section>
   );
 }

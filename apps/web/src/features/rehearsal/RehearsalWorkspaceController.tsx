@@ -3463,7 +3463,7 @@ export function RehearsalWorkspaceController(props: RehearsalWorkspaceProps) {
           totalSlides={deck?.slides.length ?? 0}
         />
 
-        <aside className="rehearsal-presenter-side">
+        <div className="rehearsal-presenter-side">
           <PresenterTimerCard
             ariaLabel="리허설 타이머"
             currentTimeLabel="경과 발표 시간"
@@ -3694,7 +3694,7 @@ export function RehearsalWorkspaceController(props: RehearsalWorkspaceProps) {
               }
             />
           )}
-        </aside>
+        </div>
 
         <RehearsalTeleprompter
           countdownMs={presenterSettings.advancePolicy.countdownMs}

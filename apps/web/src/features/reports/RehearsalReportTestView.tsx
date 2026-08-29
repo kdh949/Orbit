@@ -118,6 +118,7 @@ export function RehearsalReportTestView({
       className="rrd-test-view"
       aria-label="슬라이드 상세 리포트 테스트 화면"
     >
+      <h2 className="rrd-test-visually-hidden">슬라이드별 발표 분석</h2>
       {deck && deck.slides.length > 0 ? (
         <RehearsalReportTestNavigator
           deck={deck}
@@ -196,7 +197,7 @@ export function RehearsalReportTestView({
           </div>
         </article>
 
-        <aside className="rrd-test-card rrd-test-summary">
+        <section className="rrd-test-card rrd-test-summary">
           <header>
             <span>AT A GLANCE</span>
             <h3>이 슬라이드 핵심 요약</h3>
@@ -262,7 +263,7 @@ export function RehearsalReportTestView({
               ? "실전 발표 분석 결과를 기준으로 표시합니다."
               : "리허설 분석 결과를 기준으로 표시합니다."}
           </p>
-        </aside>
+        </section>
       </div>
 
       <section className={`rrd-test-findings${isOverall ? " is-hidden" : ""}`}>

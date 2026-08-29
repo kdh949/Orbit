@@ -240,7 +240,7 @@ function GuideDrawer(props: { guide: any; onClose: () => void }) {
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
   }, []);
-  return <div className="qna-drawer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) props.onClose(); }}><aside className="qna-drawer" role="dialog" aria-modal="true" aria-labelledby="guide-title"><button ref={close} className="qna-drawer-close" aria-label="가이드 닫기" onClick={props.onClose} type="button"><IconX /></button><p className="redesign-eyebrow">답변 가이드</p><h2 id="guide-title">답변 구조 가이드</h2><ol>{props.guide.suggestedStructure.map((item: string) => <li key={item}>{item}</li>)}</ol><h3>반드시 포함할 개념</h3><ul>{props.guide.mustIncludeConcepts.map((item: any) => <li key={item.conceptId}>{item.label}</li>)}</ul>{props.guide.remediation ? <p className="qna-warning">{props.guide.remediation.message}</p> : null}</aside></div>;
+  return <div className="qna-drawer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) props.onClose(); }}><div className="qna-drawer" role="dialog" aria-modal="true" aria-labelledby="guide-title"><button ref={close} className="qna-drawer-close" aria-label="가이드 닫기" onClick={props.onClose} type="button"><IconX /></button><p className="redesign-eyebrow">답변 가이드</p><h2 id="guide-title">답변 구조 가이드</h2><ol>{props.guide.suggestedStructure.map((item: string) => <li key={item}>{item}</li>)}</ol><h3>반드시 포함할 개념</h3><ul>{props.guide.mustIncludeConcepts.map((item: any) => <li key={item.conceptId}>{item.label}</li>)}</ul>{props.guide.remediation ? <p className="qna-warning">{props.guide.remediation.message}</p> : null}</div></div>;
 }
 
 function message(cause: unknown) {

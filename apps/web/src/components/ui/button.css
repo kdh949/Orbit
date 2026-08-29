@@ -82,5 +82,5 @@
 @keyframes redesign-button-spin { to { transform: rotate(360deg); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .redesign-button-spinner { animation-duration: var(--redesign-duration-slow); }
+  .redesign-button-spinner { animation: none; }
 }
