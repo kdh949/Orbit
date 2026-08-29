@@ -63,8 +63,8 @@ export const Curated: Story = {
 };
 
 export const SearchEmpty: Story = {
-  parameters: {
-    msw: [
+  beforeEach({ msw }) {
+    msw.use(
       http.get("/api/v1/community-templates/discover", ({ request }) => {
         const query = new URL(request.url).searchParams.get("query");
         return HttpResponse.json({
@@ -73,7 +73,7 @@ export const SearchEmpty: Story = {
           page: 1,
         });
       }),
-    ],
+    );
   },
   play: async ({ canvas, userEvent }) => {
     await userEvent.type(
@@ -87,13 +87,13 @@ export const SearchEmpty: Story = {
 };
 
 export const Loading: Story = {
-  parameters: {
-    msw: [
+  beforeEach({ msw }) {
+    msw.use(
       http.get("/api/v1/community-templates/discover", async () => {
         await delay("infinite");
         return HttpResponse.json({});
       }),
-    ],
+    );
   },
   play: async ({ canvas }) => {
     await expect(canvas.getByRole("status")).toHaveTextContent(
@@ -103,12 +103,12 @@ export const Loading: Story = {
 };
 
 export const Error: Story = {
-  parameters: {
-    msw: [
+  beforeEach({ msw }) {
+    msw.use(
       http.get("/api/v1/community-templates/discover", () =>
         HttpResponse.json({}, { status: 503 }),
       ),
-    ],
+    );
   },
   play: async ({ canvas }) => {
     await expect(

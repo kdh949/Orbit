@@ -29,6 +29,7 @@ const config: StorybookConfig = {
         viteConfigPath: ".storybook/vite.config.ts",
       },
     },
+    crossOriginIsolated: true,
   },
 };
 export default config;

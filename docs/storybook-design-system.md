@@ -36,7 +36,9 @@ props는 `args`와 Controls로 조작할 수 있게 하고, 컴포넌트 설명�
 React Query나 API에 의존하는 Story는 `.storybook/msw-handlers.ts`의 공통 fixture를
 기본으로 사용한다. 현재 `msw-storybook-addon`의 CSF3 설정에서는
 `parameters.msw`에 handler 배열을 직접 전달한다. Story별 Loading, Empty, Error는
-같은 endpoint의 handler 배열로 대체한다.
+`beforeEach({ msw })`에서 `msw.use(...)`로 필요한 endpoint만 override해 meta와 전역
+handler를 보존한다. Story-level parameter의 배열은 상위 배열을 대체하므로 상태별
+handler 배열을 다시 지정하지 않는다.
 
 첫 렌더 전에 이미 성공한 React Query 상태가 필요한 화면은
 `.storybook/with-query-data.tsx`로 실제 query key와 response fixture를 주입한다.

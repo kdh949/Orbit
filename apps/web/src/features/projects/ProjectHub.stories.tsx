@@ -122,8 +122,8 @@ export const ListView: Story = {
 
 export const Empty: Story = {
   args: { userName: "새 사용자" },
-  parameters: {
-    msw: [
+  beforeEach({ msw }) {
+    msw.use(
       http.get("/api/v1/workspaces/workspace_demo_1/projects/page", () =>
         HttpResponse.json({
           hasMore: false,
@@ -136,22 +136,22 @@ export const Empty: Story = {
       http.get("/api/v1/community-templates/discover", () =>
         HttpResponse.json({ hasMore: false, items: [], page: 1 }),
       ),
-    ],
+    );
   },
   play: async ({ canvas }) => {
     await expect(
       await canvas.findByText("조건에 맞는 프로젝트가 없습니다."),
     ).toBeVisible();
     await expect(
-      canvas.getByText("아직 공개된 발표 프로젝트가 없습니다."),
+      await canvas.findByText("아직 공개된 발표 프로젝트가 없습니다."),
     ).toBeVisible();
   },
 };
 
 export const Loading: Story = {
   args: { userName: "지윤" },
-  parameters: {
-    msw: [
+  beforeEach({ msw }) {
+    msw.use(
       http.get(
         "/api/v1/workspaces/workspace_demo_1/projects/page",
         async () => {
@@ -163,7 +163,7 @@ export const Loading: Story = {
         await delay("infinite");
         return HttpResponse.json({});
       }),
-    ],
+    );
   },
   play: async ({ canvas }) => {
     await expect(
@@ -176,12 +176,12 @@ export const Loading: Story = {
 };
 
 export const Error: Story = {
-  parameters: {
-    msw: [
+  beforeEach({ msw }) {
+    msw.use(
       http.get("/api/v1/workspaces/workspace_demo_1/projects/page", () =>
         HttpResponse.json({}, { status: 503 }),
       ),
-    ],
+    );
   },
   play: async ({ canvas }) => {
     await expect(await canvas.findByRole("alert")).toHaveTextContent(
