@@ -16,7 +16,7 @@ const crossOriginIsolationHeaders = {
   "Cross-Origin-Resource-Policy": "same-origin"
 } as const;
 
-const allowedHosts = ["photo-archive.cloud", "www.photo-archive.cloud"];
+const allowedHosts = ["orbit.dhkim.cloud"];
 
 function requireWebEnv(
   env: Record<string, string | undefined>,
