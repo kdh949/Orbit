@@ -151,7 +151,7 @@ else
 
   verify_app_images
   doppler run -- "${COMPOSE[@]}" up -d postgres redis minio minio-init
-  doppler run -- "${COMPOSE[@]}" run --rm --no-build api corepack pnpm db:migration:run
+  doppler run -- "${COMPOSE[@]}" run --rm --pull never api corepack pnpm db:migration:run
   doppler run -- "${COMPOSE[@]}" up -d --no-build --pull never
 fi
 
