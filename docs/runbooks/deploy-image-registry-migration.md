@@ -1,122 +1,122 @@
-# 배포 속도 개선: CI 이미지 빌드 → 레지스트리 → pull 전환 계획
+# 개인 staging GHCR 이미지 배포 기준
 
-## 목표
+## 범위
 
-backend 이미지(`api`·`worker`·`python-worker`)를 **CI에서 1회 빌드 → 컨테이너 레지스트리 push → AWS 운영·개인 staging 양쪽이 pull**하도록 전환한다. 배포 시점의 **온박스 빌드를 제거**하여 배포 단계를 "빌드 수 분" → "pull 수십 초"로 단축한다.
+이 문서는 개인 staging의 애플리케이션 이미지를 GitHub-hosted Actions에서 빌드하고,
+개인 서버가 GHCR에서 pull하는 현재 기준을 설명한다. AWS production 배포 경로는 이
+변경 범위에 포함하지 않는다.
 
-`main`(AWS 운영)과 `develop`(개인 staging) 양쪽 배포에 모두 적용한다.
+AWS production은 `infra/scripts/deploy-aws-ec2.sh`의 기존
+`DEPLOY_USE_REGISTRY`/온박스 fallback 계약을 유지한다. 개인 staging의 fail-closed
+정책을 AWS에 자동으로 확대 적용하지 않는다.
 
-## 현재 상태 (검증된 사실)
+실제 서버 설치·검증 절차는
+`docs/runbooks/personal-server-deployment.md`를 source of truth로 사용한다.
 
-| 항목 | 내용 | 근거 |
-| --- | --- | --- |
-| AWS 배포 빌드 | EC2(t4g.large, 2 vCPU)에서 `docker compose build` | `infra/scripts/deploy-aws-ec2.sh:84` |
-| 개인 staging 빌드 | self-hosted 러너 박스에서 `docker compose build` | `infra/scripts/deploy-personal-server.sh:68` |
-| AWS 배포 브랜치 | `main` (EC2가 git pull) | `infra/aws/main-production-bootstrap.yaml` (`GitHubDeployBranch: main`) |
-| 개인 staging 배포 브랜치 | `develop` 계열 | `.github/workflows/deploy-personal-staging.yml` (self-hosted 러너) |
-| 레지스트리 캐시 | 없음 (BuildKit cache mount·cache_from·ECR/GHCR 미사용) | Dockerfile/compose 전체 |
-| `api`·`worker`·`python-worker` | **env-agnostic** (런타임 env_file 주입, 빌드시 env ARG 없음) → 이미지 공유 가능 | `infra/docker/{api,worker,python-worker}.Dockerfile` |
-| `web` | **env-specific** (빌드시 `ARG APP_ENV/API_BASE_URL`을 구움) → 공유 불가 | `infra/docker/web.Dockerfile:20-26` |
-| AWS `web` | 컨테이너 아님, GitHub Actions에서 정적 빌드 → S3/CloudFront (이미 온박스 빌드 아님) | `.github/workflows/deploy-aws-production.yml` (`Build static web`) |
-| 개인 staging `web` | 컨테이너로 박스에서 빌드 (staging args 주입) | `docker-compose.staging.yml:131-135` |
-| 개인 staging env | Doppler (`doppler run --`) | `infra/scripts/deploy-personal-server.sh` |
+## 현재 구조
 
-## 설계 결정
+```mermaid
+flowchart TB
+  Developer[Developer] -->|push develop| GitHub[GitHub repository]
+  GitHub --> Actions[GitHub-hosted Actions]
+  Actions -->|build and push exact SHA| GHCR[GHCR]
 
-- **레지스트리: GHCR (GitHub Container Registry)**
-  - `api`·`worker`·`python-worker`는 env-agnostic이므로 **1회 빌드로 양쪽 환경이 동일 이미지를 pull**한다.
-  - 개인 staging은 GitHub self-hosted 러너이므로 `GITHUB_TOKEN`으로 자연스럽게 GHCR pull.
-  - AWS EC2는 GHCR read-only 토큰이 필요하며, **SSM Parameter Store(`/orbit/production/*`)에 저장**한다. EC2 인스턴스 역할에 이미 해당 경로 읽기 권한이 있어 **추가 IAM 변경이 불필요**하다 (`main-production-bootstrap.yaml`의 `ssm:GetParameter` 참고).
-- **태그: git SHA** (`${{ github.sha }}`) — 불변 태그로 배포가 정확히 해당 커밋의 이미지를 pull.
-- **web 처리**
-  - AWS `web`: 현재 방식 유지 (GitHub Actions 정적 빌드 → S3). 온박스 빌드가 아니므로 개선 대상 아님.
-  - 개인 staging `web`: staging↔운영 간에는 공유 불가하지만, **staging 배포끼리는 build args(`APP_ENV`/`API_BASE_URL`/`WEB_PORT`)가 상수라 동일 이미지 재사용 가능**. CI에서 staging args로 빌드해 GHCR `orbit-web:<sha>`·`<branch>`로 push한다. 배포는 **`<sha>` 태그로 pull**(브랜치 태그는 자동 배포가 build-images보다 앞서면 stale일 수 있어, web 번들이 배포 커밋과 어긋나지 않도록 SHA 고정)하고, 태그가 없으면 온박스 build로 fallback한다.
-- **롤백 안전장치**: 두 deploy 스크립트에 기존 `build` 경로를 플래그/주석으로 남겨, 문제 시 즉시 온박스 빌드로 복귀 가능하게 한다.
+  Internet[Internet users] -->|HTTPS domain| WAF[Sophos WAF and TLS]
+  Admin[Administrator] --> VPN[Sophos VPN or management LAN]
 
-## 구현 상태 (이 PR로 반영됨)
+  subgraph PersonalServer[Personal server DMZ]
+    SSH[SSH management]
+    Deploy[Deploy script and Docker Compose]
+    Nginx[Nginx internal ingress]
+    Web[React and Vite Web]
+    API[NestJS API]
+    Worker[NestJS Worker]
+    Python[FastAPI Python Worker]
+    Postgres[(PostgreSQL)]
+    Redis[(Redis and BullMQ)]
+    MinIO[(MinIO)]
 
-이 PR에는 계획과 함께 **Phase 1~3 코드가 플래그로 잠긴 채** 포함되어 있다. `DEPLOY_USE_REGISTRY` 기본값이 `false`라 **현재 배포 동작은 변하지 않는다**(기존 온박스 build 유지).
+    SSH --> Deploy
+    Nginx --> Web
+    Nginx --> API
+    Nginx --> MinIO
+    API --> Postgres
+    API --> Redis
+    API --> MinIO
+    Worker --> Postgres
+    Worker --> Redis
+    Worker --> MinIO
+    Worker --> Python
+  end
 
-- ✅ **Phase 1**: `.github/workflows/build-images.yml` — `api`·`worker`·`python-worker`를 GHCR에 build & push (`:<sha>`, `:<branch>` 태그, gha 캐시)
-- ✅ **Phase 2**: `docker-compose.aws.yml`·`docker-compose.staging.yml`의 세 서비스에 `image: ghcr.io/na-man-mu-303-team2/orbit-<svc>:${IMAGE_TAG:-latest}` 추가 (`build:`와 병행)
-- ✅ **Phase 3(플래그)**: `deploy-aws-ec2.sh`·`deploy-personal-server.sh`에 `DEPLOY_USE_REGISTRY` 분기 추가 — `true`면 GHCR 로그인 후 `pull`, 아니면 기존 `build`. 기본 `false`
-- ✅ **개인 staging 기본값 전환**: `deploy-personal-server.sh`는 이제 **Doppler에 `GHCR_TOKEN`(+선택 `GHCR_USERNAME`)이 있으면 자동으로 pull, 없으면 build로 fallback**. 즉 토큰만 넣으면 staging은 영구적으로 registry pull이 되고, 없으면 배포가 깨지지 않는다. `DEPLOY_USE_REGISTRY=false`로 강제 build 가능. (AWS는 여전히 명시 플래그 기본 `false`)
-- ✅ **개인 staging `web`도 pull 전환**: `build-images.yml`에 `build-web` 잡 추가(develop 전용, staging args로 `orbit-web:<sha>`·`:<branch>` push). `docker-compose.staging.yml` web에 `image:` 추가(`WEB_IMAGE_TAG` 우선), `deploy-personal-server.sh`는 배포 커밋의 **`<sha>` 태그로 `pull web`**(자동 배포 race 시 stale 번들 방지), 실패 시 온박스 build fallback. 이로써 staging 배포에서 온박스 web 빌드(~2분)가 제거된다.
-- ✅ **AWS 경쟁 조건 해결(코드)**: `deploy-aws-ec2.sh`가 이제 배포 커밋의 **`<sha>` 태그로 pull**한다(브랜치 태그 아님). 이때 SHA는 EC2의 `git pull` HEAD가 아니라 **배포 워크플로우의 `github.sha`**(= S3에 올라가는 static web 번들과 동일 커밋)를 쓴다 — `deploy-aws-production.yml`이 SSM으로 `DEPLOY_COMMIT_SHA`를 전달. 큐에 걸린 배포가 도는 동안 main이 앞서가도 backend·web·마이그레이션이 같은 커밋에 정렬된다. SHA 태그는 stale일 수 없고, 아직 없으면 build-images 완료를 짧게 재시도한 뒤 온박스 build로 fallback. 이로써 `workflow_run` 재구성 없이도 안전하다.
-- ✅ **멀티아키 이미지(amd64 + arm64)**: 운영 EC2가 **arm64(Graviton/t4g)** 라, amd64 전용 이미지는 `no matching manifest for linux/arm64/v8`로 pull이 실패했다(→ 온박스 build fallback). `build-images.yml`의 backend 빌드를 **아키텍처별 네이티브 러너**(amd64=`ubuntu-latest`, arm64=`ubuntu-24.04-arm`)로 나눠 digest로 push하고, `merge` 잡이 이를 **단일 manifest list**(`:<sha>`·`:<branch>`)로 합친다. staging(amd64)·운영(arm64) 양쪽이 맞는 아키텍처를 pull한다. web은 staging(amd64) 전용이라 단일 아키 유지.
-- ⏳ **남음**: AWS Phase 0(GHCR 토큰을 SSM 준비 — 완료), AWS 플래그 ON(`DEPLOY_USE_REGISTRY=true` — 완료), 멀티아키 빌드가 main에 반영된 뒤 재배포로 pull 검증, Phase 5(정리)
+  VPN --> SSH
+  WAF -->|HTTP from Sophos DMZ IP only| Nginx
+  Deploy -->|pull exact SHA| GHCR
+  Deploy -->|read runtime secrets| Doppler[Doppler orbit / stg]
+```
 
-> 참고: `ubuntu-24.04-arm`(GitHub 호스팅 arm64 러너)은 public 저장소는 무료, private은 플랜에 따라 사용 가능. arm64 러너를 쓸 수 없는 환경이면 대신 QEMU 멀티빌드(`platforms: linux/amd64,linux/arm64`)로 전환한다.
+- Workflow: `.github/workflows/build-personal-staging-images.yml`
+- Registry namespace: `ghcr.io/kdh949`
+- Build runner: GitHub-hosted `ubuntu-latest`
+- Deploy trigger: 관리자가 Sophos VPN 또는 관리 LAN에서 수동 실행
+- Runtime secret source: Doppler `orbit / stg`
+- 개인 서버 self-hosted Actions runner: 사용하지 않음
+- 개인 서버 application image build fallback: 사용하지 않음
 
-### 개인 staging 영구 적용 방법
+## 이미지 계약
 
-1. staging 테스트로 pull이 정상 동작하는지 1회 확인(권장)
-2. Doppler(staging config)에 `GHCR_TOKEN`(read:packages), 필요 시 `GHCR_USERNAME` 시크릿 추가
-3. 이후 `Personal Staging deploy`(full)부터 자동으로 GHCR pull. 되돌리려면 Doppler에서 토큰 제거(→ build fallback) 또는 `DEPLOY_USE_REGISTRY=false`
+한 배포는 네 서비스를 모두 같은 40자리 commit SHA로 고정한다.
 
-### 컷오버(플래그 ON) 절차 (Phase 0·4 완료 시)
+```text
+ghcr.io/kdh949/orbit-api:<commit-sha>
+ghcr.io/kdh949/orbit-worker:<commit-sha>
+ghcr.io/kdh949/orbit-python-worker:<commit-sha>
+ghcr.io/kdh949/orbit-web:<commit-sha>
+```
 
-> ✅ **경쟁 조건 해결됨 (코드)**: `build-images.yml`와 `deploy-aws-production.yml`이 둘 다 `push: main`에서 동시에 트리거되지만, `deploy-aws-ec2.sh`가 **배포 커밋의 `<sha>` 태그로 pull**하므로 stale 이미지를 받을 수 없다. 이미지가 아직 없으면 build-images 완료를 짧게 재시도(`REGISTRY_PULL_ATTEMPTS`, 기본 10회×30초)한 뒤 **온박스 build로 fallback**한다. 별도의 `workflow_run` 재구성은 불필요하다(그 방식은 build-images 트리거 paths에 안 걸리는 커밋의 배포를 건너뛰는 부작용이 있어 채택하지 않음).
+`develop` 같은 mutable branch tag와 `latest`는 배포에 사용하지 않는다. 네 이미지 중
+하나라도 빌드·pull·local inspection에 실패하면 실행 중 애플리케이션 컨테이너를
+교체하지 않는다.
 
-1. `build-images.yml`가 한 번 이상 성공해 GHCR에 이미지가 존재하는지 확인
-2. AWS: GHCR read-only 토큰을 SSM에 저장하고, 배포 env에 `DEPLOY_USE_REGISTRY=true`, `GHCR_TOKEN_SSM_PARAM=/orbit/production/GHCR_TOKEN` 설정
-3. 개인 staging: 배포 env에 `DEPLOY_USE_REGISTRY=true`, `GHCR_TOKEN`(또는 `GITHUB_TOKEN`) 제공
-4. staging에서 먼저 검증 → AWS 순으로 전환. 문제 시 `DEPLOY_USE_REGISTRY=false`로 즉시 롤백
+## 인증 경계
 
-## 단계별 계획
+GitHub Actions는 repository `GITHUB_TOKEN`과 `packages: write` 권한으로 이미지를
+게시한다. 개인 서버는 Doppler에 저장한 별도 read-only credential을 사용한다.
 
-### Phase 0 — 준비 (담당: 인프라 관리자)
+```text
+GHCR_TOKEN=<read:packages 전용 PAT>
+GHCR_USERNAME=kdh949
+```
 
-- [ ] GHCR read-only PAT 발급 (`read:packages`)
-- [ ] PAT를 SSM Parameter Store `/orbit/production/GHCR_TOKEN` 에 SecureString으로 저장
-- [ ] GHCR 패키지 가시성/권한 확인 (조직 `na-man-mu-303-team2`)
+token 값은 repository, Actions log, Compose 파일에 기록하지 않는다. 서버의 Doppler
+service token도 `orbit / stg` read 범위만 부여한다.
 
-### Phase 1 — CI 빌드·push 잡 추가 (담당: repo)
+## 배포 순서
 
-- [ ] `.github/workflows`에 `build-and-push` 잡 신설: `api`·`worker`·`python-worker` 이미지를 `ghcr.io/na-man-mu-303-team2/orbit-<svc>:${{ github.sha }}` 로 build & push
-- [ ] BuildKit **GitHub Actions 캐시**(`cache-from/to: type=gha`) 적용 → 빌드 자체도 단축
-- [ ] 워크플로우 `permissions`에 `packages: write` 추가 (현재 `contents: read`, `id-token: write`만 있음)
-- [ ] `develop` push 시(개인 staging용)와 `main` push 시(AWS용) 모두 이미지가 생성되도록 트리거 정리
-- [x] 개인 staging `web` 이미지도 staging args로 build & push (`build-web` 잡, develop 전용)
+1. `develop`의 `Build personal staging images` workflow가 성공한 SHA를 고른다.
+2. 관리자가 Sophos VPN 또는 관리 LAN으로 접속한다.
+3. `deploy-personal-server.sh <commit-sha>`를 실행한다.
+4. script가 server HEAD, Doppler env, 네 GHCR 이미지와 Compose 계약을 검증한다.
+5. data service를 기동하고 migration을 실행한 뒤 동일 SHA 앱을 교체한다.
+6. 내부 health check와 Sophos WAF 외부 경로를 확인한다.
 
-### Phase 2 — compose에 `image:` 지정 (담당: repo)
+GHCR 게시가 아직 끝나지 않았으면 script가 제한된 횟수만 재시도한다. 끝까지
+성공하지 않으면 서버에서 이미지를 빌드하지 않고 배포를 실패 처리한다.
 
-- [ ] `docker-compose.aws.yml`: `api`·`worker`·`python-worker`에 `image: ghcr.io/.../orbit-<svc>:${IMAGE_TAG}` 추가 (`build:`는 로컬 개발용으로 유지하되 배포는 pull 우선)
-- [x] `docker-compose.staging.yml`: `api`·`worker`·`python-worker` 동일 적용, `web`도 `image:` 추가(pull 우선, `build:` 병행 유지)
+## Rollback
 
-### Phase 3 — 배포 스크립트 build → pull (담당: repo)
+이전에 검증한 SHA의 네 이미지를 함께 pull하고 `--no-build --pull never`로 앱
+컨테이너만 교체한다. source checkout에 `git reset --hard`를 사용하지 않는다.
+DB migration은 자동 rollback하지 않으므로, 이전 앱과 schema 호환성이 없으면 별도
+복구 계획이 필요하다. 구체적인 명령과 검증 항목은 개인 서버 배포 runbook의
+`Rollback` 절을 따른다.
 
-- [ ] `infra/scripts/deploy-aws-ec2.sh`: `docker compose build`(84행) 제거 → `docker login ghcr`(SSM 토큰) + `docker compose pull` + `IMAGE_TAG` 주입으로 변경
-- [ ] `infra/scripts/deploy-personal-server.sh`: `docker compose build`(68행) 제거 → GHCR 로그인 + pull로 변경. 기존 `--no-build` 모드(66행)와 정합화
-- [ ] `.github/workflows/deploy-aws-production.yml`: 배포 잡이 Phase 1 build-push **완료 후** 실행되도록 의존성 연결, `IMAGE_TAG=${{ github.sha }}` 전달
+## 운영 체크리스트
 
-### Phase 4 — 롤아웃 (담당: 인프라 관리자 + repo)
-
-- [ ] **개인 staging에서 먼저 전환·검증** (리스크 낮은 환경 우선)
-- [ ] 정상 확인 후 **AWS 운영 전환**
-- [ ] 각 전환 후 스모크 테스트 (로그인·주요 페이지·AI PPT 흐름)
-
-### Phase 5 — 정리 (담당: repo + 인프라)
-
-- [ ] 온박스 빌드 잔재 정리, 관련 runbook 갱신
-- [ ] GHCR 이미지 보존 정책(오래된 SHA 태그 정리) 설정
-
-## 역할 분담
-
-| 작업 | 담당 |
-| --- | --- |
-| 워크플로우·compose·deploy 스크립트 수정 (Phase 1~3) | repo (PR) |
-| PAT 발급·SSM 저장, GHCR 권한, 배포 실행·검증 (Phase 0·4) | 인프라 관리자 (권한 필요) |
-
-## 리스크 & 롤백
-
-- **이미지 없는데 pull 시도 → 배포 실패**: 스크립트 전환 전에 **CI push 성공을 먼저 확인**한다.
-- **`IMAGE_TAG` 불일치 → 옛 이미지 배포**: git SHA 고정으로 방지.
-- **GHCR 인증 실패**: SSM 토큰/`GITHUB_TOKEN` 권한(`read:packages`) 확인. 실패 시 배포 중단되므로 사전 검증.
-- **web env 혼동**: 개인 staging `web`은 반드시 staging `API_BASE_URL`로 빌드. AWS `web`은 기존 CI→S3 경로 유지.
-- **롤백**: deploy 스크립트에 기존 `build` 경로를 플래그로 남겨 즉시 온박스 빌드로 복귀 가능하게 한다.
-
-## 진행 원칙
-
-- 모든 repo 변경은 **`develop`에서** 진행(feature 브랜치 → `develop` PR) 후, **sync 브랜치로 `main`에 반영**한다. sync 브랜치에서는 코드를 수정하지 않는다.
-- 파이프라인 구조 변경이므로 **시연 등 중요 일정 이후 착수**한다.
+- [ ] workflow validate와 네 image build가 모두 성공했다.
+- [ ] 배포 SHA가 `develop`의 40자리 commit SHA다.
+- [ ] 개인 서버가 `linux/amd64` 이미지와 호환된다.
+- [ ] Doppler runtime token과 GHCR token이 최소 권한이다.
+- [ ] SSH는 WAN이 아니라 Sophos VPN/관리 LAN에서만 허용된다.
+- [ ] Sophos WAF → Nginx → API의 trusted proxy hop은 `2`다.
+- [ ] 내부 및 외부 health check와 주요 smoke test를 기록했다.

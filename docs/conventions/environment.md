@@ -31,17 +31,17 @@ PRESENTATION_PASSCODE_ENCRYPTION_PREVIOUS_KEY_VERSION=
 항상 함께 설정하거나 함께 비워야 하며 현재 버전과 같을 수 없다. 원문 입장 코드는
 저장하지 않고 session ID를 AAD로 사용하는 AES-256-GCM ciphertext만 저장한다.
 
-모든 PR과 `develop` push에서는 `Environment Contract CI`가 세 환경 예시 파일의 key 집합, 필수 key, 중복 선언, 선언 형식, 허용되지 않은 빈 값을 검사한다. 선택 기능 또는 secret store에서 주입하는 값처럼 비어 있을 수 있는 key는 `infra/scripts/check-env.mjs`의 환경별 allowlist에 명시한다. 실제 개인 서버 값은 PR CI에 노출하지 않고, 배포 직전에 Doppler 환경에서 `infra/scripts/check-personal-staging-env.sh`로 존재 여부만 확인한다. Doppler `orbit / stg` 변경은 GitHub workflow dispatch를 통해 개인 서버의 앱 컨테이너에 자동 재적용하며, 필수값 누락·공백 또는 Compose 검증 실패 시 실행 중인 컨테이너를 교체하지 않는다.
+`develop` push에서는 `Build personal staging images` workflow의 validate job이 세 환경 예시 파일의 key 집합, 필수 key, 중복 선언, 선언 형식, 허용되지 않은 빈 값을 검사한다. 선택 기능 또는 secret store에서 주입하는 값처럼 비어 있을 수 있는 key는 `infra/scripts/check-env.mjs`의 환경별 allowlist에 명시한다. 실제 개인 서버 값은 CI에 노출하지 않고, VPN/SSH 수동 배포 직전에 서버의 read-only Doppler token으로 `infra/scripts/check-personal-staging-env.sh`를 실행해 존재 여부만 확인한다.
 
 개인 서버의 key source와 전달 방식은 `infra/env/personal-staging-env-policy.json`에 명시한다. `repo-default`는 저장소에 커밋할 수 있는 일반 설정, `doppler-optional`은 운영자 override, `doppler-required`는 환경별 값 또는 secret이다. `delivery=compose`인 key는 `docker-compose.yml` 또는 `docker-compose.staging.yml`에 명시적으로 전달되어야 하고, `delivery=code-default`는 개인 서버에서 runtime 기본값을 사용한다. PR CI는 예시 파일의 모든 key가 정책에 정확히 한 번 분류됐는지와 Compose 전달 선언이 정책과 일치하는지 함께 검사한다.
 
-`develop` push의 full 배포는 개인 서버를 변경하기 전에 GitHub Environment `personal-staging`의 `DOPPLER_STG_SYNC_TOKEN`으로 `pnpm env:sync:stg:apply`를 실행한다. 이 token은 Doppler `orbit / stg` config에만 read/write 권한을 가진 별도 service token이어야 하며 개인 서버 runtime의 read-only token과 분리한다. 동기화는 Doppler에 없는 `repo-default` + `delivery=compose` key만 `.env.staging.example`의 일반 설정값으로 한 번에 추가하고, 기존 key와 `doppler-required` 및 `doppler-optional` 값은 갱신하거나 자동 생성하지 않는다. 필수 수동 값이 없으면 full 배포를 시작하지 않는다.
+누락된 일반 설정을 Doppler에 추가해야 할 때만 운영자 관리 환경에서 `pnpm env:sync:stg:apply`를 수동 실행한다. 이때 `orbit / stg` config에만 read/write 권한을 가진 별도 service token을 사용하며, 개인 서버 runtime의 read-only token과 분리한다. 동기화는 Doppler에 없는 `repo-default` + `delivery=compose` key만 `.env.staging.example`의 일반 설정값으로 추가하고 기존 key와 secret은 갱신하지 않는다.
 
-`pnpm env:sync:stg`는 같은 정책을 Doppler 값 대신 key 이름만 읽어 확인하는 로컬 dry-run이다. 자동 동기화가 Doppler를 변경하면 기존 webhook의 `environment-only` 요청은 full 배포와 같은 concurrency group에서 후속 실행된다. 새 key가 없으면 Doppler 변경과 webhook 요청도 발생하지 않는다.
+`pnpm env:sync:stg`는 같은 정책을 Doppler 값 대신 key 이름만 읽어 확인하는 로컬 dry-run이다. Doppler 변경 뒤에는 관리자가 VPN/SSH로 접속해 `environment-only` 또는 full 배포를 수동 실행한다.
 
 `API_JSON_BODY_LIMIT_BYTES`는 API의 JSON request body 최대 크기다. 기본값은 `5000000`이며, full deck 저장(`PUT /api/v1/projects/:projectId/deck`)처럼 checkpoint용 Deck JSON을 보내는 경로가 Express 기본값 100KB에 걸리지 않도록 명시한다.
 
-`API_TRUST_PROXY_HOPS`는 API 앞에서 신뢰할 reverse proxy hop 수다. 직접 접속하는 local/test는 `0`, ALB 또는 단일 Nginx 뒤의 staging/production은 `1`, CloudFront와 ALB를 순서대로 거치는 ECS API는 `2`를 사용한다. 실제 proxy 수보다 크게 설정하면 외부 `X-Forwarded-For`를 신뢰하게 되므로 배포 topology와 정확히 맞춰야 한다.
+`API_TRUST_PROXY_HOPS`는 API 앞에서 신뢰할 reverse proxy hop 수다. 직접 접속하는 local/test는 `0`, 단일 Nginx 뒤의 환경은 `1`, Sophos WAF와 Nginx를 순서대로 거치는 개인 staging 및 CloudFront와 ALB를 거치는 ECS API는 `2`를 사용한다. 실제 proxy 수보다 크게 설정하면 외부 `X-Forwarded-For`를 신뢰하게 되므로 배포 topology와 정확히 맞춰야 한다.
 
 `IPAD_PRESENTER_COMPANION_ENABLED=true | false`는 발표자 iPad companion의
 pairing API와 Web 진입점을 함께 제어한다. 기본값은 `true`다. `false`이면

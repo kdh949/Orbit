@@ -3,7 +3,7 @@ x-orbit-env: &orbit-env
   APP_ENV: ${APP_ENV:?}
   WEB_PORT: ${WEB_PORT:?}
   API_PORT: ${API_PORT:?}
-  API_TRUST_PROXY_HOPS: ${API_TRUST_PROXY_HOPS:-1}
+  API_TRUST_PROXY_HOPS: ${API_TRUST_PROXY_HOPS:-2}
   WORKER_PORT: ${WORKER_PORT:?}
   PYTHON_WORKER_PORT: ${PYTHON_WORKER_PORT:?}
   WORKER_MEMORY_LIMIT: ${WORKER_MEMORY_LIMIT:-768m}
@@ -69,7 +69,7 @@ x-orbit-env: &orbit-env
 
 services:
   api:
-    image: ghcr.io/na-man-mu-303-team2/orbit-api:${IMAGE_TAG:-latest}
+    image: ghcr.io/kdh949/orbit-api:${IMAGE_TAG:?IMAGE_TAG is required}
     env_file: !reset []
     environment:
       <<: *orbit-env
@@ -97,7 +97,7 @@ services:
     restart: unless-stopped
 
   worker:
-    image: ghcr.io/na-man-mu-303-team2/orbit-worker:${IMAGE_TAG:-latest}
+    image: ghcr.io/kdh949/orbit-worker:${IMAGE_TAG:?IMAGE_TAG is required}
     env_file: !reset []
     environment:
       <<: *orbit-env
@@ -120,7 +120,7 @@ services:
     mem_limit: ${WORKER_MEMORY_LIMIT:-768m}
 
   python-worker:
-    image: ghcr.io/na-man-mu-303-team2/orbit-python-worker:${IMAGE_TAG:-latest}
+    image: ghcr.io/kdh949/orbit-python-worker:${IMAGE_TAG:?IMAGE_TAG is required}
     env_file: !reset []
     environment:
       <<: *orbit-env
@@ -145,7 +145,7 @@ services:
     mem_limit: ${PYTHON_WORKER_MEMORY_LIMIT:-1024m}
 
   web:
-    image: ghcr.io/na-man-mu-303-team2/orbit-web:${WEB_IMAGE_TAG:-${IMAGE_TAG:-latest}}
+    image: ghcr.io/kdh949/orbit-web:${IMAGE_TAG:?IMAGE_TAG is required}
     build:
       args:
         APP_ENV: ${APP_ENV:?}
