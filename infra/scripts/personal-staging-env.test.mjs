@@ -165,60 +165,35 @@ test("sync arguments are dry-run by default and reject unknown input", () => {
   assert.throws(() => parseArguments(["--unknown"]), /unknown argument/);
 });
 
-test("develop deploy syncs safe Doppler defaults before server deployment", () => {
+test("hosted image workflow validates env contracts without changing Doppler or the server", () => {
   const workflow = fs.readFileSync(
-    ".github/workflows/environment-contract-ci.yml",
+    ".github/workflows/build-personal-staging-images.yml",
     "utf8",
   );
 
-  assert.match(workflow, /^  sync-personal-staging-env:$/m);
-  assert.match(
-    workflow,
-    /DOPPLER_TOKEN: \$\{\{ secrets\.DOPPLER_STG_SYNC_TOKEN \}\}/,
+  assert.match(workflow, /runs-on: ubuntu-latest/);
+  assert.match(workflow, /node infra\/scripts\/check-env\.mjs/);
+  assert.match(workflow, /infra\/scripts\/personal-staging-env\.test\.mjs/);
+  assert.doesNotMatch(workflow, /DOPPLER_TOKEN|DOPPLER_STG_SYNC_TOKEN/);
+  assert.doesNotMatch(workflow, /sync-personal-staging-doppler\.mjs/);
+  assert.doesNotMatch(workflow, /\/usr\/local\/sbin\/orbit-deploy/);
+});
+
+test("manual dispatch rebuilds images but never deploys to the personal server", () => {
+  const workflow = fs.readFileSync(
+    ".github/workflows/build-personal-staging-images.yml",
+    "utf8",
   );
-  assert.match(
+
+  assert.match(workflow, /^  workflow_dispatch:$/m);
+  assert.match(workflow, /push:\s+branches:\s+- develop/m);
+  assert.doesNotMatch(workflow, /runs-on:.*self-hosted|\bssh\b/i);
+  assert.doesNotMatch(
     workflow,
-    /node infra\/scripts\/sync-personal-staging-doppler\.mjs \\\s+--apply/,
+    /sudo .*deploy-personal-server|\.\/infra\/scripts\/deploy-personal-server\.sh/,
   );
   assert.doesNotMatch(
     workflow,
-    /uses: \.\/\.github\/workflows\/deploy-personal-staging\.yml/,
-  );
-  assert.match(
-    workflow,
-    /needs\.sync-personal-staging-env\.result == 'success'/,
-  );
-  assert.match(
-    workflow,
-    /'personal-staging-deploy' \|\| format\('environment-contract-\{0\}-\{1\}', github\.workflow, github\.ref\)/,
-  );
-  assert.match(
-    workflow,
-    /sudo \/usr\/local\/sbin\/orbit-deploy-personal-staging "\$DEPLOYMENT_MODE" "\$EXPECTED_SHA"/,
-  );
-});
-
-test("manual full recovery uses the existing dispatch and serialized develop sync path", () => {
-  const contractWorkflow = fs.readFileSync(
-    ".github/workflows/environment-contract-ci.yml",
-    "utf8",
-  );
-  const deployWorkflow = fs.readFileSync(
-    ".github/workflows/deploy-personal-staging.yml",
-    "utf8",
-  );
-
-  assert.doesNotMatch(contractWorkflow, /^  workflow_dispatch:$/m);
-  assert.doesNotMatch(deployWorkflow, /^  workflow_call:$/m);
-  assert.match(deployWorkflow, /^  workflow_dispatch:$/m);
-  assert.match(deployWorkflow, /^          - manual$/m);
-  assert.match(
-    deployWorkflow,
-    /inputs\.deployment_mode == 'full' &&[\s\S]*inputs\.trigger_source == 'manual' &&[\s\S]*github\.ref == 'refs\/heads\/develop'/,
-  );
-  assert.doesNotMatch(deployWorkflow, /develop-push/);
-  assert.match(
-    deployWorkflow,
-    /^concurrency:\s+group: personal-staging-deploy\s+cancel-in-progress: false$/m,
+    /DOPPLER_TOKEN|sync-personal-staging-doppler\.mjs/,
   );
 });

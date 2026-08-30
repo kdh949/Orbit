@@ -37,6 +37,11 @@ if [[ "$DEPLOYMENT_MODE" == "environment-only" && -z "$EXPECTED_SHA" ]]; then
   exit 1
 fi
 
+if [[ "$DEPLOYMENT_MODE" == "full" && -z "$EXPECTED_SHA" ]]; then
+  echo "Full deployment requires an expected SHA."
+  exit 1
+fi
+
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
   echo "Another deployment is already running."
@@ -54,9 +59,8 @@ if [[ -n "$EXPECTED_SHA" && "$(git rev-parse HEAD)" != "$EXPECTED_SHA" ]]; then
 fi
 
 DEPLOY_SHA="$(git rev-parse HEAD)"
-IMAGE_TAG="$DEPLOY_BRANCH"
-WEB_IMAGE_TAG="$DEPLOY_SHA"
-export IMAGE_TAG WEB_IMAGE_TAG
+IMAGE_TAG="$DEPLOY_SHA"
+export IMAGE_TAG
 
 verify_app_images() {
   local resolved_images
@@ -64,7 +68,12 @@ verify_app_images() {
   local -a app_images
 
   resolved_images="$(doppler run -- "${COMPOSE[@]}" config --images)"
-  mapfile -t app_images < <(
+  app_images=()
+  while IFS= read -r image; do
+    if [[ -n "$image" ]]; then
+      app_images+=("$image")
+    fi
+  done < <(
     printf '%s\n' "$resolved_images" |
       grep -E '/orbit-(api|worker|python-worker|web):' || true
   )
@@ -95,45 +104,55 @@ if [[ "$DEPLOYMENT_MODE" == "environment-only" ]]; then
     uv run python -c 'from app.config import load_config; load_config()'
   doppler run -- "${COMPOSE[@]}" up -d --no-build --pull never --force-recreate api worker python-worker web
 else
-  # Prepare service images. Use prebuilt GHCR images when a GHCR token is
-  # available; otherwise fall back to building on-box so deploys keep working
-  # before the token is configured. Set the GHCR_TOKEN (and optional
-  # GHCR_USERNAME) secrets in Doppler to make the registry path the default for
-  # personal staging. Set DEPLOY_USE_REGISTRY=false to force the on-box build.
-  # The web image is staging-specific but prebuilt in CI (build-images.yml,
-  # develop only); pull it too and fall back to an on-box build if the tag is
-  # missing. See docs/runbooks/deploy-image-registry-migration.md.
-  ghcr_token="${GHCR_TOKEN:-${GITHUB_TOKEN:-}}"
+  # GitHub-hosted Actions publishes all four images with the same immutable
+  # commit SHA. The personal server only pulls those images; it never builds
+  # application images on-box.
+  ghcr_token="${GHCR_TOKEN:-}"
   if [ -z "$ghcr_token" ]; then
     ghcr_token="$(doppler secrets get GHCR_TOKEN --plain 2>/dev/null || true)"
   fi
-  if [ "${DEPLOY_USE_REGISTRY:-auto}" != "false" ] && [ -n "$ghcr_token" ]; then
-    IMAGE_REGISTRY="${IMAGE_REGISTRY:-ghcr.io}"
-    # Use the branch tag (e.g. develop) rather than the exact commit SHA:
-    # commits that touch only scripts or docs do not trigger build-images, so
-    # a per-SHA tag may not exist, while the branch tag always points at the
-    # latest built app image.
-    ghcr_user="${GHCR_USERNAME:-$(doppler secrets get GHCR_USERNAME --plain 2>/dev/null || echo orbit-deploy)}"
-    printf '%s' "$ghcr_token" | docker login "$IMAGE_REGISTRY" -u "$ghcr_user" --password-stdin
-    doppler run -- "${COMPOSE[@]}" pull api worker python-worker
-    # Pin the web image to the exact deployed commit rather than the branch tag.
-    # The web bundle bakes in the frontend, so a stale bundle against a newer API
-    # can break the UI. The automatic develop-push deploy does not wait for
-    # build-images, so the branch tag may still point at the previous build when
-    # a web-changing commit deploys. Pull the per-SHA tag and fall back to an
-    # on-box build when it is missing (build not finished, or a commit that did
-    # not trigger build-web).
-    if ! doppler run -- "${COMPOSE[@]}" pull web; then
-      echo "web image ${WEB_IMAGE_TAG} not available; building web on-box as a fallback."
-      doppler run -- "${COMPOSE[@]}" build web
-    fi
-  else
-    doppler run -- "${COMPOSE[@]}" build
+  if [ -z "$ghcr_token" ]; then
+    echo "GHCR_TOKEN with read:packages is required for personal staging deployment."
+    exit 1
   fi
+
+  ghcr_user="${GHCR_USERNAME:-$(doppler secrets get GHCR_USERNAME --plain 2>/dev/null || echo kdh949)}"
+  docker_config_directory="$(mktemp -d)"
+  export DOCKER_CONFIG="$docker_config_directory"
+  trap 'rm -rf "$docker_config_directory"' EXIT
+  printf '%s' "$ghcr_token" | docker login ghcr.io -u "$ghcr_user" --password-stdin
+
+  pull_attempts="${REGISTRY_PULL_ATTEMPTS:-10}"
+  pull_interval_seconds="${REGISTRY_PULL_INTERVAL_SECONDS:-15}"
+  if ! [[ "$pull_attempts" =~ ^[1-9][0-9]*$ ]]; then
+    echo "REGISTRY_PULL_ATTEMPTS must be a positive integer."
+    exit 1
+  fi
+  if ! [[ "$pull_interval_seconds" =~ ^[0-9]+$ ]]; then
+    echo "REGISTRY_PULL_INTERVAL_SECONDS must be a non-negative integer."
+    exit 1
+  fi
+
+  images_pulled=false
+  for attempt in $(seq 1 "$pull_attempts"); do
+    if doppler run -- "${COMPOSE[@]}" pull api worker python-worker web; then
+      images_pulled=true
+      break
+    fi
+    if [ "$attempt" -lt "$pull_attempts" ]; then
+      echo "Images for ${IMAGE_TAG} are not ready; retrying ${attempt}/${pull_attempts}."
+      sleep "$pull_interval_seconds"
+    fi
+  done
+  if [ "$images_pulled" != "true" ]; then
+    echo "Required GHCR images for ${IMAGE_TAG} could not be pulled."
+    exit 1
+  fi
+
   verify_app_images
   doppler run -- "${COMPOSE[@]}" up -d postgres redis minio minio-init
-  doppler run -- "${COMPOSE[@]}" run --rm api corepack pnpm db:migration:run
-  doppler run -- "${COMPOSE[@]}" up -d --pull never
+  doppler run -- "${COMPOSE[@]}" run --rm --no-build api corepack pnpm db:migration:run
+  doppler run -- "${COMPOSE[@]}" up -d --no-build --pull never
 fi
 
 for attempt in $(seq 1 30); do

@@ -6,9 +6,11 @@
 
 ## Verification Policy
 
-2026-07-26 현재 이 저장소에는 GitHub Actions workflow가 없다. 아래 검증은 PR 작성자가
-로컬 또는 별도 실행 환경에서 수행하고 결과를 PR 본문에 기록한다. 자동 CI와 배포
-workflow를 다시 도입할 때는 실제 workflow 경로와 이 표를 같은 PR에서 갱신한다.
+2026-08-30 현재 `develop` push와 수동 dispatch에는 개인 staging 이미지를 만드는
+`.github/workflows/build-personal-staging-images.yml`이 있다. 이 workflow는 환경·배포
+계약을 검증하고 네 앱 이미지를 동일 commit SHA로 GHCR에 게시하지만 개인 서버에는
+접속하지 않는다. Pull request와 다른 범위는 작성자가 로컬 또는 별도 실행 환경에서
+검증하고 결과를 PR 본문에 기록한다.
 
 | 시점 | 실행 항목 | 목적 |
 | --- | --- | --- |
@@ -17,7 +19,9 @@ workflow를 다시 도입할 때는 실제 workflow 경로와 이 표를 같은 
 | TypeScript app/package PR | 변경 package의 `typecheck`, targeted `test`, 필요한 경우 `build` | 변경 범위의 타입·동작·빌드 회귀 확인 |
 | Python worker PR | `uv run ruff check .`, `uv run mypy app`, targeted `uv run pytest` | Python style, type, domain 회귀 확인 |
 | env/compose/automation PR | `node infra/scripts/check-env.mjs`, 관련 Node test, `docker compose config --quiet`, shell syntax check | 환경 키, Compose 전달, wrapper 계약 확인 |
-| `develop` 또는 `main` push | 자동 검증·배포 없음 | 필요한 검증과 배포는 현재 수동으로 실행하고 근거를 별도 기록 |
+| `develop` push | personal staging 계약 검증, API·Worker·Python worker·Web GHCR image build | 성공한 동일 SHA 이미지 집합을 수동 배포 대상으로 준비 |
+| `main` push | 이 workflow의 자동 검증·배포 없음 | production 검증·배포 근거를 별도 기록 |
+| 개인 staging 배포 | Sophos VPN/관리 LAN SSH에서 `deploy-personal-server.sh <sha>` 수동 실행 | GHCR의 검증된 SHA 이미지를 pull하고 migration·health check 수행 |
 | 수동 또는 scheduled | `pnpm test:smoke`, 전체 Playwright E2E, 1000명 load test, 실제 브라우저 STT 측정 | 무겁거나 환경 의존적인 검증 |
 
 Python worker, Docker Compose, Playwright smoke처럼 환경 의존성이 큰 검증을 실행하지
