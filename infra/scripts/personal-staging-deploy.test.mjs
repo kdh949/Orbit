@@ -272,7 +272,7 @@ test("full deploy pulls one immutable SHA set and never builds application image
   assert.ok(
     commands.some((command) =>
       command.includes(
-        " run --rm --no-build api corepack pnpm db:migration:run",
+        " run --rm --pull never api corepack pnpm db:migration:run",
       ),
     ),
   );
