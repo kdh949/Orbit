@@ -52,6 +52,24 @@ pairing 관련 API는 fail-closed하고 Web은 연결 UI를 표시하지 않으�
 
 `ASYNC_JOB_ADMISSION_MODE=accept | drain`은 신규 비동기 Job admission을 제어한다. `drain`은 새 Job을 만드는 API를 `503 ASYNC_JOB_ADMISSION_DRAINING`으로 거부한다. 단, Deck 저장·patch·snapshot restore의 자동 `pptx-ooxml-sync`는 저장을 막지 않고 Job row와 BullMQ Job을 생략하며, sync state를 수동 retry 가능한 `stale`로 둔다. 이 값은 작업자 교체와 Redis migration 직전에만 운영 승인 절차로 변경한다.
 
+## 부하 테스트 전용 설정
+
+```txt
+LOAD_TEST_MODE=false
+LOAD_TEST_RATE_LIMIT_BYPASS_TOKEN=
+LOAD_TEST_PROVIDER_MODE=disabled | deterministic
+LOAD_TEST_PROVIDER_SEED=42
+LOAD_TEST_PROVIDER_DELAY_MS=100
+LOAD_TEST_PROVIDER_ERROR_RATE_PERCENT=0
+LOAD_TEST_PROVIDER_PAYLOAD_BYTES=1024
+```
+
+`LOAD_TEST_MODE=true`는 staging/test에서만 허용하고 32자 이상의 bypass token을 필수로 요구한다. `X-Orbit-Load-Test-Token`이 정확히 일치할 때 passcode 청중 입장의 session+IP 분당 10회 제한만 우회한다. header가 없으면 기존 제한을 적용하고 잘못된 값은 `403`으로 거부한다. public 입장과 응답 변경 rate limit은 바꾸지 않는다. production은 위 설정 중 하나라도 활성화되면 startup에서 거부한다.
+
+`LOAD_TEST_PROVIDER_MODE=deterministic`는 부하 테스트에서 외부 STT/이미지 provider 호출을 막고 고정 seed·지연·오류율·payload 크기의 schema-valid 결과를 사용한다. PostgreSQL, Redis, BullMQ, Worker, Python HTTP, 스토리지 경로는 그대로 유지한다. 이 모드는 `LOAD_TEST_MODE=true`일 때만 사용할 수 있다.
+
+실행 절차, 확인 플래그, 관측성 서버 설정은 `tests/load/README.md`와 `docs/runbooks/load-testing-observability.md`를 따른다.
+
 `S3_BUCKET`은 기존 assets bucket 호환 key다. 신규 배포는 `S3_ASSETS_BUCKET`을 일반 asset bucket으로, `S3_PRIVATE_AUDIO_BUCKET`을 private-audio bucket으로 사용한다. 새 원음은 `raw/`, evidence 파생물은 `evidence/` prefix로 전용 bucket에 저장하고, prefix 없는 기존 audio는 기존 assets bucket에서 읽는다. `S3_PRIVATE_AUDIO_BUCKET`이 비어 있으면 dedicated bucket을 아직 활성화하지 않고 기존 bucket만 사용한다.
 
 ## driver 값
@@ -76,15 +94,15 @@ LLM_PROVIDER=openai
 
 현재 지원하는 조합은 다음과 같다.
 
-| `AI_DECK_EXECUTION_MODE` | `AI_DECK_WORKER_QUEUE` | 현재 동작                                                                                                                            |
-| ------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `monolith`               | `all`                  | 회귀 검증과 운영 rollback용 기존 full-deck 호환 경로를 실행한다. 제거 대상이 아니다.                                                  |
-| `bullmq`                 | `all`                  | rollback용 staged 경로다. coordinator부터 OCR·planning·image·QA·publication 전체 queue, dispatcher와 reconciler를 실행한다.          |
-| `bullmq`                 | `reference-extract`    | `generate-deck` coordinator queue와 `reference-extract` queue만 소비한다. 다른 Job queue를 처리할 `all` Worker가 별도로 있어야 한다. |
-| `bullmq`                 | `research-content`     | `source-grounding`, `content-planning` queue만 소비한다.                                                                             |
-| `bullmq`                 | `design-layout`        | `design-planning`, `layout-compile` queue만 소비한다.                                                                                |
-| `bullmq`                 | `image`                | `image-slide` queue만 소비한다. legacy에서는 image 대상 slide, v2에서는 모든 slide의 상세 생성·asset·QA shard를 처리한다.             |
-| `bullmq`                 | `qa-finalize`          | `semantic-quality`, `rendered-visual-quality`, `publication` queue만 소비한다.                                                       |
+| `AI_DECK_EXECUTION_MODE` | `AI_DECK_WORKER_QUEUE` | 현재 동작                                                                                                                                                                            |
+| ------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `monolith`               | `all`                  | 회귀 검증과 운영 rollback용 기존 full-deck 호환 경로를 실행한다. 제거 대상이 아니다.                                                                                                 |
+| `bullmq`                 | `all`                  | rollback용 staged 경로다. coordinator부터 OCR·planning·image·QA·publication 전체 queue, dispatcher와 reconciler를 실행한다.                                                          |
+| `bullmq`                 | `reference-extract`    | `generate-deck` coordinator queue와 `reference-extract` queue만 소비한다. 다른 Job queue를 처리할 `all` Worker가 별도로 있어야 한다.                                                 |
+| `bullmq`                 | `research-content`     | `source-grounding`, `content-planning` queue만 소비한다.                                                                                                                             |
+| `bullmq`                 | `design-layout`        | `design-planning`, `layout-compile` queue만 소비한다.                                                                                                                                |
+| `bullmq`                 | `image`                | `image-slide` queue만 소비한다. legacy에서는 image 대상 slide, v2에서는 모든 slide의 상세 생성·asset·QA shard를 처리한다.                                                            |
+| `bullmq`                 | `qa-finalize`          | `semantic-quality`, `rendered-visual-quality`, `publication` queue만 소비한다.                                                                                                       |
 | `pg`                     | `all`                  | 로컬 기본값. `ai_deck_generation_stages`를 직접 claim한다. AI Deck BullMQ coordinator·stage queue는 enqueue/consume하지 않고 process 전체 5개, 사용자 전체 5개 기본 상한을 적용한다. |
 
 `AI_DECK_EXECUTION_MODE=sqs`는 도입 취소된 미지원 값이며 API와 Worker가 startup에서 거부한다. dedicated role은 `bullmq` 실행 모드에서만 허용되고 `pg`는 `all`만 허용된다. 지원되지 않는 값을 설정해 겉보기에는 정상인 비활성 Worker가 뜨는 동작은 허용하지 않는다.
