@@ -102,6 +102,7 @@ if [[ "$DEPLOYMENT_MODE" == "environment-only" ]]; then
     node -e 'const { loadOrbitConfig } = require("/app/packages/config/dist/index.js"); loadOrbitConfig(process.env, { service: "worker" });'
   doppler run -- "${COMPOSE[@]}" run --rm --no-deps python-worker \
     uv run python -c 'from app.config import load_config; load_config()'
+  doppler run -- "${COMPOSE[@]}" run --rm --no-deps --pull never minio-init
   doppler run -- "${COMPOSE[@]}" up -d --no-build --pull never --force-recreate api worker python-worker web
 else
   # GitHub-hosted Actions publishes all four images with the same immutable

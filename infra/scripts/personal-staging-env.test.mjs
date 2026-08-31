@@ -112,6 +112,31 @@ x-orbit-env: &orbit-env
   ]);
 });
 
+test("personal staging initializes the configured assets bucket", () => {
+  const compose = fs.readFileSync("docker-compose.staging.yml", "utf8");
+  const minioInit = compose.match(
+    /  minio-init:\n([\s\S]*?)(?=\n  [a-z][a-z0-9-]*:|$)/,
+  )?.[0];
+
+  assert.ok(minioInit, "personal staging must define minio-init");
+  assert.match(
+    minioInit,
+    /S3_ASSETS_BUCKET: \$\{S3_ASSETS_BUCKET:-orbit-personal-staging\}/,
+  );
+  assert.match(
+    minioInit,
+    /mc mb --ignore-existing "local\/\$\$\{S3_ASSETS_BUCKET\}"/,
+  );
+  assert.match(
+    minioInit,
+    /mc anonymous set download "local\/\$\$\{S3_ASSETS_BUCKET\}"/,
+  );
+  assert.doesNotMatch(
+    minioInit,
+    /mc (?:mb --ignore-existing|anonymous set download) local\/orbit-personal-staging/,
+  );
+});
+
 test("sync selection never overwrites existing keys or creates manual values", () => {
   const policy = {
     variables: {

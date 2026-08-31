@@ -94,16 +94,16 @@ AUTH_COOKIE_SECURE=false
 
 실제 서버 전용 값은 repository에 커밋하지 않는다.
 
-개인 서버용 Docker Compose override는 로컬 Redis, MinIO, Python worker를 기준으로 다음 런타임 값을 고정한다.
+개인 서버용 Docker Compose override는 로컬 Redis, MinIO, Python worker를 기준으로 다음 런타임 값을 사용한다.
 
 - storage driver는 MinIO를 사용한다.
-- MinIO bucket은 staging local-default validation을 피하기 위해 `orbit-personal-staging`을 사용한다.
+- asset bucket의 기본값은 staging local-default validation을 피하기 위해 `orbit-personal-staging`을 사용한다. Doppler가 `S3_ASSETS_BUCKET`을 제공하면 API와 `minio-init`이 동일한 값을 사용하며, `minio-init`이 해당 bucket을 생성한다.
 - queue driver는 BullMQ를 사용한다.
 - Live STT provider는 `sherpa`, browser Live STT engine은 `LIVE_STT_ENGINE`으로 `openai-realtime` 또는 `web-speech`를 선택한다. report STT provider는 Python worker의 현재 지원 범위에 맞춰 `openai`를 사용한다.
 - OCR provider는 Python worker 경로를 사용한다.
 - AWS Textract는 사용하지 않는다.
 
-Doppler `orbit / stg` 값이 S3, AWS Transcribe, AWS Textract 기준이어도 개인 서버 override에서 위 값으로 덮어쓴다.
+개인 서버 override는 storage endpoint, driver, credential을 로컬 MinIO 기준으로 덮어쓴다. `S3_ASSETS_BUCKET`은 Doppler override를 허용하며 API와 `minio-init`에 같은 값으로 전달한다.
 
 ## Nginx
 
@@ -233,7 +233,8 @@ EXPECTED_SHA="$(git rev-parse HEAD)"
 ```
 
 `environment-only`는 네 이미지가 로컬에 모두 존재하고 Node/Python runtime env
-검증이 성공한 경우에만 앱 컨테이너를 재생성한다.
+검증이 성공한 뒤 `minio-init`으로 현재 `S3_ASSETS_BUCKET`을 준비한다. bucket
+초기화까지 성공한 경우에만 앱 컨테이너를 재생성한다.
 
 ## 검증
 
@@ -301,7 +302,7 @@ ORDER BY expected.type;
 ```text
 <SERVER_ORIGIN>/
 <SERVER_ORIGIN>/api/health
-<SERVER_ORIGIN>/assets/orbit-personal-staging/
+<SERVER_ORIGIN>/assets/<S3_ASSETS_BUCKET>/
 ```
 
 ## 주의 사항

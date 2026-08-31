@@ -212,8 +212,12 @@ test("environment-only resolves exact tags and replaces containers only after ev
   );
   assert.ok(inspectIndexes.every((index) => index >= 0));
 
+  const minioInitIndex = commands.findIndex((command) =>
+    command.includes(" run --rm --no-deps --pull never minio-init"),
+  );
   const upIndex = commands.findIndex((command) => command.includes(" up "));
-  assert.ok(upIndex > Math.max(...inspectIndexes));
+  assert.ok(minioInitIndex > Math.max(...inspectIndexes));
+  assert.ok(upIndex > minioInitIndex);
   assert.match(commands[upIndex], /--no-build --pull never --force-recreate/);
   assert.doesNotMatch(commands.join("\n"), /orbit-web:latest/);
 });
