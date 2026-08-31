@@ -1,4 +1,5 @@
 from app.app_factory import create_app
+from fastapi.testclient import TestClient
 
 
 def test_app_factory_registers_extracted_routes_once() -> None:
@@ -16,6 +17,18 @@ def test_app_factory_registers_extracted_routes_once() -> None:
     assert set(paths["/extract/reference"]) == {"post"}
     assert set(paths["/references/index"]) == {"post"}
     assert set(paths["/references/search"]) == {"post"}
+
+
+def test_internal_metrics_endpoint_exposes_bounded_http_labels() -> None:
+    client = TestClient(create_app())
+
+    assert client.get("/health").status_code == 200
+    response = client.get("/internal/metrics")
+
+    assert response.status_code == 200
+    assert "orbit_python_http_requests_total" in response.text
+    assert 'route="/health"' in response.text
+    assert "request_private_123" not in response.text
 
 
 def test_app_factory_preserves_the_public_endpoint_inventory() -> None:

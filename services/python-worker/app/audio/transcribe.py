@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import re
+import time
 import uuid
 from collections.abc import Mapping
 from pathlib import Path
@@ -155,6 +157,65 @@ class OpenAISpeechToTextProvider:
         )
 
 
+class DeterministicSpeechToTextProvider:
+    name = "deterministic-load-test"
+    model = "deterministic-stt-v1"
+
+    def __init__(
+        self,
+        *,
+        seed: int,
+        delay_ms: int,
+        error_rate_percent: int,
+        payload_bytes: int,
+        language: str,
+    ) -> None:
+        self._seed = seed
+        self._delay_ms = delay_ms
+        self._error_rate_percent = error_rate_percent
+        self._payload_bytes = payload_bytes
+        self._language = language
+
+    def transcribe(
+        self,
+        audio: AudioContent,
+        pronunciation_context: list[PronunciationContextTerm] | None = None,
+    ) -> ProviderTranscription:
+        del pronunciation_context
+        if self._delay_ms > 0:
+            time.sleep(self._delay_ms / 1_000)
+
+        digest = hashlib.sha256(
+            str(self._seed).encode("ascii") + b":" + audio.data
+        ).hexdigest()
+        if int(digest[:8], 16) % 100 < self._error_rate_percent:
+            raise AudioTranscriptionError(
+                "deterministic_provider_failure",
+                "Deterministic load-test STT failure",
+                503,
+            )
+
+        unit = f"orbit load test {digest[:8]} "
+        repeats = (self._payload_bytes // len(unit)) + 1
+        transcript = (unit * repeats).encode("ascii")[: self._payload_bytes].decode(
+            "ascii"
+        )
+        return ProviderTranscription(
+            transcript=transcript,
+            language=_normalize_transcription_language(self._language),
+            provider=self.name,
+            model=self.model,
+            duration_seconds=1.0,
+            segments=[
+                TranscriptSegment(
+                    text=transcript,
+                    startSeconds=0,
+                    endSeconds=1.0,
+                )
+            ],
+        )
+
+
 class WhisperXSpeechToTextProvider:
     name = "whisperx"
 
@@ -238,6 +299,15 @@ def get_speech_to_text_provider(
 def create_speech_to_text_provider(
     config: PythonWorkerConfig,
 ) -> ReportSttProvider:
+    if config.load_test_provider_mode == "deterministic":
+        return DeterministicSpeechToTextProvider(
+            seed=config.load_test_provider_seed,
+            delay_ms=config.load_test_provider_delay_ms,
+            error_rate_percent=config.load_test_provider_error_rate_percent,
+            payload_bytes=config.load_test_provider_payload_bytes,
+            language=config.transcribe_language_code,
+        )
+
     if config.report_stt_provider == "whisperx":
         if not (
             config.whisperx_api_url

@@ -7,6 +7,7 @@ import type { Options as PinoHttpOptions } from "pino-http";
 export const redactedPaths = [
   "req.headers.authorization",
   "req.headers.cookie",
+  "req.headers.x-orbit-load-test-token",
   "res.headers.set-cookie",
   "password",
   "*.password",
@@ -50,17 +51,17 @@ export const redactedPaths = [
   "body.deck.slides.*.speakerNotes",
   "payload.deck.slides.*.speakerNotes",
   "payload.semanticCueDecisions",
-  "result.semanticCueDecisions"
+  "result.semanticCueDecisions",
 ];
 
 export function createApiLoggerParams(
-  env: NodeJS.ProcessEnv = process.env
+  env: NodeJS.ProcessEnv = process.env,
 ): Params {
   const config = loadOrbitConfig(env, { service: "api" });
 
   return {
     pinoHttp: createApiPinoHttpOptions(config),
-    assignResponse: true
+    assignResponse: true,
   };
 }
 
@@ -69,12 +70,12 @@ export function serializeLogError(error: unknown) {
     return {
       name: error.name,
       message: error.message,
-      stack: error.stack
+      stack: error.stack,
     };
   }
 
   return {
-    message: String(error)
+    message: String(error),
   };
 }
 
@@ -85,34 +86,33 @@ export function writeBootstrapError(service: "api", error: unknown): void {
     service,
     event: "bootstrap.failed",
     error: serializeLogError(error),
-    message: `${service} bootstrap failed.`
+    message: `${service} bootstrap failed.`,
   };
 
   process.stderr.write(`${JSON.stringify(payload)}\n`);
 }
 
-function createApiPinoHttpOptions(
-  config: OrbitConfig
-): PinoHttpOptions {
+function createApiPinoHttpOptions(config: OrbitConfig): PinoHttpOptions {
   return {
     level: config.LOG_LEVEL,
     base: {
       service: "api",
-      appEnv: config.APP_ENV
+      appEnv: config.APP_ENV,
     },
     redact: {
       paths: redactedPaths,
-      censor: "[Redacted]"
+      censor: "[Redacted]",
     },
     transport: createPrettyTransport(config),
     genReqId: (request, response) => {
-      const requestId = readHeader(request.headers, "x-request-id") ?? randomUUID();
+      const requestId =
+        readHeader(request.headers, "x-request-id") ?? randomUUID();
       response.setHeader("X-Request-ID", requestId);
       return requestId;
     },
     customProps: (request) => ({
       event: "http.request.completed",
-      requestId: String(request.id ?? "")
+      requestId: String(request.id ?? ""),
     }),
     serializers: {
       req: (request) => ({
@@ -127,7 +127,7 @@ function createApiPinoHttpOptions(
     customSuccessMessage: (request, response, responseTime) =>
       `${request.method ?? "HTTP"} ${sanitizeLogRequestUrl(request.url)} ${response.statusCode} ${Math.round(responseTime)}ms`,
     customErrorMessage: (request, response, error) =>
-      `${request.method ?? "HTTP"} ${sanitizeLogRequestUrl(request.url)} ${response.statusCode} ${error.message}`
+      `${request.method ?? "HTTP"} ${sanitizeLogRequestUrl(request.url)} ${response.statusCode} ${error.message}`,
   };
 }
 
@@ -149,14 +149,14 @@ function createPrettyTransport(config: OrbitConfig) {
     options: {
       colorize: true,
       singleLine: true,
-      translateTime: "SYS:standard"
-    }
+      translateTime: "SYS:standard",
+    },
   };
 }
 
 function readHeader(
   headers: IncomingHttpHeaders,
-  key: keyof IncomingHttpHeaders
+  key: keyof IncomingHttpHeaders,
 ): string | undefined {
   const value = headers[key];
   if (Array.isArray(value)) {

@@ -1,0 +1,39 @@
+groups:
+  - name: orbit
+    rules:
+      - alert: OrbitTargetMissing
+        expr: up{job=~"orbit-.+"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "Orbit metrics target is unavailable"
+          description: "{{ $labels.job }} on {{ $labels.instance }} has been unavailable for two minutes."
+      - alert: OrbitApiHighErrorRatio
+        expr: sum(rate(orbit_api_http_requests_total{status_class="5xx"}[5m])) / clamp_min(sum(rate(orbit_api_http_requests_total[5m])), 0.001) > 0.05
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Orbit API 5xx ratio is above 5%"
+      - alert: OrbitApiHighP95Latency
+        expr: histogram_quantile(0.95, sum by (le) (rate(orbit_api_http_request_duration_seconds_bucket[5m]))) > 1
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Orbit API p95 latency is above one second"
+      - alert: OrbitWorkerFailures
+        expr: sum(increase(orbit_worker_jobs_completed_total{outcome="failed"}[10m])) > 0
+        labels: { severity: warning }
+        annotations:
+          summary: "Orbit Worker reported failed processing attempts"
+      - alert: OrbitBullMqWaitingBacklog
+        expr: sum(bullmq_job_count{state="waiting"}) by (queue) > 50
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "BullMQ waiting backlog is above 50"
+      - alert: OrbitHostDiskLow
+        expr: node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"} < 0.15
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Orbit host filesystem has less than 15% free space"

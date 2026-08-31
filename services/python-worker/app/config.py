@@ -27,6 +27,13 @@ ENV_KEYS = {
     "S3_SECRET_ACCESS_KEY",
     "S3_FORCE_PATH_STYLE",
     "JOB_QUEUE_DRIVER",
+    "LOAD_TEST_MODE",
+    "LOAD_TEST_RATE_LIMIT_BYPASS_TOKEN",
+    "LOAD_TEST_PROVIDER_MODE",
+    "LOAD_TEST_PROVIDER_SEED",
+    "LOAD_TEST_PROVIDER_DELAY_MS",
+    "LOAD_TEST_PROVIDER_ERROR_RATE_PERCENT",
+    "LOAD_TEST_PROVIDER_PAYLOAD_BYTES",
     "LIVE_STT_PROVIDER",
     "REPORT_STT_PROVIDER",
     "REHEARSAL_AUDIO_MAX_BYTES",
@@ -85,6 +92,34 @@ class PythonWorkerConfig(BaseModel):
     s3_secret_access_key: str | None = Field(default=None, alias="S3_SECRET_ACCESS_KEY")
     s3_force_path_style: bool = Field(alias="S3_FORCE_PATH_STYLE")
     job_queue_driver: Literal["bullmq", "sqs"] = Field(alias="JOB_QUEUE_DRIVER")
+    load_test_mode: bool = Field(default=False, alias="LOAD_TEST_MODE")
+    load_test_rate_limit_bypass_token: str | None = Field(
+        default=None,
+        alias="LOAD_TEST_RATE_LIMIT_BYPASS_TOKEN",
+        min_length=32,
+    )
+    load_test_provider_mode: Literal["disabled", "deterministic"] = Field(
+        default="disabled",
+        alias="LOAD_TEST_PROVIDER_MODE",
+    )
+    load_test_provider_seed: int = Field(
+        default=42, alias="LOAD_TEST_PROVIDER_SEED", ge=0, le=2_147_483_647
+    )
+    load_test_provider_delay_ms: int = Field(
+        default=100, alias="LOAD_TEST_PROVIDER_DELAY_MS", ge=0, le=60_000
+    )
+    load_test_provider_error_rate_percent: int = Field(
+        default=0,
+        alias="LOAD_TEST_PROVIDER_ERROR_RATE_PERCENT",
+        ge=0,
+        le=100,
+    )
+    load_test_provider_payload_bytes: int = Field(
+        default=1_024,
+        alias="LOAD_TEST_PROVIDER_PAYLOAD_BYTES",
+        ge=1,
+        le=1_000_000,
+    )
     live_stt_provider: Literal["sherpa"] = Field(alias="LIVE_STT_PROVIDER")
     report_stt_provider: Literal["openai", "whisperx"] = Field(
         alias="REPORT_STT_PROVIDER"
@@ -133,6 +168,29 @@ class PythonWorkerConfig(BaseModel):
     def validate_runtime_contract(self) -> Self:
         errors: list[str] = []
 
+        load_test_configured = (
+            self.load_test_mode
+            or self.load_test_rate_limit_bypass_token is not None
+            or self.load_test_provider_mode == "deterministic"
+        )
+        if self.app_env == "production" and load_test_configured:
+            errors.append("Load-test mode is forbidden in production")
+        if self.load_test_mode and not self.load_test_rate_limit_bypass_token:
+            errors.append(
+                "LOAD_TEST_RATE_LIMIT_BYPASS_TOKEN is required when LOAD_TEST_MODE=true"
+            )
+        if self.load_test_rate_limit_bypass_token and not self.load_test_mode:
+            errors.append(
+                "LOAD_TEST_MODE must be true when a bypass token is configured"
+            )
+        if (
+            self.load_test_provider_mode == "deterministic"
+            and not self.load_test_mode
+        ):
+            errors.append(
+                "LOAD_TEST_MODE must be true for deterministic load-test providers"
+            )
+
         for key in ["PYTHON_WORKER_URL", "API_BASE_URL"]:
             value = self.model_dump(by_alias=True).get(key)
             if not isinstance(value, str) or not _is_url(value):
@@ -178,7 +236,10 @@ class PythonWorkerConfig(BaseModel):
                         f"{key} must not use the local default in {self.app_env}"
                     )
 
-            if not self.openai_api_key:
+            if (
+                self.load_test_provider_mode != "deterministic"
+                and not self.openai_api_key
+            ):
                 errors.append(f"OPENAI_API_KEY is required in {self.app_env}")
 
         if errors:

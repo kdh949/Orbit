@@ -30,10 +30,12 @@ import { ChallengeQnaModule } from "./challenge-qna/challenge-qna.module";
 import { SlidePracticeModule } from "./slide-practice/slide-practice.module";
 import { SlideQuestionGuidesModule } from "./slide-question-guides/slide-question-guides.module";
 import { CommunityTemplatesModule } from "./community-templates/community-templates.module";
+import { ApiMetricsModule } from "./metrics/api-metrics.module";
 
 @Module({
   imports: [
     LoggerModule.forRoot(createApiLoggerParams()),
+    ApiMetricsModule,
     TypeOrmModule.forRoot(databaseOptions),
     AuthModule,
     HealthModule,
@@ -60,8 +62,8 @@ import { CommunityTemplatesModule } from "./community-templates/community-templa
     ChallengeQnaModule,
     SlidePracticeModule,
     SlideQuestionGuidesModule,
-    CommunityTemplatesModule
+    CommunityTemplatesModule,
   ],
-  providers: [RealtimeGateway]
+  providers: [RealtimeGateway],
 })
 export class AppModule {}

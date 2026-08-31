@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  redactedPaths,
-  sanitizeLogRequestUrl,
-} from "./logging";
+import { redactedPaths, sanitizeLogRequestUrl } from "./logging";
 
 describe("API logging redaction", () => {
   it("redacts semantic cue NLI evidence text fields", () => {
@@ -15,8 +12,8 @@ describe("API logging redaction", () => {
         "*.hypothesis",
         "*.semanticCueDecisions",
         "payload.semanticCueDecisions",
-        "result.semanticCueDecisions"
-      ])
+        "result.semanticCueDecisions",
+      ]),
     );
   });
 
@@ -29,9 +26,13 @@ describe("API logging redaction", () => {
         "displayPasscode",
         "*.displayPasscode",
         "passwordDisplayCiphertext",
-        "*.passwordDisplayCiphertext"
-      ])
+        "*.passwordDisplayCiphertext",
+      ]),
     );
+  });
+
+  it("redacts the load-test bypass header", () => {
+    expect(redactedPaths).toContain("req.headers.x-orbit-load-test-token");
   });
 
   it("redacts companion WebRTC and annotation payload fields", () => {

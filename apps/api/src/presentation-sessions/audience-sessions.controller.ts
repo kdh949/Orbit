@@ -1,13 +1,5 @@
 import { loadOrbitConfig } from "@orbit/config";
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Post,
-  Req,
-  Res
-} from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Req, Res } from "@nestjs/common";
 import { joinAudiencePresentationRequestSchema } from "@orbit/shared/presentation";
 import type { Response } from "express";
 
@@ -17,7 +9,7 @@ import {
   audienceAccessCookieOptions,
   createAudienceAccessToken,
   createAudienceId,
-  verifyAudienceAccessToken
+  verifyAudienceAccessToken,
 } from "./audience-access-cookie";
 import { PresentationSessionsService } from "./presentation-sessions.service";
 import {
@@ -25,14 +17,16 @@ import {
   getAudienceClientAddress,
   getUserAgent,
   requireAudienceIdentity,
-  type SignedCookieRequest
+  type SignedCookieRequest,
 } from "./audience-request-security";
 
 @Controller("api/v1/audience-sessions")
 export class AudienceSessionsController {
   private readonly config = loadOrbitConfig(process.env, { service: "api" });
 
-  constructor(private readonly presentationSessionsService: PresentationSessionsService) {}
+  constructor(
+    private readonly presentationSessionsService: PresentationSessionsService,
+  ) {}
 
   @Get(":sessionId/public")
   getPublic(@Param("sessionId") sessionId: string) {
@@ -44,10 +38,13 @@ export class AudienceSessionsController {
     @Param("sessionId") sessionId: string,
     @Body() body: unknown,
     @Req() request: SignedCookieRequest,
-    @Res({ passthrough: true }) response: Response
+    @Res({ passthrough: true }) response: Response,
   ) {
     assertAudienceJsonSameOrigin(this.config, request);
-    const input = parseRequest(joinAudiencePresentationRequestSchema, body ?? {});
+    const input = parseRequest(
+      joinAudiencePresentationRequestSchema,
+      body ?? {},
+    );
     const userAgent = getUserAgent(request);
     const existing = getSignedAudienceAccessToken(request);
     const existingPayload = existing
@@ -61,13 +58,19 @@ export class AudienceSessionsController {
       sessionId,
       input,
       audienceId,
-      getAudienceClientAddress(request)
+      getAudienceClientAddress(request),
+      readLoadTestToken(request),
     );
 
     response.cookie(
       audienceAccessCookieName,
-      createAudienceAccessToken(this.config, result.session, userAgent, audienceId),
-      audienceAccessCookieOptions(this.config, result.session.expiresAt)
+      createAudienceAccessToken(
+        this.config,
+        result.session,
+        userAgent,
+        audienceId,
+      ),
+      audienceAccessCookieOptions(this.config, result.session.expiresAt),
     );
     return result;
   }
@@ -75,14 +78,25 @@ export class AudienceSessionsController {
   @Get(":sessionId/access")
   async getAccess(
     @Param("sessionId") sessionId: string,
-    @Req() request: SignedCookieRequest
+    @Req() request: SignedCookieRequest,
   ) {
     const payload = requireAudienceIdentity(this.config, request, sessionId);
-    return this.presentationSessionsService.getAudienceAccess(sessionId, payload.projectId);
+    return this.presentationSessionsService.getAudienceAccess(
+      sessionId,
+      payload.projectId,
+    );
   }
 }
 
-function getSignedAudienceAccessToken(request: SignedCookieRequest): string | null {
+function readLoadTestToken(request: SignedCookieRequest): string | undefined {
+  const value = request.headers["x-orbit-load-test-token"];
+  if (Array.isArray(value)) return value[0];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function getSignedAudienceAccessToken(
+  request: SignedCookieRequest,
+): string | null {
   const value = request.signedCookies?.[audienceAccessCookieName];
   return typeof value === "string" && value.length > 0 ? value : null;
 }

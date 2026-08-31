@@ -18,6 +18,7 @@ from app.audio.transcribe import (
     AudioTranscribeRequest,
     AudioTranscriptionError,
     AudioContent,
+    DeterministicSpeechToTextProvider,
     OpenAISpeechToTextProvider,
     PronunciationContextTerm,
     ProviderTranscription,
@@ -212,6 +213,33 @@ def test_openai_stt_requires_api_key() -> None:
 
     assert error.value.code == "provider_not_configured"
     assert "OPENAI_API_KEY" in error.value.message
+
+
+def test_deterministic_stt_returns_schema_valid_fixed_size_output() -> None:
+    config = load_config(
+        {
+            **VALID_ENV,
+            "LOAD_TEST_MODE": "true",
+            "LOAD_TEST_RATE_LIMIT_BYPASS_TOKEN": "x" * 32,
+            "LOAD_TEST_PROVIDER_MODE": "deterministic",
+            "LOAD_TEST_PROVIDER_DELAY_MS": "0",
+            "LOAD_TEST_PROVIDER_PAYLOAD_BYTES": "128",
+        }
+    )
+
+    provider = create_speech_to_text_provider(config)
+    assert isinstance(provider, DeterministicSpeechToTextProvider)
+    result = provider.transcribe(
+        AudioContent(
+            data=b"deterministic-audio",
+            file_name="load-test.wav",
+            mime_type="audio/wav",
+        )
+    )
+
+    assert result.provider == "deterministic-load-test"
+    assert len(result.transcript.encode("utf-8")) == 128
+    assert result.segments[0].text == result.transcript
 
 
 def test_create_provider_selects_whisperx() -> None:

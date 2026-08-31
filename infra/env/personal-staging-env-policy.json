@@ -201,6 +201,34 @@
       "source": "repo-default",
       "delivery": "code-default"
     },
+    "LOAD_TEST_MODE": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
+    "LOAD_TEST_RATE_LIMIT_BYPASS_TOKEN": {
+      "source": "doppler-optional",
+      "delivery": "compose"
+    },
+    "LOAD_TEST_PROVIDER_MODE": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
+    "LOAD_TEST_PROVIDER_SEED": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
+    "LOAD_TEST_PROVIDER_DELAY_MS": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
+    "LOAD_TEST_PROVIDER_ERROR_RATE_PERCENT": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
+    "LOAD_TEST_PROVIDER_PAYLOAD_BYTES": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
     "NODE_ENV": {
       "source": "doppler-required",
       "delivery": "compose"

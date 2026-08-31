@@ -1,5 +1,8 @@
 import type { OrbitConfig } from "@orbit/config";
-import { ForbiddenException, UnsupportedMediaTypeException } from "@nestjs/common";
+import {
+  ForbiddenException,
+  UnsupportedMediaTypeException,
+} from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@orbit/config", async (importOriginal) => {
@@ -11,15 +14,15 @@ vi.mock("@orbit/config", async (importOriginal) => {
       WEB_ORIGIN: "http://localhost:5173",
       SESSION_SECRET: "activity-test-session-secret",
       COOKIE_SECRET: "activity-test-cookie-secret",
-      AUTH_COOKIE_SECURE: false
-    })
+      AUTH_COOKIE_SECURE: false,
+    }),
   };
 });
 
 import {
   audienceAccessCookieName,
   createAudienceAccessToken,
-  verifyAudienceAccessToken
+  verifyAudienceAccessToken,
 } from "./audience-access-cookie";
 import { AudienceSessionsController } from "./audience-sessions.controller";
 
@@ -30,14 +33,18 @@ const access = {
   accessMode: "public" as const,
   startsAt: "2026-07-17T00:00:00.000Z",
   expiresAt: "2027-07-31T00:00:00.000Z",
-  activeActivityRunId: null
+  activeActivityRunId: null,
 };
 
 function createController() {
   const service = {
     getAudiencePublicInfo: vi.fn().mockResolvedValue({}),
-    joinAudience: vi.fn().mockResolvedValue({ verified: true, session: access }),
-    getAudienceAccess: vi.fn().mockResolvedValue({ verified: true, session: access })
+    joinAudience: vi
+      .fn()
+      .mockResolvedValue({ verified: true, session: access }),
+    getAudienceAccess: vi
+      .fn()
+      .mockResolvedValue({ verified: true, session: access }),
   };
   const controller = new AudienceSessionsController(service as never);
   const config = Reflect.get(controller, "config") as OrbitConfig;
@@ -54,8 +61,8 @@ describe("AudienceSessionsController", () => {
         "session_1",
         {},
         { headers: { origin: config.WEB_ORIGIN } } as never,
-        response
-      )
+        response,
+      ),
     ).rejects.toBeInstanceOf(UnsupportedMediaTypeException);
     await expect(
       controller.join(
@@ -64,11 +71,11 @@ describe("AudienceSessionsController", () => {
         {
           headers: {
             origin: "https://invalid.example",
-            "content-type": "application/json"
-          }
+            "content-type": "application/json",
+          },
         } as never,
-        response
-      )
+        response,
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
     await expect(
       controller.join(
@@ -77,11 +84,11 @@ describe("AudienceSessionsController", () => {
         {
           headers: {
             origin: config.WEB_ORIGIN,
-            "content-type": "application/jsonp"
-          }
+            "content-type": "application/jsonp",
+          },
         } as never,
-        response
-      )
+        response,
+      ),
     ).rejects.toBeInstanceOf(UnsupportedMediaTypeException);
   });
 
@@ -91,7 +98,7 @@ describe("AudienceSessionsController", () => {
       config,
       access,
       "test-agent",
-      "audience_existing"
+      "audience_existing",
     );
     const response = { cookie: vi.fn() };
 
@@ -102,23 +109,51 @@ describe("AudienceSessionsController", () => {
         headers: {
           origin: config.WEB_ORIGIN,
           "content-type": "application/json",
-          "user-agent": "test-agent"
+          "user-agent": "test-agent",
         },
-        signedCookies: { [audienceAccessCookieName]: existingToken }
+        signedCookies: { [audienceAccessCookieName]: existingToken },
       } as never,
-      response as never
+      response as never,
     );
 
     const issuedToken = response.cookie.mock.calls[0]?.[1];
     expect(typeof issuedToken).toBe("string");
     expect(
-      verifyAudienceAccessToken(config, issuedToken, "test-agent")?.audienceId
+      verifyAudienceAccessToken(config, issuedToken, "test-agent")?.audienceId,
     ).toBe("audience_existing");
     expect(service.joinAudience).toHaveBeenCalledWith(
       "session_1",
       {},
       "audience_existing",
-      "unknown"
+      "unknown",
+      undefined,
+    );
+  });
+
+  it("passes the load-test token to the passcode join service without logging it", async () => {
+    const { controller, config, service } = createController();
+    const response = { cookie: vi.fn() };
+
+    await controller.join(
+      "session_1",
+      { passcode: "1234" },
+      {
+        headers: {
+          origin: config.WEB_ORIGIN,
+          "content-type": "application/json",
+          "user-agent": "test-agent",
+          "x-orbit-load-test-token": "private-load-test-token",
+        },
+      } as never,
+      response as never,
+    );
+
+    expect(service.joinAudience).toHaveBeenCalledWith(
+      "session_1",
+      { passcode: "1234" },
+      expect.stringMatching(/^audience_/),
+      "unknown",
+      "private-load-test-token",
     );
   });
 
@@ -133,17 +168,17 @@ describe("AudienceSessionsController", () => {
         headers: {
           origin: config.WEB_ORIGIN,
           "content-type": "application/json",
-          "user-agent": "test-agent"
-        }
+          "user-agent": "test-agent",
+        },
       } as never,
-      response as never
+      response as never,
     );
 
     const registeredAudienceId = service.joinAudience.mock.calls[0]?.[2];
     const issuedToken = response.cookie.mock.calls[0]?.[1];
     expect(registeredAudienceId).toMatch(/^audience_/);
     expect(
-      verifyAudienceAccessToken(config, issuedToken, "test-agent")?.audienceId
+      verifyAudienceAccessToken(config, issuedToken, "test-agent")?.audienceId,
     ).toBe(registeredAudienceId);
   });
 });

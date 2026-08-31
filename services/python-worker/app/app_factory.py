@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from app.challenge_qna import router as challenge_qna_router
 from app.config import load_config
 from app.focused_practice import router as focused_practice_router
+from app.metrics import install_metrics
 from app.routers.ai_deck import router as ai_deck_router
 from app.routers.audio import router as audio_router
 from app.routers.documents import router as documents_router
@@ -28,6 +29,7 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+    install_metrics(app)
     app.include_router(health_router)
     app.include_router(documents_router)
     app.include_router(pptx_router)

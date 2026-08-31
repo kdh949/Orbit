@@ -1,0 +1,16 @@
+{
+  "name": "@orbit/load-tests",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test safety.test.mjs",
+    "artillery:smoke": "node run-artillery.mjs smoke",
+    "artillery:acceptance": "node run-artillery.mjs acceptance"
+  },
+  "dependencies": {
+    "artillery": "2.0.34",
+    "socket.io-client": "4.8.3",
+    "yaml": "2.9.0"
+  }
+}

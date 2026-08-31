@@ -7,12 +7,23 @@ import type { PinoLogger } from "nestjs-pino";
 import { serializeLogError } from "../logging";
 import type { WorkerDescriptor } from "./worker-descriptor";
 
+type WorkerRuntimeMetrics = {
+  recordJobStarted(queueName: string, jobName: string): void;
+  recordJobCompleted(
+    queueName: string,
+    jobName: string,
+    outcome: "succeeded" | "failed" | "progressed",
+    durationSeconds: number,
+  ): void;
+};
+
 export class BullMqWorkerRuntime {
   private workers: BullMqWorker[] = [];
 
   constructor(
     private readonly redisUrl: string,
     private readonly logger: PinoLogger,
+    private readonly metrics?: WorkerRuntimeMetrics,
   ) {}
 
   start(descriptors: WorkerDescriptor[]): void {
@@ -81,6 +92,7 @@ export class BullMqWorkerRuntime {
     handler: () => Promise<OrbitJob | void>,
   ): Promise<OrbitJob | void> {
     const startedAt = Date.now();
+    this.metrics?.recordJobStarted(descriptor.queueName, job.name);
     const baseFields = {
       queueName: descriptor.queueName,
       bullJobId: job.id,
@@ -105,6 +117,12 @@ export class BullMqWorkerRuntime {
         result.status === "queued" ||
         result.status === "running"
       ) {
+        this.metrics?.recordJobCompleted(
+          descriptor.queueName,
+          job.name,
+          "progressed",
+          durationMs / 1_000,
+        );
         this.logger.info(
           {
             event: "job.progressed",
@@ -122,6 +140,12 @@ export class BullMqWorkerRuntime {
       }
       const event = result.status === "failed" ? "job.failed" : "job.succeeded";
       const level = result.status === "failed" ? "error" : "info";
+      this.metrics?.recordJobCompleted(
+        descriptor.queueName,
+        job.name,
+        result.status === "failed" ? "failed" : "succeeded",
+        durationMs / 1_000,
+      );
 
       this.logger[level](
         {
@@ -143,6 +167,12 @@ export class BullMqWorkerRuntime {
       }
       return result;
     } catch (error) {
+      this.metrics?.recordJobCompleted(
+        descriptor.queueName,
+        job.name,
+        "failed",
+        (Date.now() - startedAt) / 1_000,
+      );
       if (isAiDeckStageRetrySignal(error)) throw error;
       if (descriptor.terminalRecovery) {
         await descriptor.terminalRecovery.recover(

@@ -1,21 +1,28 @@
 import { loadOrbitConfig } from "@orbit/config";
 import {
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Inject,
   Injectable,
   OnModuleDestroy,
-  Optional
+  Optional,
 } from "@nestjs/common";
-import { createHmac } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import Redis from "ioredis";
 
 export const AUDIENCE_RATE_LIMIT_ERROR = "Too many audience requests";
 export const AUDIENCE_RATE_LIMIT_REDIS = Symbol("AUDIENCE_RATE_LIMIT_REDIS");
+export const AUDIENCE_RATE_LIMIT_METRICS = Symbol(
+  "AUDIENCE_RATE_LIMIT_METRICS",
+);
 export const audienceJoinLimitPerMinute = 10;
 export const audienceResponseMutationLimitPerMinute = 30;
 
 type RateLimitRedis = Pick<Redis, "eval" | "quit" | "disconnect" | "status">;
+export type AudienceRateLimitMetrics = {
+  recordJoinBypass(): void;
+};
 
 const windowSeconds = 60;
 const incrementWithExpiryScript = `
@@ -30,27 +37,49 @@ const incrementWithExpiryScript = `
 export class AudienceRateLimitService implements OnModuleDestroy {
   private readonly redis: RateLimitRedis;
   private readonly secret: string;
+  private readonly loadTestMode: boolean;
+  private readonly loadTestBypassToken: string | undefined;
 
   constructor(
     @Optional()
     @Inject(AUDIENCE_RATE_LIMIT_REDIS)
-    redis?: RateLimitRedis
+    redis?: RateLimitRedis,
+    @Optional()
+    @Inject(AUDIENCE_RATE_LIMIT_METRICS)
+    private readonly metrics?: AudienceRateLimitMetrics,
   ) {
     const config = loadOrbitConfig(process.env, { service: "api" });
     this.secret = config.SESSION_SECRET;
+    this.loadTestMode = config.LOAD_TEST_MODE;
+    this.loadTestBypassToken = config.LOAD_TEST_RATE_LIMIT_BYPASS_TOKEN;
     this.redis =
       redis ??
       new Redis(config.REDIS_URL, {
         lazyConnect: true,
-        maxRetriesPerRequest: 1
+        maxRetriesPerRequest: 1,
       });
   }
 
-  consumeJoin(sessionId: string, clientAddress: string): Promise<void> {
-    return this.consume(
+  async consumeJoin(
+    sessionId: string,
+    clientAddress: string,
+    providedBypassToken?: string,
+  ): Promise<void> {
+    if (providedBypassToken !== undefined) {
+      if (
+        !this.loadTestMode ||
+        !this.loadTestBypassToken ||
+        !tokensMatch(this.loadTestBypassToken, providedBypassToken)
+      ) {
+        throw new ForbiddenException("Invalid load-test bypass token");
+      }
+      this.metrics?.recordJoinBypass();
+      return;
+    }
+    await this.consume(
       "join",
       [sessionId, clientAddress],
-      audienceJoinLimitPerMinute
+      audienceJoinLimitPerMinute,
     );
   }
 
@@ -58,7 +87,7 @@ export class AudienceRateLimitService implements OnModuleDestroy {
     return this.consume(
       "response",
       [audienceId, runId],
-      audienceResponseMutationLimitPerMinute
+      audienceResponseMutationLimitPerMinute,
     );
   }
 
@@ -74,21 +103,16 @@ export class AudienceRateLimitService implements OnModuleDestroy {
   private async consume(
     scope: "join" | "response",
     identifiers: string[],
-    limit: number
+    limit: number,
   ): Promise<void> {
     const key = this.key(scope, identifiers);
     const count = Number(
-      await this.redis.eval(
-        incrementWithExpiryScript,
-        1,
-        key,
-        windowSeconds
-      )
+      await this.redis.eval(incrementWithExpiryScript, 1, key, windowSeconds),
     );
     if (!Number.isFinite(count) || count > limit) {
       throw new HttpException(
         AUDIENCE_RATE_LIMIT_ERROR,
-        HttpStatus.TOO_MANY_REQUESTS
+        HttpStatus.TOO_MANY_REQUESTS,
       );
     }
   }
@@ -99,4 +123,10 @@ export class AudienceRateLimitService implements OnModuleDestroy {
       .digest("hex");
     return `audience:rate:${scope}:${digest}`;
   }
+}
+
+function tokensMatch(expected: string, provided: string): boolean {
+  const expectedDigest = createHash("sha256").update(expected).digest();
+  const providedDigest = createHash("sha256").update(provided).digest();
+  return timingSafeEqual(expectedDigest, providedDigest);
 }

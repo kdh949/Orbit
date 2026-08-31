@@ -1,0 +1,137 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [
+        {
+          "expr": "sum(rate(orbit_api_http_requests_total[1m]))",
+          "legendFormat": "requests/s",
+          "refId": "A"
+        }
+      ],
+      "title": "API request rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(orbit_api_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95",
+          "refId": "A"
+        }
+      ],
+      "title": "API latency p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "sum by (queue, state) (bullmq_job_count)",
+          "legendFormat": "{{queue}} {{state}}",
+          "refId": "A"
+        }
+      ],
+      "title": "BullMQ jobs by state",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "id": 4,
+      "targets": [
+        {
+          "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[1m]))",
+          "legendFormat": "CPU",
+          "refId": "A"
+        }
+      ],
+      "title": "Host CPU utilization",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "id": 5,
+      "targets": [
+        {
+          "expr": "sum by (name) (container_memory_working_set_bytes{name!=\"\"})",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Container memory",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 16 },
+      "id": 6,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{environment=~\"$environment\", service=~\"$service\"}",
+          "refId": "A"
+        }
+      ],
+      "title": "Container logs",
+      "type": "logs"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 41,
+  "tags": ["orbit", "observability"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": { "type": "loki", "uid": "loki" },
+        "definition": "label_values(environment)",
+        "includeAll": true,
+        "label": "Environment",
+        "name": "environment",
+        "query": "label_values(environment)",
+        "refresh": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": { "type": "loki", "uid": "loki" },
+        "definition": "label_values({environment=~\"$environment\"}, service)",
+        "includeAll": true,
+        "label": "Service",
+        "name": "service",
+        "query": "label_values({environment=~\"$environment\"}, service)",
+        "refresh": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "title": "Orbit Overview",
+  "uid": "orbit-overview",
+  "version": 1
+}

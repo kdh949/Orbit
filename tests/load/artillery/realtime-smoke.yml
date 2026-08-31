@@ -1,0 +1,17 @@
+config:
+  target: "{{ $env.BASE_URL }}"
+  processor: "./processor.cjs"
+  phases:
+    - name: safe-smoke
+      duration: 1
+      arrivalCount: 2
+      maxVusers: 2
+  plugins:
+    ensure:
+      conditions:
+        - expression: "vusers.failed == 0"
+          strict: true
+scenarios:
+  - name: audience-revision-smoke
+    flow:
+      - function: runRealtimeScenario

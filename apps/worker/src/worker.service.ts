@@ -1,5 +1,11 @@
 import { loadOrbitConfig } from "@orbit/config";
-import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import {
+  Inject,
+  Injectable,
+  OnModuleDestroy,
+  OnModuleInit,
+  Optional,
+} from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { InjectPinoLogger, PinoLogger } from "nestjs-pino";
 import { randomUUID } from "node:crypto";
@@ -15,6 +21,18 @@ import type { WorkerScheduler } from "./runtime/schedulers/worker-scheduler";
 import { createWorkerSchedulers } from "./runtime/schedulers/worker-schedulers";
 import { workerStorage } from "./storage";
 
+type WorkerRuntimeMetrics = {
+  recordJobStarted(queueName: string, jobName: string): void;
+  recordJobCompleted(
+    queueName: string,
+    jobName: string,
+    outcome: "succeeded" | "failed" | "progressed",
+    durationSeconds: number,
+  ): void;
+  start(input: { queueNames: string[]; redisUrl: string; port: number }): void;
+  stop(): Promise<void>;
+};
+
 @Injectable()
 export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly config = loadOrbitConfig(process.env, { service: "worker" });
@@ -29,6 +47,9 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
     @InjectDataSource() private readonly dataSource: DataSource,
     @InjectPinoLogger(WorkerService.name)
     private readonly logger: PinoLogger,
+    @Optional()
+    @Inject("WORKER_METRICS")
+    private readonly metrics?: WorkerRuntimeMetrics,
   ) {}
 
   onModuleInit(): void {
@@ -72,8 +93,17 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       ({ queueName }) => selectedQueues.has(queueName),
     );
 
-    this.runtime = new BullMqWorkerRuntime(this.config.REDIS_URL, this.logger);
+    this.runtime = new BullMqWorkerRuntime(
+      this.config.REDIS_URL,
+      this.logger,
+      this.metrics,
+    );
     this.runtime.start(descriptors);
+    this.metrics?.start({
+      queueNames: this.queueNames,
+      redisUrl: this.config.REDIS_URL,
+      port: this.config.WORKER_PORT,
+    });
     this.schedulers = createWorkerSchedulers(context);
     for (const scheduler of this.schedulers) scheduler.start();
 
@@ -101,6 +131,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     await Promise.all(this.schedulers.map((scheduler) => scheduler.stop()));
     await this.runtime?.stop();
+    await this.metrics?.stop();
     await this.transcriptCache?.close();
     await this.challengeQnaEvidenceCache?.close();
     this.logger.info(

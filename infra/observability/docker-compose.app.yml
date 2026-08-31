@@ -1,0 +1,88 @@
+name: orbit-observability-agent
+
+services:
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
+    environment:
+      DATA_SOURCE_NAME: ${POSTGRES_EXPORTER_DSN:?POSTGRES_EXPORTER_DSN is required}
+    expose: ["9187"]
+    networks: [orbit]
+    restart: unless-stopped
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.90.0
+    environment:
+      REDIS_ADDR: ${REDIS_URL:-redis://redis:6379}
+    expose: ["9121"]
+    networks: [orbit]
+    restart: unless-stopped
+
+  private-evidence-redis-exporter:
+    image: oliver006/redis_exporter:v1.90.0
+    environment:
+      REDIS_ADDR: ${PRIVATE_EVIDENCE_REDIS_URL:-redis://private-evidence-redis:6379}
+    expose: ["9121"]
+    networks: [orbit]
+    restart: unless-stopped
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:v1.12.1
+    command:
+      - --path.rootfs=/host
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/containers/storage/.+)($|/)
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    expose: ["9100"]
+    networks: [orbit]
+    restart: unless-stopped
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.60.5
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    expose: ["8080"]
+    networks: [orbit]
+    restart: unless-stopped
+
+  alloy:
+    image: grafana/alloy:v1.19.2
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    environment:
+      OBSERVABILITY_ENVIRONMENT: ${OBSERVABILITY_ENVIRONMENT:-staging}
+      PROMETHEUS_REMOTE_WRITE_URL: ${PROMETHEUS_REMOTE_WRITE_URL:?PROMETHEUS_REMOTE_WRITE_URL is required}
+      LOKI_WRITE_URL: ${LOKI_WRITE_URL:?LOKI_WRITE_URL is required}
+      MINIO_PROMETHEUS_BEARER_TOKEN: ${MINIO_PROMETHEUS_BEARER_TOKEN:?MINIO_PROMETHEUS_BEARER_TOKEN is required}
+    ports:
+      - "127.0.0.1:12345:12345"
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy-data:/var/lib/alloy/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [orbit]
+    depends_on:
+      - postgres-exporter
+      - redis-exporter
+      - private-evidence-redis-exporter
+      - node-exporter
+      - cadvisor
+    restart: unless-stopped
+
+networks:
+  orbit:
+    external: true
+    name: ${ORBIT_DOCKER_NETWORK:-orbit_default}
+
+volumes:
+  alloy-data:

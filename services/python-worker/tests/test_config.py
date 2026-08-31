@@ -51,6 +51,55 @@ def test_openai_model_defaults_are_loaded_from_env() -> None:
     assert config.openai_embedding_model == "text-embedding-3-large"
 
 
+def test_load_test_provider_defaults_and_startup_guards() -> None:
+    defaults = load_config(VALID_ENV)
+    assert defaults.load_test_mode is False
+    assert defaults.load_test_provider_mode == "disabled"
+
+    configured = load_config(
+        {
+            **VALID_ENV,
+            "LOAD_TEST_MODE": "true",
+            "LOAD_TEST_RATE_LIMIT_BYPASS_TOKEN": "x" * 32,
+            "LOAD_TEST_PROVIDER_MODE": "deterministic",
+            "LOAD_TEST_PROVIDER_SEED": "7",
+            "LOAD_TEST_PROVIDER_DELAY_MS": "5",
+            "LOAD_TEST_PROVIDER_ERROR_RATE_PERCENT": "3",
+            "LOAD_TEST_PROVIDER_PAYLOAD_BYTES": "256",
+        }
+    )
+    assert configured.load_test_provider_mode == "deterministic"
+    assert configured.load_test_provider_seed == 7
+    assert configured.load_test_provider_payload_bytes == 256
+
+    with pytest.raises(ConfigError, match="LOAD_TEST_MODE"):
+        load_config({**VALID_ENV, "LOAD_TEST_PROVIDER_MODE": "deterministic"})
+
+
+def test_load_test_provider_is_forbidden_in_production() -> None:
+    with pytest.raises(ConfigError, match="forbidden in production"):
+        load_config(
+            {
+                **VALID_ENV,
+                "APP_ENV": "production",
+                "LOAD_TEST_MODE": "true",
+                "LOAD_TEST_RATE_LIMIT_BYPASS_TOKEN": "x" * 32,
+                "LOAD_TEST_PROVIDER_MODE": "deterministic",
+                "PYTHON_WORKER_URL": "http://python-worker:8000",
+                "API_BASE_URL": "https://api.example.com",
+                "DATABASE_URL": "postgres://orbit:orbit@postgres:5432/orbit",
+                "REDIS_URL": "redis://redis:6379",
+                "STORAGE_DRIVER": "s3",
+                "S3_ENDPOINT": "",
+                "S3_PUBLIC_ENDPOINT": "https://assets.example.com",
+                "S3_BUCKET": "orbit-production",
+                "S3_ACCESS_KEY_ID": "",
+                "S3_SECRET_ACCESS_KEY": "",
+                "OPENAI_API_KEY": "",
+            }
+        )
+
+
 def test_visual_qa_model_falls_back_when_not_configured() -> None:
     config = load_config(VALID_ENV)
 

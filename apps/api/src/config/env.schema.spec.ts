@@ -50,7 +50,7 @@ const validEnv = {
   DEMO_WORKSPACE_ID: "workspace_demo_1",
   DEMO_PROJECT_ID: "project_demo_1",
   DEMO_DECK_ID: "deck_demo_1",
-  DEMO_SESSION_ID: "session_demo_1"
+  DEMO_SESSION_ID: "session_demo_1",
 };
 
 const productionValidEnv = {
@@ -72,12 +72,92 @@ const productionValidEnv = {
   S3_ACCESS_KEY_ID: "",
   S3_SECRET_ACCESS_KEY: "",
   S3_FORCE_PATH_STYLE: "false",
-  OPENAI_API_KEY: "test-production-openai-key-placeholder"
+  OPENAI_API_KEY: "test-production-openai-key-placeholder",
 };
 
 describe("ORBIT env validation", () => {
+  it("keeps load-test controls disabled by default", () => {
+    const config = loadOrbitConfig(validEnv, { service: "api" });
+
+    expect(config.LOAD_TEST_MODE).toBe(false);
+    expect(config.LOAD_TEST_RATE_LIMIT_BYPASS_TOKEN).toBeUndefined();
+    expect(config.LOAD_TEST_PROVIDER_MODE).toBe("disabled");
+  });
+
+  it("requires a strong bypass token and deterministic providers to be explicitly enabled", () => {
+    expect(() =>
+      loadOrbitConfig(
+        { ...validEnv, LOAD_TEST_MODE: "true" },
+        { service: "api" },
+      ),
+    ).toThrow(/LOAD_TEST_RATE_LIMIT_BYPASS_TOKEN/);
+
+    expect(() =>
+      loadOrbitConfig(
+        {
+          ...validEnv,
+          LOAD_TEST_MODE: "true",
+          LOAD_TEST_RATE_LIMIT_BYPASS_TOKEN: "too-short",
+        },
+        { service: "api" },
+      ),
+    ).toThrow(/at least 32 characters/);
+
+    expect(() =>
+      loadOrbitConfig(
+        {
+          ...validEnv,
+          LOAD_TEST_PROVIDER_MODE: "deterministic",
+        },
+        { service: "worker" },
+      ),
+    ).toThrow(/LOAD_TEST_MODE/);
+
+    expect(
+      loadOrbitConfig(
+        {
+          ...validEnv,
+          LOAD_TEST_MODE: "true",
+          LOAD_TEST_RATE_LIMIT_BYPASS_TOKEN:
+            "load-test-bypass-token-at-least-32-characters",
+          LOAD_TEST_PROVIDER_MODE: "deterministic",
+        },
+        { service: "worker" },
+      ),
+    ).toMatchObject({
+      LOAD_TEST_MODE: true,
+      LOAD_TEST_PROVIDER_MODE: "deterministic",
+    });
+  });
+
+  it("rejects every load-test control in production", () => {
+    expect(() =>
+      loadOrbitConfig(
+        {
+          ...productionValidEnv,
+          LOAD_TEST_MODE: "true",
+          LOAD_TEST_RATE_LIMIT_BYPASS_TOKEN:
+            "load-test-bypass-token-at-least-32-characters",
+        },
+        { service: "api" },
+      ),
+    ).toThrow(/Load-test mode is forbidden in production/);
+
+    expect(() =>
+      loadOrbitConfig(
+        {
+          ...productionValidEnv,
+          LOAD_TEST_PROVIDER_MODE: "deterministic",
+        },
+        { service: "worker" },
+      ),
+    ).toThrow(/Load-test mode is forbidden in production/);
+  });
+
   it("defaults asynchronous job admission to accept and rejects unknown modes", () => {
-    expect(loadOrbitConfig(validEnv, { service: "api" }).ASYNC_JOB_ADMISSION_MODE).toBe("accept");
+    expect(
+      loadOrbitConfig(validEnv, { service: "api" }).ASYNC_JOB_ADMISSION_MODE,
+    ).toBe("accept");
     expect(
       loadOrbitConfig(
         { ...validEnv, ASYNC_JOB_ADMISSION_MODE: "drain" },
@@ -151,18 +231,51 @@ describe("ORBIT env validation", () => {
   });
 
   it("parses coaching flags and exact project allowlists", () => {
-    const config = loadOrbitConfig({ ...validEnv, ADAPTIVE_REHEARSAL_COACH_ENABLED: "true", FOCUSED_PRACTICE_ENABLED: "true", ADAPTIVE_COACHING_PROJECT_ALLOWLIST: "project-a,project-b" }, { service: "api" });
+    const config = loadOrbitConfig(
+      {
+        ...validEnv,
+        ADAPTIVE_REHEARSAL_COACH_ENABLED: "true",
+        FOCUSED_PRACTICE_ENABLED: "true",
+        ADAPTIVE_COACHING_PROJECT_ALLOWLIST: "project-a,project-b",
+      },
+      { service: "api" },
+    );
     expect(config.FOCUSED_PRACTICE_ENABLED).toBe(true);
-    expect(config.ADAPTIVE_COACHING_PROJECT_ALLOWLIST).toEqual(["project-a", "project-b"]);
+    expect(config.ADAPTIVE_COACHING_PROJECT_ALLOWLIST).toEqual([
+      "project-a",
+      "project-b",
+    ]);
   });
 
   it("requires the adaptive core before focused or Q&A features", () => {
-    expect(() => loadOrbitConfig({ ...validEnv, FOCUSED_PRACTICE_ENABLED: "true" }, { service: "api" })).toThrow("ADAPTIVE_REHEARSAL_COACH_ENABLED");
+    expect(() =>
+      loadOrbitConfig(
+        { ...validEnv, FOCUSED_PRACTICE_ENABLED: "true" },
+        { service: "api" },
+      ),
+    ).toThrow("ADAPTIVE_REHEARSAL_COACH_ENABLED");
   });
 
   it("forbids production fixtures and incomplete HMAC rotation", () => {
-    expect(() => loadOrbitConfig({ ...validEnv, APP_ENV: "production", DEMO_COACHING_FIXTURE_ENABLED: "true" }, { service: "api" })).toThrow("DEMO_COACHING_FIXTURE_ENABLED");
-    expect(() => loadOrbitConfig({ ...validEnv, COACHING_IDEMPOTENCY_HMAC_PREVIOUS_SECRET: "previous-secret" }, { service: "api" })).toThrow("COACHING_IDEMPOTENCY_HMAC_PREVIOUS_SECRET");
+    expect(() =>
+      loadOrbitConfig(
+        {
+          ...validEnv,
+          APP_ENV: "production",
+          DEMO_COACHING_FIXTURE_ENABLED: "true",
+        },
+        { service: "api" },
+      ),
+    ).toThrow("DEMO_COACHING_FIXTURE_ENABLED");
+    expect(() =>
+      loadOrbitConfig(
+        {
+          ...validEnv,
+          COACHING_IDEMPOTENCY_HMAC_PREVIOUS_SECRET: "previous-secret",
+        },
+        { service: "api" },
+      ),
+    ).toThrow("COACHING_IDEMPOTENCY_HMAC_PREVIOUS_SECRET");
   });
 
   it("validates the demo AI deck cache startup guardrails", () => {
@@ -234,8 +347,8 @@ describe("ORBIT env validation", () => {
     expect(() =>
       loadOrbitConfig(
         { ...validEnv, PRIVATE_EVIDENCE_REDIS_URL: validEnv.REDIS_URL },
-        { service: "api" }
-      )
+        { service: "api" },
+      ),
     ).toThrow("PRIVATE_EVIDENCE_REDIS_URL");
   });
 
@@ -247,15 +360,15 @@ describe("ORBIT env validation", () => {
         OPENAI_EMBEDDING_MODEL: "text-embedding-3-large",
         OPENAI_REALTIME_TRANSCRIPTION_MODEL: "gpt-realtime-whisper-2",
         OPENAI_REALTIME_TRANSCRIPTION_DELAY: "low",
-        OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS: "900"
+        OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS: "900",
       },
-      { service: "api" }
+      { service: "api" },
     );
 
     expect(config.OPENAI_MODEL).toBe("gpt-4.1");
     expect(config.OPENAI_EMBEDDING_MODEL).toBe("text-embedding-3-large");
     expect(config.OPENAI_REALTIME_TRANSCRIPTION_MODEL).toBe(
-      "gpt-realtime-whisper-2"
+      "gpt-realtime-whisper-2",
     );
     expect(config.OPENAI_REALTIME_TRANSCRIPTION_DELAY).toBe("low");
     expect(config.OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS).toBe(900);
@@ -267,10 +380,12 @@ describe("ORBIT env validation", () => {
     delete env.OPENAI_REALTIME_TRANSCRIPTION_DELAY;
     delete env.OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS;
 
-    const config = loadOrbitConfig(env as NodeJS.ProcessEnv, { service: "api" });
+    const config = loadOrbitConfig(env as NodeJS.ProcessEnv, {
+      service: "api",
+    });
 
     expect(config.OPENAI_REALTIME_TRANSCRIPTION_MODEL).toBe(
-      "gpt-realtime-whisper"
+      "gpt-realtime-whisper",
     );
     expect(config.OPENAI_REALTIME_TRANSCRIPTION_DELAY).toBe("minimal");
     expect(config.OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS).toBe(600);
@@ -280,15 +395,15 @@ describe("ORBIT env validation", () => {
     expect(() =>
       loadOrbitConfig(
         { ...validEnv, OPENAI_REALTIME_TRANSCRIPTION_DELAY: "instant" },
-        { service: "api" }
-      )
+        { service: "api" },
+      ),
     ).toThrow(/OPENAI_REALTIME_TRANSCRIPTION_DELAY/);
 
     expect(() =>
       loadOrbitConfig(
         { ...validEnv, OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS: "9" },
-        { service: "api" }
-      )
+        { service: "api" },
+      ),
     ).toThrow(/OPENAI_REALTIME_CLIENT_SECRET_TTL_SECONDS/);
   });
 
@@ -296,17 +411,17 @@ describe("ORBIT env validation", () => {
     const env = { ...validEnv } as Partial<typeof validEnv>;
     delete env.DATABASE_URL;
 
-    expect(() => loadOrbitConfig(env as NodeJS.ProcessEnv, { service: "api" })).toThrow(
-      OrbitConfigError
-    );
     expect(() =>
-      loadOrbitConfig(env as NodeJS.ProcessEnv, { service: "api" })
+      loadOrbitConfig(env as NodeJS.ProcessEnv, { service: "api" }),
+    ).toThrow(OrbitConfigError);
+    expect(() =>
+      loadOrbitConfig(env as NodeJS.ProcessEnv, { service: "api" }),
     ).toThrow(/Invalid ORBIT environment for api[\s\S]*DATABASE_URL/);
   });
 
   it("treats empty strings as missing required values", () => {
     expect(() =>
-      loadOrbitConfig({ ...validEnv, OPENAI_MODEL: " " }, { service: "api" })
+      loadOrbitConfig({ ...validEnv, OPENAI_MODEL: " " }, { service: "api" }),
     ).toThrow(/OPENAI_MODEL/);
   });
 
@@ -317,14 +432,19 @@ describe("ORBIT env validation", () => {
     delete env.API_JSON_BODY_LIMIT_BYTES;
     delete env.API_TRUST_PROXY_HOPS;
 
-    expect(loadOrbitConfig(env as NodeJS.ProcessEnv, { service: "api" })).toMatchObject({
+    expect(
+      loadOrbitConfig(env as NodeJS.ProcessEnv, { service: "api" }),
+    ).toMatchObject({
       API_JSON_BODY_LIMIT_BYTES: 5000000,
       API_TRUST_PROXY_HOPS: 0,
       LOG_LEVEL: "info",
-      LOG_PRETTY: false
+      LOG_PRETTY: false,
     });
     expect(() =>
-      loadOrbitConfig({ ...validEnv, LOG_LEVEL: "verbose" }, { service: "api" })
+      loadOrbitConfig(
+        { ...validEnv, LOG_LEVEL: "verbose" },
+        { service: "api" },
+      ),
     ).toThrow(/LOG_LEVEL/);
   });
 
@@ -332,14 +452,14 @@ describe("ORBIT env validation", () => {
     expect(
       loadOrbitConfig(
         { ...validEnv, API_JSON_BODY_LIMIT_BYTES: "1000000" },
-        { service: "api" }
-      ).API_JSON_BODY_LIMIT_BYTES
+        { service: "api" },
+      ).API_JSON_BODY_LIMIT_BYTES,
     ).toBe(1000000);
     expect(() =>
       loadOrbitConfig(
         { ...validEnv, API_JSON_BODY_LIMIT_BYTES: "0" },
-        { service: "api" }
-      )
+        { service: "api" },
+      ),
     ).toThrow(/API_JSON_BODY_LIMIT_BYTES/);
   });
 
@@ -347,14 +467,14 @@ describe("ORBIT env validation", () => {
     expect(
       loadOrbitConfig(
         { ...validEnv, API_TRUST_PROXY_HOPS: "1" },
-        { service: "api" }
-      ).API_TRUST_PROXY_HOPS
+        { service: "api" },
+      ).API_TRUST_PROXY_HOPS,
     ).toBe(1);
     expect(() =>
       loadOrbitConfig(
         { ...validEnv, API_TRUST_PROXY_HOPS: "-1" },
-        { service: "api" }
-      )
+        { service: "api" },
+      ),
     ).toThrow(/API_TRUST_PROXY_HOPS/);
   });
 
@@ -368,20 +488,20 @@ describe("ORBIT env validation", () => {
     expect(() =>
       loadOrbitConfig(
         { ...validEnv, LIVE_STT_PROVIDER: "openai" },
-        { service: "api" }
-      )
+        { service: "api" },
+      ),
     ).toThrow(/LIVE_STT_PROVIDER/);
     expect(() =>
       loadOrbitConfig(
         { ...validEnv, LIVE_STT_ENGINE: "sherpa" },
-        { service: "api" }
-      )
+        { service: "api" },
+      ),
     ).toThrow(/LIVE_STT_ENGINE/);
     expect(() =>
       loadOrbitConfig(
         { ...validEnv, REPORT_STT_PROVIDER: "sherpa" },
-        { service: "api" }
-      )
+        { service: "api" },
+      ),
     ).toThrow(/REPORT_STT_PROVIDER/);
   });
 
@@ -389,7 +509,9 @@ describe("ORBIT env validation", () => {
     const env = { ...validEnv } as Partial<typeof validEnv>;
     delete env.LIVE_STT_ENGINE;
 
-    const config = loadOrbitConfig(env as NodeJS.ProcessEnv, { service: "api" });
+    const config = loadOrbitConfig(env as NodeJS.ProcessEnv, {
+      service: "api",
+    });
 
     expect(config.LIVE_STT_ENGINE).toBe("web-speech");
   });
@@ -402,14 +524,14 @@ describe("ORBIT env validation", () => {
         WHISPERX_API_URL: "https://whisperx.example.test/transcribe",
         WHISPERX_API_KEY: "whisperx-test-key",
         WHISPERX_MODEL: "large-v3",
-        WHISPERX_TIMEOUT_MS: "45000"
+        WHISPERX_TIMEOUT_MS: "45000",
       },
-      { service: "api" }
+      { service: "api" },
     );
 
     expect(config.REPORT_STT_PROVIDER).toBe("whisperx");
     expect(config.WHISPERX_API_URL).toBe(
-      "https://whisperx.example.test/transcribe"
+      "https://whisperx.example.test/transcribe",
     );
     expect(config.WHISPERX_MODEL).toBe("large-v3");
     expect(config.WHISPERX_TIMEOUT_MS).toBe(45000);
@@ -419,8 +541,8 @@ describe("ORBIT env validation", () => {
     expect(() =>
       loadOrbitConfig(
         { ...validEnv, REPORT_STT_PROVIDER: "whisperx" },
-        { service: "api" }
-      )
+        { service: "api" },
+      ),
     ).toThrow(/WHISPERX_API_URL/);
   });
 
@@ -432,10 +554,10 @@ describe("ORBIT env validation", () => {
           REPORT_STT_PROVIDER: "whisperx",
           WHISPERX_API_URL: "not-a-url",
           WHISPERX_API_KEY: "whisperx-test-key",
-          WHISPERX_MODEL: "large-v3"
+          WHISPERX_MODEL: "large-v3",
         },
-        { service: "api" }
-      )
+        { service: "api" },
+      ),
     ).toThrow(/WHISPERX_API_URL must be a valid URL/);
   });
 
@@ -443,8 +565,8 @@ describe("ORBIT env validation", () => {
     expect(() =>
       loadOrbitConfig(
         { ...validEnv, REHEARSAL_AUDIO_MAX_BYTES: "25000001" },
-        { service: "api" }
-      )
+        { service: "api" },
+      ),
     ).toThrow(/REHEARSAL_AUDIO_MAX_BYTES/);
   });
 
@@ -452,11 +574,14 @@ describe("ORBIT env validation", () => {
     expect(
       loadOrbitConfig(
         { ...validEnv, NODE_ENV: "development", LOG_PRETTY: "true" },
-        { service: "api" }
-      ).LOG_PRETTY
+        { service: "api" },
+      ).LOG_PRETTY,
     ).toBe(true);
     expect(() =>
-      loadOrbitConfig({ ...validEnv, NODE_ENV: "production", LOG_PRETTY: "true" }, { service: "api" })
+      loadOrbitConfig(
+        { ...validEnv, NODE_ENV: "production", LOG_PRETTY: "true" },
+        { service: "api" },
+      ),
     ).toThrow(/LOG_PRETTY can only be true/);
   });
 
@@ -477,9 +602,9 @@ describe("ORBIT env validation", () => {
         S3_PUBLIC_ENDPOINT: "http://8.230.24.164/assets",
         S3_BUCKET: "orbit-personal-staging",
         OPENAI_API_KEY: "sk-staging-placeholder",
-        AUTH_COOKIE_SECURE: "false"
+        AUTH_COOKIE_SECURE: "false",
       },
-      { service: "api" }
+      { service: "api" },
     );
 
     expect(config.AUTH_COOKIE_SECURE).toBe(false);
@@ -502,10 +627,10 @@ describe("ORBIT env validation", () => {
           S3_PUBLIC_ENDPOINT: "https://app.example.com/assets",
           S3_BUCKET: "orbit-personal-staging",
           OPENAI_API_KEY: "sk-staging-placeholder",
-          AUTH_COOKIE_SECURE: "false"
+          AUTH_COOKIE_SECURE: "false",
         },
-        { service: "api" }
-      )
+        { service: "api" },
+      ),
     ).toThrow(/AUTH_COOKIE_SECURE=false is only allowed/);
   });
 
@@ -518,7 +643,8 @@ describe("ORBIT env validation", () => {
           WEB_ORIGIN: "https://app.example.com",
           API_BASE_URL: "https://api.example.com",
           PYTHON_WORKER_URL: "http://python-worker.internal:8000",
-          DATABASE_URL: "postgres://orbit:orbit@prod-rds.example.com:5432/orbit",
+          DATABASE_URL:
+            "postgres://orbit:orbit@prod-rds.example.com:5432/orbit",
           REDIS_URL: "rediss://prod-redis.example.com:6379",
           SESSION_SECRET: "production-session-secret",
           COOKIE_SECRET: "production-cookie-secret",
@@ -530,10 +656,10 @@ describe("ORBIT env validation", () => {
           S3_SECRET_ACCESS_KEY: "",
           S3_FORCE_PATH_STYLE: "false",
           OPENAI_API_KEY: "test-production-openai-key-placeholder",
-          AUTH_COOKIE_SECURE: "false"
+          AUTH_COOKIE_SECURE: "false",
         },
-        { service: "api" }
-      )
+        { service: "api" },
+      ),
     ).toThrow(/AUTH_COOKIE_SECURE cannot be false in production/);
   });
 
@@ -543,10 +669,10 @@ describe("ORBIT env validation", () => {
         {
           ...validEnv,
           APP_ENV: "staging",
-          OPENAI_API_KEY: "sk-staging-placeholder"
+          OPENAI_API_KEY: "sk-staging-placeholder",
         },
-        { service: "api" }
-      )
+        { service: "api" },
+      ),
     ).toThrow(/DATABASE_URL must not use the local default in staging/);
   });
 });

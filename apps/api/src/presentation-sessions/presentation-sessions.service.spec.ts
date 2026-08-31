@@ -1,3 +1,4 @@
+import * as argon2 from "argon2";
 import { describe, expect, it, vi } from "vitest";
 
 import type { DecksService } from "../decks/decks.service";
@@ -31,7 +32,7 @@ const sessionRow = {
   raw_responses_deleted_at: null,
   results_deleted_at: null,
   created_at: "2026-07-17T00:00:00.000Z",
-  updated_at: "2026-07-17T00:00:00.000Z"
+  updated_at: "2026-07-17T00:00:00.000Z",
 };
 
 function createService(
@@ -57,20 +58,22 @@ function createService(
       status: "ended",
       ended_at: "2026-07-17T01:00:00.000Z",
       closed_at: "2026-07-17T01:00:00.000Z",
-      raw_responses_delete_after: "2026-10-15T01:00:00.000Z"
+      raw_responses_delete_after: "2026-10-15T01:00:00.000Z",
     }),
     findAccessibleBySessionId: vi.fn().mockResolvedValue(sessionRow),
     registerAudience: vi.fn().mockResolvedValue(undefined),
     findAudienceInfo: vi.fn().mockResolvedValue({
       ...sessionRow,
-      project_title: "ORBIT 발표"
+      project_title: "ORBIT 발표",
     }),
     findByIdForRead: vi.fn().mockResolvedValue(sessionRow),
-    ...overrides
+    ...overrides,
   } as unknown as PresentationSessionRepository;
   const decksService = {
-    getDeckForUpdate: vi.fn().mockResolvedValue({ deckId: "deck_1", version: 7 }),
-    ...deckOverrides
+    getDeckForUpdate: vi
+      .fn()
+      .mockResolvedValue({ deckId: "deck_1", version: 7 }),
+    ...deckOverrides,
   } as unknown as DecksService;
   const logger = { info: vi.fn(), warn: vi.fn() } as never;
   return {
@@ -84,7 +87,7 @@ function createService(
       passcodeCipher,
       companionStore as PresentationCompanionStore,
       companionPublisher as PresentationCompanionPublisher,
-    )
+    ),
   };
 }
 
@@ -92,9 +95,11 @@ describe("PresentationSessionsService", () => {
   it("reuses the current session without creating a new row", async () => {
     const { repository, service } = createService();
 
-    await expect(service.getCurrent("project_1", "deck_1")).resolves.toMatchObject({
+    await expect(
+      service.getCurrent("project_1", "deck_1"),
+    ).resolves.toMatchObject({
       session: { sessionId: "session_existing", deckVersion: 7 },
-      audienceUrl: "/audience/session_existing"
+      audienceUrl: "/audience/session_existing",
     });
 
     expect(repository.findCurrent).toHaveBeenCalledWith(
@@ -124,14 +129,14 @@ describe("PresentationSessionsService", () => {
         deckId: "deck_1",
         sessionPurpose: "presentation",
         audienceAccessEnabled: true,
-        accessMode: "public"
-      })
+        accessMode: "public",
+      }),
     ).resolves.toMatchObject({ session: { deckId: "deck_1", deckVersion: 7 } });
 
     expect(decksService.getDeckForUpdate).toHaveBeenCalledWith(
       expect.anything(),
       "project_1",
-      "deck_1"
+      "deck_1",
     );
     expect(repository.closeActive).toHaveBeenCalledWith(
       expect.anything(),
@@ -148,20 +153,24 @@ describe("PresentationSessionsService", () => {
     );
     expect(repository.insert).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ deckId: "deck_1", deckVersion: 7, userId: "user_1" })
+      expect.objectContaining({
+        deckId: "deck_1",
+        deckVersion: 7,
+        userId: "user_1",
+      }),
     );
   });
 
   it("stores only encrypted presenter display data beside the Argon2 hash", async () => {
     const passcodeCipher = new PresentationPasscodeCipher({
       key: Buffer.alloc(32, 5),
-      version: 4
+      version: 4,
     });
     const { repository, service } = createService(
       {},
       undefined,
       {},
-      passcodeCipher
+      passcodeCipher,
     );
 
     await service.create("project_1", "user_1", {
@@ -169,7 +178,7 @@ describe("PresentationSessionsService", () => {
       sessionPurpose: "presentation",
       audienceAccessEnabled: true,
       accessMode: "passcode",
-      passcode: "4821"
+      passcode: "4821",
     });
 
     expect(repository.insert).toHaveBeenCalledWith(
@@ -177,15 +186,15 @@ describe("PresentationSessionsService", () => {
       expect.objectContaining({
         passwordKeyVersion: 4,
         passwordDisplayCiphertext: expect.not.stringContaining("4821"),
-        passwordHash: expect.any(String)
-      })
+        passwordHash: expect.any(String),
+      }),
     );
   });
 
   it("returns a decrypted passcode only through presenter access", async () => {
     const passcodeCipher = new PresentationPasscodeCipher({
       key: Buffer.alloc(32, 5),
-      version: 4
+      version: 4,
     });
     const encrypted = passcodeCipher.encrypt("4821", "session_existing");
     const { service } = createService(
@@ -195,25 +204,25 @@ describe("PresentationSessionsService", () => {
           access_mode: "passcode",
           session_password_hash: "argon2-hash",
           session_password_display_ciphertext: encrypted.ciphertext,
-          session_password_key_version: encrypted.keyVersion
-        })
+          session_password_key_version: encrypted.keyVersion,
+        }),
       },
       undefined,
       {},
-      passcodeCipher
+      passcodeCipher,
     );
 
     await expect(
-      service.getPresenterAccess("project_1", "session_existing")
+      service.getPresenterAccess("project_1", "session_existing"),
     ).resolves.toEqual({
       accessMode: "passcode",
-      displayPasscode: "4821"
+      displayPasscode: "4821",
     });
   });
 
   it("reuses the matching live-runtime session without closing audience activity", async () => {
     const { repository, service } = createService({
-      findCurrentForUpdate: vi.fn().mockResolvedValue(sessionRow)
+      findCurrentForUpdate: vi.fn().mockResolvedValue(sessionRow),
     });
 
     await expect(
@@ -222,11 +231,11 @@ describe("PresentationSessionsService", () => {
         sessionPurpose: "presentation",
         audienceAccessEnabled: true,
         accessMode: "public",
-        reuseCurrent: true
-      })
+        reuseCurrent: true,
+      }),
     ).resolves.toMatchObject({
       audienceUrl: "/audience/session_existing",
-      session: { sessionId: "session_existing", deckVersion: 7 }
+      session: { sessionId: "session_existing", deckVersion: 7 },
     });
 
     expect(repository.findCurrentForUpdate).toHaveBeenCalledWith(
@@ -243,8 +252,8 @@ describe("PresentationSessionsService", () => {
     const { repository, service } = createService({
       findCurrentForUpdate: vi.fn().mockResolvedValue({
         ...sessionRow,
-        deck_version: 6
-      })
+        deck_version: 6,
+      }),
     });
 
     await service.create("project_1", "user_1", {
@@ -252,7 +261,7 @@ describe("PresentationSessionsService", () => {
       sessionPurpose: "presentation",
       audienceAccessEnabled: true,
       accessMode: "public",
-      reuseCurrent: true
+      reuseCurrent: true,
     });
 
     expect(repository.closeActive).toHaveBeenCalledOnce();
@@ -261,19 +270,17 @@ describe("PresentationSessionsService", () => {
 
   it("keeps the active session when Deck materialization fails", async () => {
     const materializationError = new Error("Stored patch chain is invalid");
-    const { repository, service } = createService(
-      {},
-      undefined,
-      { getDeckForUpdate: vi.fn().mockRejectedValue(materializationError) }
-    );
+    const { repository, service } = createService({}, undefined, {
+      getDeckForUpdate: vi.fn().mockRejectedValue(materializationError),
+    });
 
     await expect(
       service.create("project_1", "user_1", {
         deckId: "deck_1",
         sessionPurpose: "presentation",
         audienceAccessEnabled: true,
-        accessMode: "public"
-      })
+        accessMode: "public",
+      }),
     ).rejects.toBe(materializationError);
 
     expect(repository.closeActive).not.toHaveBeenCalled();
@@ -364,7 +371,7 @@ describe("PresentationSessionsService", () => {
     const { repository, service } = createService();
 
     await expect(service.list("project_1", "deck_1")).resolves.toMatchObject({
-      sessions: [{ sessionId: "session_existing", deckId: "deck_1" }]
+      sessions: [{ sessionId: "session_existing", deckId: "deck_1" }],
     });
     expect(repository.list).toHaveBeenCalledWith("project_1", "deck_1");
   });
@@ -381,14 +388,16 @@ describe("PresentationSessionsService", () => {
       companionPublisher,
     );
 
-    await expect(service.close("project_1", "session_existing")).resolves.toMatchObject({
-      session: { status: "ended", activeActivityRunId: null }
+    await expect(
+      service.close("project_1", "session_existing"),
+    ).resolves.toMatchObject({
+      session: { status: "ended", activeActivityRunId: null },
     });
     expect(repository.close).toHaveBeenCalledWith(
       expect.anything(),
       "project_1",
       "session_existing",
-      expect.any(Date)
+      expect.any(Date),
     );
     expect(companionStore.revokeSession).toHaveBeenCalledWith(
       "session_existing",
@@ -408,40 +417,40 @@ describe("PresentationSessionsService", () => {
         "session_existing",
         {},
         "audience_1",
-        "203.0.113.10"
-      )
+        "203.0.113.10",
+      ),
     ).resolves.toMatchObject({
       verified: true,
       session: {
         sessionId: "session_existing",
         deckId: "deck_1",
-        accessMode: "public"
-      }
+        accessMode: "public",
+      },
     });
     expect(audienceRateLimit.consumeJoin).not.toHaveBeenCalled();
     expect(repository.registerAudience).toHaveBeenCalledWith(
       "project_1",
       "session_existing",
-      "audience_1"
+      "audience_1",
     );
   });
 
   it("returns the fixed 429 before verifying an excessive passcode attempt", async () => {
     const limitError = Object.assign(new Error("Too many audience requests"), {
-      status: 429
+      status: 429,
     });
     const audienceRateLimit = {
-      consumeJoin: vi.fn().mockRejectedValue(limitError)
+      consumeJoin: vi.fn().mockRejectedValue(limitError),
     };
     const { service } = createService(
       {
         findAccessibleBySessionId: vi.fn().mockResolvedValue({
           ...sessionRow,
           access_mode: "passcode",
-          session_password_hash: "hash"
-        })
+          session_password_hash: "hash",
+        }),
       },
-      audienceRateLimit
+      audienceRateLimit,
     );
 
     await expect(
@@ -449,24 +458,53 @@ describe("PresentationSessionsService", () => {
         "session_existing",
         { passcode: "wrong-passcode" },
         "audience_1",
-        "203.0.113.10"
-      )
+        "203.0.113.10",
+      ),
     ).rejects.toBe(limitError);
     expect(audienceRateLimit.consumeJoin).toHaveBeenCalledWith(
       "session_existing",
-      "203.0.113.10"
+      "203.0.113.10",
+      undefined,
+    );
+  });
+
+  it("forwards a load-test token only to passcode join rate-limit evaluation", async () => {
+    const audienceRateLimit = { consumeJoin: vi.fn() };
+    const { service } = createService(
+      {
+        findAccessibleBySessionId: vi.fn().mockResolvedValue({
+          ...sessionRow,
+          access_mode: "passcode",
+          session_password_hash: await argon2.hash("1234"),
+        }),
+      },
+      audienceRateLimit,
+    );
+
+    await service.joinAudience(
+      "session_existing",
+      { passcode: "1234" },
+      "audience_1",
+      "203.0.113.10",
+      "private-load-test-token",
+    );
+
+    expect(audienceRateLimit.consumeJoin).toHaveBeenCalledWith(
+      "session_existing",
+      "203.0.113.10",
+      "private-load-test-token",
     );
   });
 
   it("uses one generalized error for a closed session or invalid access", async () => {
     const { service } = createService({
-      findAccessibleBySessionId: vi.fn().mockResolvedValue(null)
+      findAccessibleBySessionId: vi.fn().mockResolvedValue(null),
     });
 
     await expect(
-      service.joinAudience("session_closed", {}, "audience_1")
+      service.joinAudience("session_closed", {}, "audience_1"),
     ).rejects.toMatchObject({
-      message: "Invalid audience session or passcode"
+      message: "Invalid audience session or passcode",
     });
   });
 
@@ -512,12 +550,15 @@ describe("PresentationSessionsService", () => {
         ...sessionRow,
         status: "draft",
         project_title: "ORBIT 발표",
-        starts_at: "2026-07-18T00:00:00.000Z"
-      })
+        starts_at: "2026-07-18T00:00:00.000Z",
+      }),
     });
 
     await expect(
-      service.getAudiencePublicInfo("session_existing", new Date("2026-07-17T00:00:00.000Z"))
+      service.getAudiencePublicInfo(
+        "session_existing",
+        new Date("2026-07-17T00:00:00.000Z"),
+      ),
     ).resolves.toEqual({
       session: {
         sessionId: "session_existing",
@@ -525,8 +566,8 @@ describe("PresentationSessionsService", () => {
         accessMode: "public",
         startsAt: "2026-07-18T00:00:00.000Z",
         expiresAt: "2026-07-31T00:00:00.000Z",
-        availability: "scheduled"
-      }
+        availability: "scheduled",
+      },
     });
   });
 
@@ -534,7 +575,7 @@ describe("PresentationSessionsService", () => {
     const { service } = createService();
 
     await expect(
-      service.getAudienceAccess("session_existing", "project_other")
+      service.getAudienceAccess("session_existing", "project_other"),
     ).rejects.toMatchObject({ message: "Audience access required" });
   });
 });
