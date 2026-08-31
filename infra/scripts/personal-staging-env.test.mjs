@@ -137,6 +137,26 @@ test("personal staging initializes the configured assets bucket", () => {
   );
 });
 
+test("personal staging services use the same assets bucket", () => {
+  const compose = fs.readFileSync("docker-compose.staging.yml", "utf8");
+
+  for (const service of ["api", "worker", "python-worker"]) {
+    const serviceSection = compose.match(
+      new RegExp(`\\n  ${service}:\\n([\\s\\S]*?)(?=\\n  [a-z][a-z0-9-]*:|$)`),
+    )?.[0];
+
+    assert.ok(serviceSection, `personal staging must define ${service}`);
+    assert.match(
+      serviceSection,
+      /S3_BUCKET: \$\{S3_ASSETS_BUCKET:-orbit-personal-staging\}/,
+    );
+    assert.match(
+      serviceSection,
+      /S3_ASSETS_BUCKET: \$\{S3_ASSETS_BUCKET:-orbit-personal-staging\}/,
+    );
+  }
+});
+
 test("sync selection never overwrites existing keys or creates manual values", () => {
   const policy = {
     variables: {
