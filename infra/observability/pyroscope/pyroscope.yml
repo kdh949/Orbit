@@ -1,0 +1,19 @@
+target: all
+architecture_storage: v1
+
+server:
+  http_listen_port: 4040
+
+storage:
+  backend: filesystem
+  filesystem:
+    dir: /var/lib/pyroscope/shared
+
+pyroscopedb:
+  data_path: /var/lib/pyroscope/data
+
+compactor:
+  data_dir: /var/lib/pyroscope/compactor
+
+analytics:
+  reporting_enabled: false
