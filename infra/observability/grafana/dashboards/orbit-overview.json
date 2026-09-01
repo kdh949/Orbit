@@ -591,7 +591,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 69 },
       "id": 104,
       "panels": [],
-      "title": "5. Host & Containers — CPU, 메모리, 디스크 포화 확인",
+      "title": "5. Host & Containers — CPU, 메모리, 디스크, 네트워크 포화 확인",
       "type": "row"
     },
     {
@@ -659,7 +659,7 @@
       "id": 27,
       "targets": [
         {
-          "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{job=\"orbit-cadvisor\", environment=~\"$environment\", name!=\"\"}[$__rate_interval]))",
+          "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\"}[$__rate_interval]))",
           "legendFormat": "{{name}}",
           "refId": "A"
         }
@@ -675,7 +675,7 @@
       "id": 28,
       "targets": [
         {
-          "expr": "sum by (name) (container_memory_working_set_bytes{job=\"orbit-cadvisor\", environment=~\"$environment\", name!=\"\"})",
+          "expr": "sum by (name) (container_memory_working_set_bytes{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\"})",
           "legendFormat": "{{name}}",
           "refId": "A"
         }
@@ -685,9 +685,139 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "컨테이너별 초당 네트워크 수신·송신량입니다. 부하 중 특정 서비스의 트래픽 급증이나 비정상적인 송수신 비대칭을 확인하세요.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "Bps" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 86 },
+      "id": 38,
+      "targets": [
+        {
+          "expr": "sum by (name) (rate(container_network_receive_bytes_total{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\", interface!=\"lo\"}[$__rate_interval]))",
+          "legendFormat": "{{name}} receive",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (name) (rate(container_network_transmit_bytes_total{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\", interface!=\"lo\"}[$__rate_interval]))",
+          "legendFormat": "{{name}} transmit",
+          "refId": "B"
+        }
+      ],
+      "title": "Container network throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "컨테이너 filesystem의 사용량과 한도입니다. 여러 device가 연결된 컨테이너는 합산되어 표시됩니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "bytes" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 86 },
+      "id": 39,
+      "targets": [
+        {
+          "expr": "sum by (name) (container_fs_usage_bytes{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\"})",
+          "legendFormat": "{{name}} used",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (name) (container_fs_limit_bytes{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\"})",
+          "legendFormat": "{{name}} limit",
+          "refId": "B"
+        }
+      ],
+      "title": "Container filesystem used vs limit",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "컨테이너별 block I/O 읽기·쓰기 처리량입니다. Worker·PostgreSQL·MinIO의 디스크 병목을 비교하세요.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "Bps" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 86 },
+      "id": 40,
+      "targets": [
+        {
+          "expr": "sum by (name) (rate(container_fs_reads_bytes_total{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\"}[$__rate_interval]))",
+          "legendFormat": "{{name}} read",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (name) (rate(container_fs_writes_bytes_total{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\"}[$__rate_interval]))",
+          "legendFormat": "{{name}} write",
+          "refId": "B"
+        }
+      ],
+      "title": "Container block I/O throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "전체 CFS scheduling period 중 CPU 제한으로 throttling된 비율입니다. CPU limit이 없거나 host가 metric을 제공하지 않으면 값이 표시되지 않을 수 있습니다.",
+      "fieldConfig": {
+        "defaults": { "max": 1, "min": 0, "unit": "percentunit" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 94 },
+      "id": 41,
+      "targets": [
+        {
+          "expr": "sum by (name) (rate(container_cpu_cfs_throttled_periods_total{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\"}[$__rate_interval])) / clamp_min(sum by (name) (rate(container_cpu_cfs_periods_total{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\"}[$__rate_interval])), 0.001)",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Container CPU throttling ratio",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "선택한 시간 범위에서 container start time이 바뀐 횟수입니다. Docker restart counter가 아니라 cAdvisor start-time 변화로 추정한 값입니다.",
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 94 },
+      "id": 42,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "expr": "changes((max by (name) (container_start_time_seconds{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\"}))[$__range:1m])",
+          "instant": true,
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Container restarts in selected range",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "description": "Node.js event-loop 지연의 p99입니다. API 지연과 함께 상승하면 메인 스레드 포화를 의심하세요.",
       "fieldConfig": { "defaults": { "min": 0, "unit": "s" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 86 },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 102 },
       "id": 34,
       "targets": [
         {
@@ -703,7 +833,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "description": "Node.js GC 소요 시간의 p95입니다. API 지연 급등 시 GC 종류별 증가 여부를 비교하세요.",
       "fieldConfig": { "defaults": { "min": 0, "unit": "s" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 86 },
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 102 },
       "id": 35,
       "targets": [
         {
@@ -722,7 +852,7 @@
         "defaults": { "min": 0, "unit": "bytes" },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 86 },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 102 },
       "id": 36,
       "targets": [
         {
@@ -746,7 +876,7 @@
         "defaults": { "min": 0, "unit": "cores" },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 86 },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 102 },
       "id": 37,
       "targets": [
         {
@@ -760,7 +890,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 94 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 110 },
       "id": 105,
       "panels": [],
       "title": "6. Logs — 이상 시점의 원인 확인",
@@ -770,7 +900,7 @@
       "datasource": { "type": "loki", "uid": "loki" },
       "description": "지연/오류/적체가 시작된 시점에 함께 증가하는 service를 찾으세요.",
       "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
-      "gridPos": { "h": 12, "w": 8, "x": 0, "y": 95 },
+      "gridPos": { "h": 12, "w": 8, "x": 0, "y": 111 },
       "id": 29,
       "targets": [
         {
@@ -785,7 +915,7 @@
     {
       "datasource": { "type": "loki", "uid": "loki" },
       "description": "service와 Log search로 이상 시점의 원문 로그를 확인합니다. 빈 검색어는 전체 로그입니다.",
-      "gridPos": { "h": 12, "w": 16, "x": 8, "y": 95 },
+      "gridPos": { "h": 12, "w": 16, "x": 8, "y": 111 },
       "id": 30,
       "options": {
         "dedupStrategy": "none",
@@ -807,7 +937,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 107 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 123 },
       "id": 106,
       "panels": [],
       "title": "7. k6 Load Test — 부하 발생기 결과 확인",
@@ -820,7 +950,7 @@
         "defaults": { "min": 0, "unit": "short" },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 108 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 124 },
       "id": 31,
       "targets": [
         {
@@ -839,7 +969,7 @@
         "defaults": { "min": 0, "unit": "short" },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 108 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 124 },
       "id": 32,
       "targets": [
         {
@@ -860,7 +990,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "description": "부하 발생기에서 응답 본문 수신까지 측정한 end-to-end 지연입니다. 동일 시점의 API 내부 지연과 비교해 ingress 대기와 전송 비용을 구분하세요.",
       "fieldConfig": { "defaults": { "min": 0, "unit": "s" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 116 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 132 },
       "id": 33,
       "targets": [
         {
@@ -898,6 +1028,20 @@
         "multi": true,
         "name": "environment",
         "query": "label_values(up{job=~\"orbit-.+\"}, environment)",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(container_last_seen{job=\"orbit-cadvisor\", environment=~\"$environment\", name!=\"\"}, name)",
+        "includeAll": true,
+        "label": "Container",
+        "multi": true,
+        "name": "container",
+        "query": "label_values(container_last_seen{job=\"orbit-cadvisor\", environment=~\"$environment\", name!=\"\"}, name)",
         "refresh": 1,
         "sort": 1,
         "type": "query"
@@ -990,6 +1134,6 @@
   "timezone": "browser",
   "title": "Orbit Load Test & Observability",
   "uid": "orbit-overview",
-  "version": 3,
+  "version": 4,
   "weekStart": ""
 }
