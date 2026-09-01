@@ -15,6 +15,7 @@ prometheus.scrape "orbit_services" {
     { "__address__" = "private-evidence-redis-exporter:9121", "job" = "orbit-private-evidence-redis" },
     { "__address__" = "node-exporter:9100", "job" = "orbit-node" },
     { "__address__" = "cadvisor:8080", "job" = "orbit-cadvisor" },
+    { "__address__" = "127.0.0.1:12345", "job" = "orbit-alloy" },
   ]
   forward_to = [prometheus.relabel.environment.receiver]
 }
@@ -66,5 +67,54 @@ loki.source.docker "containers" {
 loki.write "monitoring" {
   endpoint {
     url = sys.env("LOKI_WRITE_URL")
+  }
+}
+
+otelcol.receiver.otlp "applications" {
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    traces = [otelcol.processor.memory_limiter.applications.input]
+  }
+}
+
+otelcol.processor.memory_limiter "applications" {
+  check_interval = "1s"
+  limit          = "128MiB"
+  spike_limit    = "32MiB"
+
+  output {
+    traces = [otelcol.processor.batch.applications.input]
+  }
+}
+
+otelcol.processor.batch "applications" {
+  timeout             = "200ms"
+  send_batch_size     = 512
+  send_batch_max_size = 1024
+
+  output {
+    traces = [otelcol.exporter.otlphttp.tempo.input]
+  }
+}
+
+otelcol.exporter.otlphttp "tempo" {
+  client {
+    endpoint = sys.env("TEMPO_OTLP_HTTP_ENDPOINT")
+  }
+
+  retry_on_failure {
+    enabled         = true
+    initial_interval = "1s"
+    max_interval     = "10s"
+    max_elapsed_time = "60s"
+  }
+
+  sending_queue {
+    enabled       = true
+    queue_size    = 1024
+    num_consumers = 2
   }
 }
