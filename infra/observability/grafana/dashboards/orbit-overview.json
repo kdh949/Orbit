@@ -1129,6 +1129,403 @@
       ],
       "title": "최근 실패 트레이스",
       "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 175 },
+      "id": 108,
+      "panels": [],
+      "title": "9. Load Test Outcome — 도착 부하와 클라이언트 실패 확인",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "실제로 완료된 HTTP 요청률과 iteration 완료율입니다. 목표 arrival rate 자체는 k6 기본 metric에 없으므로 실행 profile과 함께 비교하세요.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "reqps" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 176 },
+      "id": 49,
+      "targets": [
+        {
+          "expr": "sum by (testid, target_path) (rate(k6_http_reqs_total{testid=~\"$testid\", target_path=~\"$target_path\"}[$__rate_interval]))",
+          "legendFormat": "{{testid}} / {{target_path}} / requests",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (testid, target_path) (rate(k6_iterations_total{testid=~\"$testid\", target_path=~\"$target_path\"}[$__rate_interval]))",
+          "legendFormat": "{{testid}} / {{target_path}} / iterations",
+          "refId": "B"
+        }
+      ],
+      "title": "k6 actual request / iteration rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "선택한 시간 범위에 부하 발생기가 실제로 받은 전체 HTTP 응답 및 전송 실패 수입니다.",
+      "fieldConfig": {
+        "defaults": { "decimals": 0, "min": 0, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 176 },
+      "id": 50,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "sum by (testid, target_path) (increase(k6_http_reqs_total{testid=~\"$testid\", target_path=~\"$target_path\"}[$__range]))",
+          "instant": true,
+          "legendFormat": "{{testid}} / {{target_path}}",
+          "refId": "A"
+        }
+      ],
+      "title": "k6 total requests",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "k6 expected_response 판정 기준의 성공·실패 비율입니다. API 내부 metric이 보지 못하는 timeout, reset, EOF, proxy 502도 포함합니다.",
+      "fieldConfig": {
+        "defaults": { "max": 1, "min": 0, "unit": "percentunit" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 176 },
+      "id": 51,
+      "targets": [
+        {
+          "expr": "sum by (testid, target_path) (rate(k6_http_reqs_total{testid=~\"$testid\", target_path=~\"$target_path\", expected_response=\"true\"}[$__rate_interval])) / clamp_min(sum by (testid, target_path) (rate(k6_http_reqs_total{testid=~\"$testid\", target_path=~\"$target_path\"}[$__rate_interval])), 0.000001)",
+          "legendFormat": "{{testid}} / {{target_path}} / success",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (testid, target_path) (rate(k6_http_reqs_total{testid=~\"$testid\", target_path=~\"$target_path\", expected_response=\"false\"}[$__rate_interval])) / clamp_min(sum by (testid, target_path) (rate(k6_http_reqs_total{testid=~\"$testid\", target_path=~\"$target_path\"}[$__rate_interval])), 0.000001)",
+          "legendFormat": "{{testid}} / {{target_path}} / failure",
+          "refId": "B"
+        }
+      ],
+      "title": "k6 success / failure ratio",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "실패를 bounded status와 k6 error_code로 집계합니다. error 문자열과 URL은 legend/집계 label로 사용하지 않습니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "reqps" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 184 },
+      "id": 52,
+      "targets": [
+        {
+          "expr": "sum by (testid, target_path, status, error_code) (rate(k6_http_reqs_total{testid=~\"$testid\", target_path=~\"$target_path\", expected_response=\"false\"}[$__rate_interval]))",
+          "legendFormat": "{{testid}} / {{target_path}} / status={{status}} / code={{error_code}}",
+          "refId": "A"
+        }
+      ],
+      "title": "k6 failures by status / error code",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "waiting은 upstream 응답 대기, receiving은 응답 본문 수신 시간입니다. API 내부 p95와 비교해 서버 처리와 전송 구간을 분리하세요.",
+      "fieldConfig": { "defaults": { "min": 0, "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 184 },
+      "id": 53,
+      "targets": [
+        {
+          "expr": "max by (testid, target_path, scenario, operation) (k6_http_req_waiting_p95{testid=~\"$testid\", target_path=~\"$target_path\"})",
+          "legendFormat": "{{testid}} / {{target_path}} / {{operation}} / waiting",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (testid, target_path, scenario, operation) (k6_http_req_receiving_p95{testid=~\"$testid\", target_path=~\"$target_path\"})",
+          "legendFormat": "{{testid}} / {{target_path}} / {{operation}} / receiving",
+          "refId": "B"
+        },
+        {
+          "expr": "max by (testid, target_path, scenario, operation) (k6_http_req_connecting_p95{testid=~\"$testid\", target_path=~\"$target_path\"})",
+          "legendFormat": "{{testid}} / {{target_path}} / {{operation}} / connecting",
+          "refId": "C"
+        }
+      ],
+      "title": "k6 client phase p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "부하 발생기가 송수신한 데이터 처리율입니다. 응답 본문 크기나 네트워크 전송이 병목인지 확인할 때 사용합니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "Bps" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 184 },
+      "id": 54,
+      "targets": [
+        {
+          "expr": "sum by (testid, target_path) (rate(k6_data_received_total{testid=~\"$testid\", target_path=~\"$target_path\"}[$__rate_interval]))",
+          "legendFormat": "{{testid}} / {{target_path}} / received",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (testid, target_path) (rate(k6_data_sent_total{testid=~\"$testid\", target_path=~\"$target_path\"}[$__rate_interval]))",
+          "legendFormat": "{{testid}} / {{target_path}} / sent",
+          "refId": "B"
+        }
+      ],
+      "title": "k6 network throughput",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 192 },
+      "id": 109,
+      "panels": [],
+      "title": "10. API Lifecycle — 응답 불능, 재시작, OOM 구분",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Prometheus가 API /internal/metrics를 scrape할 수 있었는지 보여줍니다. 0 구간은 API 응답 불능 또는 네트워크 단절이며 재시작·OOM stat과 함께 판정합니다.",
+      "fieldConfig": {
+        "defaults": { "max": 1, "min": 0, "unit": "bool" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 193 },
+      "id": 55,
+      "targets": [
+        {
+          "expr": "min by (instance) (up{job=\"orbit-api\", environment=~\"$environment\"})",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "API scrape availability",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "선택 구간에서 up=0으로 관측된 시간을 15초 scrape interval 기준으로 합산한 근사치입니다.",
+      "fieldConfig": {
+        "defaults": { "decimals": 0, "min": 0, "unit": "s" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 3, "x": 12, "y": 193 },
+      "id": 56,
+      "targets": [
+        {
+          "expr": "sum_over_time((up{job=\"orbit-api\", environment=~\"$environment\"} == bool 0)[$__range:15s]) * 15",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "API unavailable duration",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "선택 구간의 API container_start_time 변화 횟수입니다. 0이면 scrape 중단이 container 재시작 때문은 아닙니다.",
+      "fieldConfig": {
+        "defaults": { "decimals": 0, "min": 0, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 3, "x": 15, "y": 193 },
+      "id": 57,
+      "targets": [
+        {
+          "expr": "changes((max by (name) (container_start_time_seconds{job=\"orbit-cadvisor\", environment=~\"$environment\", container_label_com_docker_compose_service=\"api\"}))[$__range:1m])",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "API container restarts",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "선택 구간에서 cgroup이 기록한 API OOM event 증가량입니다.",
+      "fieldConfig": {
+        "defaults": { "decimals": 0, "min": 0, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 3, "x": 18, "y": 193 },
+      "id": 58,
+      "targets": [
+        {
+          "expr": "sum(increase(container_oom_events_total{job=\"orbit-cadvisor\", environment=~\"$environment\", container_label_com_docker_compose_service=\"api\"}[$__range]))",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "API OOM events",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "선택 구간에서 API cgroup memory allocation fail count 증가량입니다.",
+      "fieldConfig": {
+        "defaults": { "decimals": 0, "min": 0, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 3, "x": 21, "y": 193 },
+      "id": 59,
+      "targets": [
+        {
+          "expr": "sum(increase(container_memory_failcnt{job=\"orbit-cadvisor\", environment=~\"$environment\", container_label_com_docker_compose_service=\"api\"}[$__range]))",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "API memory allocation failures",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 201 },
+      "id": 110,
+      "panels": [],
+      "title": "11. Telemetry Pipeline Health — trace 유실 지점 확인",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Alloy OTLP receiver가 수락하거나 거부한 span 비율입니다. refused가 증가하면 Tempo 이전 단계에서 trace가 유실됩니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "ops" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 202 },
+      "id": 60,
+      "targets": [
+        {
+          "expr": "sum(rate(otelcol_receiver_accepted_spans_total{job=\"orbit-alloy\", environment=~\"$environment\"}[$__rate_interval]))",
+          "legendFormat": "accepted",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(otelcol_receiver_refused_spans_total{job=\"orbit-alloy\", environment=~\"$environment\"}[$__rate_interval]))",
+          "legendFormat": "refused",
+          "refId": "B"
+        }
+      ],
+      "title": "Alloy trace receiver accepted / refused",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "memory limiter가 수락하거나 메모리 보호를 위해 거부한 span 비율입니다. refused 증가는 Alloy 메모리 포화의 직접 증거입니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "ops" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 202 },
+      "id": 61,
+      "targets": [
+        {
+          "expr": "sum(rate(otelcol_processor_memory_limiter_accepted_spans_total{job=\"orbit-alloy\", environment=~\"$environment\"}[$__rate_interval]))",
+          "legendFormat": "accepted",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(otelcol_processor_memory_limiter_refused_spans_total{job=\"orbit-alloy\", environment=~\"$environment\"}[$__rate_interval]))",
+          "legendFormat": "refused",
+          "refId": "B"
+        }
+      ],
+      "title": "Alloy memory limiter accepted / refused",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Alloy가 Tempo OTLP exporter로 보낸 span 비율입니다. receiver accepted와 비교해 batch/export 단계 유실을 확인합니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "ops" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 202 },
+      "id": 62,
+      "targets": [
+        {
+          "expr": "sum(rate(otelcol_exporter_sent_spans_total{job=\"orbit-alloy\", environment=~\"$environment\", data_type=\"traces\"}[$__rate_interval]))",
+          "legendFormat": "sent",
+          "refId": "A"
+        }
+      ],
+      "title": "Alloy trace exporter sent rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Tempo exporter queue의 size/capacity 비율입니다. 1에 가까우면 Tempo 연결 또는 전송 처리량을 점검하세요.",
+      "fieldConfig": {
+        "defaults": { "max": 1, "min": 0, "unit": "percentunit" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 210 },
+      "id": 63,
+      "targets": [
+        {
+          "expr": "max(otelcol_exporter_queue_size{job=\"orbit-alloy\", environment=~\"$environment\", data_type=\"traces\"}) / clamp_min(max(otelcol_exporter_queue_capacity{job=\"orbit-alloy\", environment=~\"$environment\", data_type=\"traces\"}), 1)",
+          "legendFormat": "queue utilization",
+          "refId": "A"
+        }
+      ],
+      "title": "Alloy trace exporter queue utilization",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Tempo가 받은 span과 metrics-generator가 생성한 service-graph edge 비율입니다. Alloy sent가 있는데 received가 없으면 Alloy→Tempo 경계를 확인하세요.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "ops" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 210 },
+      "id": 64,
+      "targets": [
+        {
+          "expr": "sum(rate(tempo_distributor_spans_received_total[$__rate_interval]))",
+          "legendFormat": "Tempo received spans",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(tempo_metrics_generator_processor_service_graphs_edges[$__rate_interval]))",
+          "legendFormat": "service-graph edges",
+          "refId": "B"
+        }
+      ],
+      "title": "Tempo trace and service-graph generation",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Alloy receiver가 관측한 전체 span 중 거부되지 않은 비율입니다. traffic이 없으면 No data이며 1 미만이면 trace 표본이 유실되고 있습니다.",
+      "fieldConfig": {
+        "defaults": { "max": 1, "min": 0, "unit": "percentunit" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 210 },
+      "id": 65,
+      "targets": [
+        {
+          "expr": "sum(rate(otelcol_receiver_accepted_spans_total{job=\"orbit-alloy\", environment=~\"$environment\"}[$__rate_interval])) / clamp_min(sum(rate(otelcol_receiver_accepted_spans_total{job=\"orbit-alloy\", environment=~\"$environment\"}[$__rate_interval])) + sum(rate(otelcol_receiver_refused_spans_total{job=\"orbit-alloy\", environment=~\"$environment\"}[$__rate_interval])), 0.000001)",
+          "legendFormat": "accepted ratio",
+          "refId": "A"
+        }
+      ],
+      "title": "Trace receiver acceptance ratio",
+      "type": "timeseries"
     }
   ],
   "refresh": "10s",
@@ -1266,6 +1663,6 @@
   "timezone": "browser",
   "title": "Orbit Load Test & Observability",
   "uid": "orbit-overview",
-  "version": 5,
+  "version": 6,
   "weekStart": ""
 }
