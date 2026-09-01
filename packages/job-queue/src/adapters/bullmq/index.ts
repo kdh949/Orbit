@@ -21,6 +21,7 @@ import { presentationAnalysisJobPayloadSchema } from "@orbit/shared/presentation
 import { rehearsalSemanticEvaluationJobPayloadSchema } from "@orbit/shared/rehearsals";
 import { slideQuestionGuideJobPayloadSchema } from "@orbit/shared/slide-practice";
 import { Queue } from "bullmq";
+import { bullMqTelemetry } from "@orbit/observability";
 
 import {
   activityResponseRetentionJobName,
@@ -95,6 +96,13 @@ import type {
 } from "../../payloads";
 import { redisConnectionOptions } from "../../redis";
 
+function queueOptions(redisUrl: string) {
+  return {
+    connection: redisConnectionOptions(redisUrl),
+    telemetry: bullMqTelemetry,
+  };
+}
+
 export async function enqueueReferenceExtractJob(
   input: EnqueueReferenceExtractJobInput,
 ): Promise<void> {
@@ -102,9 +110,10 @@ export async function enqueueReferenceExtractJob(
     throw new Error("SqsJobQueue adapter is not implemented yet.");
   }
 
-  const queue = new Queue(referenceExtractQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(
+    referenceExtractQueueName,
+    queueOptions(input.redisUrl),
+  );
 
   try {
     await queue.add(
@@ -128,9 +137,7 @@ export async function enqueueRehearsalSttJob(
     throw new Error("SqsJobQueue adapter is not implemented yet.");
   }
 
-  const queue = new Queue(rehearsalSttQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(rehearsalSttQueueName, queueOptions(input.redisUrl));
 
   try {
     await queue.add(
@@ -158,9 +165,10 @@ export async function enqueuePresentationAnalysisJob(
     throw new Error("SqsJobQueue adapter is not implemented yet.");
   }
 
-  const queue = new Queue(presentationAnalysisQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(
+    presentationAnalysisQueueName,
+    queueOptions(input.redisUrl),
+  );
 
   try {
     await queue.add(
@@ -189,9 +197,10 @@ export async function enqueueRehearsalSemanticEvaluationJob(
     throw new Error("SqsJobQueue adapter is not implemented yet.");
   }
 
-  const queue = new Queue(rehearsalSemanticEvaluationQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(
+    rehearsalSemanticEvaluationQueueName,
+    queueOptions(input.redisUrl),
+  );
 
   try {
     await queue.add(
@@ -220,9 +229,7 @@ export async function enqueueGenerateDeckJob(
   }
   if (executionMode === "pg") return;
 
-  const queue = new Queue(generateDeckQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(generateDeckQueueName, queueOptions(input.redisUrl));
 
   try {
     if (executionMode === "bullmq") {
@@ -268,9 +275,7 @@ export async function retryAiDeckStagedCoordinatorJob(input: {
   jobId: string;
   projectId: string;
 }): Promise<void> {
-  const queue = new Queue(generateDeckQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(generateDeckQueueName, queueOptions(input.redisUrl));
   try {
     const existing = await queue.getJob(input.jobId);
     if (existing && (await existing.getState()) === "failed") {
@@ -293,9 +298,10 @@ export async function enqueueAiDeckGenerationStageJob(
     throw new Error("AI Deck SQS transport is not implemented yet.");
   }
   const message = aiDeckGenerationStageMessageSchema.parse(input.message);
-  const queue = new Queue(aiDeckGenerationStageQueueName(message.stage), {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(
+    aiDeckGenerationStageQueueName(message.stage),
+    queueOptions(input.redisUrl),
+  );
 
   try {
     const job = await queue.add(
@@ -317,9 +323,10 @@ export async function enqueueFocusedPracticeAnalysisJob(
 ): Promise<void> {
   if (input.driver === "sqs")
     throw new Error("SqsJobQueue adapter is not implemented yet.");
-  const queue = new Queue(focusedPracticeAnalysisQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(
+    focusedPracticeAnalysisQueueName,
+    queueOptions(input.redisUrl),
+  );
   try {
     await queue.add(
       focusedPracticeAnalysisJobName,
@@ -340,9 +347,10 @@ export async function enqueueSlidePracticeAnalysisJob(
 ): Promise<void> {
   if (input.driver === "sqs")
     throw new Error("SqsJobQueue adapter is not implemented yet.");
-  const queue = new Queue(slidePracticeAnalysisQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(
+    slidePracticeAnalysisQueueName,
+    queueOptions(input.redisUrl),
+  );
   try {
     await queue.add(
       slidePracticeAnalysisJobName,
@@ -363,9 +371,10 @@ export async function enqueueChallengeQnaGenerationJob(
 ): Promise<void> {
   if (input.driver === "sqs")
     throw new Error("SqsJobQueue adapter is not implemented yet.");
-  const queue = new Queue(challengeQnaGenerationQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(
+    challengeQnaGenerationQueueName,
+    queueOptions(input.redisUrl),
+  );
   try {
     await queue.add(
       challengeQnaGenerationJobName,
@@ -387,9 +396,10 @@ export async function enqueueChallengeQnaAnswerAnalysisJob(
 ): Promise<void> {
   if (input.driver === "sqs")
     throw new Error("SqsJobQueue adapter is not implemented yet.");
-  const queue = new Queue(challengeQnaAnswerAnalysisQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(
+    challengeQnaAnswerAnalysisQueueName,
+    queueOptions(input.redisUrl),
+  );
   try {
     await queue.add(
       challengeQnaAnswerAnalysisJobName,
@@ -410,9 +420,10 @@ export async function enqueueSlideQuestionGuideGenerationJob(
 ): Promise<void> {
   if (input.driver === "sqs")
     throw new Error("SqsJobQueue adapter is not implemented yet.");
-  const queue = new Queue(slideQuestionGuideGenerationQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(
+    slideQuestionGuideGenerationQueueName,
+    queueOptions(input.redisUrl),
+  );
   try {
     await queue.add(
       slideQuestionGuideGenerationJobName,
@@ -435,9 +446,7 @@ export async function enqueueDeckExportJob(
     throw new Error("SqsJobQueue adapter is not implemented yet.");
   }
 
-  const queue = new Queue(deckExportQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(deckExportQueueName, queueOptions(input.redisUrl));
 
   try {
     await queue.add(
@@ -465,9 +474,10 @@ export async function enqueueSemanticCueExtractionJob(
     throw new Error("SqsJobQueue adapter is not implemented yet.");
   }
 
-  const queue = new Queue(semanticCueExtractionQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(
+    semanticCueExtractionQueueName,
+    queueOptions(input.redisUrl),
+  );
 
   try {
     await queue.add(
@@ -491,9 +501,10 @@ export async function enqueueSpeakerNotesSuggestionJob(
     throw new Error("SqsJobQueue adapter is not implemented yet.");
   }
 
-  const queue = new Queue(speakerNotesSuggestionQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(
+    speakerNotesSuggestionQueueName,
+    queueOptions(input.redisUrl),
+  );
 
   try {
     await queue.add(
@@ -517,9 +528,10 @@ export async function enqueueDesignImageGenerationJob(
     throw new Error("SqsJobQueue adapter is not implemented yet.");
   }
 
-  const queue = new Queue(designImageGenerationQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(
+    designImageGenerationQueueName,
+    queueOptions(input.redisUrl),
+  );
 
   try {
     await queue.add(
@@ -539,9 +551,10 @@ export async function enqueuePptxOoxmlGenerationJob(
     throw new Error("SqsJobQueue adapter is not implemented yet.");
   }
 
-  const queue = new Queue(pptxOoxmlGenerationQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(
+    pptxOoxmlGenerationQueueName,
+    queueOptions(input.redisUrl),
+  );
 
   try {
     await queue.add(
@@ -565,9 +578,7 @@ export async function enqueuePptxOoxmlSyncJob(
     throw new Error("SqsJobQueue adapter is not implemented yet.");
   }
 
-  const queue = new Queue(pptxOoxmlSyncQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(pptxOoxmlSyncQueueName, queueOptions(input.redisUrl));
 
   try {
     await queue.add(
@@ -594,9 +605,10 @@ export async function enqueueWorkerHealthCheckJob(
     throw new Error("SqsJobQueue adapter is not implemented yet.");
   }
 
-  const queue = new Queue(workerHealthCheckQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(
+    workerHealthCheckQueueName,
+    queueOptions(input.redisUrl),
+  );
 
   try {
     await queue.add(
@@ -619,9 +631,10 @@ export async function enqueueActivityResponseRetentionJob(
     throw new Error("SqsJobQueue adapter is not implemented yet.");
   }
 
-  const queue = new Queue(activityResponseRetentionQueueName, {
-    connection: redisConnectionOptions(input.redisUrl),
-  });
+  const queue = new Queue(
+    activityResponseRetentionQueueName,
+    queueOptions(input.redisUrl),
+  );
 
   try {
     await queue.add(

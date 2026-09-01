@@ -3,6 +3,7 @@ import {
   generateDeckStagedCoordinatorJobName,
   redisConnectionOptions,
 } from "@orbit/job-queue";
+import { bullMqTelemetry } from "@orbit/observability";
 import type { Job } from "@orbit/shared/jobs";
 import { Queue } from "bullmq";
 import type Redis from "ioredis";
@@ -175,6 +176,7 @@ function createQueue(redisUrl: string): FailedCoordinatorQueue {
   const queue = new Queue(generateDeckQueueName, {
     connection: redisConnectionOptions(redisUrl),
     skipMetasUpdate: true,
+    telemetry: bullMqTelemetry,
   });
   return {
     async scanFailed(cursor, count) {

@@ -11,6 +11,7 @@ COPY packages/config/package.json packages/config/package.json
 COPY packages/editor-core/package.json packages/editor-core/package.json
 COPY packages/storage/package.json packages/storage/package.json
 COPY packages/job-queue/package.json packages/job-queue/package.json
+COPY packages/observability/package.json packages/observability/package.json
 COPY packages/ai/package.json packages/ai/package.json
 COPY packages/realtime/package.json packages/realtime/package.json
 

@@ -33,7 +33,7 @@ import {
   semanticCueExtractionJobName,
   semanticCueExtractionQueueName,
   workerHealthCheckJobName,
-  workerHealthCheckQueueName
+  workerHealthCheckQueueName,
 } from "./index";
 
 describe("aiDeckGenerationStageJobId", () => {
@@ -86,9 +86,10 @@ describe("AI Deck staged BullMQ transport", () => {
       },
     });
 
-    expect(queueMock.Queue).toHaveBeenCalledWith(referenceExtractQueueName, {
-      connection: expect.objectContaining({ host: "localhost", port: 6379 }),
-    });
+    expect(queueMock.Queue).toHaveBeenCalledWith(
+      referenceExtractQueueName,
+      telemetryQueueOptions(),
+    );
     expect(queueMock.add).toHaveBeenCalledWith(
       "reference-extract-file",
       {
@@ -140,9 +141,10 @@ describe("AI Deck staged BullMQ transport", () => {
       },
     });
 
-    expect(queueMock.Queue).toHaveBeenCalledWith(aiDeckResearchContentQueueName, {
-      connection: expect.any(Object),
-    });
+    expect(queueMock.Queue).toHaveBeenCalledWith(
+      aiDeckResearchContentQueueName,
+      telemetryQueueOptions(),
+    );
   });
 
   it("uses an ID-only coordinator seed in BullMQ mode", async () => {
@@ -187,20 +189,20 @@ describe("AI Deck staged BullMQ transport", () => {
     const remove = vi.fn(async () => undefined);
     queueMock.getJob.mockResolvedValueOnce({
       getState: vi.fn(async () => "failed"),
-      remove
+      remove,
     });
 
     await retryAiDeckStagedCoordinatorJob({
       redisUrl: "redis://localhost:6379",
       jobId: "job-ai-deck-1",
-      projectId: "project-a"
+      projectId: "project-a",
     });
 
     expect(remove).toHaveBeenCalledTimes(1);
     expect(queueMock.add).toHaveBeenCalledWith(
       "generate-deck-staged-coordinator",
       { jobId: "job-ai-deck-1", projectId: "project-a" },
-      expect.objectContaining({ jobId: "job-ai-deck-1", removeOnFail: false })
+      expect.objectContaining({ jobId: "job-ai-deck-1", removeOnFail: false }),
     );
   });
 
@@ -225,18 +227,21 @@ describe("AI Deck staged BullMQ transport", () => {
   it.each([
     { driver: "sqs" as const, executionMode: "monolith" as const },
     { driver: "bullmq" as const, executionMode: "sqs" as const },
-  ])("fails fast for an unavailable SQS path: $driver/$executionMode", async (mode) => {
-    await expect(
-      enqueueGenerateDeckJob({
-        ...mode,
-        redisUrl: "redis://localhost:6379",
-        jobId: "job-sqs-1",
-        projectId: "project-a",
-        request: generateDeckRequestSchema.parse({ topic: "SQS" }),
-      }),
-    ).rejects.toThrow(/not implemented yet/);
-    expect(queueMock.Queue).not.toHaveBeenCalled();
-  });
+  ])(
+    "fails fast for an unavailable SQS path: $driver/$executionMode",
+    async (mode) => {
+      await expect(
+        enqueueGenerateDeckJob({
+          ...mode,
+          redisUrl: "redis://localhost:6379",
+          jobId: "job-sqs-1",
+          projectId: "project-a",
+          request: generateDeckRequestSchema.parse({ topic: "SQS" }),
+        }),
+      ).rejects.toThrow(/not implemented yet/);
+      expect(queueMock.Queue).not.toHaveBeenCalled();
+    },
+  );
 });
 
 const queueMock = vi.hoisted(() => ({
@@ -244,11 +249,18 @@ const queueMock = vi.hoisted(() => ({
   close: vi.fn(),
   getJob: vi.fn(),
   getState: vi.fn(),
-  Queue: vi.fn()
+  Queue: vi.fn(),
 }));
 
+function telemetryQueueOptions() {
+  return expect.objectContaining({
+    connection: expect.objectContaining({ host: "localhost", port: 6379 }),
+    telemetry: expect.any(Object),
+  });
+}
+
 vi.mock("bullmq", () => ({
-  Queue: queueMock.Queue
+  Queue: queueMock.Queue,
 }));
 
 beforeEach(() => {
@@ -266,7 +278,7 @@ beforeEach(() => {
   queueMock.Queue.mockImplementation(() => ({
     add: queueMock.add,
     close: queueMock.close,
-    getJob: queueMock.getJob
+    getJob: queueMock.getJob,
   }));
 });
 
@@ -277,19 +289,21 @@ describe("enqueueRehearsalSemanticEvaluationJob", () => {
       redisUrl: "redis://localhost:6379",
       jobId: "job-semantic-retry",
       projectId: "project-a",
-      runId: "run-1"
+      runId: "run-1",
     });
 
     expect(queueMock.Queue).toHaveBeenCalledWith(
       rehearsalSemanticEvaluationQueueName,
-      { connection: expect.objectContaining({ host: "localhost", port: 6379 }) }
+      telemetryQueueOptions(),
     );
     expect(queueMock.add).toHaveBeenCalledWith(
       rehearsalSemanticEvaluationJobName,
       { jobId: "job-semantic-retry", projectId: "project-a", runId: "run-1" },
-      expect.objectContaining({ jobId: "job-semantic-retry", attempts: 5 })
+      expect.objectContaining({ jobId: "job-semantic-retry", attempts: 5 }),
     );
-    expect(JSON.stringify(queueMock.add.mock.calls)).not.toContain("transcript");
+    expect(JSON.stringify(queueMock.add.mock.calls)).not.toContain(
+      "transcript",
+    );
   });
 });
 
@@ -298,14 +312,14 @@ describe("InMemoryJobQueue", () => {
     const queue = new InMemoryJobQueue();
     const job = await queue.enqueue({
       projectId: "project-a",
-      type: "reference-extract"
+      type: "reference-extract",
     });
 
     const updated = await queue.update(job.jobId, {
       status: "succeeded",
       progress: 100,
       message: "done",
-      result: { fileCount: 1 }
+      result: { fileCount: 1 },
     });
 
     expect(updated?.status).toBe("succeeded");
@@ -324,8 +338,8 @@ describe("enqueueRehearsalSttJob", () => {
         projectId: "project-a",
         runId: "run-1",
         deckId: "deck-1",
-        audioFileId: "file-1"
-      })
+        audioFileId: "file-1",
+      }),
     ).rejects.toThrow("SqsJobQueue adapter is not implemented yet.");
   });
 });
@@ -336,19 +350,17 @@ describe("enqueueWorkerHealthCheckJob", () => {
       driver: "bullmq",
       redisUrl: "redis://localhost:6379",
       jobId: "job-1",
-      projectId: "project-a"
+      projectId: "project-a",
     });
 
-    expect(queueMock.Queue).toHaveBeenCalledWith(workerHealthCheckQueueName, {
-      connection: expect.objectContaining({
-        host: "localhost",
-        port: 6379
-      })
-    });
+    expect(queueMock.Queue).toHaveBeenCalledWith(
+      workerHealthCheckQueueName,
+      telemetryQueueOptions(),
+    );
     expect(queueMock.add).toHaveBeenCalledWith(
       workerHealthCheckJobName,
       { jobId: "job-1", projectId: "project-a" },
-      expect.objectContaining({ jobId: "job-1", attempts: 5 })
+      expect.objectContaining({ jobId: "job-1", attempts: 5 }),
     );
     expect(queueMock.close).toHaveBeenCalled();
   });
@@ -361,25 +373,25 @@ describe("enqueueActivityResponseRetentionJob", () => {
       redisUrl: "redis://localhost:6379",
       jobId: "job_activity_retention_session_1",
       projectId: "project-a",
-      presentationSessionId: "session_1"
+      presentationSessionId: "session_1",
     });
 
     expect(queueMock.Queue).toHaveBeenCalledWith(
       activityResponseRetentionQueueName,
-      { connection: expect.objectContaining({ host: "localhost", port: 6379 }) }
+      telemetryQueueOptions(),
     );
     expect(queueMock.add).toHaveBeenCalledWith(
       activityResponseRetentionJobName,
       {
         jobId: "job_activity_retention_session_1",
         projectId: "project-a",
-        presentationSessionId: "session_1"
+        presentationSessionId: "session_1",
       },
       expect.objectContaining({
         jobId: "job_activity_retention_session_1",
         attempts: 5,
-        backoff: { type: "exponential", delay: 1_000 }
-      })
+        backoff: { type: "exponential", delay: 1_000 },
+      }),
     );
   });
 });
@@ -410,9 +422,10 @@ describe("enqueueDeckExportJob", () => {
       presentationSessionId: "session-1",
     });
 
-    expect(queueMock.Queue).toHaveBeenCalledWith(deckExportQueueName, {
-      connection: expect.objectContaining({ host: "localhost", port: 6379 }),
-    });
+    expect(queueMock.Queue).toHaveBeenCalledWith(
+      deckExportQueueName,
+      telemetryQueueOptions(),
+    );
     expect(queueMock.add).toHaveBeenCalledWith(
       deckExportJobName,
       expect.objectContaining({
@@ -437,16 +450,14 @@ describe("enqueuePptxOoxmlGenerationJob", () => {
       projectId: "project-a",
       request: {
         fileId: "file_1",
-        importPreference: "appearance-first"
-      }
+        importPreference: "appearance-first",
+      },
     });
 
-    expect(queueMock.Queue).toHaveBeenCalledWith(pptxOoxmlGenerationQueueName, {
-      connection: expect.objectContaining({
-        host: "localhost",
-        port: 6379
-      })
-    });
+    expect(queueMock.Queue).toHaveBeenCalledWith(
+      pptxOoxmlGenerationQueueName,
+      telemetryQueueOptions(),
+    );
     expect(queueMock.add).toHaveBeenCalledWith(
       pptxOoxmlGenerationJobName,
       {
@@ -454,15 +465,15 @@ describe("enqueuePptxOoxmlGenerationJob", () => {
         projectId: "project-a",
         request: {
           fileId: "file_1",
-          importPreference: "appearance-first"
-        }
+          importPreference: "appearance-first",
+        },
       },
       expect.objectContaining({
         jobId: "job-1",
         attempts: 5,
         backoff: { type: "exponential", delay: 2_000 },
         removeOnFail: false,
-      })
+      }),
     );
     expect(queueMock.close).toHaveBeenCalled();
   });
@@ -481,9 +492,10 @@ describe("enqueuePptxOoxmlSyncJob", () => {
       syncCapabilityVersion: 2,
     });
 
-    expect(queueMock.Queue).toHaveBeenCalledWith(pptxOoxmlSyncQueueName, {
-      connection: expect.objectContaining({ host: "localhost", port: 6379 }),
-    });
+    expect(queueMock.Queue).toHaveBeenCalledWith(
+      pptxOoxmlSyncQueueName,
+      telemetryQueueOptions(),
+    );
     expect(queueMock.add).toHaveBeenCalledWith(
       pptxOoxmlSyncJobName,
       {
@@ -509,7 +521,9 @@ describe("legacy queue contracts", () => {
     const queueModule = await import("./index");
     expect(queueModule).not.toHaveProperty("aiTemplateDeckGenerationQueueName");
     expect(queueModule).not.toHaveProperty("aiTemplateDeckGenerationJobName");
-    expect(queueModule).not.toHaveProperty("enqueueAiTemplateDeckGenerationJob");
+    expect(queueModule).not.toHaveProperty(
+      "enqueueAiTemplateDeckGenerationJob",
+    );
     expect(queueModule).not.toHaveProperty("pptxImportQueueName");
     expect(queueModule).not.toHaveProperty("pptxImportJobName");
     expect(queueModule).not.toHaveProperty("enqueuePptxImportJob");
@@ -526,27 +540,22 @@ describe("enqueueSemanticCueExtractionJob", () => {
       request: {
         deckId: "deck_demo_1",
         force: false,
-        baseVersion: 3
-      }
+        baseVersion: 3,
+      },
     });
 
     expect(queueMock.Queue).toHaveBeenCalledWith(
       semanticCueExtractionQueueName,
-      {
-        connection: expect.objectContaining({
-          host: "localhost",
-          port: 6379
-        })
-      }
+      telemetryQueueOptions(),
     );
     expect(queueMock.add).toHaveBeenCalledWith(
       semanticCueExtractionJobName,
       {
         jobId: "job-semantic-cues",
         projectId: "project-a",
-        request: { deckId: "deck_demo_1", force: false, baseVersion: 3 }
+        request: { deckId: "deck_demo_1", force: false, baseVersion: 3 },
       },
-      expect.objectContaining({ jobId: "job-semantic-cues", attempts: 5 })
+      expect.objectContaining({ jobId: "job-semantic-cues", attempts: 5 }),
     );
     expect(queueMock.close).toHaveBeenCalled();
   });

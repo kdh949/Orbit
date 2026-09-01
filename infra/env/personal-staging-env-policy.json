@@ -273,6 +273,22 @@
       "source": "repo-default",
       "delivery": "code-default"
     },
+    "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
+    "OTEL_SDK_DISABLED": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
+    "OTEL_SERVICE_VERSION": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
+    "OTEL_TRACES_SAMPLER_ARG": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
     "PRIVATE_EVIDENCE_REDIS_URL": {
       "source": "doppler-required",
       "delivery": "compose"

@@ -1,5 +1,6 @@
 import { redisConnectionOptions } from "@orbit/job-queue";
 import { semanticCueExtractionQueueName } from "@orbit/job-queue";
+import { bullMqTelemetry } from "@orbit/observability";
 import type { Job as OrbitJob } from "@orbit/shared/jobs";
 import { type Job as BullMqJob, Worker as BullMqWorker } from "bullmq";
 import type { PinoLogger } from "nestjs-pino";
@@ -49,6 +50,7 @@ export class BullMqWorkerRuntime {
         }),
       {
         connection: redisConnectionOptions(this.redisUrl),
+        telemetry: bullMqTelemetry,
         ...descriptor.runtimeOptions,
       },
     );

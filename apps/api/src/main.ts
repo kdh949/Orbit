@@ -1,3 +1,5 @@
+import "./telemetry";
+
 import { loadOrbitConfig } from "@orbit/config";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
@@ -18,7 +20,7 @@ async function bootstrap() {
   const allowedWebOrigins = resolveAllowedWebOrigins(config.WEB_ORIGIN);
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
-    bodyParser: false
+    bodyParser: false,
   });
   const logger = app.get(Logger);
   const databaseReadiness = app.get(DatabaseReadinessService);
@@ -28,14 +30,14 @@ async function bootstrap() {
   app.useBodyParser("json", { limit: config.API_JSON_BODY_LIMIT_BYTES });
   app.useBodyParser("urlencoded", {
     extended: true,
-    limit: config.API_JSON_BODY_LIMIT_BYTES
+    limit: config.API_JSON_BODY_LIMIT_BYTES,
   });
   app.use(helmet());
   app.use(cookieParser(config.COOKIE_SECRET));
 
   app.enableCors({
     credentials: true,
-    origin: allowedWebOrigins
+    origin: allowedWebOrigins,
   });
 
   const swaggerConfig = new DocumentBuilder()
@@ -61,9 +63,9 @@ async function bootstrap() {
       event: "api.ready",
       port: config.API_PORT,
       webOrigin: config.WEB_ORIGIN,
-      allowedWebOrigins
+      allowedWebOrigins,
     },
-    "API ready."
+    "API ready.",
   );
 }
 
