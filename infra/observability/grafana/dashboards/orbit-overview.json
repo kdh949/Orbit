@@ -816,7 +816,20 @@
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "description": "Node.js event-loop 지연의 p99입니다. API 지연과 함께 상승하면 메인 스레드 포화를 의심하세요.",
-      "fieldConfig": { "defaults": { "min": 0, "unit": "s" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "Open API CPU flame graph",
+              "url": "/d/orbit-overview/orbit-load-test-and-observability?${__url_time_range}&var-environment=$environment&var-profile_service=orbit-api&viewPanel=79"
+            }
+          ],
+          "min": 0,
+          "unit": "s"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 6, "x": 0, "y": 102 },
       "id": 34,
       "targets": [
@@ -832,7 +845,20 @@
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "description": "Node.js GC 소요 시간의 p95입니다. API 지연 급등 시 GC 종류별 증가 여부를 비교하세요.",
-      "fieldConfig": { "defaults": { "min": 0, "unit": "s" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "Open API CPU flame graph",
+              "url": "/d/orbit-overview/orbit-load-test-and-observability?${__url_time_range}&var-environment=$environment&var-profile_service=orbit-api&viewPanel=79"
+            }
+          ],
+          "min": 0,
+          "unit": "s"
+        },
+        "overrides": []
+      },
       "gridPos": { "h": 8, "w": 6, "x": 6, "y": 102 },
       "id": 35,
       "targets": [
@@ -849,7 +875,17 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "description": "Node.js heap의 사용량과 확보량입니다. GC 이후에도 used가 계속 증가하면 큰 객체 유지나 누수를 조사하세요.",
       "fieldConfig": {
-        "defaults": { "min": 0, "unit": "bytes" },
+        "defaults": {
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "Open API CPU flame graph",
+              "url": "/d/orbit-overview/orbit-load-test-and-observability?${__url_time_range}&var-environment=$environment&var-profile_service=orbit-api&viewPanel=79"
+            }
+          ],
+          "min": 0,
+          "unit": "bytes"
+        },
         "overrides": []
       },
       "gridPos": { "h": 8, "w": 6, "x": 12, "y": 102 },
@@ -873,7 +909,17 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "description": "Node.js API 프로세스가 소비하는 CPU 코어 수입니다. API 지연 및 event-loop lag와 함께 비교하세요.",
       "fieldConfig": {
-        "defaults": { "min": 0, "unit": "cores" },
+        "defaults": {
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "Open API CPU flame graph",
+              "url": "/d/orbit-overview/orbit-load-test-and-observability?${__url_time_range}&var-environment=$environment&var-profile_service=orbit-api&viewPanel=79"
+            }
+          ],
+          "min": 0,
+          "unit": "cores"
+        },
         "overrides": []
       },
       "gridPos": { "h": 8, "w": 6, "x": 18, "y": 102 },
@@ -1810,6 +1856,38 @@
       ],
       "title": "Nginx request / upstream p95",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 251 },
+      "id": 112,
+      "panels": [],
+      "title": "13. CPU Profiling — 이상 시간대의 hot function 확인",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-pyroscope-datasource",
+        "uid": "pyroscope"
+      },
+      "description": "선택한 service와 현재 dashboard 시간 범위의 CPU profile입니다. Node API·Worker는 같은 service/time-window profile이며, Python trace의 pyroscope.profile.id 링크는 정확한 span profile로 이동합니다.",
+      "gridPos": { "h": 18, "w": 24, "x": 0, "y": 252 },
+      "id": 79,
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-pyroscope-datasource",
+            "uid": "pyroscope"
+          },
+          "groupBy": [],
+          "labelSelector": "{service_name=\"$profile_service\",environment=~\"$environment\"}",
+          "profileTypeId": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+          "queryType": "profile",
+          "refId": "A"
+        }
+      ],
+      "title": "Service CPU flame graph",
+      "type": "flamegraph"
     }
   ],
   "refresh": "10s",
@@ -1843,6 +1921,26 @@
           { "selected": false, "text": "5s", "value": "5s" }
         ],
         "query": "250ms,500ms,1s,2s,5s",
+        "type": "custom"
+      },
+      {
+        "current": { "text": "orbit-api", "value": "orbit-api" },
+        "label": "Profile service",
+        "name": "profile_service",
+        "options": [
+          { "selected": true, "text": "orbit-api", "value": "orbit-api" },
+          {
+            "selected": false,
+            "text": "orbit-worker",
+            "value": "orbit-worker"
+          },
+          {
+            "selected": false,
+            "text": "orbit-python-worker",
+            "value": "orbit-python-worker"
+          }
+        ],
+        "query": "orbit-api,orbit-worker,orbit-python-worker",
         "type": "custom"
       },
       {
@@ -1947,6 +2045,6 @@
   "timezone": "browser",
   "title": "Orbit Load Test & Observability",
   "uid": "orbit-overview",
-  "version": 7,
+  "version": 8,
   "weekStart": ""
 }

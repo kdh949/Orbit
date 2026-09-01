@@ -209,3 +209,46 @@ test("Nginx metrics and JSON logs are collected without exposing a host port", a
   assert.match(nginxLatency, /requestTimeSeconds/);
   assert.match(nginxLatency, /upstreamResponseTimeSeconds/);
 });
+
+test("Pyroscope flame graph keeps the selected service and dashboard time range", async () => {
+  const dashboard = await loadDashboard();
+  const flamegraph = panelByTitle(dashboard, "Service CPU flame graph");
+  const profileService = dashboard.templating.list.find(
+    (variable) => variable.name === "profile_service",
+  );
+  const apiCpu = panelByTitle(dashboard, "API process CPU usage");
+  const apiCpuLinks = JSON.stringify(apiCpu.fieldConfig?.defaults?.links ?? []);
+
+  assert.equal(flamegraph.type, "flamegraph");
+  assert.deepEqual(flamegraph.datasource, {
+    type: "grafana-pyroscope-datasource",
+    uid: "pyroscope",
+  });
+  assert.match(panelQueries(flamegraph), /service_name="\$profile_service"/);
+  assert.match(panelQueries(flamegraph), /environment=~"\$environment"/);
+  assert.equal(
+    flamegraph.targets[0].profileTypeId,
+    "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+  );
+  assert.equal(profileService?.type, "custom");
+  assert.deepEqual(
+    profileService?.options.map((option) => option.value),
+    ["orbit-api", "orbit-worker", "orbit-python-worker"],
+  );
+  assert.match(apiCpuLinks, /\$\{__url_time_range\}/);
+  assert.match(apiCpuLinks, /viewPanel=79/);
+  assert.match(apiCpuLinks, /var-profile_service=orbit-api/);
+});
+
+test("Tempo keeps trace-to-profile service and environment correlation", async () => {
+  const datasource = await readObservabilityFile(
+    "grafana/provisioning/datasources/datasources.yml",
+  );
+
+  assert.match(datasource, /tracesToProfiles:/);
+  assert.match(datasource, /key: service\.name\s+value: service_name/);
+  assert.match(
+    datasource,
+    /key: deployment\.environment\.name\s+value: environment/,
+  );
+});

@@ -83,8 +83,9 @@ PYROSCOPE_CPU_SAMPLE_RATE=50
 2. `Orbit Load Test & Observability`의 `8. Distributed Tracing` 행에서 Service Graph, 서비스별 span 호출률·오류율·p95를 확인한다.
 3. `최근 느린 트레이스` 또는 `최근 실패 트레이스`에서 trace ID를 눌러 waterfall을 연다.
 4. Python span의 logs 링크가 같은 `traceId`를 가진 Loki JSON 로그를 여는지 확인한다.
-5. Pyroscope Explore에서 `service_name`별 CPU flame graph를 확인한다.
-6. Python의 충분히 긴 local root span에서 `Profiles for this span` 링크와 embedded flame graph를 표본 확인한다.
+5. `13. CPU Profiling` 행에서 `Profile service`를 선택하고 현재 dashboard 시간 범위의 CPU flame graph를 확인한다.
+6. API event-loop, GC, heap, process CPU panel의 `Open API CPU flame graph` data link가 같은 시간 범위와 `orbit-api` service를 유지하는지 확인한다.
+7. Python의 충분히 긴 local root span에서 `Profiles for this span` 링크와 embedded flame graph를 표본 확인한다.
 
 권장 진단 흐름은 `API p95 증가 감지 → Service Graph에서 Python edge 지연 확인 → 느린 trace waterfall 열기 → 해당 span의 Loki 로그 확인 → Pyroscope CPU flame graph 확인`이다. Node API·Worker는 span 단위 profile이 아니라 같은 service와 time window의 CPU profile로 이동한다.
 
