@@ -13,12 +13,27 @@ datasources:
     type: loki
     access: proxy
     url: http://loki:3100
+    jsonData:
+      derivedFields:
+        - name: TraceID
+          datasourceUid: tempo
+          matcherRegex: '"traceId":"([0-9a-f]{32})"'
+          url: '$${__value.raw}'
     editable: false
   - name: Tempo
     uid: tempo
     type: tempo
     access: proxy
     url: http://tempo:3200
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: -1m
+        spanEndTimeShift: 1m
+        filterByTraceID: true
+        filterBySpanID: false
+        customQuery: true
+        query: '{environment="$${__span.tags["deployment.environment.name"]}"} | json | traceId="$${__trace.traceId}"'
     editable: false
   - name: Pyroscope
     uid: pyroscope
