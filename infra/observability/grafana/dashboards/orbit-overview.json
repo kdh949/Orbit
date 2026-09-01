@@ -1,46 +1,387 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Orbit load-test dashboard. Start with user impact, then inspect API, worker, data stores, resources, and logs.",
   "editable": false,
   "graphTooltip": 1,
+  "links": [],
   "panels": [
     {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "panels": [],
+      "title": "1. Overview — 사용자 영향부터 확인",
+      "type": "row"
+    },
+    {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "description": "1이면 모든 Orbit scrape target이 정상입니다. 0이면 Target availability에서 내려간 job을 찾으세요.",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": { "color": "red", "index": 0, "text": "DOWN" },
+                "1": { "color": "green", "index": 1, "text": "UP" }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
       "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
       "targets": [
         {
-          "expr": "sum(rate(orbit_api_http_requests_total[1m]))",
+          "expr": "min(up{job=~\"orbit-.+\", environment=~\"$environment\"})",
+          "instant": true,
+          "legendFormat": "all targets",
+          "refId": "A"
+        }
+      ],
+      "title": "All metric targets healthy",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "선택한 route의 초당 API 요청 수입니다. 목표 부하가 실제 서버에 도달하는지 확인합니다.",
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(orbit_api_http_requests_total{environment=~\"$environment\", route=~\"$route\"}[$__rate_interval]))",
           "legendFormat": "requests/s",
           "refId": "A"
         }
       ],
-      "title": "API request rate",
-      "type": "timeseries"
+      "title": "API throughput",
+      "type": "stat"
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
-      "id": 2,
+      "description": "5xx 비율입니다. 1%부터 주의, 5% 이상이면 부하를 올리기 전에 오류 원인을 확인하세요.",
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(orbit_api_http_request_duration_seconds_bucket[5m])))",
+          "expr": "100 * sum(rate(orbit_api_http_requests_total{environment=~\"$environment\", route=~\"$route\", status_class=\"5xx\"}[$__rate_interval])) / clamp_min(sum(rate(orbit_api_http_requests_total{environment=~\"$environment\", route=~\"$route\"}[$__rate_interval])), 0.001)",
+          "legendFormat": "5xx %",
+          "refId": "A"
+        }
+      ],
+      "title": "API 5xx ratio",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "성공 응답의 p95입니다. 0.5초부터 주의, 1초 이상이면 route별 지연과 자원을 확인하세요.",
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(orbit_api_http_request_duration_seconds_bucket{environment=~\"$environment\", route=~\"$route\", status_class=~\"2xx|3xx\"}[$__rate_interval])))",
           "legendFormat": "p95",
           "refId": "A"
         }
       ],
-      "title": "API latency p95",
+      "title": "API success latency p95",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "waiting이 계속 증가하면 Worker 처리량이 유입량을 따라가지 못하는 상태입니다.",
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 20 },
+              { "color": "red", "value": 50 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "id": 5,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(bullmq_job_count{environment=~\"$environment\", queue=~\"$queue\", state=\"waiting\"})",
+          "legendFormat": "waiting",
+          "refId": "A"
+        }
+      ],
+      "title": "BullMQ waiting jobs",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "최근 10분간 Worker 실패 횟수입니다. 1 이상이면 job별 실패와 로그를 확인하세요.",
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "id": 6,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(orbit_worker_jobs_completed_total{environment=~\"$environment\", queue_name=~\"$queue\", outcome=\"failed\"}[10m]))",
+          "legendFormat": "failed",
+          "refId": "A"
+        }
+      ],
+      "title": "Worker failures / 10m",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "0으로 내려간 job이 있으면 해당 서비스/exporter 컨테이너와 네트워크를 먼저 확인하세요.",
+      "fieldConfig": {
+        "defaults": { "max": 1, "min": 0, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 5 },
+      "id": 7,
+      "targets": [
+        {
+          "expr": "up{job=~\"orbit-.+\", environment=~\"$environment\"}",
+          "legendFormat": "{{job}} @ {{instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Target availability",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 10 },
+      "id": 101,
+      "panels": [],
+      "title": "2. API — 어느 route에서 느려지고 실패하는지 확인",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "route별 실제 유입 RPS입니다. 특정 route만 급증하거나 목표 RPS보다 낮은지 확인하세요.",
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 11 },
+      "id": 8,
+      "targets": [
+        {
+          "expr": "sum by (route) (rate(orbit_api_http_requests_total{environment=~\"$environment\", route=~\"$route\"}[$__rate_interval]))",
+          "legendFormat": "{{route}}",
+          "refId": "A"
+        }
+      ],
+      "title": "API request rate by route",
       "type": "timeseries"
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
-      "id": 3,
+      "description": "성공 응답의 route별 p95입니다. 전체 p95가 나쁠 때 실제 병목 route를 찾습니다.",
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 11 },
+      "id": 9,
       "targets": [
         {
-          "expr": "sum by (queue, state) (bullmq_job_count)",
-          "legendFormat": "{{queue}} {{state}}",
+          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(orbit_api_http_request_duration_seconds_bucket{environment=~\"$environment\", route=~\"$route\", status_class=~\"2xx|3xx\"}[$__rate_interval])))",
+          "legendFormat": "{{route}} p95",
+          "refId": "A"
+        }
+      ],
+      "title": "API success latency p95 by route",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "p50은 평소 체감, p95는 대부분의 느린 요청, p99는 꼬리 지연을 보여줍니다.",
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "id": 10,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(orbit_api_http_request_duration_seconds_bucket{environment=~\"$environment\", route=~\"$route\", status_class=~\"2xx|3xx\"}[$__rate_interval])))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(orbit_api_http_request_duration_seconds_bucket{environment=~\"$environment\", route=~\"$route\", status_class=~\"2xx|3xx\"}[$__rate_interval])))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(orbit_api_http_request_duration_seconds_bucket{environment=~\"$environment\", route=~\"$route\", status_class=~\"2xx|3xx\"}[$__rate_interval])))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "title": "API success latency percentiles",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "4xx 증가는 시나리오/인증 데이터 문제일 수 있고, 5xx 증가는 서버 오류입니다.",
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "id": 11,
+      "targets": [
+        {
+          "expr": "sum by (status_class) (rate(orbit_api_http_requests_total{environment=~\"$environment\", route=~\"$route\"}[$__rate_interval]))",
+          "legendFormat": "{{status_class}}",
+          "refId": "A"
+        }
+      ],
+      "title": "API response rate by status class",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Python worker 성공 응답의 route별 p95입니다. API와 함께 상승하는지 비교하세요.",
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 27 },
+      "id": 12,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(orbit_python_http_request_duration_seconds_bucket{environment=~\"$environment\", status_class=~\"2xx|3xx\"}[$__rate_interval])))",
+          "legendFormat": "{{route}} p95",
+          "refId": "A"
+        }
+      ],
+      "title": "Python worker success latency p95 by route",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 },
+      "id": 102,
+      "panels": [],
+      "title": "3. Worker & BullMQ — 적체와 처리 병목 확인",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "waiting이 증가하면 소비 속도가 부족하고, active가 고정된 채 completed가 늘지 않으면 긴 작업/외부 대기를 의심하세요.",
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "id": 13,
+      "targets": [
+        {
+          "expr": "sum by (queue, state) (bullmq_job_count{environment=~\"$environment\", queue=~\"$queue\"})",
+          "legendFormat": "{{queue}} / {{state}}",
           "refId": "A"
         }
       ],
@@ -49,13 +390,223 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
-      "id": 4,
+      "description": "유입은 늘지만 처리율이 평평하면 Worker 또는 하위 의존성이 포화된 상태입니다.",
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "id": 14,
       "targets": [
         {
-          "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[1m]))",
-          "legendFormat": "CPU",
+          "expr": "sum by (job_name, outcome) (rate(orbit_worker_jobs_completed_total{environment=~\"$environment\", queue_name=~\"$queue\"}[$__rate_interval]))",
+          "legendFormat": "{{job_name}} / {{outcome}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Worker completion rate by job and outcome",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "p95/p99가 상승하면서 waiting도 증가하면 Worker 처리 병목 가능성이 큽니다.",
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 44 },
+      "id": 15,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le, job_name) (rate(orbit_worker_job_duration_seconds_bucket{environment=~\"$environment\", queue_name=~\"$queue\", outcome=\"succeeded\"}[$__rate_interval])))",
+          "legendFormat": "{{job_name}} p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, job_name) (rate(orbit_worker_job_duration_seconds_bucket{environment=~\"$environment\", queue_name=~\"$queue\", outcome=\"succeeded\"}[$__rate_interval])))",
+          "legendFormat": "{{job_name}} p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le, job_name) (rate(orbit_worker_job_duration_seconds_bucket{environment=~\"$environment\", queue_name=~\"$queue\", outcome=\"succeeded\"}[$__rate_interval])))",
+          "legendFormat": "{{job_name}} p99",
+          "refId": "C"
+        }
+      ],
+      "title": "Worker successful job duration",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "현재 실행 중인 Job 수입니다. 계속 최대값에 붙고 waiting이 증가하면 동시성 한계입니다.",
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 44 },
+      "id": 16,
+      "targets": [
+        {
+          "expr": "sum by (queue_name) (orbit_worker_active_jobs{environment=~\"$environment\", queue_name=~\"$queue\"})",
+          "legendFormat": "{{queue_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Active worker jobs",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "최근 10분간 job별 실패 횟수입니다. job 이름으로 로그를 좁혀 원인을 확인하세요.",
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 44 },
+      "id": 17,
+      "targets": [
+        {
+          "expr": "sum by (job_name) (increase(orbit_worker_jobs_completed_total{environment=~\"$environment\", queue_name=~\"$queue\", outcome=\"failed\"}[10m]))",
+          "legendFormat": "{{job_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Worker failures by job / 10m",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 52 },
+      "id": 103,
+      "panels": [],
+      "title": "4. PostgreSQL & Redis — 데이터 계층 포화 확인",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "DB별 backend 연결 수입니다. 부하와 함께 계속 증가하면 pool과 max_connections를 확인하세요.",
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 53 },
+      "id": 18,
+      "targets": [
+        {
+          "expr": "sum by (datname) (pg_stat_database_numbackends{job=\"orbit-postgres\", environment=~\"$environment\", datname!~\"template.*\"})",
+          "legendFormat": "{{datname}}",
+          "refId": "A"
+        }
+      ],
+      "title": "PostgreSQL backend connections",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "rollback 비중이 증가하면 애플리케이션 오류, 충돌, timeout을 확인하세요.",
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 53 },
+      "id": 19,
+      "targets": [
+        {
+          "expr": "sum by (datname) (rate(pg_stat_database_xact_commit{job=\"orbit-postgres\", environment=~\"$environment\", datname!~\"template.*\"}[$__rate_interval]))",
+          "legendFormat": "{{datname}} commit",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (datname) (rate(pg_stat_database_xact_rollback{job=\"orbit-postgres\", environment=~\"$environment\", datname!~\"template.*\"}[$__rate_interval]))",
+          "legendFormat": "{{datname}} rollback",
+          "refId": "B"
+        }
+      ],
+      "title": "PostgreSQL transactions / second",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "최근 5분 deadlock 수입니다. 0이 아니면 트랜잭션의 lock 획득 순서를 조사하세요.",
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 53 },
+      "id": 20,
+      "targets": [
+        {
+          "expr": "sum by (datname) (increase(pg_stat_database_deadlocks{job=\"orbit-postgres\", environment=~\"$environment\", datname!~\"template.*\"}[5m]))",
+          "legendFormat": "{{datname}}",
+          "refId": "A"
+        }
+      ],
+      "title": "PostgreSQL deadlocks / 5m",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "지속 상승하면 key 누수/TTL 누락을, maxmemory 근접 시 eviction을 확인하세요.",
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 61 },
+      "id": 21,
+      "targets": [
+        {
+          "expr": "sum by (job) (redis_memory_used_bytes{job=~\"orbit-redis|orbit-private-evidence-redis\", environment=~\"$environment\"})",
+          "legendFormat": "{{job}} used",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (job) (redis_memory_max_bytes{job=~\"orbit-redis|orbit-private-evidence-redis\", environment=~\"$environment\"} > 0)",
+          "legendFormat": "{{job}} max",
+          "refId": "B"
+        }
+      ],
+      "title": "Redis memory used vs max",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "blocked client가 증가하면 blocking 명령 또는 느린 처리 흐름을 확인하세요.",
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 61 },
+      "id": 22,
+      "targets": [
+        {
+          "expr": "sum by (job) (redis_connected_clients{job=~\"orbit-redis|orbit-private-evidence-redis\", environment=~\"$environment\"})",
+          "legendFormat": "{{job}} connected",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (job) (redis_blocked_clients{job=~\"orbit-redis|orbit-private-evidence-redis\", environment=~\"$environment\"})",
+          "legendFormat": "{{job}} blocked",
+          "refId": "B"
+        }
+      ],
+      "title": "Redis clients",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "처리량이 정체되고 eviction이 생기면 Redis 메모리 압박 가능성이 큽니다.",
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 61 },
+      "id": 23,
+      "targets": [
+        {
+          "expr": "sum by (job) (rate(redis_commands_processed_total{job=~\"orbit-redis|orbit-private-evidence-redis\", environment=~\"$environment\"}[$__rate_interval]))",
+          "legendFormat": "{{job}} commands/s",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (job) (rate(redis_evicted_keys_total{job=~\"orbit-redis|orbit-private-evidence-redis\", environment=~\"$environment\"}[$__rate_interval]))",
+          "legendFormat": "{{job}} evictions/s",
+          "refId": "B"
+        }
+      ],
+      "title": "Redis commands and evictions / second",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 69 },
+      "id": 104,
+      "panels": [],
+      "title": "5. Host & Containers — CPU, 메모리, 디스크 포화 확인",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "80~90% 이상이 지속되면서 지연이 상승하면 CPU 병목을 의심하세요.",
+      "fieldConfig": {
+        "defaults": { "max": 1, "min": 0, "unit": "percentunit" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 70 },
+      "id": 24,
+      "targets": [
+        {
+          "expr": "1 - avg by (instance) (rate(node_cpu_seconds_total{job=\"orbit-node\", environment=~\"$environment\", mode=\"idle\"}[$__rate_interval]))",
+          "legendFormat": "{{instance}}",
           "refId": "A"
         }
       ],
@@ -64,23 +615,178 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
-      "id": 5,
+      "description": "available 메모리 기준 사용률입니다. 지속적인 상승과 swap 사용 여부를 확인하세요.",
+      "fieldConfig": {
+        "defaults": { "max": 1, "min": 0, "unit": "percentunit" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 70 },
+      "id": 25,
       "targets": [
         {
-          "expr": "sum by (name) (container_memory_working_set_bytes{name!=\"\"})",
+          "expr": "1 - (node_memory_MemAvailable_bytes{job=\"orbit-node\", environment=~\"$environment\"} / node_memory_MemTotal_bytes{job=\"orbit-node\", environment=~\"$environment\"})",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Host memory utilization",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "filesystem별 사용률입니다. 85% 이상이면 로그/데이터 증가와 보존 정책을 확인하세요.",
+      "fieldConfig": {
+        "defaults": { "max": 1, "min": 0, "unit": "percentunit" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 70 },
+      "id": 26,
+      "targets": [
+        {
+          "expr": "1 - (node_filesystem_avail_bytes{job=\"orbit-node\", environment=~\"$environment\", fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{job=\"orbit-node\", environment=~\"$environment\", fstype!~\"tmpfs|overlay\"})",
+          "legendFormat": "{{mountpoint}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Host filesystem utilization",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "API/Worker/Python/DB 중 어느 컨테이너가 CPU를 소비하는지 비교하세요.",
+      "fieldConfig": { "defaults": { "unit": "cores" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 78 },
+      "id": 27,
+      "targets": [
+        {
+          "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{job=\"orbit-cadvisor\", environment=~\"$environment\", name!=\"\"}[$__rate_interval]))",
           "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
-      "title": "Container memory",
+      "title": "Container CPU usage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "특정 컨테이너의 working set이 계속 증가하면 메모리 누수나 큰 작업 누적을 조사하세요.",
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 78 },
+      "id": 28,
+      "targets": [
+        {
+          "expr": "sum by (name) (container_memory_working_set_bytes{job=\"orbit-cadvisor\", environment=~\"$environment\", name!=\"\"})",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Container memory working set",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Node.js event-loop 지연의 p99입니다. API 지연과 함께 상승하면 메인 스레드 포화를 의심하세요.",
+      "fieldConfig": { "defaults": { "min": 0, "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 86 },
+      "id": 34,
+      "targets": [
+        {
+          "expr": "orbit_api_process_nodejs_eventloop_lag_p99_seconds{environment=~\"$environment\"}",
+          "legendFormat": "{{instance}} p99",
+          "refId": "A"
+        }
+      ],
+      "title": "API event-loop lag p99",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Node.js GC 소요 시간의 p95입니다. API 지연 급등 시 GC 종류별 증가 여부를 비교하세요.",
+      "fieldConfig": { "defaults": { "min": 0, "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 86 },
+      "id": 35,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, instance, kind) (rate(orbit_api_process_nodejs_gc_duration_seconds_bucket{environment=~\"$environment\"}[$__rate_interval])))",
+          "legendFormat": "{{instance}} / {{kind}} p95",
+          "refId": "A"
+        }
+      ],
+      "title": "API GC duration p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Node.js heap의 사용량과 확보량입니다. GC 이후에도 used가 계속 증가하면 큰 객체 유지나 누수를 조사하세요.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "bytes" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 86 },
+      "id": 36,
+      "targets": [
+        {
+          "expr": "orbit_api_process_nodejs_heap_size_used_bytes{environment=~\"$environment\"}",
+          "legendFormat": "{{instance}} used",
+          "refId": "A"
+        },
+        {
+          "expr": "orbit_api_process_nodejs_heap_size_total_bytes{environment=~\"$environment\"}",
+          "legendFormat": "{{instance}} total",
+          "refId": "B"
+        }
+      ],
+      "title": "API Node.js heap",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Node.js API 프로세스가 소비하는 CPU 코어 수입니다. API 지연 및 event-loop lag와 함께 비교하세요.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "cores" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 86 },
+      "id": 37,
+      "targets": [
+        {
+          "expr": "rate(orbit_api_process_process_cpu_seconds_total{environment=~\"$environment\"}[$__rate_interval])",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "API process CPU usage",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 94 },
+      "id": 105,
+      "panels": [],
+      "title": "6. Logs — 이상 시점의 원인 확인",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "description": "지연/오류/적체가 시작된 시점에 함께 증가하는 service를 찾으세요.",
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 12, "w": 8, "x": 0, "y": 95 },
+      "id": 29,
+      "targets": [
+        {
+          "expr": "sum by (service) (count_over_time({environment=~\"$environment\", service=~\"$service\"} |~ \"(?i)(error|failed|timeout|oom|deadlock|stalled)\" [5m]))",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Error-like log events / 5m",
       "type": "timeseries"
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 16 },
-      "id": 6,
+      "description": "service와 Log search로 이상 시점의 원문 로그를 확인합니다. 빈 검색어는 전체 로그입니다.",
+      "gridPos": { "h": 12, "w": 16, "x": 8, "y": 95 },
+      "id": 30,
       "options": {
         "dedupStrategy": "none",
         "enableLogDetails": true,
@@ -92,46 +798,198 @@
       },
       "targets": [
         {
-          "expr": "{environment=~\"$environment\", service=~\"$service\"}",
+          "expr": "{environment=~\"$environment\", service=~\"$service\"} |= \"$log_search\"",
           "refId": "A"
         }
       ],
       "title": "Container logs",
       "type": "logs"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 107 },
+      "id": 106,
+      "panels": [],
+      "title": "7. k6 Load Test — 부하 발생기 결과 확인",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "도착률 실행기가 시작하지 못한 iteration의 누적값입니다. 0보다 크면 목표 RPS를 유지하지 못한 실행입니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 108 },
+      "id": 31,
+      "targets": [
+        {
+          "expr": "sum by (testid, target_path) (k6_dropped_iterations_total{testid=~\"$testid\", target_path=~\"$target_path\"})",
+          "legendFormat": "{{testid}} / {{target_path}}",
+          "refId": "A"
+        }
+      ],
+      "title": "k6 dropped iterations",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "실행 중인 VU와 실행이 허용한 최대 VU입니다. active가 max에 붙으면서 dropped iterations가 증가하면 VU 한계에 도달한 상태입니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 108 },
+      "id": 32,
+      "targets": [
+        {
+          "expr": "max by (testid, target_path) (k6_vus{testid=~\"$testid\", target_path=~\"$target_path\"})",
+          "legendFormat": "{{testid}} / {{target_path}} / active",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (testid, target_path) (k6_vus_max{testid=~\"$testid\", target_path=~\"$target_path\"})",
+          "legendFormat": "{{testid}} / {{target_path}} / max",
+          "refId": "B"
+        }
+      ],
+      "title": "k6 active / max VUs",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "부하 발생기에서 응답 본문 수신까지 측정한 end-to-end 지연입니다. 동일 시점의 API 내부 지연과 비교해 ingress 대기와 전송 비용을 구분하세요.",
+      "fieldConfig": { "defaults": { "min": 0, "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 116 },
+      "id": 33,
+      "targets": [
+        {
+          "expr": "max by (testid, target_path, scenario, operation) (k6_http_req_duration_p50{testid=~\"$testid\", target_path=~\"$target_path\"})",
+          "legendFormat": "{{testid}} / {{target_path}} / {{scenario}} / {{operation}} / p50",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (testid, target_path, scenario, operation) (k6_http_req_duration_p95{testid=~\"$testid\", target_path=~\"$target_path\"})",
+          "legendFormat": "{{testid}} / {{target_path}} / {{scenario}} / {{operation}} / p95",
+          "refId": "B"
+        },
+        {
+          "expr": "max by (testid, target_path, scenario, operation) (k6_http_req_duration_p99{testid=~\"$testid\", target_path=~\"$target_path\"})",
+          "legendFormat": "{{testid}} / {{target_path}} / {{scenario}} / {{operation}} / p99",
+          "refId": "C"
+        }
+      ],
+      "title": "k6 end-to-end latency percentiles",
+      "type": "timeseries"
     }
   ],
   "refresh": "10s",
   "schemaVersion": 41,
-  "tags": ["orbit", "observability"],
+  "tags": ["orbit", "observability", "load-test"],
   "templating": {
     "list": [
       {
-        "current": {},
-        "datasource": { "type": "loki", "uid": "loki" },
-        "definition": "label_values(environment)",
+        "allValue": ".+",
+        "current": { "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(up{job=~\"orbit-.+\"}, environment)",
         "includeAll": true,
         "label": "Environment",
+        "multi": true,
         "name": "environment",
-        "query": "label_values(environment)",
+        "query": "label_values(up{job=~\"orbit-.+\"}, environment)",
         "refresh": 1,
+        "sort": 1,
         "type": "query"
       },
       {
-        "current": {},
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(orbit_api_http_requests_total{environment=~\"$environment\"}, route)",
+        "includeAll": true,
+        "label": "API route",
+        "multi": true,
+        "name": "route",
+        "query": "label_values(orbit_api_http_requests_total{environment=~\"$environment\"}, route)",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(bullmq_job_count{environment=~\"$environment\"}, queue)",
+        "includeAll": true,
+        "label": "Queue",
+        "multi": true,
+        "name": "queue",
+        "query": "label_values(bullmq_job_count{environment=~\"$environment\"}, queue)",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(k6_vus, testid)",
+        "includeAll": true,
+        "label": "k6 test ID",
+        "multi": true,
+        "name": "testid",
+        "query": "label_values(k6_vus, testid)",
+        "refresh": 2,
+        "sort": 2,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(k6_vus{testid=~\"$testid\"}, target_path)",
+        "includeAll": true,
+        "label": "k6 target path",
+        "multi": true,
+        "name": "target_path",
+        "query": "label_values(k6_vus{testid=~\"$testid\"}, target_path)",
+        "refresh": 2,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".+",
+        "current": { "text": "All", "value": "$__all" },
         "datasource": { "type": "loki", "uid": "loki" },
         "definition": "label_values({environment=~\"$environment\"}, service)",
         "includeAll": true,
-        "label": "Service",
+        "label": "Log service",
+        "multi": true,
         "name": "service",
         "query": "label_values({environment=~\"$environment\"}, service)",
         "refresh": 1,
+        "sort": 1,
         "type": "query"
+      },
+      {
+        "current": { "text": "", "value": "" },
+        "label": "Log search",
+        "name": "log_search",
+        "options": [{ "selected": true, "text": "", "value": "" }],
+        "query": "",
+        "type": "textbox"
       }
     ]
   },
-  "time": { "from": "now-1h", "to": "now" },
+  "time": { "from": "now-30m", "to": "now" },
+  "timepicker": {
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"],
+    "time_options": ["5m", "15m", "30m", "1h", "3h", "6h", "12h", "24h"]
+  },
   "timezone": "browser",
-  "title": "Orbit Overview",
+  "title": "Orbit Load Test & Observability",
   "uid": "orbit-overview",
-  "version": 1
+  "version": 3,
+  "weekStart": ""
 }
