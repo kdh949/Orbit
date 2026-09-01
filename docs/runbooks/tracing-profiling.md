@@ -39,7 +39,7 @@ docker compose --env-file /secure/path/monitoring.env \
 
 Prometheus 보존 기간은 30일, Loki와 Tempo는 14일, Pyroscope는 7일이다. 디스크 여유가 15% 미만이 되면 새 부하 테스트를 시작하지 않는다.
 
-Tempo는 `service-graphs`, `span-metrics-latency`, `span-metrics-count`만 생성한다. size metric, `target_info`, instance label, status message, 사용자 정의 dimension은 사용하지 않는다. 생성 metric의 `environment`는 trace dimension이 아니라 `TEMPO_METRICS_ENVIRONMENT` static external label이다.
+Tempo는 `service-graphs`, `span-metrics-latency`, `span-metrics-count`만 생성한다. size metric, `target_info`, instance label, status message, 사용자 정의 dimension은 사용하지 않는다. 생성 metric의 `environment`는 trace dimension이 아니라 `TEMPO_METRICS_ENVIRONMENT` static external label이다. Prometheus는 Tempo가 remote write한 exemplar를 보존하도록 `exemplar-storage` feature를 활성화한다.
 
 ## 앱 서버 Alloy 시작
 
