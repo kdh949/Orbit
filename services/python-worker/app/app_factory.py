@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from app.challenge_qna import router as challenge_qna_router
 from app.config import load_config
 from app.focused_practice import router as focused_practice_router
+from app.http_logging import install_http_trace_logging
 from app.metrics import install_metrics
 from app.routers.ai_deck import router as ai_deck_router
 from app.routers.audio import router as audio_router
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     configure_python_profiling()
+    install_http_trace_logging(app)
     configure_python_telemetry(app)
     install_metrics(app)
     app.include_router(health_router)
