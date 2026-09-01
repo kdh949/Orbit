@@ -313,6 +313,22 @@
       "source": "doppler-required",
       "delivery": "compose"
     },
+    "PYROSCOPE_CPU_SAMPLE_INTERVAL_MICROS": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
+    "PYROSCOPE_CPU_SAMPLE_RATE": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
+    "PYROSCOPE_ENABLED": {
+      "source": "repo-default",
+      "delivery": "compose"
+    },
+    "PYROSCOPE_SERVER_ADDRESS": {
+      "source": "doppler-optional",
+      "delivery": "compose"
+    },
     "REDIS_URL": {
       "source": "doppler-required",
       "delivery": "compose"

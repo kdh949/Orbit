@@ -15,7 +15,7 @@ from app.routers.pptx import router as pptx_router
 from app.routers.references import router as references_router
 from app.routers.rehearsal import router as rehearsal_router
 from app.slide_question_guides import router as slide_question_guides_router
-from app.telemetry import configure_python_telemetry
+from app.telemetry import configure_python_profiling, configure_python_telemetry
 
 
 @asynccontextmanager
@@ -30,6 +30,7 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+    configure_python_profiling()
     configure_python_telemetry(app)
     install_metrics(app)
     app.include_router(health_router)

@@ -30,6 +30,8 @@ dependencies = [
   "opentelemetry-instrumentation-httpx>=0.59b0,<1",
   "opentelemetry-instrumentation-psycopg>=0.59b0,<1",
   "opentelemetry-instrumentation-botocore>=0.59b0,<1",
+  "pyroscope-io>=0.8,<1",
+  "pyroscope-otel>=0.4,<1",
 ]
 
 [dependency-groups]

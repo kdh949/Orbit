@@ -18,7 +18,7 @@ datasources:
         - name: TraceID
           datasourceUid: tempo
           matcherRegex: '"traceId":"([0-9a-f]{32})"'
-          url: '$${__value.raw}'
+          url: "$${__value.raw}"
     editable: false
   - name: Tempo
     uid: tempo
@@ -34,6 +34,14 @@ datasources:
         filterBySpanID: false
         customQuery: true
         query: '{environment="$${__span.tags["deployment.environment.name"]}"} | json | traceId="$${__trace.traceId}"'
+      tracesToProfiles:
+        datasourceUid: pyroscope
+        tags:
+          - key: service.name
+            value: service_name
+          - key: deployment.environment.name
+            value: environment
+        profileTypeId: process_cpu:cpu:nanoseconds:cpu:nanoseconds
     editable: false
   - name: Pyroscope
     uid: pyroscope

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Callable, Mapping
 from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import FastAPI
@@ -31,8 +31,18 @@ class PythonTelemetryConfig:
     service_version: str | None
 
 
+@dataclass(frozen=True)
+class PythonProfilingConfig:
+    application_name: str
+    environment: str
+    sample_rate: int
+    server_address: str
+    service_version: str | None
+
+
 _provider: TracerProvider | None = None
 _libraries_instrumented = False
+_profiling_started = False
 
 
 def resolve_python_telemetry_config(
@@ -70,6 +80,105 @@ def resolve_python_telemetry_config(
     )
 
 
+def resolve_python_profiling_config(
+    application_name: str,
+    env: Mapping[str, str] = os.environ,
+) -> PythonProfilingConfig | None:
+    if env.get("PYROSCOPE_ENABLED", "").strip().lower() != "true":
+        return None
+
+    server_address = env.get("PYROSCOPE_SERVER_ADDRESS", "").strip()
+    if not server_address:
+        raise ValueError(
+            "PYROSCOPE_SERVER_ADDRESS is required when PYROSCOPE_ENABLED=true"
+        )
+    parsed_server_address = urlsplit(server_address)
+    if (
+        parsed_server_address.scheme not in {"http", "https"}
+        or not parsed_server_address.netloc
+    ):
+        raise ValueError("PYROSCOPE_SERVER_ADDRESS must be an HTTP(S) URL")
+    if (
+        parsed_server_address.username
+        or parsed_server_address.password
+        or parsed_server_address.query
+        or parsed_server_address.fragment
+    ):
+        raise ValueError(
+            "PYROSCOPE_SERVER_ADDRESS must not contain credentials, query, or fragment"
+        )
+
+    sample_rate_value = env.get("PYROSCOPE_CPU_SAMPLE_RATE", "50").strip() or "50"
+    try:
+        sample_rate = int(sample_rate_value)
+    except ValueError as error:
+        raise ValueError(
+            "PYROSCOPE_CPU_SAMPLE_RATE must be an integer between 10 and 100"
+        ) from error
+    if not 10 <= sample_rate <= 100:
+        raise ValueError(
+            "PYROSCOPE_CPU_SAMPLE_RATE must be an integer between 10 and 100"
+        )
+
+    service_version = env.get("OTEL_SERVICE_VERSION", "").strip() or None
+    return PythonProfilingConfig(
+        application_name=application_name,
+        environment=env.get("APP_ENV", "local").strip() or "local",
+        sample_rate=sample_rate,
+        server_address=urlunsplit(
+            (
+                parsed_server_address.scheme,
+                parsed_server_address.netloc,
+                parsed_server_address.path,
+                "",
+                "",
+            )
+        ),
+        service_version=service_version,
+    )
+
+
+def configure_python_profiling(
+    env: Mapping[str, str] = os.environ,
+    configure: Callable[..., object] | None = None,
+) -> bool:
+    global _profiling_started
+    config = resolve_python_profiling_config("orbit-python-worker", env)
+    if config is None:
+        return False
+    if _profiling_started:
+        return True
+
+    if configure is None:
+        import pyroscope  # type: ignore[import-untyped]
+
+        configure = pyroscope.configure
+
+    configure(
+        application_name=config.application_name,
+        server_address=config.server_address,
+        sample_rate=config.sample_rate,
+        detect_subprocesses=False,
+        oncpu=True,
+        native=False,
+        gil_only=True,
+        report_pid=False,
+        report_thread_id=False,
+        report_thread_name=False,
+        enable_logging=False,
+        tags={
+            "environment": config.environment,
+            **(
+                {"service_version": config.service_version}
+                if config.service_version
+                else {}
+            ),
+        },
+    )
+    _profiling_started = True
+    return True
+
+
 def configure_python_telemetry(
     app: FastAPI,
     env: Mapping[str, str] = os.environ,
@@ -78,7 +187,13 @@ def configure_python_telemetry(
     if config is None:
         return None
 
-    provider = _get_or_create_provider(config)
+    provider = _get_or_create_provider(
+        config,
+        span_profiles_enabled=resolve_python_profiling_config(
+            "orbit-python-worker", env
+        )
+        is not None,
+    )
     _instrument_libraries(provider)
     FastAPIInstrumentor.instrument_app(
         app,
@@ -89,7 +204,11 @@ def configure_python_telemetry(
     return provider
 
 
-def _get_or_create_provider(config: PythonTelemetryConfig) -> TracerProvider:
+def _get_or_create_provider(
+    config: PythonTelemetryConfig,
+    *,
+    span_profiles_enabled: bool,
+) -> TracerProvider:
     global _provider
     if _provider is not None:
         return _provider
@@ -106,6 +225,10 @@ def _get_or_create_provider(config: PythonTelemetryConfig) -> TracerProvider:
         resource=Resource.create(attributes),
         sampler=ParentBased(TraceIdRatioBased(config.sample_ratio)),
     )
+    if span_profiles_enabled:
+        from pyroscope.otel import PyroscopeSpanProcessor  # type: ignore[import-untyped]
+
+        provider.add_span_processor(PyroscopeSpanProcessor())
     provider.add_span_processor(
         BatchSpanProcessor(OTLPSpanExporter(endpoint=config.endpoint))
     )
