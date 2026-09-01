@@ -11,6 +11,13 @@ async function loadDashboard() {
   return JSON.parse(await readFile(dashboardUrl, "utf8"));
 }
 
+async function readObservabilityFile(relativePath) {
+  return readFile(
+    new URL(`../observability/${relativePath}`, import.meta.url),
+    "utf8",
+  );
+}
+
 function panelByTitle(dashboard, title) {
   const panel = dashboard.panels.find((candidate) => candidate.title === title);
   assert.ok(panel, `missing dashboard panel: ${title}`);
@@ -108,4 +115,97 @@ test("telemetry pipeline exposes accepted, refused, queued, and generated spans"
   assert.match(queue, /otelcol_exporter_queue_capacity/);
   assert.match(tempo, /tempo_distributor_spans_received_total/);
   assert.match(tempo, /tempo_metrics_generator_processor_service_graphs_edges/);
+});
+
+test("resource saturation panels use finite limits and bounded container labels", async () => {
+  const dashboard = await loadDashboard();
+  const cpu = panelQueries(
+    panelByTitle(dashboard, "Container CPU share of host capacity"),
+  );
+  const memory = panelQueries(
+    panelByTitle(dashboard, "Container memory limit utilization"),
+  );
+  const failures = panelQueries(
+    panelByTitle(dashboard, "Container memory pressure / failures"),
+  );
+
+  assert.match(cpu, /machine_cpu_cores/);
+  assert.match(memory, /container_spec_memory_limit_bytes/);
+  assert.match(memory, /> 0/);
+  assert.match(failures, /container_oom_events_total/);
+  assert.match(failures, /container_memory_failcnt/);
+  assert.doesNotMatch(
+    `${cpu}\n${memory}\n${failures}`,
+    /userId|sessionId|projectId/,
+  );
+});
+
+test("PostgreSQL and Redis drill-down panels expose saturation and latency", async () => {
+  const dashboard = await loadDashboard();
+  const connections = panelQueries(
+    panelByTitle(dashboard, "PostgreSQL connection utilization"),
+  );
+  const activity = panelQueries(
+    panelByTitle(dashboard, "PostgreSQL activity by state"),
+  );
+  const waits = panelQueries(
+    panelByTitle(dashboard, "PostgreSQL waits by type"),
+  );
+  const locks = panelQueries(panelByTitle(dashboard, "PostgreSQL locks"));
+  const transactions = panelQueries(
+    panelByTitle(dashboard, "PostgreSQL longest transaction"),
+  );
+  const redisLatency = panelQueries(
+    panelByTitle(dashboard, "Redis command latency p99"),
+  );
+  const redisFailures = panelQueries(
+    panelByTitle(dashboard, "Redis slowlog / rejected connections"),
+  );
+
+  assert.match(connections, /pg_settings_max_connections/);
+  assert.match(activity, /pg_stat_activity_count/);
+  assert.match(activity, /state/);
+  assert.match(waits, /wait_event_type/);
+  assert.match(locks, /pg_locks_count/);
+  assert.match(transactions, /pg_stat_activity_max_tx_duration/);
+  assert.match(redisLatency, /redis_latency_percentiles_usec/);
+  assert.match(redisFailures, /redis_slowlog_length/);
+  assert.match(redisFailures, /redis_rejected_connections_total/);
+});
+
+test("Nginx metrics and JSON logs are collected without exposing a host port", async () => {
+  const dashboard = await loadDashboard();
+  const compose = await readObservabilityFile("docker-compose.app.yml");
+  const alloy = await readObservabilityFile("alloy/config.alloy");
+  const nginx = await readObservabilityFile("nginx/orbit-observability.conf");
+  const nginxExporterBlock = compose.slice(
+    compose.indexOf("  nginx-exporter:"),
+    compose.indexOf("  node-exporter:"),
+  );
+  const nginxOverview = panelQueries(
+    panelByTitle(dashboard, "Nginx requests / active connections"),
+  );
+  const nginxErrors = panelQueries(
+    panelByTitle(dashboard, "Nginx 499 / 502 / 504"),
+  );
+  const nginxLatency = panelQueries(
+    panelByTitle(dashboard, "Nginx request / upstream p95"),
+  );
+
+  assert.match(compose, /nginx-exporter:/);
+  assert.match(compose, /unix:\/run\/orbit-nginx\/status\.sock:\/stub_status/);
+  assert.doesNotMatch(nginxExporterBlock, /\n\s+ports:/);
+  assert.match(alloy, /nginx-exporter:9113/);
+  assert.match(alloy, /loki\.source\.file "nginx_access"/);
+  assert.match(nginx, /stub_status/);
+  assert.match(nginx, /\$uri/);
+  assert.doesNotMatch(
+    nginx,
+    /\$request_uri|\$http_authorization|\$http_cookie/,
+  );
+  assert.match(nginxOverview, /nginx_http_requests_total/);
+  assert.match(nginxOverview, /nginx_connections_active/);
+  assert.match(nginxErrors, /499\|502\|504/);
+  assert.match(nginxLatency, /requestTimeSeconds/);
+  assert.match(nginxLatency, /upstreamResponseTimeSeconds/);
 });

@@ -1526,6 +1526,290 @@
       ],
       "title": "Trace receiver acceptance ratio",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 218 },
+      "id": 111,
+      "panels": [],
+      "title": "12. Saturation & Dependencies — 첫 포화 자원과 proxy 경계 확인",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "컨테이너 CPU core 사용량을 앱 서버 전체 core 수로 나눈 비율입니다. cgroup CPU quota metric이 없는 개인 서버에서 host capacity 점유를 비교합니다.",
+      "fieldConfig": {
+        "defaults": { "max": 1, "min": 0, "unit": "percentunit" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 219 },
+      "id": 66,
+      "targets": [
+        {
+          "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\"}[$__rate_interval])) / scalar(max(machine_cpu_cores{job=\"orbit-cadvisor\", environment=~\"$environment\"}))",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Container CPU share of host capacity",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "working set을 0보다 큰 cgroup memory limit으로 나눈 비율입니다. No data인 컨테이너는 finite memory limit이 설정되지 않은 상태이므로 절대 working set 패널을 확인하세요.",
+      "fieldConfig": {
+        "defaults": { "max": 1, "min": 0, "unit": "percentunit" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 219 },
+      "id": 67,
+      "targets": [
+        {
+          "expr": "sum by (name) (container_memory_working_set_bytes{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\"}) / on (name) (sum by (name) (container_spec_memory_limit_bytes{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\"}) > 0)",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Container memory limit utilization",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "OOM event와 memory allocation failure 비율, memory pressure stall 비율을 함께 봅니다. event가 0이어도 stall이 증가하면 reclaim 압력이 있는 상태입니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "ops" },
+        "overrides": [
+          {
+            "matcher": { "id": "byFrameRefID", "options": "C" },
+            "properties": [
+              { "id": "unit", "value": "percentunit" },
+              { "id": "max", "value": 1 }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 219 },
+      "id": 68,
+      "targets": [
+        {
+          "expr": "sum by (name) (rate(container_oom_events_total{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\"}[$__rate_interval]))",
+          "legendFormat": "{{name}} / OOM",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (name) (rate(container_memory_failcnt{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\"}[$__rate_interval]))",
+          "legendFormat": "{{name}} / allocation failures",
+          "refId": "B"
+        },
+        {
+          "expr": "sum by (name) (rate(container_pressure_memory_stalled_seconds_total{job=\"orbit-cadvisor\", environment=~\"$environment\", name=~\"$container\", name!=\"\"}[$__rate_interval]))",
+          "legendFormat": "{{name}} / pressure stall",
+          "refId": "C"
+        }
+      ],
+      "title": "Container memory pressure / failures",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Orbit client backend 수를 PostgreSQL max_connections로 나눈 비율입니다. exporter 자체와 template database 연결은 제외합니다.",
+      "fieldConfig": {
+        "defaults": { "max": 1, "min": 0, "unit": "percentunit" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 227 },
+      "id": 69,
+      "targets": [
+        {
+          "expr": "sum(pg_stat_activity_count{job=\"orbit-postgres\", environment=~\"$environment\", datname=\"orbit\", backend_type=\"client backend\"}) / clamp_min(max(pg_settings_max_connections{job=\"orbit-postgres\", environment=~\"$environment\"}), 1)",
+          "legendFormat": "connection utilization",
+          "refId": "A"
+        }
+      ],
+      "title": "PostgreSQL connection utilization",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Orbit client backend를 active, idle, idle in transaction 등 state별로 집계합니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 227 },
+      "id": 70,
+      "targets": [
+        {
+          "expr": "sum by (state) (pg_stat_activity_count{job=\"orbit-postgres\", environment=~\"$environment\", datname=\"orbit\", backend_type=\"client backend\"})",
+          "legendFormat": "{{state}}",
+          "refId": "A"
+        }
+      ],
+      "title": "PostgreSQL activity by state",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Orbit client backend의 wait_event_type별 수입니다. Lock, IO가 증가하면 API CPU보다 데이터 계층 대기를 먼저 의심합니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 227 },
+      "id": 71,
+      "targets": [
+        {
+          "expr": "sum by (wait_event_type) (pg_stat_activity_count{job=\"orbit-postgres\", environment=~\"$environment\", datname=\"orbit\", backend_type=\"client backend\", wait_event_type!=\"\"})",
+          "legendFormat": "{{wait_event_type}}",
+          "refId": "A"
+        }
+      ],
+      "title": "PostgreSQL waits by type",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "state별 가장 오래 열린 transaction 시간입니다. idle in transaction이 길게 유지되면 connection 고갈과 lock 유지 여부를 확인하세요.",
+      "fieldConfig": { "defaults": { "min": 0, "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 227 },
+      "id": 72,
+      "targets": [
+        {
+          "expr": "max by (state) (pg_stat_activity_max_tx_duration{job=\"orbit-postgres\", environment=~\"$environment\", datname=\"orbit\"})",
+          "legendFormat": "{{state}}",
+          "refId": "A"
+        }
+      ],
+      "title": "PostgreSQL longest transaction",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Orbit database의 lock mode별 현재 개수입니다. longest transaction과 함께 lock 누적 여부를 판단합니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 235 },
+      "id": 73,
+      "targets": [
+        {
+          "expr": "sum by (mode) (pg_locks_count{job=\"orbit-postgres\", environment=~\"$environment\", datname=\"orbit\"})",
+          "legendFormat": "{{mode}}",
+          "refId": "A"
+        }
+      ],
+      "title": "PostgreSQL locks",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Redis INFO latency percentiles의 command별 p99입니다. 값은 microseconds에서 seconds로 변환합니다.",
+      "fieldConfig": { "defaults": { "min": 0, "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 235 },
+      "id": 74,
+      "targets": [
+        {
+          "expr": "max by (job, cmd) (redis_latency_percentiles_usec{job=~\"orbit-redis|orbit-private-evidence-redis\", environment=~\"$environment\", quantile=\"99.0\"}) / 1000000",
+          "legendFormat": "{{job}} / {{cmd}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Redis command latency p99",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Redis slowlog 길이와 선택 구간의 rejected connection 증가량입니다. slowlog 내용 자체는 metric label로 수집하지 않습니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 235 },
+      "id": 75,
+      "targets": [
+        {
+          "expr": "max by (job) (redis_slowlog_length{job=~\"orbit-redis|orbit-private-evidence-redis\", environment=~\"$environment\"})",
+          "legendFormat": "{{job}} / slowlog length",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (job) (increase(redis_rejected_connections_total{job=~\"orbit-redis|orbit-private-evidence-redis\", environment=~\"$environment\"}[$__range]))",
+          "legendFormat": "{{job}} / rejected connections",
+          "refId": "B"
+        }
+      ],
+      "title": "Redis slowlog / rejected connections",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "host Nginx stub_status의 request 처리율과 active connection 수입니다. exporter scrape 자체도 request count에 포함될 수 있습니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "reqps" },
+        "overrides": [
+          {
+            "matcher": { "id": "byFrameRefID", "options": "B" },
+            "properties": [{ "id": "unit", "value": "short" }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 243 },
+      "id": 76,
+      "targets": [
+        {
+          "expr": "rate(nginx_http_requests_total{job=\"orbit-nginx\", environment=~\"$environment\"}[$__rate_interval])",
+          "legendFormat": "requests / second",
+          "refId": "A"
+        },
+        {
+          "expr": "nginx_connections_active{job=\"orbit-nginx\", environment=~\"$environment\"}",
+          "legendFormat": "active connections",
+          "refId": "B"
+        }
+      ],
+      "title": "Nginx requests / active connections",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "description": "Nginx JSON access log에서 client closed(499), bad gateway(502), gateway timeout(504)을 분리합니다. API 내부 status metric에는 보이지 않는 proxy 오류입니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 243 },
+      "id": 77,
+      "targets": [
+        {
+          "expr": "sum by (status) (count_over_time({environment=~\"$environment\", service=\"orbit-nginx\"} | json | status=~\"499|502|504\" [$__rate_interval]))",
+          "legendFormat": "HTTP {{status}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Nginx 499 / 502 / 504",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "description": "Nginx 전체 request time과 upstream response time p95입니다. 둘의 차이가 크면 Nginx 전송·client 구간, 둘 다 크면 upstream API 구간을 우선 확인합니다.",
+      "fieldConfig": { "defaults": { "min": 0, "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 243 },
+      "id": 78,
+      "targets": [
+        {
+          "expr": "quantile_over_time(0.95, {environment=~\"$environment\", service=\"orbit-nginx\"} | json | unwrap requestTimeSeconds | __error__=\"\" [$__interval])",
+          "legendFormat": "request p95",
+          "refId": "A"
+        },
+        {
+          "expr": "quantile_over_time(0.95, {environment=~\"$environment\", service=\"orbit-nginx\"} | json | unwrap upstreamResponseTimeSeconds | __error__=\"\" [$__interval])",
+          "legendFormat": "upstream p95",
+          "refId": "B"
+        }
+      ],
+      "title": "Nginx request / upstream p95",
+      "type": "timeseries"
     }
   ],
   "refresh": "10s",
@@ -1663,6 +1947,6 @@
   "timezone": "browser",
   "title": "Orbit Load Test & Observability",
   "uid": "orbit-overview",
-  "version": 6,
+  "version": 7,
   "weekStart": ""
 }

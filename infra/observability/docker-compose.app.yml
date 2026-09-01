@@ -25,6 +25,18 @@ services:
     networks: [orbit]
     restart: unless-stopped
 
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.5.1
+    command:
+      - --nginx.scrape-uri=unix:/run/orbit-nginx/status.sock:/stub_status
+      - --web.listen-address=:9113
+      - --log.format=json
+    volumes:
+      - /run/orbit-nginx:/run/orbit-nginx:ro
+    expose: ["9113"]
+    networks: [orbit]
+    restart: unless-stopped
+
   node-exporter:
     image: quay.io/prometheus/node-exporter:v1.12.1
     command:
@@ -72,11 +84,13 @@ services:
       - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
       - alloy-data:/var/lib/alloy/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log/nginx:/var/log/nginx:ro
     networks: [orbit]
     depends_on:
       - postgres-exporter
       - redis-exporter
       - private-evidence-redis-exporter
+      - nginx-exporter
       - node-exporter
       - cadvisor
     restart: unless-stopped
