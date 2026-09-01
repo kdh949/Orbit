@@ -4,6 +4,7 @@ dist/
 build/
 coverage/
 test-results/
+/results/
 playwright-report/
 .turbo/
 .vite/
@@ -42,3 +43,5 @@ sherpa-onnx-streaming-zipformer-korean-*/
 docker-compose.override.yml
 artifacts/
 .codex/
+docs/runbooks/load-testing-observability.md
+tests/load/README.md
