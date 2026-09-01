@@ -26,6 +26,8 @@ datasources:
     access: proxy
     url: http://tempo:3200
     jsonData:
+      serviceMap:
+        datasourceUid: prometheus
       tracesToLogsV2:
         datasourceUid: loki
         spanStartTimeShift: -1m

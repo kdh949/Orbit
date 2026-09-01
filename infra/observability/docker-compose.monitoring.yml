@@ -34,13 +34,18 @@ services:
 
   tempo:
     image: grafana/tempo:2.10.7
-    command: ["-config.file=/etc/tempo/tempo.yml"]
+    command:
+      - -config.expand-env=true
+      - -config.file=/etc/tempo/tempo.yml
+    environment:
+      TEMPO_METRICS_ENVIRONMENT: ${TEMPO_METRICS_ENVIRONMENT:?TEMPO_METRICS_ENVIRONMENT is required}
     ports:
       - "${MONITORING_BIND_ADDRESS:-127.0.0.1}:4318:4318"
     expose: ["3200"]
     volumes:
       - ./tempo/tempo.yml:/etc/tempo/tempo.yml:ro
       - tempo-data:/var/tempo
+    depends_on: [prometheus]
     restart: unless-stopped
 
   pyroscope:

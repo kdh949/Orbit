@@ -2,6 +2,7 @@ import pytest
 
 from app.telemetry import (
     _url_without_query_or_fragment,
+    create_python_telemetry_resource_attributes,
     resolve_python_profiling_config,
     resolve_python_telemetry_config,
 )
@@ -50,6 +51,28 @@ def test_resolve_python_telemetry_config_rejects_non_http_endpoint() -> None:
             "orbit-python-worker",
             {"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": "file:///tmp/traces"},
         )
+
+
+@pytest.mark.parametrize("sample_ratio", [0.0, 0.05, 1.0])
+def test_python_resource_attributes_record_numeric_sampling_ratio(
+    sample_ratio: float,
+) -> None:
+    config = resolve_python_telemetry_config(
+        "orbit-python-worker",
+        {
+            "APP_ENV": "staging",
+            "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": "http://alloy:4318/v1/traces",
+            "OTEL_TRACES_SAMPLER_ARG": str(sample_ratio),
+        },
+    )
+    assert config is not None
+    attributes = create_python_telemetry_resource_attributes(config)
+
+    assert attributes["orbit.trace.sample_ratio"] == sample_ratio
+    assert isinstance(attributes["orbit.trace.sample_ratio"], float)
+    assert "user.id" not in attributes
+    assert "session.id" not in attributes
+    assert "job.id" not in attributes
 
 
 def test_outbound_url_sanitizer_removes_query_and_fragment() -> None:

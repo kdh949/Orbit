@@ -28,6 +28,8 @@ export interface NodeTelemetryConfig {
   serviceVersion?: string;
 }
 
+export const TRACE_SAMPLE_RATIO_ATTRIBUTE = "orbit.trace.sample_ratio";
+
 export function resolveNodeTelemetryConfig(
   serviceName: string,
   env: NodeJS.ProcessEnv = process.env,
@@ -60,6 +62,20 @@ export function resolveNodeTelemetryConfig(
   };
 }
 
+export function createNodeTelemetryResourceAttributes(
+  config: NodeTelemetryConfig,
+): Record<string, string | number> {
+  return {
+    [ATTR_SERVICE_NAME]: config.serviceName,
+    [ATTR_SERVICE_NAMESPACE]: "orbit",
+    [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: config.environment,
+    [TRACE_SAMPLE_RATIO_ATTRIBUTE]: config.sampleRatio,
+    ...(config.serviceVersion
+      ? { [ATTR_SERVICE_VERSION]: config.serviceVersion }
+      : {}),
+  };
+}
+
 export function startNodeTelemetry(
   serviceName: string,
   env: NodeJS.ProcessEnv = process.env,
@@ -67,17 +83,10 @@ export function startNodeTelemetry(
   const config = resolveNodeTelemetryConfig(serviceName, env);
   if (!config) return null;
 
-  const attributes: Record<string, string> = {
-    [ATTR_SERVICE_NAME]: config.serviceName,
-    [ATTR_SERVICE_NAMESPACE]: "orbit",
-    [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: config.environment,
-  };
-  if (config.serviceVersion) {
-    attributes[ATTR_SERVICE_VERSION] = config.serviceVersion;
-  }
-
   const sdk = new NodeSDK({
-    resource: resourceFromAttributes(attributes),
+    resource: resourceFromAttributes(
+      createNodeTelemetryResourceAttributes(config),
+    ),
     sampler: new ParentBasedSampler({
       root: new TraceIdRatioBasedSampler(config.sampleRatio),
     }),

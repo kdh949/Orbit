@@ -43,6 +43,7 @@ class PythonProfilingConfig:
 _provider: TracerProvider | None = None
 _libraries_instrumented = False
 _profiling_started = False
+TRACE_SAMPLE_RATIO_ATTRIBUTE = "orbit.trace.sample_ratio"
 
 
 def resolve_python_telemetry_config(
@@ -58,9 +59,7 @@ def resolve_python_telemetry_config(
 
     parsed_endpoint = urlsplit(endpoint)
     if parsed_endpoint.scheme not in {"http", "https"} or not parsed_endpoint.netloc:
-        raise ValueError(
-            "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT must be an HTTP(S) URL"
-        )
+        raise ValueError("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT must be an HTTP(S) URL")
 
     sample_ratio_value = env.get("OTEL_TRACES_SAMPLER_ARG", "1").strip() or "1"
     try:
@@ -78,6 +77,22 @@ def resolve_python_telemetry_config(
         service_name=service_name,
         service_version=service_version,
     )
+
+
+def create_python_telemetry_resource_attributes(
+    config: PythonTelemetryConfig,
+) -> dict[str, str | float]:
+    return {
+        "service.name": config.service_name,
+        "service.namespace": "orbit",
+        "deployment.environment.name": config.environment,
+        TRACE_SAMPLE_RATIO_ATTRIBUTE: config.sample_ratio,
+        **(
+            {"service.version": config.service_version}
+            if config.service_version
+            else {}
+        ),
+    }
 
 
 def resolve_python_profiling_config(
@@ -213,16 +228,8 @@ def _get_or_create_provider(
     if _provider is not None:
         return _provider
 
-    attributes: dict[str, str] = {
-        "service.name": config.service_name,
-        "service.namespace": "orbit",
-        "deployment.environment.name": config.environment,
-    }
-    if config.service_version:
-        attributes["service.version"] = config.service_version
-
     provider = TracerProvider(
-        resource=Resource.create(attributes),
+        resource=Resource.create(create_python_telemetry_resource_attributes(config)),
         sampler=ParentBased(TraceIdRatioBased(config.sample_ratio)),
     )
     if span_profiles_enabled:

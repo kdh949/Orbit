@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveNodeTelemetryConfig } from "./node";
+import {
+  createNodeTelemetryResourceAttributes,
+  resolveNodeTelemetryConfig,
+} from "./node";
 
 describe("resolveNodeTelemetryConfig", () => {
   it("keeps telemetry disabled when no OTLP endpoint is configured", () => {
@@ -43,4 +46,24 @@ describe("resolveNodeTelemetryConfig", () => {
       }),
     ).toThrow(/must use http or https/);
   });
+});
+
+describe("createNodeTelemetryResourceAttributes", () => {
+  it.each([0, 0.05, 1])(
+    "records sampling ratio %s as a numeric resource attribute",
+    (sampleRatio) => {
+      const attributes = createNodeTelemetryResourceAttributes({
+        endpoint: "http://alloy:4318/v1/traces",
+        environment: "staging",
+        sampleRatio,
+        serviceName: "orbit-api",
+      });
+
+      expect(attributes["orbit.trace.sample_ratio"]).toBe(sampleRatio);
+      expect(typeof attributes["orbit.trace.sample_ratio"]).toBe("number");
+      expect(Object.keys(attributes)).not.toContain("user.id");
+      expect(Object.keys(attributes)).not.toContain("session.id");
+      expect(Object.keys(attributes)).not.toContain("job.id");
+    },
+  );
 });
