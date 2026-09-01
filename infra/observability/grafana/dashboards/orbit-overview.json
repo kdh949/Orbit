@@ -1011,6 +1011,124 @@
       ],
       "title": "k6 end-to-end latency percentiles",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 140 },
+      "id": 107,
+      "panels": [],
+      "title": "8. Distributed Tracing — 지표에서 trace·로그·profile로 이동",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "description": "Tempo metrics-generator가 만든 service graph입니다. API p95 증가 시 지연과 오류가 집중된 서비스 간 edge를 먼저 찾으세요.",
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 141 },
+      "id": 43,
+      "targets": [
+        {
+          "queryType": "serviceMap",
+          "refId": "A",
+          "serviceMapIncludeNamespace": true,
+          "serviceMapQuery": "{environment=~\"$environment\"}",
+          "serviceMapUseNativeHistograms": false
+        }
+      ],
+      "title": "Service Graph",
+      "type": "nodeGraph"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "5% head-sampled span에 orbit.trace.sample_ratio multiplier를 적용한 전체 호출률 추정치입니다. sampling 오차가 있으므로 정확한 과금·감사 수치로 사용하지 마세요.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "ops" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 155 },
+      "id": 44,
+      "targets": [
+        {
+          "expr": "sum by (service) (rate(traces_spanmetrics_calls_total{environment=~\"$environment\"}[$__rate_interval]))",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ],
+      "title": "서비스별 span 호출률",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "서비스별 STATUS_CODE_ERROR span 비율입니다. 오류 표본이 없는 서비스는 0으로 표시하며, 5% 표본에서 희귀 오류가 누락될 수 있습니다.",
+      "fieldConfig": {
+        "defaults": { "max": 1, "min": 0, "unit": "percentunit" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 155 },
+      "id": 45,
+      "targets": [
+        {
+          "expr": "(sum by (service) (rate(traces_spanmetrics_calls_total{environment=~\"$environment\", status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])) / clamp_min(sum by (service) (rate(traces_spanmetrics_calls_total{environment=~\"$environment\"}[$__rate_interval])), 0.000001)) or on (service) (0 * sum by (service) (rate(traces_spanmetrics_calls_total{environment=~\"$environment\"}[$__rate_interval])))",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ],
+      "title": "서비스별 오류율",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "샘플링 multiplier로 가중된 span latency histogram의 서비스별 p95 추정치입니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "s" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 155 },
+      "id": 46,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, service) (rate(traces_spanmetrics_latency_bucket{environment=~\"$environment\"}[$__rate_interval])))",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ],
+      "title": "서비스별 span p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "description": "저장된 5% trace 표본 중 선택한 임계값보다 느린 최신 20개입니다. trace ID를 눌러 waterfall과 span의 Loki/Pyroscope 링크를 확인하세요.",
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 163 },
+      "id": 47,
+      "targets": [
+        {
+          "limit": 20,
+          "query": "{ resource.deployment.environment.name =~ \"$environment\" && trace:duration > $slow_trace_threshold } with (most_recent=true)",
+          "queryType": "traceql",
+          "refId": "A",
+          "spanLimit": 3,
+          "tableType": "traces"
+        }
+      ],
+      "title": "최근 느린 트레이스",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "description": "저장된 5% trace 표본 중 error status span을 포함한 최신 20개입니다. 모든 실패를 보장하지 않으므로 API Prometheus 오류율을 이상 감지 기준으로 사용하세요.",
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 163 },
+      "id": 48,
+      "targets": [
+        {
+          "limit": 20,
+          "query": "{ resource.deployment.environment.name =~ \"$environment\" && span:status = error } with (most_recent=true)",
+          "queryType": "traceql",
+          "refId": "A",
+          "spanLimit": 3,
+          "tableType": "traces"
+        }
+      ],
+      "title": "최근 실패 트레이스",
+      "type": "table"
     }
   ],
   "refresh": "10s",
@@ -1031,6 +1149,20 @@
         "refresh": 1,
         "sort": 1,
         "type": "query"
+      },
+      {
+        "current": { "text": "1s", "value": "1s" },
+        "label": "Slow trace threshold",
+        "name": "slow_trace_threshold",
+        "options": [
+          { "selected": false, "text": "250ms", "value": "250ms" },
+          { "selected": false, "text": "500ms", "value": "500ms" },
+          { "selected": true, "text": "1s", "value": "1s" },
+          { "selected": false, "text": "2s", "value": "2s" },
+          { "selected": false, "text": "5s", "value": "5s" }
+        ],
+        "query": "250ms,500ms,1s,2s,5s",
+        "type": "custom"
       },
       {
         "allValue": ".*",
@@ -1134,6 +1266,6 @@
   "timezone": "browser",
   "title": "Orbit Load Test & Observability",
   "uid": "orbit-overview",
-  "version": 4,
+  "version": 5,
   "weekStart": ""
 }

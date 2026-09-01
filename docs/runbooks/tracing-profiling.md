@@ -5,11 +5,12 @@ Orbit의 분산 추적은 앱 서버 Alloy가 OTLP/HTTP trace를 수신해 모�
 ## 도입 순서
 
 1. 모니터링 서버에서 Tempo, Pyroscope, Grafana를 먼저 시작한다.
-2. 앱 서버에서 exporter와 Alloy를 시작하고 Alloy OTLP receiver를 확인한다.
-3. API·Worker·Python Worker trace를 5% 샘플링으로 활성화한다.
-4. trace와 Loki 로그 상호 이동을 확인한다.
-5. CPU profile을 50Hz 상당의 보수적 설정으로 활성화한다.
-6. Python span의 `pyroscope.profile.id`와 flame graph 연결을 확인한다.
+2. Tempo metrics-generator와 Prometheus remote write를 확인한다.
+3. 앱 서버에서 exporter와 Alloy를 시작하고 Alloy OTLP receiver를 확인한다.
+4. API·Worker·Python Worker trace를 5% 샘플링으로 활성화한다.
+5. Service Graph와 span metric을 확인한 뒤 trace와 Loki 로그 상호 이동을 확인한다.
+6. CPU profile을 50Hz 상당의 보수적 설정으로 활성화한다.
+7. Python span의 `pyroscope.profile.id`와 flame graph 연결을 확인한다.
 
 ## 네트워크
 
@@ -27,7 +28,7 @@ Alloy의 `4318`은 앱 서버의 `orbit_default` Docker network에만 노출한�
 
 ## 모니터링 서버 시작
 
-`infra/observability/monitoring.env.example`을 저장소 밖의 권한 600 파일로 복사하고 `MONITORING_BIND_ADDRESS`를 모니터링 서버 VPN IP로 바꾼다.
+`infra/observability/monitoring.env.example`을 저장소 밖의 권한 600 파일로 복사하고 `MONITORING_BIND_ADDRESS`를 모니터링 서버 VPN IP로 바꾼다. `TEMPO_METRICS_ENVIRONMENT`에는 앱의 bounded environment 값과 같은 값(예: `staging`)을 넣는다.
 
 ```bash
 docker compose --env-file /secure/path/monitoring.env \
@@ -37,6 +38,8 @@ docker compose --env-file /secure/path/monitoring.env \
 ```
 
 Prometheus 보존 기간은 30일, Loki와 Tempo는 14일, Pyroscope는 7일이다. 디스크 여유가 15% 미만이 되면 새 부하 테스트를 시작하지 않는다.
+
+Tempo는 `service-graphs`, `span-metrics-latency`, `span-metrics-count`만 생성한다. size metric, `target_info`, instance label, status message, 사용자 정의 dimension은 사용하지 않는다. 생성 metric의 `environment`는 trace dimension이 아니라 `TEMPO_METRICS_ENVIRONMENT` static external label이다.
 
 ## 앱 서버 Alloy 시작
 
@@ -66,6 +69,8 @@ PYROSCOPE_CPU_SAMPLE_RATE=50
 ```
 
 - `OTEL_TRACES_SAMPLER_ARG=0.05`는 root trace 5%를 수집한다.
+- 동일한 값은 각 runtime의 숫자 resource attribute `orbit.trace.sample_ratio`에도 기록된다. Tempo는 이를 역수 multiplier로 사용해 count와 histogram 표본을 20배 가중한다. 이 속성은 Prometheus label로 생성하지 않는다.
+- 파생 호출률·오류율·p95는 전체 트래픽의 추정치다. 희귀 오류가 5% 표본에 포함되지 않을 수 있으며, 저장된 느린/실패 trace 목록도 모든 요청을 보장하지 않는다.
 - Node의 `20000µs`와 Python의 `50Hz`는 초당 약 50개 CPU sample이다.
 - heap/allocation profiling은 활성화하지 않는다.
 - environment와 service version 외에 사용자·세션·프로젝트·작업 ID를 resource/profile label로 추가하지 않는다.
@@ -75,10 +80,25 @@ PYROSCOPE_CPU_SAMPLE_RATE=50
 ## Grafana 확인
 
 1. `Connections > Data sources`에서 Prometheus, Loki, Tempo, Pyroscope 연결을 각각 테스트한다.
-2. Tempo Explore에서 `service.name`이 `orbit-api`, `orbit-worker`, `orbit-python-worker`인 trace를 찾는다.
-3. span의 logs 링크가 같은 `traceId`를 가진 Loki JSON 로그를 여는지 확인한다.
-4. Pyroscope Explore에서 `service_name`별 CPU flame graph를 확인한다.
-5. Python의 충분히 긴 local root span에서 `Profiles for this span` 링크와 embedded flame graph를 표본 확인한다.
+2. `Orbit Load Test & Observability`의 `8. Distributed Tracing` 행에서 Service Graph, 서비스별 span 호출률·오류율·p95를 확인한다.
+3. `최근 느린 트레이스` 또는 `최근 실패 트레이스`에서 trace ID를 눌러 waterfall을 연다.
+4. Python span의 logs 링크가 같은 `traceId`를 가진 Loki JSON 로그를 여는지 확인한다.
+5. Pyroscope Explore에서 `service_name`별 CPU flame graph를 확인한다.
+6. Python의 충분히 긴 local root span에서 `Profiles for this span` 링크와 embedded flame graph를 표본 확인한다.
+
+권장 진단 흐름은 `API p95 증가 감지 → Service Graph에서 Python edge 지연 확인 → 느린 trace waterfall 열기 → 해당 span의 Loki 로그 확인 → Pyroscope CPU flame graph 확인`이다. Node API·Worker는 span 단위 profile이 아니라 같은 service와 time window의 CPU profile로 이동한다.
+
+## 배포 갱신
+
+모니터링 서버에서는 환경 파일에 `TEMPO_METRICS_ENVIRONMENT`를 추가한 뒤 Prometheus·Tempo·Grafana를 재생성한다.
+
+```bash
+docker compose --env-file /secure/path/monitoring.env \
+  -f infra/observability/docker-compose.monitoring.yml \
+  up -d --force-recreate prometheus tempo grafana
+```
+
+앱 서버에서는 새 image SHA로 API·Worker·Python Worker를 기존 배포 스크립트로 재배포한다. 새 포트나 데이터 migration은 없다. 배포 직후 대규모 부하를 실행하지 말고 정상 요청 1개와 의도된 오류 요청 1개 이하로 metric, exemplar, trace/log/profile 링크만 확인한다.
 
 확인용 네트워크 요청은 health/API 작업 1~2개로 제한한다. 이는 성능 결과가 아니라 연결과 구성 오류 확인이다. ramp, soak, 수백~수천 요청은 이 단계에서 실행하지 않는다.
 
@@ -89,4 +109,4 @@ PYROSCOPE_CPU_SAMPLE_RATE=50
 - 프로파일러와 exporter 오류 메시지에 endpoint credential이나 사용자 payload를 추가하지 않는다.
 - 대규모 부하 테스트 결과에는 Git SHA, image SHA, trace sampling ratio, CPU sampling rate, 실행 시간 범위를 함께 보관한다.
 
-구성 옵션은 [Grafana Pyroscope Node.js SDK](https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/nodejs/), [Python SDK](https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/python/), [Tempo datasource provisioning](https://grafana.com/docs/grafana/latest/datasources/tempo/configure-tempo-data-source/provision/)을 기준으로 한다.
+구성 옵션은 [Grafana Pyroscope Node.js SDK](https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/nodejs/), [Python SDK](https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/python/), [Tempo datasource provisioning](https://grafana.com/docs/grafana/latest/datasources/tempo/configure-tempo-data-source/provision/), [Grafana Service Graph](https://grafana.com/docs/grafana/latest/datasources/tempo/service-graph/), [TraceQL dashboard query](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/)를 기준으로 한다.
