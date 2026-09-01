@@ -45,11 +45,35 @@ Tempo는 `service-graphs`, `span-metrics-latency`, `span-metrics-count`만 생�
 
 `infra/observability/app.env.example`을 저장소 밖의 권한 600 파일로 복사한다. URL에는 모니터링 서버 VPN IP를 사용하고 exporter credential은 secret store에서 주입한다.
 
+호스트 Nginx를 사용하는 서버에서는 exporter를 시작하기 전에 status socket과 bounded JSON access log를 설치한다. 기존 Orbit virtual host의 `http` 블록이 아니라 Nginx 최상위 `http` context에서 아래 파일이 include되어야 한다. 배포판 기본 설정이 `/etc/nginx/conf.d/*.conf`를 include한다면 다음 명령을 그대로 사용할 수 있다.
+
+```bash
+sudo install -m 0644 infra/observability/nginx/orbit-nginx.tmpfiles.conf \
+  /etc/tmpfiles.d/orbit-nginx.conf
+sudo systemd-tmpfiles --create /etc/tmpfiles.d/orbit-nginx.conf
+
+sudo install -m 0644 infra/observability/nginx/orbit-observability.conf \
+  /etc/nginx/conf.d/orbit-observability.conf
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+`/run/orbit-nginx/status.sock`은 호스트 포트로 공개되지 않고 `nginx-exporter` 컨테이너에 read-only로 마운트된다. access log에는 method, normalized `$uri`, status, request/upstream duration과 byte 수만 기록하며 query string, cookie, authorization, client IP는 기록하지 않는다.
+
 ```bash
 docker compose --env-file /secure/path/app-observability.env \
   -f infra/observability/docker-compose.app.yml config --quiet
 docker compose --env-file /secure/path/app-observability.env \
   -f infra/observability/docker-compose.app.yml up -d
+```
+
+설치 후 `nginx-exporter`와 Alloy 상태만 확인한다. 외부 요청을 생성하지 않아도 Nginx 상태 지표의 scrape 여부와 기존 access log 유입 여부를 확인할 수 있다.
+
+```bash
+docker compose --env-file /secure/path/app-observability.env \
+  -f infra/observability/docker-compose.app.yml ps nginx-exporter alloy
+docker compose --env-file /secure/path/app-observability.env \
+  -f infra/observability/docker-compose.app.yml logs --tail=50 nginx-exporter alloy
 ```
 
 ## 애플리케이션 설정
