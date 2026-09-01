@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import time
+from collections.abc import Callable
 from typing import Any, Literal, cast
 
 from fastapi import APIRouter, HTTPException, Request
@@ -16,6 +18,9 @@ from app.slide_question_web_research import (
 
 
 router = APIRouter()
+
+LOAD_TEST_GUIDE_DELAY_MIN_MS = 20_000
+LOAD_TEST_GUIDE_DELAY_MAX_MS = 30_000
 
 
 class SlideQuestionGuideDeckContextSlide(BaseModel):
@@ -238,6 +243,12 @@ def generate_slide_question_guides_route(
 ) -> SlideQuestionGuideResponse:
     config = cast(PythonWorkerConfig, request.app.state.config)
     try:
+        if config.load_test_provider_mode == "deterministic":
+            return generate_deterministic_slide_question_guides(
+                payload,
+                seed=config.load_test_provider_seed,
+                error_rate_percent=config.load_test_provider_error_rate_percent,
+            )
         return generate_slide_question_guides(
             payload,
             model=config.openai_model,
@@ -384,6 +395,106 @@ def generate_slide_question_guides(
         raise SlideQuestionGuideGenerationError(
             "Slide question guide generation failed."
         ) from error
+
+
+def generate_deterministic_slide_question_guides(
+    payload: SlideQuestionGuideRequest,
+    *,
+    seed: int,
+    error_rate_percent: int,
+    sleeper: Callable[[float], None] | None = None,
+) -> SlideQuestionGuideResponse:
+    target_slide = next(
+        slide for slide in payload.slides if slide.slide_id == payload.target_slide_id
+    )
+    digest = hashlib.sha256(
+        (
+            f"{seed}:{payload.target_slide_id}:{payload.deck_version}:"
+            f"{target_slide.content_hash}"
+        ).encode("utf-8")
+    ).hexdigest()
+    delay_range_ms = LOAD_TEST_GUIDE_DELAY_MAX_MS - LOAD_TEST_GUIDE_DELAY_MIN_MS
+    delay_ms = LOAD_TEST_GUIDE_DELAY_MIN_MS + (
+        int(digest[:8], 16) % (delay_range_ms + 1)
+    )
+    (sleeper or time.sleep)(delay_ms / 1_000)
+
+    if int(digest[8:16], 16) % 100 < error_rate_percent:
+        raise SlideQuestionGuideGenerationError(
+            "Deterministic slide question guide provider failure."
+        )
+
+    has_target_source = bool(
+        target_slide.title.strip()
+        or target_slide.content.strip()
+        or target_slide.speaker_notes.strip()
+    )
+    if not has_target_source and not payload.references:
+        items = _insufficient_items()
+    else:
+        source_ref: SlideQuestionGuideSourceRef
+        if has_target_source:
+            source_ref = SlideQuestionGuideSlideSourceRef(
+                kind="slide",
+                slideId=target_slide.slide_id,
+                objectId=None,
+                deckVersion=target_slide.deck_version,
+                contentHash=target_slide.content_hash,
+            )
+        else:
+            reference = payload.references[0]
+            source_ref = SlideQuestionGuideReferenceSourceRef(
+                kind="reference",
+                fileId=reference.file_id,
+                chunkId=reference.chunk_id,
+                contentHash=reference.content_hash,
+            )
+        question_specs: list[
+            tuple[Literal["evidence", "objection", "decision"], str]
+        ] = [
+            ("evidence", "이 슬라이드의 핵심 주장을 뒷받침하는 근거는 무엇인가요?"),
+            ("objection", "이 슬라이드의 주장에 제기될 수 있는 반론은 무엇인가요?"),
+            ("decision", "이 슬라이드를 바탕으로 어떤 결정을 내려야 하나요?"),
+        ]
+        items = [
+            SlideQuestionGuideItem(
+                questionType=question_type,
+                questionText=question_text,
+                supportState="grounded",
+                keyConcepts=[
+                    SlideQuestionGuideKeyConcept(
+                        label="부하 테스트용 결정론적 근거",
+                        sourceRefs=[source_ref],
+                    )
+                ],
+                suggestedAnswer=SlideQuestionGuideSuggestedAnswer(
+                    summary="제공된 슬라이드 근거 범위에서 핵심 내용을 설명합니다.",
+                    structure=["결론", "근거", "한계"],
+                    caveats=["부하 테스트용 결정론적 응답입니다."],
+                ),
+                remediation=None,
+                sourceRefs=[source_ref],
+            )
+            for question_type, question_text in question_specs
+        ]
+
+    return SlideQuestionGuideResponse(
+        items=items,
+        model="deterministic-load-test-v1",
+        research=OfficialWebResearchSummary(
+            status="unavailable",
+            attempts=0,
+            officialSourceCount=0,
+            issueCodes=["query-unavailable"],
+            researchedAt=None,
+        ),
+        webSources=[],
+        timings=SlideQuestionGuideTimings(
+            webSearchMs=0,
+            generationMs=delay_ms,
+            totalProviderMs=delay_ms,
+        ),
+    )
 
 
 def _instructions() -> str:

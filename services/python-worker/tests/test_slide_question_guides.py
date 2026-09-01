@@ -2,9 +2,12 @@ import json
 from types import SimpleNamespace
 from typing import Any
 
+import app.slide_question_guides as slide_question_guides_module
 from app.slide_question_guides import (
     SlideQuestionGuideRequest,
+    generate_deterministic_slide_question_guides,
     generate_slide_question_guides,
+    generate_slide_question_guides_route,
 )
 
 
@@ -160,6 +163,66 @@ def test_web_search_failure_degrades_to_slide_only_generation() -> None:
     assert payload["research"]["issueCodes"] == ["provider-call-failed"]
     assert payload["webSources"] == []
     assert all(item["supportState"] == "grounded" for item in payload["items"])
+
+
+def test_deterministic_provider_delays_and_returns_valid_items() -> None:
+    delays: list[float] = []
+
+    first = generate_deterministic_slide_question_guides(
+        source_request(),
+        seed=42,
+        error_rate_percent=0,
+        sleeper=delays.append,
+    )
+    second = generate_deterministic_slide_question_guides(
+        source_request(),
+        seed=42,
+        error_rate_percent=0,
+        sleeper=delays.append,
+    )
+
+    assert len(delays) == 2
+    assert 20 <= delays[0] <= 30
+    assert delays[0] == delays[1]
+    assert first == second
+    payload = first.model_dump(by_alias=True)
+    assert payload["model"] == "deterministic-load-test-v1"
+    assert [item["questionType"] for item in payload["items"]] == [
+        "evidence",
+        "objection",
+        "decision",
+    ]
+    assert all(item["supportState"] == "grounded" for item in payload["items"])
+    assert all(
+        item["sourceRefs"][0]["slideId"] == "slide-1" for item in payload["items"]
+    )
+    assert 20_000 <= payload["timings"]["totalProviderMs"] <= 30_000
+
+
+def test_route_uses_deterministic_provider_without_openai(
+    monkeypatch: Any,
+) -> None:
+    delays: list[float] = []
+    monkeypatch.setattr(slide_question_guides_module.time, "sleep", delays.append)
+    request = SimpleNamespace(
+        app=SimpleNamespace(
+            state=SimpleNamespace(
+                config=SimpleNamespace(
+                    load_test_provider_mode="deterministic",
+                    load_test_provider_seed=7,
+                    load_test_provider_error_rate_percent=0,
+                    openai_model="unused",
+                    openai_api_key=None,
+                )
+            )
+        )
+    )
+
+    response = generate_slide_question_guides_route(source_request(), request)
+
+    assert len(delays) == 1
+    assert 20 <= delays[0] <= 30
+    assert response.model == "deterministic-load-test-v1"
 
 
 def source_request() -> SlideQuestionGuideRequest:
