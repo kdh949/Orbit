@@ -18,7 +18,11 @@ if (png.byteLength > 1024)
 
 export const options = {
   scenarios: { file_round_trip: scenarioOptions() },
-  thresholds: { checks: ["rate>0.99"], http_req_failed: ["rate<0.01"] },
+  thresholds: {
+    checks: ["rate>0.99"],
+    dropped_iterations: ["count==0"],
+    http_req_failed: ["rate<0.01"],
+  },
 };
 
 export default function () {

@@ -3,6 +3,15 @@ import { buildK6Profile } from "../lib/profile.js";
 export const profile = buildK6Profile(__ENV);
 
 export function scenarioOptions() {
+  if (profile.executor === "ramping-arrival-rate") {
+    return {
+      executor: "ramping-arrival-rate",
+      startRate: profile.startRate,
+      timeUnit: profile.timeUnit,
+      preAllocatedVUs: profile.preAllocatedVUs,
+      stages: profile.stages,
+    };
+  }
   return {
     executor: "per-vu-iterations",
     vus: profile.vus,

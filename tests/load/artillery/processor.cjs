@@ -2,7 +2,15 @@ const { performance } = require("node:perf_hooks");
 const { randomUUID } = require("node:crypto");
 const { io } = require("socket.io-client");
 
-module.exports = { assertSafety, runRealtimeScenario };
+const REALTIME_PROFILES = {
+  smoke: { rampDurationMs: 0, submissionWindowMs: 0 },
+  average: { rampDurationMs: 60_000, submissionWindowMs: 30_000 },
+  load: { rampDurationMs: 120_000, submissionWindowMs: 10_000 },
+  stress: { rampDurationMs: 180_000, submissionWindowMs: 3_000 },
+  acceptance: { rampDurationMs: 300_000, submissionWindowMs: 60_000 },
+};
+
+module.exports = { assertSafety, getRealtimeProfile, runRealtimeScenario };
 
 function assertSafety(_context, _events, done) {
   try {
@@ -13,7 +21,7 @@ function assertSafety(_context, _events, done) {
   }
 }
 
-async function runRealtimeScenario(context, events, done) {
+async function runRealtimeScenario(context, events) {
   let socket;
   try {
     const env = validateEnvironment();
@@ -119,10 +127,9 @@ async function runRealtimeScenario(context, events, done) {
       throw new Error(`revision event ${String(expectedRevision)} timed out`);
     events.emit("histogram", "orbit_revision_event_ms", receivedAt - startedAt);
     events.emit("counter", "orbit_realtime_succeeded", 1);
-    done();
   } catch (error) {
     events.emit("counter", "orbit_realtime_failed", 1);
-    done(error);
+    throw error;
   } finally {
     socket?.disconnect();
   }
@@ -151,16 +158,16 @@ function validateEnvironment() {
     );
   }
   const profile = process.env.LOAD_PROFILE || "smoke";
-  if (profile === "acceptance" && process.env.CONFIRM_LARGE_LOAD !== "true") {
-    throw new Error("Acceptance profile requires CONFIRM_LARGE_LOAD=true.");
+  const profileConfig = getRealtimeProfile(profile);
+  if (profile !== "smoke" && process.env.CONFIRM_LARGE_LOAD !== "true") {
+    throw new Error(`${profile} profile requires CONFIRM_LARGE_LOAD=true.`);
   }
-  if (profile === "acceptance" && !process.env.ARTILLERY_PUSHGATEWAY_URL) {
-    throw new Error("Acceptance profile requires ARTILLERY_PUSHGATEWAY_URL.");
+  if (profile !== "smoke" && !process.env.ARTILLERY_PUSHGATEWAY_URL) {
+    throw new Error(`${profile} profile requires ARTILLERY_PUSHGATEWAY_URL.`);
   }
-  if (!["smoke", "acceptance"].includes(profile))
-    throw new Error(`Unsupported LOAD_PROFILE: ${profile}`);
   return {
     profile,
+    ...profileConfig,
     baseUrl: target.origin,
     sessionId: process.env.SESSION_ID,
     projectId: process.env.PROJECT_ID,
@@ -173,6 +180,12 @@ function validateEnvironment() {
   };
 }
 
+function getRealtimeProfile(profile) {
+  const config = REALTIME_PROFILES[profile];
+  if (!config) throw new Error(`Unsupported LOAD_PROFILE: ${profile}`);
+  return config;
+}
+
 function connect(socket) {
   return new Promise((resolve, reject) => {
     socket.once("connect", resolve);
@@ -182,9 +195,9 @@ function connect(socket) {
 }
 
 async function waitForScheduledSubmission(uuid, env) {
-  if (env.profile !== "acceptance") return;
-  const offsetMs = stableHash(String(uuid)) % 60_000;
-  const waitMs = env.startedAtMs + 300_000 + offsetMs - Date.now();
+  if (env.submissionWindowMs === 0) return;
+  const offsetMs = stableHash(String(uuid)) % env.submissionWindowMs;
+  const waitMs = env.startedAtMs + env.rampDurationMs + offsetMs - Date.now();
   if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
 }
 

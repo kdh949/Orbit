@@ -11,7 +11,11 @@ if (!__ENV.PROJECT_ID) throw new Error("PROJECT_ID is required.");
 
 export const options = {
   scenarios: { async_worker_health: scenarioOptions() },
-  thresholds: { checks: ["rate>0.99"], http_req_failed: ["rate<0.01"] },
+  thresholds: {
+    checks: ["rate>0.99"],
+    dropped_iterations: ["count==0"],
+    http_req_failed: ["rate<0.01"],
+  },
 };
 
 export default function () {

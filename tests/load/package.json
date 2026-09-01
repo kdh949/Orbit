@@ -6,6 +6,9 @@
   "scripts": {
     "test": "node --test safety.test.mjs",
     "artillery:smoke": "node run-artillery.mjs smoke",
+    "artillery:average": "node run-artillery.mjs average",
+    "artillery:load": "node run-artillery.mjs load",
+    "artillery:stress": "node run-artillery.mjs stress",
     "artillery:acceptance": "node run-artillery.mjs acceptance"
   },
   "dependencies": {

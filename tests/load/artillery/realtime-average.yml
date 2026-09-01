@@ -1,0 +1,29 @@
+config:
+  target: "{{ $env.BASE_URL }}"
+  processor: "./processor.cjs"
+  phases:
+    - name: ramp-50-sockets-over-1m
+      duration: 60
+      arrivalCount: 50
+      maxVusers: 50
+  plugins:
+    publish-metrics:
+      - type: prometheus
+        pushgateway: "{{ $env.ARTILLERY_PUSHGATEWAY_URL }}"
+        prefix: orbit_load_test
+        tags:
+          - "scenario:audience-revision-average"
+    ensure:
+      thresholds:
+        - "orbit_http_submit_ms.p95": 1000
+        - "orbit_revision_event_ms.p95": 1000
+      conditions:
+        - expression: "vusers.failed == 0"
+          strict: true
+before:
+  flow:
+    - function: assertSafety
+scenarios:
+  - name: audience-revision-average
+    flow:
+      - function: runRealtimeScenario

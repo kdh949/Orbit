@@ -3,8 +3,9 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const profile = process.argv[2];
-if (!["smoke", "acceptance"].includes(profile))
-  throw new Error("Expected smoke or acceptance profile.");
+const supportedProfiles = ["smoke", "average", "load", "stress", "acceptance"];
+if (!supportedProfiles.includes(profile))
+  throw new Error(`Expected one of: ${supportedProfiles.join(", ")}.`);
 if (!process.env.BASE_URL) throw new Error("BASE_URL is required.");
 const target = new URL(process.env.BASE_URL);
 if (
@@ -13,11 +14,11 @@ if (
 ) {
   throw new Error("orbit.dhkim.cloud requires CONFIRM_ORBIT_DHKIM_CLOUD=true.");
 }
-if (profile === "acceptance" && process.env.CONFIRM_LARGE_LOAD !== "true") {
-  throw new Error("Acceptance profile requires CONFIRM_LARGE_LOAD=true.");
+if (profile !== "smoke" && process.env.CONFIRM_LARGE_LOAD !== "true") {
+  throw new Error(`${profile} profile requires CONFIRM_LARGE_LOAD=true.`);
 }
-if (profile === "acceptance" && !process.env.ARTILLERY_PUSHGATEWAY_URL) {
-  throw new Error("Acceptance profile requires ARTILLERY_PUSHGATEWAY_URL.");
+if (profile !== "smoke" && !process.env.ARTILLERY_PUSHGATEWAY_URL) {
+  throw new Error(`${profile} profile requires ARTILLERY_PUSHGATEWAY_URL.`);
 }
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
