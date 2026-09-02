@@ -254,6 +254,10 @@ test("Nginx metrics and JSON logs are collected without exposing a host port", a
 
   assert.match(compose, /nginx-exporter:/);
   assert.match(compose, /unix:\/run\/orbit-nginx\/status\.sock:\/stub_status/);
+  assert.match(
+    compose,
+    /OBSERVABILITY_ENVIRONMENT: \$\{OBSERVABILITY_ENVIRONMENT:-staging\}/,
+  );
   assert.doesNotMatch(nginxExporterBlock, /\n\s+ports:/);
   assert.match(alloy, /nginx-exporter:9113/);
   assert.match(alloy, /loki\.source\.file "nginx_access"/);
