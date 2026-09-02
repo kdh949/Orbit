@@ -19,9 +19,21 @@ describe("resolveNodeProfilingConfig", () => {
       applicationName: "orbit-api",
       environment: "staging",
       sampleIntervalMicros: 20_000,
-      serverAddress: "http://monitoring.internal:4040/",
+      serverAddress: "http://monitoring.internal:4040",
       serviceVersion: "test-sha",
     });
+  });
+
+  it.each([
+    "http://monitoring.internal:4040",
+    "http://monitoring.internal:4040/",
+  ])("removes a trailing slash from server address %s", (serverAddress) => {
+    expect(
+      resolveNodeProfilingConfig("orbit-api", {
+        PYROSCOPE_ENABLED: "true",
+        PYROSCOPE_SERVER_ADDRESS: serverAddress,
+      })?.serverAddress,
+    ).toBe("http://monitoring.internal:4040");
   });
 
   it.each(["9999", "1000001", "20.5", "invalid"])(
@@ -67,7 +79,7 @@ describe("startNodeProfiling", () => {
 
     expect(init).toHaveBeenCalledWith({
       appName: "orbit-worker",
-      serverAddress: "http://monitoring.internal:4040/",
+      serverAddress: "http://monitoring.internal:4040",
       tags: { environment: "staging" },
       wall: {
         collectCpuTime: true,

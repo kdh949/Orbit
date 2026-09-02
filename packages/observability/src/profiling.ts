@@ -66,7 +66,7 @@ export function resolveNodeProfilingConfig(
     applicationName,
     environment: env.APP_ENV?.trim() || "local",
     sampleIntervalMicros,
-    serverAddress: parsedServerAddress.toString(),
+    serverAddress: parsedServerAddress.toString().replace(/\/+$/, ""),
     ...(serviceVersion ? { serviceVersion } : {}),
   };
 }
