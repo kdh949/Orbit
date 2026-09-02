@@ -265,3 +265,22 @@ test("Tempo keeps trace-to-profile service and environment correlation", async (
     /key: deployment\.environment\.name\s+value: environment/,
   );
 });
+
+test("Tempo service graph recognizes stable Redis database spans", async () => {
+  const tempo = await readObservabilityFile("tempo/tempo.yml");
+  const serviceGraphsStart = tempo.indexOf("    service_graphs:");
+  const spanMetricsStart = tempo.indexOf(
+    "    span_metrics:",
+    serviceGraphsStart,
+  );
+
+  assert.notEqual(serviceGraphsStart, -1);
+  assert.notEqual(spanMetricsStart, -1);
+
+  const serviceGraphs = tempo.slice(serviceGraphsStart, spanMetricsStart);
+  assert.match(serviceGraphs, /database_name_attributes:/);
+  assert.match(serviceGraphs, /- db\.namespace/);
+  assert.match(serviceGraphs, /- db\.name/);
+  assert.match(serviceGraphs, /- db\.system(?:\s|$)/);
+  assert.match(serviceGraphs, /- db\.system\.name/);
+});

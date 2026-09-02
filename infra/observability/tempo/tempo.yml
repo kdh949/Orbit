@@ -34,6 +34,11 @@ metrics_generator:
   processor:
     service_graphs:
       span_multiplier_key: orbit.trace.sample_ratio
+      database_name_attributes:
+        - db.namespace
+        - db.name
+        - db.system
+        - db.system.name
     span_metrics:
       span_multiplier_key: orbit.trace.sample_ratio
       enable_target_info: false
