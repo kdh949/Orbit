@@ -429,6 +429,9 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: ^1.43.0
         version: 1.43.0
+      '@prometheus-io/client':
+        specifier: ^0.16.1
+        version: 0.16.1
       '@pyroscope/nodejs':
         specifier: ^0.6.3
         version: 0.6.3(express@5.2.1)

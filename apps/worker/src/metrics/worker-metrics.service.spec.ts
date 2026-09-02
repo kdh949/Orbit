@@ -33,4 +33,26 @@ describe("WorkerMetricsService", () => {
     expect(output).toContain('queue="a"');
     expect(output).toContain('queue="b"');
   });
+
+  it("exports shared database query metrics without SQL labels", async () => {
+    const metrics = new WorkerMetricsService();
+    const queryRunner = {};
+
+    metrics.databaseQuerySubscriber.beforeQuery({
+      query: "UPDATE jobs SET status = $1 WHERE id = $2",
+      queryRunner,
+    });
+    metrics.databaseQuerySubscriber.afterQuery({
+      query: "UPDATE jobs SET status = $1 WHERE id = $2",
+      queryRunner,
+      success: false,
+      executionTime: 18,
+    });
+
+    const output = await metrics.metrics();
+
+    expect(output).toContain("orbit_db_client_queries_total");
+    expect(output).toContain('operation="update",outcome="error"');
+    expect(output).not.toContain("jobs SET status");
+  });
 });

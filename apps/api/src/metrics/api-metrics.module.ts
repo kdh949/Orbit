@@ -5,10 +5,13 @@ import {
   type NestModule,
   RequestMethod,
 } from "@nestjs/common";
+import { APP_INTERCEPTOR } from "@nestjs/core";
 
 import { AUDIENCE_RATE_LIMIT_METRICS } from "../presentation-sessions/audience-rate-limit.service";
+import { ApiDatabaseMetricsLifecycle } from "./api-database-metrics.lifecycle";
 import { ApiMetricsController } from "./api-metrics.controller";
 import { ApiMetricsMiddleware } from "./api-metrics.middleware";
+import { ApiMetricsInterceptor } from "./api-metrics.interceptor";
 import { ApiMetricsService } from "./api-metrics.service";
 
 @Global()
@@ -17,6 +20,11 @@ import { ApiMetricsService } from "./api-metrics.service";
   providers: [
     ApiMetricsService,
     ApiMetricsMiddleware,
+    ApiDatabaseMetricsLifecycle,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ApiMetricsInterceptor,
+    },
     {
       provide: AUDIENCE_RATE_LIMIT_METRICS,
       useExisting: ApiMetricsService,

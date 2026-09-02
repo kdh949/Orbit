@@ -5,6 +5,7 @@ import { workerDatabaseOptions } from "./database";
 import { createWorkerLoggerParams } from "./logging";
 import { WorkerService } from "./worker.service";
 import { WorkerMetricsService } from "./metrics/worker-metrics.service";
+import { WorkerDatabaseMetricsLifecycle } from "./metrics/worker-database-metrics.lifecycle";
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { WorkerMetricsService } from "./metrics/worker-metrics.service";
   ],
   providers: [
     WorkerMetricsService,
+    WorkerDatabaseMetricsLifecycle,
     { provide: "WORKER_METRICS", useExisting: WorkerMetricsService },
     WorkerService,
   ],

@@ -7,6 +7,7 @@ import {
 } from "@prometheus-io/client";
 import { Injectable } from "@nestjs/common";
 import { redisConnectionOptions } from "@orbit/job-queue";
+import { createTypeOrmQueryMetrics } from "@orbit/observability";
 import { Queue } from "bullmq";
 import { createServer, type Server } from "node:http";
 
@@ -15,6 +16,10 @@ const durationBuckets = [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 15, 30, 60, 300];
 @Injectable()
 export class WorkerMetricsService {
   readonly registry = new Registry();
+  private readonly databaseQueryMetrics = createTypeOrmQueryMetrics({
+    registry: this.registry,
+  });
+  readonly databaseQuerySubscriber = this.databaseQueryMetrics.subscriber;
   private readonly jobsStarted = new Counter({
     name: "orbit_worker_jobs_started_total",
     help: "Worker job processing attempts started.",

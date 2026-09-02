@@ -1,3 +1,4 @@
+import { context, trace } from "@opentelemetry/api";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { ExpressInstrumentation } from "@opentelemetry/instrumentation-express";
 import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
@@ -29,6 +30,21 @@ export interface NodeTelemetryConfig {
 }
 
 export const TRACE_SAMPLE_RATIO_ATTRIBUTE = "orbit.trace.sample_ratio";
+
+export type ActiveSpanAttributeWriter = (
+  attributes: Record<string, string | number | boolean>,
+) => void;
+
+export function captureActiveSpanAttributeWriter():
+  | ActiveSpanAttributeWriter
+  | undefined {
+  const span = trace.getSpan(context.active());
+  if (!span?.isRecording()) return undefined;
+
+  return (attributes) => {
+    if (span.isRecording()) span.setAttributes(attributes);
+  };
+}
 
 export function resolveNodeTelemetryConfig(
   serviceName: string,

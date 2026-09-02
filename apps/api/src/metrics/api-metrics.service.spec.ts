@@ -30,4 +30,26 @@ describe("ApiMetricsService", () => {
 
     expect(output).toContain("orbit_audience_join_rate_limit_bypass_total 1");
   });
+
+  it("exports shared database query metrics without SQL labels", async () => {
+    const metrics = new ApiMetricsService();
+    const queryRunner = {};
+
+    metrics.databaseQuerySubscriber.beforeQuery({
+      query: "SELECT * FROM decks WHERE project_id = $1",
+      queryRunner,
+    });
+    metrics.databaseQuerySubscriber.afterQuery({
+      query: "SELECT * FROM decks WHERE project_id = $1",
+      queryRunner,
+      success: true,
+      executionTime: 12,
+    });
+
+    const output = await metrics.metrics();
+
+    expect(output).toContain("orbit_db_client_queries_total");
+    expect(output).toContain('operation="select",outcome="success"');
+    expect(output).not.toContain("project_id");
+  });
 });
