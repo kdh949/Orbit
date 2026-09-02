@@ -285,30 +285,51 @@ test("Nginx metrics and JSON logs are collected without exposing a host port", a
   assert.match(targetAvailability, /orbit-nginx-status/);
 });
 
-test("Pyroscope flame graph keeps the selected service and dashboard time range", async () => {
+test("Pyroscope flame graphs use runtime-specific profile types", async () => {
   const dashboard = await loadDashboard();
-  const flamegraph = panelByTitle(dashboard, "Service CPU flame graph");
+  const nodeFlamegraph = panelByTitle(
+    dashboard,
+    "Node service wall-time flame graph",
+  );
+  const pythonFlamegraph = panelByTitle(
+    dashboard,
+    "Python worker CPU flame graph",
+  );
   const profileService = dashboard.templating.list.find(
     (variable) => variable.name === "profile_service",
   );
   const apiCpu = panelByTitle(dashboard, "API process CPU usage");
   const apiCpuLinks = JSON.stringify(apiCpu.fieldConfig?.defaults?.links ?? []);
 
-  assert.equal(flamegraph.type, "flamegraph");
-  assert.deepEqual(flamegraph.datasource, {
+  assert.equal(nodeFlamegraph.type, "flamegraph");
+  assert.deepEqual(nodeFlamegraph.datasource, {
     type: "grafana-pyroscope-datasource",
     uid: "pyroscope",
   });
-  assert.match(panelQueries(flamegraph), /service_name="\$profile_service"/);
-  assert.match(panelQueries(flamegraph), /environment=~"\$environment"/);
+  assert.match(
+    panelQueries(nodeFlamegraph),
+    /service_name="\$profile_service"/,
+  );
+  assert.match(panelQueries(nodeFlamegraph), /environment=~"\$environment"/);
   assert.equal(
-    flamegraph.targets[0].profileTypeId,
+    nodeFlamegraph.targets[0].profileTypeId,
+    "wall:cpu:nanoseconds:wall:nanoseconds",
+  );
+
+  assert.equal(pythonFlamegraph.type, "flamegraph");
+  assert.match(
+    panelQueries(pythonFlamegraph),
+    /service_name="orbit-python-worker"/,
+  );
+  assert.match(panelQueries(pythonFlamegraph), /environment=~"\$environment"/);
+  assert.equal(
+    pythonFlamegraph.targets[0].profileTypeId,
     "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
   );
   assert.equal(profileService?.type, "custom");
   assert.deepEqual(
     profileService?.options.map((option) => option.value),
-    ["orbit-api", "orbit-worker", "orbit-python-worker"],
+    ["orbit-api", "orbit-worker"],
   );
   assert.match(apiCpuLinks, /\$\{__url_time_range\}/);
   assert.match(apiCpuLinks, /viewPanel=79/);

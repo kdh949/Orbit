@@ -1862,7 +1862,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 251 },
       "id": 112,
       "panels": [],
-      "title": "13. CPU Profiling — 이상 시간대의 hot function 확인",
+      "title": "13. Runtime Profiling — Node wall-time / Python CPU hot function 확인",
       "type": "row"
     },
     {
@@ -1870,8 +1870,8 @@
         "type": "grafana-pyroscope-datasource",
         "uid": "pyroscope"
       },
-      "description": "선택한 service와 현재 dashboard 시간 범위의 CPU profile입니다. Node API·Worker는 같은 service/time-window profile이며, Python trace의 pyroscope.profile.id 링크는 정확한 span profile로 이동합니다.",
-      "gridPos": { "h": 18, "w": 24, "x": 0, "y": 252 },
+      "description": "선택한 Node service와 현재 dashboard 시간 범위의 wall-time profile입니다. 실행 시간과 대기 시간을 함께 보며 hot function과 blocking 구간을 확인합니다.",
+      "gridPos": { "h": 18, "w": 12, "x": 0, "y": 252 },
       "id": 79,
       "targets": [
         {
@@ -1881,12 +1881,36 @@
           },
           "groupBy": [],
           "labelSelector": "{service_name=\"$profile_service\",environment=~\"$environment\"}",
+          "profileTypeId": "wall:cpu:nanoseconds:wall:nanoseconds",
+          "queryType": "profile",
+          "refId": "A"
+        }
+      ],
+      "title": "Node service wall-time flame graph",
+      "type": "flamegraph"
+    },
+    {
+      "datasource": {
+        "type": "grafana-pyroscope-datasource",
+        "uid": "pyroscope"
+      },
+      "description": "Python worker와 현재 dashboard 시간 범위의 process CPU profile입니다. Python trace의 pyroscope.profile.id 링크는 정확한 span profile로 이동합니다.",
+      "gridPos": { "h": 18, "w": 12, "x": 12, "y": 252 },
+      "id": 114,
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-pyroscope-datasource",
+            "uid": "pyroscope"
+          },
+          "groupBy": [],
+          "labelSelector": "{service_name=\"orbit-python-worker\",environment=~\"$environment\"}",
           "profileTypeId": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
           "queryType": "profile",
           "refId": "A"
         }
       ],
-      "title": "Service CPU flame graph",
+      "title": "Python worker CPU flame graph",
       "type": "flamegraph"
     },
     {
@@ -2110,14 +2134,9 @@
             "selected": false,
             "text": "orbit-worker",
             "value": "orbit-worker"
-          },
-          {
-            "selected": false,
-            "text": "orbit-python-worker",
-            "value": "orbit-python-worker"
           }
         ],
-        "query": "orbit-api,orbit-worker,orbit-python-worker",
+        "query": "orbit-api,orbit-worker",
         "type": "custom"
       },
       {
