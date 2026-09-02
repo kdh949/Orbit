@@ -61,7 +61,7 @@ sudo curl --unix-socket /run/orbit-nginx/status.sock \
   http://localhost/stub_status
 ```
 
-`/run/orbit-nginx/status.sock`은 호스트 포트로 공개되지 않고 `nginx-exporter` 컨테이너에 read-only로 마운트된다. access log에는 method, normalized `$uri`, status, request/upstream duration과 byte 수만 기록하며 query string, cookie, authorization, client IP는 기록하지 않는다.
+`/run/orbit-nginx/status.sock`은 호스트 포트로 공개되지 않고 `nginx-exporter` 컨테이너에 read-only로 마운트된다. access log에는 method, normalized `$uri`, status, upstream header/response와 전체 request duration, body/전체 response byte 수만 기록하며 query string, cookie, authorization, client IP는 기록하지 않는다.
 
 ```bash
 doppler run -- docker compose \
@@ -114,8 +114,35 @@ PYROSCOPE_CPU_SAMPLE_RATE=50
 5. `13. CPU Profiling` 행에서 `Profile service`를 선택하고 현재 dashboard 시간 범위의 CPU flame graph를 확인한다.
 6. API event-loop, GC, heap, process CPU panel의 `Open API CPU flame graph` data link가 같은 시간 범위와 `orbit-api` service를 유지하는지 확인한다.
 7. Python의 충분히 긴 local root span에서 `Profiles for this span` 링크와 embedded flame graph를 표본 확인한다.
+8. `14. Response & DB Timing` 행에서 API response body 크기, handler/write 완료 시간, in-flight/abort, API·Worker DB query p95/p99를 확인한다.
+9. 같은 행의 Nginx upstream header/upstream complete/request complete와 k6 client phase를 비교한다.
 
 권장 진단 흐름은 `API p95 증가 감지 → Service Graph에서 Python edge 지연 확인 → 느린 trace waterfall 열기 → 해당 span의 Loki 로그 확인 → Pyroscope CPU flame graph 확인`이다. Node API·Worker는 span 단위 profile이 아니라 같은 service와 time window의 CPU profile로 이동한다.
+
+응답 또는 DB 병목이 의심되면 다음 순서로 범위를 좁힌다.
+
+1. `API success latency p95`와 `API response completion phases`를 비교한다.
+2. handler 이후 시간이 크면 response body 크기와 `first write → Node finish`를 확인한다.
+3. Nginx `upstream header → upstream complete → request complete`를 비교한다.
+4. k6 `waiting`과 `receiving`을 확인해 proxy 밖의 client 수신 구간까지 비교한다.
+5. DB query p95/p99가 함께 증가하면 느린 trace에서 `db.operation.name`, PostgreSQL query span, `pg-pool.connect` 대기를 확인한다.
+6. DB가 아니라 API CPU/event-loop가 증가하면 같은 시간 범위의 Pyroscope flame graph를 확인한다.
+
+각 값의 측정 경계는 다음과 같다.
+
+| 값                           | 시작                        | 끝                            | 의미                           |
+| ---------------------------- | --------------------------- | ----------------------------- | ------------------------------ |
+| API request duration         | Nest middleware 진입        | Node `finish`                 | API 전체 처리와 OS 전달 완료   |
+| API post-handler duration    | controller stream 완료/오류 | Node `finish`                 | 직렬화와 응답 write/flush 구간 |
+| API response write duration  | 첫 `write` 또는 `end`       | Node `finish`                 | Node response write lifecycle  |
+| Nginx upstream header time   | Nginx request 시작          | upstream header 수신          | proxy 관점 API 첫 응답         |
+| Nginx upstream response time | Nginx request 시작          | upstream body 수신 완료       | proxy 관점 API 응답 완료       |
+| Nginx request time           | Nginx request 시작          | client 방향 마지막 byte write | Nginx 관점 전송 완료           |
+| k6 request/receiving         | 부하 발생기 요청            | 부하 발생기 수신 완료         | 실제 테스트 client 관점        |
+
+Node `finish`와 Nginx `request_time`은 TCP peer가 데이터를 소비했다는 확인이 아니다. 실제 부하 client 수신 완료 여부는 k6/Artillery 결과를 함께 사용한다. API response body 크기는 API가 쓴 body이고, Nginx `responseBodyBytes`는 Nginx가 client 방향으로 쓴 body이므로 향후 압축을 켜면 두 값이 달라질 수 있다.
+
+`orbit_db_client_*` 메트릭은 trace sampling과 무관하게 모든 TypeORM query를 `operation`과 `outcome`으로 집계한다. SQL, table, parameter는 label이나 로그에 저장하지 않는다. 상세 SQL 구간은 샘플링된 PostgreSQL trace에서 확인한다. 정규화된 query별 서버 실행시간이 추가로 필요하면 별도 변경으로 `pg_stat_statements`를 활성화해야 하며, 이는 `shared_preload_libraries`와 PostgreSQL 재시작 승인을 먼저 요구한다.
 
 ## 배포 갱신
 
