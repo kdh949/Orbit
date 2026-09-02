@@ -191,6 +191,12 @@ test("Nginx metrics and JSON logs are collected without exposing a host port", a
   const nginxLatency = panelQueries(
     panelByTitle(dashboard, "Nginx request / upstream p95"),
   );
+  const aggregateHealth = panelQueries(
+    panelByTitle(dashboard, "All metric targets healthy"),
+  );
+  const targetAvailability = panelQueries(
+    panelByTitle(dashboard, "Target availability"),
+  );
 
   assert.match(compose, /nginx-exporter:/);
   assert.match(compose, /unix:\/run\/orbit-nginx\/status\.sock:\/stub_status/);
@@ -206,8 +212,15 @@ test("Nginx metrics and JSON logs are collected without exposing a host port", a
   assert.match(nginxOverview, /nginx_http_requests_total/);
   assert.match(nginxOverview, /nginx_connections_active/);
   assert.match(nginxErrors, /499\|502\|504/);
+  assert.match(nginxErrors, /\[\$__auto\]/);
+  assert.doesNotMatch(nginxErrors, /\$__rate_interval/);
   assert.match(nginxLatency, /requestTimeSeconds/);
   assert.match(nginxLatency, /upstreamResponseTimeSeconds/);
+  assert.match(nginxLatency, /\[\$__auto\]/);
+  assert.match(aggregateHealth, /nginx_up/);
+  assert.match(aggregateHealth, /orbit-nginx-status/);
+  assert.match(targetAvailability, /nginx_up/);
+  assert.match(targetAvailability, /orbit-nginx-status/);
 });
 
 test("Pyroscope flame graph keeps the selected service and dashboard time range", async () => {

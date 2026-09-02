@@ -27,7 +27,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "description": "1이면 모든 Orbit scrape target이 정상입니다. 0이면 Target availability에서 내려간 job을 찾으세요.",
+      "description": "1이면 모든 Orbit scrape target과 host Nginx stub_status가 정상입니다. 0이면 Target availability에서 내려간 job을 찾으세요.",
       "fieldConfig": {
         "defaults": {
           "mappings": [
@@ -62,7 +62,7 @@
       },
       "targets": [
         {
-          "expr": "min(up{job=~\"orbit-.+\", environment=~\"$environment\"})",
+          "expr": "min(up{job=~\"orbit-.+\", environment=~\"$environment\"} or label_replace(nginx_up{job=\"orbit-nginx\", environment=~\"$environment\"}, \"job\", \"orbit-nginx-status\", \"job\", \".*\"))",
           "instant": true,
           "legendFormat": "all targets",
           "refId": "A"
@@ -249,7 +249,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "description": "0으로 내려간 job이 있으면 해당 서비스/exporter 컨테이너와 네트워크를 먼저 확인하세요.",
+      "description": "0으로 내려간 job이 있으면 해당 서비스/exporter 컨테이너와 네트워크를 먼저 확인하세요. orbit-nginx-status는 exporter 생존이 아니라 host Nginx stub_status 연결을 뜻합니다.",
       "fieldConfig": {
         "defaults": { "max": 1, "min": 0, "unit": "short" },
         "overrides": []
@@ -258,7 +258,7 @@
       "id": 7,
       "targets": [
         {
-          "expr": "up{job=~\"orbit-.+\", environment=~\"$environment\"}",
+          "expr": "up{job=~\"orbit-.+\", environment=~\"$environment\"} or label_replace(nginx_up{job=\"orbit-nginx\", environment=~\"$environment\"}, \"job\", \"orbit-nginx-status\", \"job\", \".*\")",
           "legendFormat": "{{job}} @ {{instance}}",
           "refId": "A"
         }
@@ -1828,7 +1828,7 @@
       "id": 77,
       "targets": [
         {
-          "expr": "sum by (status) (count_over_time({environment=~\"$environment\", service=\"orbit-nginx\"} | json | status=~\"499|502|504\" [$__rate_interval]))",
+          "expr": "sum by (status) (count_over_time({environment=~\"$environment\", service=\"orbit-nginx\"} | json | status=~\"499|502|504\" [$__auto]))",
           "legendFormat": "HTTP {{status}}",
           "refId": "A"
         }
@@ -1844,12 +1844,12 @@
       "id": 78,
       "targets": [
         {
-          "expr": "quantile_over_time(0.95, {environment=~\"$environment\", service=\"orbit-nginx\"} | json | unwrap requestTimeSeconds | __error__=\"\" [$__interval])",
+          "expr": "quantile_over_time(0.95, {environment=~\"$environment\", service=\"orbit-nginx\"} | json | unwrap requestTimeSeconds | __error__=\"\" [$__auto])",
           "legendFormat": "request p95",
           "refId": "A"
         },
         {
-          "expr": "quantile_over_time(0.95, {environment=~\"$environment\", service=\"orbit-nginx\"} | json | unwrap upstreamResponseTimeSeconds | __error__=\"\" [$__interval])",
+          "expr": "quantile_over_time(0.95, {environment=~\"$environment\", service=\"orbit-nginx\"} | json | unwrap upstreamResponseTimeSeconds | __error__=\"\" [$__auto])",
           "legendFormat": "upstream p95",
           "refId": "B"
         }
@@ -2045,6 +2045,6 @@
   "timezone": "browser",
   "title": "Orbit Load Test & Observability",
   "uid": "orbit-overview",
-  "version": 8,
+  "version": 9,
   "weekStart": ""
 }
