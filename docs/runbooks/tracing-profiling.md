@@ -28,12 +28,12 @@ Alloy의 `4318`은 앱 서버의 `orbit_default` Docker network에만 노출한�
 
 ## 모니터링 서버 시작
 
-`infra/observability/monitoring.env.example`을 저장소 밖의 권한 600 파일로 복사하고 `MONITORING_BIND_ADDRESS`를 모니터링 서버 VPN IP로 바꾼다. `TEMPO_METRICS_ENVIRONMENT`에는 앱의 bounded environment 값과 같은 값(예: `staging`)을 넣는다.
+`infra/observability/monitoring.env.example`을 `/etc/orbit/monitoring.env`로 복사해 권한을 600으로 설정하고 `MONITORING_BIND_ADDRESS`를 모니터링 서버 VPN IP로 바꾼다. `TEMPO_METRICS_ENVIRONMENT`에는 앱의 bounded environment 값과 같은 값(예: `staging`)을 넣는다.
 
 ```bash
-docker compose --env-file /secure/path/monitoring.env \
+docker compose --env-file /etc/orbit/monitoring.env \
   -f infra/observability/docker-compose.monitoring.yml config --quiet
-docker compose --env-file /secure/path/monitoring.env \
+docker compose --env-file /etc/orbit/monitoring.env \
   -f infra/observability/docker-compose.monitoring.yml up -d
 ```
 
@@ -43,7 +43,7 @@ Tempo는 `service-graphs`, `span-metrics-latency`, `span-metrics-count`만 생�
 
 ## 앱 서버 Alloy 시작
 
-`infra/observability/app.env.example`을 저장소 밖의 권한 600 파일로 복사한다. URL에는 모니터링 서버 VPN IP를 사용하고 exporter credential은 secret store에서 주입한다.
+앱 서버는 Doppler project/config를 선택하고 `infra/observability/app.env.example`에 정의된 환경변수를 Doppler에 등록한다. URL에는 모니터링 서버 VPN IP를 사용하고 exporter credential도 Doppler에서 주입한다.
 
 호스트 Nginx를 사용하는 서버에서는 exporter를 시작하기 전에 status socket과 bounded JSON access log를 설치한다. 기존 Orbit virtual host의 `http` 블록이 아니라 Nginx 최상위 `http` context에서 아래 파일이 include되어야 한다. 배포판 기본 설정이 `/etc/nginx/conf.d/*.conf`를 include한다면 다음 명령을 그대로 사용할 수 있다.
 
@@ -56,23 +56,26 @@ sudo install -m 0644 infra/observability/nginx/orbit-observability.conf \
   /etc/nginx/conf.d/orbit-observability.conf
 sudo nginx -t
 sudo systemctl reload nginx
+sudo test -S /run/orbit-nginx/status.sock
+sudo curl --unix-socket /run/orbit-nginx/status.sock \
+  http://localhost/stub_status
 ```
 
 `/run/orbit-nginx/status.sock`은 호스트 포트로 공개되지 않고 `nginx-exporter` 컨테이너에 read-only로 마운트된다. access log에는 method, normalized `$uri`, status, request/upstream duration과 byte 수만 기록하며 query string, cookie, authorization, client IP는 기록하지 않는다.
 
 ```bash
-docker compose --env-file /secure/path/app-observability.env \
+doppler run -- docker compose \
   -f infra/observability/docker-compose.app.yml config --quiet
-docker compose --env-file /secure/path/app-observability.env \
+doppler run -- docker compose \
   -f infra/observability/docker-compose.app.yml up -d
 ```
 
 설치 후 `nginx-exporter`와 Alloy 상태만 확인한다. 외부 요청을 생성하지 않아도 Nginx 상태 지표의 scrape 여부와 기존 access log 유입 여부를 확인할 수 있다.
 
 ```bash
-docker compose --env-file /secure/path/app-observability.env \
+doppler run -- docker compose \
   -f infra/observability/docker-compose.app.yml ps nginx-exporter alloy
-docker compose --env-file /secure/path/app-observability.env \
+doppler run -- docker compose \
   -f infra/observability/docker-compose.app.yml logs --tail=50 nginx-exporter alloy
 ```
 
@@ -100,6 +103,7 @@ PYROSCOPE_CPU_SAMPLE_RATE=50
 - environment와 service version 외에 사용자·세션·프로젝트·작업 ID를 resource/profile label로 추가하지 않는다.
 - Node API·Worker는 연속 CPU profile을 제공한다. 현재 공식 Node span bridge가 없어 Node span 단위 profile 링크는 제공하지 않는다.
 - Python Worker는 `pyroscope-otel` bridge를 통해 local root span과 CPU profile을 연결한다.
+- Alloy trace memory limiter는 hard limit `256MiB`, spike allowance `64MiB`로 설정한다. soft limit은 `192MiB`이며, `refused`가 0보다 크면 Alloy 로그의 현재 memory와 GC 경고를 확인한 뒤 실측을 근거로 조정한다.
 
 ## Grafana 확인
 
@@ -118,7 +122,7 @@ PYROSCOPE_CPU_SAMPLE_RATE=50
 모니터링 서버에서는 환경 파일에 `TEMPO_METRICS_ENVIRONMENT`를 추가한 뒤 Prometheus·Tempo·Grafana를 재생성한다.
 
 ```bash
-docker compose --env-file /secure/path/monitoring.env \
+docker compose --env-file /etc/orbit/monitoring.env \
   -f infra/observability/docker-compose.monitoring.yml \
   up -d --force-recreate prometheus tempo grafana
 ```
