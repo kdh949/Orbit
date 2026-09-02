@@ -98,8 +98,8 @@ otelcol.receiver.otlp "applications" {
 
 otelcol.processor.memory_limiter "applications" {
   check_interval = "1s"
-  limit          = "128MiB"
-  spike_limit    = "32MiB"
+  limit          = "256MiB"
+  spike_limit    = "64MiB"
 
   output {
     traces = [otelcol.processor.batch.applications.input]
