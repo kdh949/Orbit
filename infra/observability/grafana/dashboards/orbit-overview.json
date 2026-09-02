@@ -1888,6 +1888,183 @@
       ],
       "title": "Service CPU flame graph",
       "type": "flamegraph"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 270 },
+      "id": 113,
+      "panels": [],
+      "title": "14. Response & DB Timing — 처리 완료 경계와 query 병목 확인",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "API가 실제로 쓴 body 크기의 p50/p95/p99입니다. 큰 응답과 write 지연이 함께 증가하는지 확인합니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "bytes" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 271 },
+      "id": 80,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(orbit_api_http_response_body_size_bytes_bucket{job=\"orbit-api\", environment=~\"$environment\", route=~\"$route\", outcome=\"completed\"}[$__rate_interval])))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(orbit_api_http_response_body_size_bytes_bucket{job=\"orbit-api\", environment=~\"$environment\", route=~\"$route\", outcome=\"completed\"}[$__rate_interval])))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(orbit_api_http_response_body_size_bytes_bucket{job=\"orbit-api\", environment=~\"$environment\", route=~\"$route\", outcome=\"completed\"}[$__rate_interval])))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "title": "API response body size percentiles",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "전체 API 처리, handler 완료 후 finish, 첫 write 후 Node finish의 p95를 비교합니다. Node finish는 client 수신 완료가 아니라 OS로의 전달 완료입니다.",
+      "fieldConfig": { "defaults": { "min": 0, "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 271 },
+      "id": 81,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(orbit_api_http_request_duration_seconds_bucket{job=\"orbit-api\", environment=~\"$environment\", route=~\"$route\", status_class=~\"2xx|3xx\"}[$__rate_interval])))",
+          "legendFormat": "request start → Node finish p95",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(orbit_api_http_response_post_handler_duration_seconds_bucket{job=\"orbit-api\", environment=~\"$environment\", route=~\"$route\", outcome=\"completed\"}[$__rate_interval])))",
+          "legendFormat": "handler → Node finish p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(orbit_api_http_response_write_duration_seconds_bucket{job=\"orbit-api\", environment=~\"$environment\", route=~\"$route\", outcome=\"completed\"}[$__rate_interval])))",
+          "legendFormat": "first write → Node finish p95",
+          "refId": "C"
+        }
+      ],
+      "title": "API response completion phases",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "현재 처리 중인 API 요청과 route별 조기 연결 종료율입니다. in-flight는 route가 확정되기 전에도 증가하므로 label을 두지 않습니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 271 },
+      "id": 82,
+      "targets": [
+        {
+          "expr": "orbit_api_http_in_flight_requests{job=\"orbit-api\", environment=~\"$environment\"}",
+          "legendFormat": "in-flight",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (route, status_class) (rate(orbit_api_http_response_aborts_total{job=\"orbit-api\", environment=~\"$environment\", route=~\"$route\"}[$__rate_interval]))",
+          "legendFormat": "{{route}} / {{status_class}} aborts/s",
+          "refId": "B"
+        }
+      ],
+      "title": "API in-flight / aborted responses",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "API와 Worker의 모든 TypeORM query p95/p99입니다. 상세 SQL과 pool wait은 같은 시간대의 PostgreSQL trace span에서 확인합니다.",
+      "fieldConfig": { "defaults": { "min": 0, "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 279 },
+      "id": 83,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, job, operation) (rate(orbit_db_client_query_duration_seconds_bucket{job=~\"orbit-api|orbit-worker\", environment=~\"$environment\"}[$__rate_interval])))",
+          "legendFormat": "{{job}} / {{operation}} p95",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le, job, operation) (rate(orbit_db_client_query_duration_seconds_bucket{job=~\"orbit-api|orbit-worker\", environment=~\"$environment\"}[$__rate_interval])))",
+          "legendFormat": "{{job}} / {{operation}} p99",
+          "refId": "B"
+        }
+      ],
+      "title": "Database client query latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "API와 Worker의 operation별 query 처리율과 오류율입니다. SQL, table, 사용자 식별자는 metric label로 수집하지 않습니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "ops" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 279 },
+      "id": 84,
+      "targets": [
+        {
+          "expr": "sum by (job, operation) (rate(orbit_db_client_queries_total{job=~\"orbit-api|orbit-worker\", environment=~\"$environment\"}[$__rate_interval]))",
+          "legendFormat": "{{job}} / {{operation}} queries/s",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (job, operation) (rate(orbit_db_client_queries_total{job=~\"orbit-api|orbit-worker\", environment=~\"$environment\", outcome=\"error\"}[$__rate_interval]))",
+          "legendFormat": "{{job}} / {{operation}} errors/s",
+          "refId": "B"
+        }
+      ],
+      "title": "Database client query rate / errors",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "description": "Nginx가 upstream header를 받은 시점, upstream body 완료, client 방향 마지막 byte write까지의 p95입니다. 실제 client 수신은 k6 client phase와 비교합니다.",
+      "fieldConfig": { "defaults": { "min": 0, "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 287 },
+      "id": 85,
+      "targets": [
+        {
+          "expr": "quantile_over_time(0.95, {environment=~\"$environment\", service=\"orbit-nginx\"} | json | uri=~\"$target_path\" | unwrap upstreamHeaderTimeSeconds | __error__=\"\" [$__auto])",
+          "legendFormat": "upstream header p95",
+          "refId": "A"
+        },
+        {
+          "expr": "quantile_over_time(0.95, {environment=~\"$environment\", service=\"orbit-nginx\"} | json | uri=~\"$target_path\" | unwrap upstreamResponseTimeSeconds | __error__=\"\" [$__auto])",
+          "legendFormat": "upstream complete p95",
+          "refId": "B"
+        },
+        {
+          "expr": "quantile_over_time(0.95, {environment=~\"$environment\", service=\"orbit-nginx\"} | json | uri=~\"$target_path\" | unwrap requestTimeSeconds | __error__=\"\" [$__auto])",
+          "legendFormat": "Nginx request complete p95",
+          "refId": "C"
+        }
+      ],
+      "title": "Nginx response boundary p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "description": "Nginx가 client 방향으로 쓴 response body 크기의 p95입니다. API body 크기와 비교하면 proxy 변환·압축 여부를 구분할 수 있습니다.",
+      "fieldConfig": {
+        "defaults": { "min": 0, "unit": "bytes" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 287 },
+      "id": 86,
+      "targets": [
+        {
+          "expr": "quantile_over_time(0.95, {environment=~\"$environment\", service=\"orbit-nginx\"} | json | uri=~\"$target_path\" | unwrap responseBodyBytes | __error__=\"\" [$__auto])",
+          "legendFormat": "response body p95",
+          "refId": "A"
+        }
+      ],
+      "title": "Nginx response body size p95",
+      "type": "timeseries"
     }
   ],
   "refresh": "10s",
@@ -2045,6 +2222,6 @@
   "timezone": "browser",
   "title": "Orbit Load Test & Observability",
   "uid": "orbit-overview",
-  "version": 9,
+  "version": 10,
   "weekStart": ""
 }

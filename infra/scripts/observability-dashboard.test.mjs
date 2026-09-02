@@ -173,6 +173,60 @@ test("PostgreSQL and Redis drill-down panels expose saturation and latency", asy
   assert.match(redisFailures, /redis_rejected_connections_total/);
 });
 
+test("response and database timing panels keep phase boundaries and bounded labels", async () => {
+  const dashboard = await loadDashboard();
+  const responseSize = panelQueries(
+    panelByTitle(dashboard, "API response body size percentiles"),
+  );
+  const responsePhases = panelQueries(
+    panelByTitle(dashboard, "API response completion phases"),
+  );
+  const responseLifecycle = panelQueries(
+    panelByTitle(dashboard, "API in-flight / aborted responses"),
+  );
+  const databaseLatency = panelQueries(
+    panelByTitle(dashboard, "Database client query latency"),
+  );
+  const databaseRate = panelQueries(
+    panelByTitle(dashboard, "Database client query rate / errors"),
+  );
+  const nginxBoundaries = panelQueries(
+    panelByTitle(dashboard, "Nginx response boundary p95"),
+  );
+  const nginxSize = panelQueries(
+    panelByTitle(dashboard, "Nginx response body size p95"),
+  );
+
+  assert.match(responseSize, /orbit_api_http_response_body_size_bytes_bucket/);
+  assert.match(responseSize, /outcome="completed"/);
+  assert.match(
+    responsePhases,
+    /orbit_api_http_response_write_duration_seconds_bucket/,
+  );
+  assert.match(
+    responsePhases,
+    /orbit_api_http_response_post_handler_duration_seconds_bucket/,
+  );
+  assert.match(responseLifecycle, /orbit_api_http_in_flight_requests/);
+  assert.match(responseLifecycle, /orbit_api_http_response_aborts_total/);
+  assert.match(
+    databaseLatency,
+    /orbit_db_client_query_duration_seconds_bucket/,
+  );
+  assert.match(databaseLatency, /sum by \(le, job, operation\)/);
+  assert.match(databaseRate, /orbit_db_client_queries_total/);
+  assert.match(databaseRate, /outcome="error"/);
+  assert.doesNotMatch(
+    `${responseSize}\n${responsePhases}\n${databaseLatency}\n${databaseRate}`,
+    /projectId|sessionId|userId|db\.query\.text|query=|table=/,
+  );
+  assert.match(nginxBoundaries, /upstreamHeaderTimeSeconds/);
+  assert.match(nginxBoundaries, /upstreamResponseTimeSeconds/);
+  assert.match(nginxBoundaries, /requestTimeSeconds/);
+  assert.match(nginxSize, /responseBodyBytes/);
+  assert.match(nginxBoundaries, /uri=~"\$target_path"/);
+});
+
 test("Nginx metrics and JSON logs are collected without exposing a host port", async () => {
   const dashboard = await loadDashboard();
   const compose = await readObservabilityFile("docker-compose.app.yml");
@@ -203,8 +257,16 @@ test("Nginx metrics and JSON logs are collected without exposing a host port", a
   assert.doesNotMatch(nginxExporterBlock, /\n\s+ports:/);
   assert.match(alloy, /nginx-exporter:9113/);
   assert.match(alloy, /loki\.source\.file "nginx_access"/);
+  assert.match(
+    alloy,
+    /local\.file_match "nginx_access"[\s\S]*"environment"\s*=\s*sys\.env\("OBSERVABILITY_ENVIRONMENT"\)/,
+  );
   assert.match(nginx, /stub_status/);
   assert.match(nginx, /\$uri/);
+  assert.match(nginx, /upstreamHeaderTimeSeconds/);
+  assert.match(nginx, /\$upstream_header_time/);
+  assert.match(nginx, /responseBodyBytes/);
+  assert.match(nginx, /\$body_bytes_sent/);
   assert.doesNotMatch(
     nginx,
     /\$request_uri|\$http_authorization|\$http_cookie/,
