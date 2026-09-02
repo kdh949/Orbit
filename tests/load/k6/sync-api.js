@@ -4,6 +4,7 @@ import {
   authenticatedHeaders,
   handleLoadSummary,
   profile,
+  recordTargetRps,
   scenarioOptions,
 } from "./common.js";
 
@@ -21,6 +22,7 @@ export const options = {
 };
 
 export default function () {
+  recordTargetRps();
   const response = http.get(`${profile.baseUrl}${__ENV.SYNC_PATH}`, {
     headers: authenticatedHeaders(),
     tags: { operation: "sync-api-read" },

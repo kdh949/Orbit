@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { parse } from "yaml";
 import { buildK6Profile, requireSafeTarget } from "./lib/profile.js";
+import { targetRpsAtProgress } from "./lib/target-rps.js";
 
 const require = createRequire(import.meta.url);
 const {
@@ -118,6 +119,30 @@ test("k6 arrival-rate profiles keep conservative fixed-RPS stages", () => {
       { target: 0, duration: "10s" },
     ],
   });
+});
+
+test("k6 target RPS follows the active arrival-rate ramp", () => {
+  const profile = {
+    executor: "ramping-arrival-rate",
+    startRate: 2,
+    timeUnit: "1s",
+    stages: [
+      { target: 6, duration: "2s" },
+      { target: 6, duration: "1s" },
+      { target: 0, duration: "1s" },
+    ],
+  };
+
+  assert.equal(targetRpsAtProgress(profile, 0), 2);
+  assert.equal(targetRpsAtProgress(profile, 0.25), 4);
+  assert.equal(targetRpsAtProgress(profile, 0.5), 6);
+  assert.equal(targetRpsAtProgress(profile, 0.625), 6);
+  assert.equal(targetRpsAtProgress(profile, 0.875), 3);
+  assert.equal(targetRpsAtProgress(profile, 1), 0);
+  assert.equal(
+    targetRpsAtProgress({ executor: "per-vu-iterations" }, 0.5),
+    null,
+  );
 });
 
 test("large and deployed-host profiles require explicit confirmations", () => {
@@ -292,8 +317,11 @@ test("k6 scripts support closed and arrival-rate executors with drop guards", as
   );
   assert.match(common, /executor: "per-vu-iterations"/);
   assert.match(common, /executor: "ramping-arrival-rate"/);
+  assert.match(common, /new Gauge\("target_rps"\)/);
+  assert.match(common, /targetRps\.add\(targetRpsAtProgress/);
   for (const script of [syncApi, asyncJob, files]) {
     assert.match(script, /dropped_iterations: \["count==0"\]/);
+    assert.match(script, /recordTargetRps\(\)/);
   }
   assert.match(asyncJob, /type: "worker-health-check"/);
   assert.doesNotMatch(asyncJob, /ai-deck-generation|rehearsal-stt/);

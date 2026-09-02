@@ -4,6 +4,7 @@ import {
   handleLoadSummary,
   jsonHeaders,
   profile,
+  recordTargetRps,
   scenarioOptions,
 } from "./common.js";
 
@@ -19,6 +20,7 @@ export const options = {
 };
 
 export default function () {
+  recordTargetRps();
   const created = http.post(
     `${profile.baseUrl}/api/v1/jobs`,
     JSON.stringify({

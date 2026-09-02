@@ -1,6 +1,10 @@
+import exec from "k6/execution";
+import { Gauge } from "k6/metrics";
 import { buildK6Profile } from "../lib/profile.js";
+import { targetRpsAtProgress } from "../lib/target-rps.js";
 
 export const profile = buildK6Profile(__ENV);
+const targetRps = new Gauge("target_rps");
 
 export function scenarioOptions() {
   if (profile.executor === "ramping-arrival-rate") {
@@ -27,6 +31,11 @@ export function authenticatedHeaders(extra = {}) {
 
 export function jsonHeaders() {
   return authenticatedHeaders({ "Content-Type": "application/json" });
+}
+
+export function recordTargetRps() {
+  if (profile.executor !== "ramping-arrival-rate") return;
+  targetRps.add(targetRpsAtProgress(profile, exec.scenario.progress));
 }
 
 export function handleLoadSummary(data) {

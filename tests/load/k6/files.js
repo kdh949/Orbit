@@ -5,6 +5,7 @@ import {
   handleLoadSummary,
   jsonHeaders,
   profile,
+  recordTargetRps,
   scenarioOptions,
 } from "./common.js";
 
@@ -26,6 +27,7 @@ export const options = {
 };
 
 export default function () {
+  recordTargetRps();
   const root = `${profile.baseUrl}/api/v1/projects/${encodeURIComponent(__ENV.PROJECT_ID)}/assets`;
   const request = http.post(
     `${root}/upload-url`,
