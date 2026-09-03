@@ -3,11 +3,11 @@ const ORBIT_PRODUCTION_HOST = "orbit.dhkim.cloud";
 const ARRIVAL_RATE_PROFILES = {
   average: {
     startRate: 1,
-    preAllocatedVUs: 20,
+    preAllocatedVUs: 200,
     stages: [
-      { target: 5, duration: "1m" }, // 1에서 5까지 증가 (1분간)
-      { target: 5, duration: "5m" }, // 5인 상태로 유지 (5분간)
-      { target: 0, duration: "1m" }, // 5에서 0으로 감소 (1분간)
+      { target: 50, duration: "30s" }, // 1에서 5까지 증가 (1분간)
+      { target: 50, duration: "2m" }, // 5인 상태로 유지 (5분간)
+      { target: 0, duration: "30s" }, // 5에서 0으로 감소 (1분간)
     ],
   },
   load: {
@@ -21,6 +21,54 @@ const ARRIVAL_RATE_PROFILES = {
       { target: 0, duration: "1m" },
     ],
   },
+  ramp: {
+    startRate: 1,
+    preAllocatedVUs: 1000,
+    stages: [
+      { target: 30, duration: "2m" },
+      { target: 35, duration: "5m" },
+      { target: 20, duration: "3m" },
+      { target: 15, duration: "5m" },
+      { target: 0, duration: "1m" },
+    ],
+  },
+  diagnostic: {
+    startRate: 2,
+    preAllocatedVUs: 1200,
+    stages: [
+      { target: 2, duration: "30s" },
+      { target: 5, duration: "15s" },
+      { target: 5, duration: "1m" },
+      { target: 10, duration: "15s" },
+      { target: 10, duration: "1m" },
+      { target: 15, duration: "15s" },
+      { target: 15, duration: "1m" },
+      { target: 20, duration: "15s" },
+      { target: 20, duration: "90s" },
+      { target: 25, duration: "15s" },
+      { target: 25, duration: "90s" },
+      { target: 30, duration: "15s" },
+      { target: 30, duration: "90s" },
+      { target: 0, duration: "30s" },
+    ],
+  },
+  "diagnostic-high": {
+    startRate: 30,
+    preAllocatedVUs: 1200,
+    stages: [
+      { target: 30, duration: "30s" },
+      { target: 35, duration: "15s" },
+      { target: 35, duration: "45s" },
+      { target: 40, duration: "15s" },
+      { target: 40, duration: "45s" },
+      { target: 50, duration: "15s" },
+      { target: 50, duration: "60s" },
+      { target: 60, duration: "15s" },
+      { target: 60, duration: "60s" },
+      { target: 0, duration: "30s" },
+    ],
+  },
+
   stress: {
     startRate: 20,
     preAllocatedVUs: 160,
@@ -34,13 +82,13 @@ const ARRIVAL_RATE_PROFILES = {
   },
   spike: {
     startRate: 5,
-    preAllocatedVUs: 240,
+    preAllocatedVUs: 24000,
     stages: [
-      { target: 5, duration: "1m" },
-      { target: 60, duration: "10s" },
-      { target: 60, duration: "30s" },
-      { target: 5, duration: "10s" },
-      { target: 5, duration: "1m" },
+      { target: 50, duration: "1m" },
+      { target: 600, duration: "10s" },
+      { target: 600, duration: "30s" },
+      { target: 350, duration: "10s" },
+      { target: 100, duration: "1m" },
       { target: 0, duration: "10s" },
     ],
   },
