@@ -1,10 +1,14 @@
 import type { Server } from "socket.io";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ActivityRealtimeMetricsService } from "./activity-realtime-metrics.service";
 import { ActivityRealtimePublisher } from "./activity-realtime.publisher";
 
 describe("ActivityRealtimePublisher", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("publishes a complete state-change payload", () => {
     const emit = vi.fn();
     const metrics = { recordEmit: vi.fn() };
@@ -36,7 +40,8 @@ describe("ActivityRealtimePublisher", () => {
     });
   });
 
-  it("publishes revision-only refetch events to isolated presenter and audience rooms", () => {
+  it("coalesces revision-only refetch events to the latest revision per run", () => {
+    vi.useFakeTimers();
     const emit = vi.fn();
     const to = vi.fn().mockReturnValue({ emit });
     const metrics = { recordEmit: vi.fn() };
@@ -63,12 +68,27 @@ describe("ActivityRealtimePublisher", () => {
       runId: "activity_run_1",
       revision: 7
     });
+    publisher.publishResultsUpdated({
+      sessionId: "session_1",
+      runId: "activity_run_1",
+      revision: 9
+    });
+    publisher.publishResultsUpdated({
+      sessionId: "session_1",
+      runId: "activity_run_1",
+      revision: 8
+    });
+
+    expect(emit).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(99);
+    expect(emit).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
 
     expect(to).toHaveBeenCalledWith("presentation:session_1:presenter");
     expect(to).toHaveBeenCalledWith("presentation:session_1:audience");
     expect(emit).toHaveBeenCalledTimes(2);
     const serialized = JSON.stringify(emit.mock.calls);
-    expect(serialized).toContain('"revision":7');
+    expect(serialized).toContain('"revision":9');
     expect(serialized).toContain('"refetch":true');
     expect(serialized).not.toContain("audienceId");
     expect(serialized).not.toContain("displayName");

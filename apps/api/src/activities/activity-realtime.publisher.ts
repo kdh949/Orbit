@@ -17,9 +17,19 @@ import {
   type ActivityRealtimeRoomRole,
 } from "./activity-realtime-metrics.service";
 
+const RESULTS_UPDATE_COALESCE_WINDOW_MS = 100;
+
+type PendingResultsUpdate = {
+  sessionId: string;
+  runId: string;
+  revision: number;
+  timer: ReturnType<typeof setTimeout>;
+};
+
 @Injectable()
 export class ActivityRealtimePublisher {
   private server: Server | null = null;
+  private readonly pendingResultsUpdates = new Map<string, PendingResultsUpdate>();
 
   constructor(private readonly metrics: ActivityRealtimeMetricsService) {}
 
@@ -76,6 +86,29 @@ export class ActivityRealtimePublisher {
   }
 
   publishResultsUpdated(input: {
+    sessionId: string;
+    runId: string;
+    revision: number;
+  }): void {
+    if (!this.server) return;
+    const key = `${input.sessionId}\0${input.runId}`;
+    const pending = this.pendingResultsUpdates.get(key);
+    if (pending) {
+      pending.revision = Math.max(pending.revision, input.revision);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const latest = this.pendingResultsUpdates.get(key);
+      if (!latest) return;
+      this.pendingResultsUpdates.delete(key);
+      this.emitResultsUpdated(latest);
+    }, RESULTS_UPDATE_COALESCE_WINDOW_MS);
+    timer.unref?.();
+    this.pendingResultsUpdates.set(key, { ...input, timer });
+  }
+
+  private emitResultsUpdated(input: {
     sessionId: string;
     runId: string;
     revision: number;
