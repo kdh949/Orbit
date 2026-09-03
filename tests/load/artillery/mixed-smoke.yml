@@ -1,0 +1,29 @@
+config:
+  target: "{{ $env.BASE_URL }}"
+  processor: "./mixed-processor.cjs"
+  phases:
+    - name: connect-10-audience-over-5s
+      duration: 5
+      arrivalCount: 10
+      maxVusers: 10
+  plugins:
+    publish-metrics:
+      - type: prometheus
+        pushgateway: "{{ $env.ARTILLERY_PUSHGATEWAY_URL }}"
+        prefix: orbit_mixed_test
+        tags:
+          - "scenario:mixed-audience-smoke"
+    ensure:
+      thresholds:
+        - "orbit_http_submit_ms.p95": 1000
+        - "orbit_revision_event_ms.p95": 1000
+      conditions:
+        - expression: "vusers.failed == 0"
+          strict: true
+before:
+  flow:
+    - function: assertMixedSafety
+scenarios:
+  - name: mixed-audience-smoke
+    flow:
+      - function: runMixedAudienceScenario

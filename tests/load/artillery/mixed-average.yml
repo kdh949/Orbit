@@ -1,0 +1,29 @@
+config:
+  target: "{{ $env.BASE_URL }}"
+  processor: "./mixed-processor.cjs"
+  phases:
+    - name: connect-50-audience-over-1m
+      duration: 60
+      arrivalCount: 50
+      maxVusers: 50
+  plugins:
+    publish-metrics:
+      - type: prometheus
+        pushgateway: "{{ $env.ARTILLERY_PUSHGATEWAY_URL }}"
+        prefix: orbit_mixed_test
+        tags:
+          - "scenario:mixed-audience-average"
+    ensure:
+      thresholds:
+        - "orbit_http_submit_ms.p95": 1000
+        - "orbit_revision_event_ms.p95": 1000
+      conditions:
+        - expression: "vusers.failed == 0"
+          strict: true
+before:
+  flow:
+    - function: assertMixedSafety
+scenarios:
+  - name: mixed-audience-average
+    flow:
+      - function: runMixedAudienceScenario

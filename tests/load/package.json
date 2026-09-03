@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "test": "node --test safety.test.mjs",
+    "test:mixed": "node --test mixed-safety.test.mjs",
+    "mixed:smoke": "node run-mixed.mjs smoke",
+    "mixed:average": "node run-mixed.mjs average",
     "artillery:smoke": "node run-artillery.mjs smoke",
     "artillery:average": "node run-artillery.mjs average",
     "artillery:load": "node run-artillery.mjs load",
