@@ -55,13 +55,11 @@ export class RealtimeGateway
       message: "connected",
       socketId: client.id
     });
-    void this.emitUsers();
   }
 
   handleDisconnect(client: Socket) {
     const roomId = readSocketRoomId(client);
     const projectId = readSocketProjectId(client);
-    void this.emitUsers();
 
     if (roomId) {
       void this.emitRoomUsers(roomId);
@@ -203,14 +201,6 @@ export class RealtimeGateway
     };
   }
 
-  @SubscribeMessage("users:list")
-  async handleUsersList() {
-    return {
-      event: "users:list",
-      data: await this.users()
-    };
-  }
-
   @SubscribeMessage("room:users")
   async handleRoomUsers(
     @MessageBody() body: unknown,
@@ -286,10 +276,6 @@ export class RealtimeGateway
     };
   }
 
-  private async emitUsers() {
-    this.server.emit("users:list", await this.users());
-  }
-
   private async emitRoomUsers(roomId: string) {
     this.server
       .to(canvasSocketRoomName(roomId))
@@ -310,15 +296,6 @@ export class RealtimeGateway
     this.server
       .to(projectSocketRoomName(projectId))
       .emit("project:presence", event);
-  }
-
-  private async users() {
-    return (await this.server.fetchSockets())
-      .map(readSocketRealtimeUser)
-      .filter((user): user is ConnectedRealtimeUser => Boolean(user))
-      .sort((a, b) =>
-      a.connectedAt.localeCompare(b.connectedAt)
-    );
   }
 
   private async roomUsers(roomId: string) {
