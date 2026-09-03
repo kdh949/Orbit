@@ -62,6 +62,32 @@ describe("WorkerMetricsService", () => {
     expect(output.endsWith("# EOF\n")).toBe(true);
   });
 
+  it("normalizes BullMQ counter metadata for OpenMetrics", () => {
+    const output = mergePrometheusText([
+      [
+        "# HELP bullmq_job_completed_total Total number of completed jobs",
+        "# TYPE bullmq_job_completed_total counter",
+        'bullmq_job_completed_total{queue="a"} 3',
+        "# HELP bullmq_job_failed_total Total number of failed jobs",
+        "# TYPE bullmq_job_failed_total counter",
+        'bullmq_job_failed_total{queue="a"} 1',
+      ].join("\n"),
+    ]);
+
+    expect(output).toContain(
+      "# HELP bullmq_job_completed Total number of completed jobs",
+    );
+    expect(output).toContain("# TYPE bullmq_job_completed counter");
+    expect(output).toContain('bullmq_job_completed_total{queue="a"} 3');
+    expect(output).toContain(
+      "# HELP bullmq_job_failed Total number of failed jobs",
+    );
+    expect(output).toContain("# TYPE bullmq_job_failed counter");
+    expect(output).toContain('bullmq_job_failed_total{queue="a"} 1');
+    expect(output).not.toContain("# TYPE bullmq_job_completed_total counter");
+    expect(output).not.toContain("# TYPE bullmq_job_failed_total counter");
+  });
+
   it("exports shared database query metrics without SQL labels", async () => {
     const metrics = new WorkerMetricsService();
     const queryRunner = {};

@@ -15,6 +15,8 @@ import { Queue } from "bullmq";
 import { createServer, type Server } from "node:http";
 
 const durationBuckets = [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 15, 30, 60, 300];
+const bullMqCounterMetadataPattern =
+  /^(# (?:HELP|TYPE) bullmq_job_(?:completed|failed))_total(?= )/;
 
 @Injectable()
 export class WorkerMetricsService {
@@ -139,7 +141,8 @@ export function mergePrometheusText(documents: string[]): string {
   const metadata = new Set<string>();
   const lines: string[] = [];
   for (const document of documents) {
-    for (const line of document.trim().split("\n")) {
+    for (const rawLine of document.trim().split("\n")) {
+      const line = rawLine.replace(bullMqCounterMetadataPattern, "$1");
       if (
         (line.startsWith("# HELP ") || line.startsWith("# TYPE ")) &&
         metadata.has(line)
