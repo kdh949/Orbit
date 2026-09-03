@@ -1,3 +1,4 @@
+import { Registry } from "@prometheus-io/client";
 import { describe, expect, it } from "vitest";
 
 import { ApiMetricsController } from "./api-metrics.controller";
@@ -20,6 +21,30 @@ describe("ApiMetricsService", () => {
     expect(output).toContain('route="/api/v1/projects/:projectId/deck"');
     expect(output).toContain('status_class="2xx"');
     expect(output).not.toContain("project_private_123");
+  });
+
+  it("exports sampled request latency exemplars as OpenMetrics", async () => {
+    const metrics = new ApiMetricsService();
+
+    metrics.recordHttpRequest({
+      method: "get",
+      route: "/api/v1/projects/:projectId/deck",
+      statusCode: 200,
+      durationSeconds: 0.125,
+      exemplarLabels: {
+        traceID: "0123456789abcdef0123456789abcdef",
+        spanID: "0123456789abcdef",
+      },
+    });
+    const output = await metrics.metrics();
+
+    expect(metrics.registry.contentType).toBe(
+      Registry.OPENMETRICS_CONTENT_TYPE,
+    );
+    expect(output).toContain(
+      '# {traceID="0123456789abcdef0123456789abcdef",spanID="0123456789abcdef"} 0.125',
+    );
+    expect(output.endsWith("# EOF\n")).toBe(true);
   });
 
   it("counts authorized audience join bypasses without identifier labels", async () => {

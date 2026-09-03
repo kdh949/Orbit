@@ -353,6 +353,38 @@ test("Tempo keeps trace-to-profile service and environment correlation", async (
   );
 });
 
+test("Prometheus exemplars link core latency panels to Tempo", async () => {
+  const dashboard = await loadDashboard();
+  const datasource = await readObservabilityFile(
+    "grafana/provisioning/datasources/datasources.yml",
+  );
+  const monitoringCompose = await readObservabilityFile(
+    "docker-compose.monitoring.yml",
+  );
+  const tempo = await readObservabilityFile("tempo/tempo.yml");
+
+  assert.match(datasource, /exemplarTraceIdDestinations:/);
+  assert.match(datasource, /datasourceUid: tempo\s+name: traceID/);
+  assert.match(monitoringCompose, /--enable-feature=exemplar-storage/);
+  assert.match(monitoringCompose, /--web\.enable-remote-write-receiver/);
+  assert.match(tempo, /send_exemplars: true/);
+
+  for (const title of [
+    "API success latency p95 by route",
+    "API success latency percentiles",
+    "Python worker success latency p95 by route",
+    "Worker successful job duration",
+    "서비스별 span p95",
+  ]) {
+    const panel = panelByTitle(dashboard, title);
+    assert.ok(panel.targets.length > 0, `${title} must have a range query`);
+    assert.ok(
+      panel.targets.every((target) => target.exemplar === true),
+      `${title} must request exemplars`,
+    );
+  }
+});
+
 test("Tempo service graph recognizes stable Redis database spans", async () => {
   const tempo = await readObservabilityFile("tempo/tempo.yml");
   const serviceGraphsStart = tempo.indexOf("    service_graphs:");

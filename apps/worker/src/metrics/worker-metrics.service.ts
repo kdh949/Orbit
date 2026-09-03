@@ -7,7 +7,10 @@ import {
 } from "@prometheus-io/client";
 import { Injectable } from "@nestjs/common";
 import { redisConnectionOptions } from "@orbit/job-queue";
-import { createTypeOrmQueryMetrics } from "@orbit/observability";
+import {
+  createTypeOrmQueryMetrics,
+  type TraceExemplarLabels,
+} from "@orbit/observability";
 import { Queue } from "bullmq";
 import { createServer, type Server } from "node:http";
 
@@ -15,7 +18,7 @@ const durationBuckets = [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 15, 30, 60, 300];
 
 @Injectable()
 export class WorkerMetricsService {
-  readonly registry = new Registry();
+  readonly registry = new Registry(Registry.OPENMETRICS_CONTENT_TYPE);
   private readonly databaseQueryMetrics = createTypeOrmQueryMetrics({
     registry: this.registry,
   });
@@ -32,11 +35,12 @@ export class WorkerMetricsService {
     labelNames: ["queue_name", "job_name", "outcome"] as const,
     registers: [this.registry],
   });
-  private readonly jobDuration = new Histogram({
+  private readonly jobDuration = new Histogram<string>({
     name: "orbit_worker_job_duration_seconds",
     help: "Worker job processing attempt duration in seconds.",
     labelNames: ["queue_name", "job_name", "outcome"] as const,
     buckets: durationBuckets,
+    enableExemplars: true,
     registers: [this.registry],
   });
   private readonly activeJobs = new Gauge({
@@ -65,6 +69,7 @@ export class WorkerMetricsService {
     jobName: string,
     outcome: "succeeded" | "failed" | "progressed",
     durationSeconds: number,
+    exemplarLabels?: TraceExemplarLabels,
   ): void {
     const labels = {
       queue_name: queueName,
@@ -72,7 +77,11 @@ export class WorkerMetricsService {
       outcome,
     };
     this.jobsCompleted.inc(labels);
-    this.jobDuration.observe(labels, durationSeconds);
+    this.jobDuration.observe({
+      exemplarLabels,
+      labels,
+      value: durationSeconds,
+    });
     this.activeJobs.dec({ queue_name: queueName });
   }
 
@@ -140,8 +149,8 @@ export function mergePrometheusText(documents: string[]): string {
       if (line.startsWith("# HELP ") || line.startsWith("# TYPE ")) {
         metadata.add(line);
       }
-      if (line.length > 0) lines.push(line);
+      if (line.length > 0 && line !== "# EOF") lines.push(line);
     }
   }
-  return `${lines.join("\n")}\n`;
+  return `${lines.join("\n")}\n# EOF\n`;
 }

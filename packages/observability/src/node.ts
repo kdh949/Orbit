@@ -1,4 +1,9 @@
-import { context, trace } from "@opentelemetry/api";
+import {
+  context,
+  isSpanContextValid,
+  trace,
+  TraceFlags,
+} from "@opentelemetry/api";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { ExpressInstrumentation } from "@opentelemetry/instrumentation-express";
 import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
@@ -34,6 +39,28 @@ export const TRACE_SAMPLE_RATIO_ATTRIBUTE = "orbit.trace.sample_ratio";
 export type ActiveSpanAttributeWriter = (
   attributes: Record<string, string | number | boolean>,
 ) => void;
+
+export type TraceExemplarLabels = Record<"spanID" | "traceID", string>;
+
+export function captureActiveTraceExemplarLabels():
+  | TraceExemplarLabels
+  | undefined {
+  const span = trace.getSpan(context.active());
+  if (!span?.isRecording()) return undefined;
+
+  const spanContext = span.spanContext();
+  if (
+    !isSpanContextValid(spanContext) ||
+    (spanContext.traceFlags & TraceFlags.SAMPLED) === 0
+  ) {
+    return undefined;
+  }
+
+  return {
+    spanID: spanContext.spanId,
+    traceID: spanContext.traceId,
+  };
+}
 
 export function captureActiveSpanAttributeWriter():
   | ActiveSpanAttributeWriter

@@ -1,3 +1,4 @@
+import { Registry } from "@prometheus-io/client";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -23,15 +24,42 @@ describe("WorkerMetricsService", () => {
     expect(output).not.toContain("job_private_123");
   });
 
+  it("exports sampled job latency exemplars as OpenMetrics", async () => {
+    const metrics = new WorkerMetricsService();
+
+    metrics.recordJobStarted("rehearsal-stt", "rehearsal-stt");
+    metrics.recordJobCompleted(
+      "rehearsal-stt",
+      "rehearsal-stt",
+      "succeeded",
+      0.25,
+      {
+        traceID: "0123456789abcdef0123456789abcdef",
+        spanID: "0123456789abcdef",
+      },
+    );
+    const output = await metrics.metrics();
+
+    expect(metrics.registry.contentType).toBe(
+      Registry.OPENMETRICS_CONTENT_TYPE,
+    );
+    expect(output).toContain(
+      '# {traceID="0123456789abcdef0123456789abcdef",spanID="0123456789abcdef"} 0.25',
+    );
+    expect(output.endsWith("# EOF\n")).toBe(true);
+  });
+
   it("deduplicates BullMQ metric metadata across queues", () => {
     const output = mergePrometheusText([
-      '# HELP bullmq_job_count Number of jobs\n# TYPE bullmq_job_count gauge\nbullmq_job_count{queue="a"} 1\n',
+      '# HELP bullmq_job_count Number of jobs\n# TYPE bullmq_job_count gauge\nbullmq_job_count{queue="a"} 1\n# EOF\n',
       '# HELP bullmq_job_count Number of jobs\n# TYPE bullmq_job_count gauge\nbullmq_job_count{queue="b"} 2\n',
     ]);
 
     expect(output.match(/# HELP bullmq_job_count/g)).toHaveLength(1);
     expect(output).toContain('queue="a"');
     expect(output).toContain('queue="b"');
+    expect(output.match(/# EOF/g)).toHaveLength(1);
+    expect(output.endsWith("# EOF\n")).toBe(true);
   });
 
   it("exports shared database query metrics without SQL labels", async () => {

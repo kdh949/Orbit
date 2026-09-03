@@ -6,7 +6,10 @@ import {
   Registry,
 } from "@prometheus-io/client";
 import { Injectable } from "@nestjs/common";
-import { createTypeOrmQueryMetrics } from "@orbit/observability";
+import {
+  createTypeOrmQueryMetrics,
+  type TraceExemplarLabels,
+} from "@orbit/observability";
 
 const httpDurationBuckets = [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5];
 const responseSizeBuckets = [
@@ -17,7 +20,7 @@ export type HttpResponseOutcome = "completed" | "aborted";
 
 @Injectable()
 export class ApiMetricsService {
-  readonly registry = new Registry();
+  readonly registry = new Registry(Registry.OPENMETRICS_CONTENT_TYPE);
   private readonly databaseQueryMetrics = createTypeOrmQueryMetrics({
     registry: this.registry,
   });
@@ -28,11 +31,12 @@ export class ApiMetricsService {
     labelNames: ["method", "route", "status_class"] as const,
     registers: [this.registry],
   });
-  private readonly httpDuration = new Histogram({
+  private readonly httpDuration = new Histogram<string>({
     name: "orbit_api_http_request_duration_seconds",
     help: "API HTTP request duration in seconds.",
     labelNames: ["method", "route", "status_class"] as const,
     buckets: httpDurationBuckets,
+    enableExemplars: true,
     registers: [this.registry],
   });
   private readonly responseBodySize = new Histogram({
@@ -86,6 +90,7 @@ export class ApiMetricsService {
     route: string;
     statusCode: number;
     durationSeconds: number;
+    exemplarLabels?: TraceExemplarLabels;
   }): void {
     const labels = {
       method: normalizeMethod(input.method),
@@ -93,7 +98,11 @@ export class ApiMetricsService {
       status_class: statusClass(input.statusCode),
     };
     this.httpRequests.inc(labels);
-    this.httpDuration.observe(labels, input.durationSeconds);
+    this.httpDuration.observe({
+      exemplarLabels: input.exemplarLabels,
+      labels,
+      value: input.durationSeconds,
+    });
   }
 
   markHttpRequestStarted(): void {
@@ -117,6 +126,7 @@ export class ApiMetricsService {
 
   recordHttpResponse(input: {
     durationSeconds: number;
+    exemplarLabels?: TraceExemplarLabels;
     headersSent: boolean;
     method: string;
     outcome: HttpResponseOutcome;
@@ -138,7 +148,11 @@ export class ApiMetricsService {
 
     if (input.outcome === "completed") {
       this.httpRequests.inc(labels);
-      this.httpDuration.observe(labels, nonNegative(input.durationSeconds));
+      this.httpDuration.observe({
+        exemplarLabels: input.exemplarLabels,
+        labels,
+        value: nonNegative(input.durationSeconds),
+      });
     } else {
       this.responseAborts.inc(labels);
     }

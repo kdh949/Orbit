@@ -1,6 +1,10 @@
 import { redisConnectionOptions } from "@orbit/job-queue";
 import { semanticCueExtractionQueueName } from "@orbit/job-queue";
-import { bullMqTelemetry } from "@orbit/observability";
+import {
+  bullMqTelemetry,
+  captureActiveTraceExemplarLabels,
+  type TraceExemplarLabels,
+} from "@orbit/observability";
 import type { Job as OrbitJob } from "@orbit/shared/jobs";
 import { type Job as BullMqJob, Worker as BullMqWorker } from "bullmq";
 import type { PinoLogger } from "nestjs-pino";
@@ -15,6 +19,7 @@ type WorkerRuntimeMetrics = {
     jobName: string,
     outcome: "succeeded" | "failed" | "progressed",
     durationSeconds: number,
+    exemplarLabels?: TraceExemplarLabels,
   ): void;
 };
 
@@ -94,6 +99,7 @@ export class BullMqWorkerRuntime {
     handler: () => Promise<OrbitJob | void>,
   ): Promise<OrbitJob | void> {
     const startedAt = Date.now();
+    const exemplarLabels = captureActiveTraceExemplarLabels();
     this.metrics?.recordJobStarted(descriptor.queueName, job.name);
     const baseFields = {
       queueName: descriptor.queueName,
@@ -124,6 +130,7 @@ export class BullMqWorkerRuntime {
           job.name,
           "progressed",
           durationMs / 1_000,
+          exemplarLabels,
         );
         this.logger.info(
           {
@@ -147,6 +154,7 @@ export class BullMqWorkerRuntime {
         job.name,
         result.status === "failed" ? "failed" : "succeeded",
         durationMs / 1_000,
+        exemplarLabels,
       );
 
       this.logger[level](
@@ -174,6 +182,7 @@ export class BullMqWorkerRuntime {
         job.name,
         "failed",
         (Date.now() - startedAt) / 1_000,
+        exemplarLabels,
       );
       if (isAiDeckStageRetrySignal(error)) throw error;
       if (descriptor.terminalRecovery) {

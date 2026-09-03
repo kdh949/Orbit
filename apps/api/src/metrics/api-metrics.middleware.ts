@@ -1,5 +1,8 @@
 import { Injectable, type NestMiddleware } from "@nestjs/common";
-import { captureActiveSpanAttributeWriter } from "@orbit/observability";
+import {
+  captureActiveSpanAttributeWriter,
+  captureActiveTraceExemplarLabels,
+} from "@orbit/observability";
 import type { NextFunction, Request, Response } from "express";
 
 import { ApiMetricsService } from "./api-metrics.service";
@@ -20,6 +23,7 @@ export class ApiMetricsMiddleware implements NestMiddleware {
 
     const startedAt = process.hrtime.bigint();
     const annotateSpan = captureActiveSpanAttributeWriter();
+    const exemplarLabels = captureActiveTraceExemplarLabels();
     const originalWrite = response.write;
     const originalEnd = response.end;
     let bodyBytes = 0;
@@ -80,6 +84,7 @@ export class ApiMetricsMiddleware implements NestMiddleware {
 
       this.metrics.recordHttpResponse({
         durationSeconds,
+        exemplarLabels,
         headersSent: response.headersSent,
         method: request.method,
         outcome,

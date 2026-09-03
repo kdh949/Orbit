@@ -1,3 +1,4 @@
+import { Registry } from "@prometheus-io/client";
 import { Controller, Get, Header } from "@nestjs/common";
 
 import { ApiMetricsService } from "./api-metrics.service";
@@ -8,7 +9,7 @@ export class ApiMetricsController {
 
   @Get("metrics")
   @Header("Cache-Control", "no-store")
-  @Header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+  @Header("Content-Type", Registry.OPENMETRICS_CONTENT_TYPE)
   getMetrics(): Promise<string> {
     return this.metrics.metrics();
   }

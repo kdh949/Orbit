@@ -1,9 +1,74 @@
-import { describe, expect, it } from "vitest";
+import { trace, TraceFlags, type Span } from "@opentelemetry/api";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  captureActiveTraceExemplarLabels,
   createNodeTelemetryResourceAttributes,
   resolveNodeTelemetryConfig,
 } from "./node";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe("captureActiveTraceExemplarLabels", () => {
+  it("returns trace and span IDs only for an active sampled span", () => {
+    vi.spyOn(trace, "getSpan").mockReturnValue({
+      isRecording: () => true,
+      spanContext: () => ({
+        isRemote: false,
+        spanId: "0123456789abcdef",
+        traceFlags: TraceFlags.SAMPLED,
+        traceId: "0123456789abcdef0123456789abcdef",
+      }),
+    } as Span);
+
+    expect(captureActiveTraceExemplarLabels()).toEqual({
+      spanID: "0123456789abcdef",
+      traceID: "0123456789abcdef0123456789abcdef",
+    });
+  });
+
+  it.each([
+    { isRecording: false, traceFlags: TraceFlags.SAMPLED },
+    { isRecording: true, traceFlags: TraceFlags.NONE },
+  ])(
+    "returns no exemplar for a non-recording or unsampled span",
+    ({ isRecording, traceFlags }) => {
+      vi.spyOn(trace, "getSpan").mockReturnValue({
+        isRecording: () => isRecording,
+        spanContext: () => ({
+          isRemote: false,
+          spanId: "0123456789abcdef",
+          traceFlags,
+          traceId: "0123456789abcdef0123456789abcdef",
+        }),
+      } as Span);
+
+      expect(captureActiveTraceExemplarLabels()).toBeUndefined();
+    },
+  );
+
+  it("returns no exemplar without an active span", () => {
+    vi.spyOn(trace, "getSpan").mockReturnValue(undefined);
+
+    expect(captureActiveTraceExemplarLabels()).toBeUndefined();
+  });
+
+  it("returns no exemplar for an invalid span context", () => {
+    vi.spyOn(trace, "getSpan").mockReturnValue({
+      isRecording: () => true,
+      spanContext: () => ({
+        isRemote: false,
+        spanId: "0000000000000000",
+        traceFlags: TraceFlags.SAMPLED,
+        traceId: "00000000000000000000000000000000",
+      }),
+    } as Span);
+
+    expect(captureActiveTraceExemplarLabels()).toBeUndefined();
+  });
+});
 
 describe("resolveNodeTelemetryConfig", () => {
   it("keeps telemetry disabled when no OTLP endpoint is configured", () => {
