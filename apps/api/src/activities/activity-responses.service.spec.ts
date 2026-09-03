@@ -131,8 +131,8 @@ describe("ActivityResponsesService", () => {
     expect(repository.lockAudienceMutation.mock.invocationCallOrder[0]).toBeLessThan(
       repository.findForAudience.mock.invocationCallOrder[0]
     );
-    expect(repository.insert.mock.invocationCallOrder[0]).toBeLessThan(
-      repository.lockTargetForCommit.mock.invocationCallOrder[0]
+    expect(repository.lockTargetForCommit.mock.invocationCallOrder[0]).toBeLessThan(
+      repository.insert.mock.invocationCallOrder[0]
     );
     expect(repository.lockTargetForCommit.mock.invocationCallOrder[0]).toBeLessThan(
       repository.bumpRunRevision.mock.invocationCallOrder[0]
@@ -155,7 +155,7 @@ describe("ActivityResponsesService", () => {
     expect(repository.bumpRunRevision).not.toHaveBeenCalled();
   });
 
-  it("rejects and leaves the run revision unchanged when the run closes before commit", async () => {
+  it("rejects before storing a response when the run closes before commit", async () => {
     const { repository, service } = createService({
       lockTargetForCommit: vi.fn().mockResolvedValue(null)
     });
@@ -166,7 +166,7 @@ describe("ActivityResponsesService", () => {
         answers: [{ questionId: "question_rating", type: "rating", value: 5 }]
       })
     ).rejects.toMatchObject({ message: "Activity is not open for responses" });
-    expect(repository.insert).toHaveBeenCalledOnce();
+    expect(repository.insert).not.toHaveBeenCalled();
     expect(repository.bumpRunRevision).not.toHaveBeenCalled();
   });
 

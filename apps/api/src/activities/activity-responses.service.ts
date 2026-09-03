@@ -80,6 +80,13 @@ export class ActivityResponsesService {
         throw error;
       }
       const now = new Date();
+      await this.lockTargetForCommit(
+        manager,
+        projectId,
+        sessionId,
+        activityId,
+        target.activity_run_id
+      );
       const response = existing
         ? await this.repository.update(
             manager,
@@ -105,13 +112,6 @@ export class ActivityResponsesService {
         response.response_id,
         validated.answers,
         now
-      );
-      await this.lockTargetForCommit(
-        manager,
-        projectId,
-        sessionId,
-        activityId,
-        target.activity_run_id
       );
       const runRevision = await this.repository.bumpRunRevision(
         manager,
