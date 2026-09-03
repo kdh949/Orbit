@@ -49,15 +49,16 @@ const validEnv = {
 };
 
 describe("RealtimeGateway", () => {
-  it("does not expose IP or raw user agent details in the global user list", async () => {
+  it("does not broadcast a global user list when sockets connect or disconnect", async () => {
     Object.assign(process.env, validEnv);
     const { RealtimeGateway } = await import("./realtime.gateway");
     const gateway = new RealtimeGateway(
       {} as AuthService,
       {} as ProjectsService,
     );
+    const serverEmit = vi.fn();
     gateway.server = {
-      emit: vi.fn(),
+      emit: serverEmit,
       sockets: {
         adapter: { rooms: new Map() },
         sockets: new Map(),
@@ -80,15 +81,17 @@ describe("RealtimeGateway", () => {
     } as unknown as Socket;
 
     gateway.handleConnection(client);
-    const response = await gateway.handleUsersList();
     gateway.handleDisconnect(client);
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(response.data).toHaveLength(1);
-    expect(response.data[0]).not.toHaveProperty("ip");
-    expect(response.data[0].environment).toEqual({ browserLabel: "Chrome" });
-    expect(JSON.stringify(response.data)).not.toContain("203.0.113");
-    expect(JSON.stringify(response.data)).not.toContain("Mozilla/5.0");
-    expect(JSON.stringify(response.data)).not.toContain("ko-KR");
+    expect(client.emit).toHaveBeenCalledWith("server:hello", {
+      message: "connected",
+      socketId: "socket-1",
+    });
+    expect(serverEmit).not.toHaveBeenCalledWith(
+      "users:list",
+      expect.anything(),
+    );
   });
 
   it("collects project presence from every Socket.IO server through fetchSockets", async () => {
@@ -113,12 +116,32 @@ describe("RealtimeGateway", () => {
       fetchSockets: vi.fn(async () => [localSocket, remoteSocket]),
     } as unknown as Server;
 
-    gateway.handleConnection(localSocket);
-    gateway.handleConnection(remoteSocket);
-    const response = await gateway.handleUsersList();
+    await (
+      gateway as unknown as {
+        emitProjectPresence: (projectId: string) => Promise<void>;
+      }
+    ).emitProjectPresence("project-1");
 
-    expect(response.data.map((user) => user.id)).toEqual(["socket-local", "socket-remote"]);
-    expect(JSON.stringify(response.data)).not.toContain("203.0.113");
+    expect(gateway.server.in).toHaveBeenCalledWith("project:project-1");
+    expect(gateway.server.to).toHaveBeenCalledWith("project:project-1");
+    expect(to.emit).toHaveBeenCalledWith(
+      "project:presence",
+      expect.objectContaining({
+        payload: {
+          projectId: "project-1",
+          users: [
+            expect.objectContaining({
+              id: "socket-local",
+              userId: "user-local",
+            }),
+            expect.objectContaining({
+              id: "socket-remote",
+              userId: "user-remote",
+            }),
+          ],
+        },
+      }),
+    );
   });
 });
 
