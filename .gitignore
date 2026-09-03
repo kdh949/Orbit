@@ -45,3 +45,4 @@ artifacts/
 .codex/
 docs/runbooks/load-testing-observability.md
 tests/load/README.md
+docs/qa/
