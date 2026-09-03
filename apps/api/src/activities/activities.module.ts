@@ -14,6 +14,7 @@ import { AudienceActiveActivityController } from "./audience-active-activity.con
 import { ActivityResultsRepository } from "./activity-results.repository";
 import { ActivityResultsService } from "./activity-results.service";
 import { ActivityRealtimeGateway } from "./activity-realtime.gateway";
+import { ActivityRealtimeMetricsService } from "./activity-realtime-metrics.service";
 import { ActivityRealtimePublisher } from "./activity-realtime.publisher";
 import { ActivityTextModerationRepository } from "./activity-text-moderation.repository";
 import { ActivityTextModerationService } from "./activity-text-moderation.service";
@@ -39,6 +40,7 @@ import { ActivityTextModerationService } from "./activity-text-moderation.servic
     ActivityResultsService,
     ActivityTextModerationRepository,
     ActivityTextModerationService,
+    ActivityRealtimeMetricsService,
     ActivityRealtimePublisher,
     ActivityRealtimeGateway
   ],

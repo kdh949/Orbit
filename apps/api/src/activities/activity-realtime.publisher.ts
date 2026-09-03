@@ -11,9 +11,17 @@ import type { ActivityRuntimeStatus } from "@orbit/shared/activities";
 import { Injectable } from "@nestjs/common";
 import type { Server } from "socket.io";
 
+import {
+  ActivityRealtimeMetricsService,
+  type ActivityRealtimeEventName,
+  type ActivityRealtimeRoomRole,
+} from "./activity-realtime-metrics.service";
+
 @Injectable()
 export class ActivityRealtimePublisher {
   private server: Server | null = null;
+
+  constructor(private readonly metrics: ActivityRealtimeMetricsService) {}
 
   attach(server: Server): void {
     this.server = server;
@@ -91,13 +99,29 @@ export class ActivityRealtimePublisher {
 
   private emitToBoth(
     sessionId: string,
-    eventName: string,
+    eventName: ActivityRealtimeEventName,
     createEvent: (roomId: string) => unknown
   ): void {
     if (!this.server) return;
     const presenterRoom = presentationPresenterRoomId(sessionId);
     const audienceRoom = presentationAudienceRoomId(sessionId);
-    this.server.to(presenterRoom).emit(eventName, createEvent(presenterRoom));
-    this.server.to(audienceRoom).emit(eventName, createEvent(audienceRoom));
+    for (const [roomRole, roomId] of [
+      ["presenter", presenterRoom],
+      ["audience", audienceRoom],
+    ] as const satisfies readonly (readonly [
+      ActivityRealtimeRoomRole,
+      string,
+    ])[]) {
+      const event = createEvent(roomId);
+      const recipientCount =
+        this.server.sockets.adapter.rooms.get(roomId)?.size ?? 0;
+      this.server.to(roomId).emit(eventName, event);
+      this.metrics.recordEmit({
+        event: eventName,
+        roomRole,
+        payloadBytes: Buffer.byteLength(JSON.stringify(event), "utf8"),
+        recipientCount,
+      });
+    }
   }
 }
