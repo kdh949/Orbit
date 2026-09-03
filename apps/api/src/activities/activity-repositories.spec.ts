@@ -55,6 +55,51 @@ describe("Activity SQL returning projections", () => {
     expect(query.mock.calls[0]?.[0]).toContain("SELECT revision FROM updated");
   });
 
+  it("reads an open response target without locking the shared run row", async () => {
+    const query = vi.fn().mockResolvedValue([]);
+    const repository = new ActivityResponseRepository({} as DataSource);
+
+    await repository.findTarget(
+      { query } as unknown as EntityManager,
+      "project_1",
+      "session_1",
+      "activity_1"
+    );
+
+    expect(String(query.mock.calls[0]?.[0])).not.toContain("FOR UPDATE");
+  });
+
+  it("serializes only mutations for the same run and audience", async () => {
+    const query = vi.fn().mockResolvedValue([]);
+    const repository = new ActivityResponseRepository({} as DataSource);
+
+    await repository.lockAudienceMutation(
+      { query } as unknown as EntityManager,
+      "activity_run_1",
+      "audience_1"
+    );
+
+    expect(String(query.mock.calls[0]?.[0])).toContain("pg_advisory_xact_lock");
+    expect(query.mock.calls[0]?.[1]).toEqual(["activity_run_1", "audience_1"]);
+  });
+
+  it("locks the exact response target only for the final commit check", async () => {
+    const query = vi.fn().mockResolvedValue([]);
+    const repository = new ActivityResponseRepository({} as DataSource);
+
+    await repository.lockTargetForCommit(
+      { query } as unknown as EntityManager,
+      "project_1",
+      "session_1",
+      "activity_1",
+      "activity_run_1"
+    );
+
+    const sql = String(query.mock.calls[0]?.[0]);
+    expect(sql).toContain("runs.activity_run_id = $4");
+    expect(sql).toContain("FOR UPDATE OF runs");
+  });
+
   it("counts the anonymous participants registered for one session", async () => {
     const query = vi.fn().mockResolvedValue([{ participant_count: 12 }]);
     const repository = new ActivityResultsRepository({ query } as unknown as DataSource);

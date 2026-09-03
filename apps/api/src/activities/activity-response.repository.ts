@@ -13,6 +13,11 @@ export type ActivityResponseTargetRow = {
   revision: number;
 };
 
+export type ActivityResponseCommitTargetRow = Pick<
+  ActivityResponseTargetRow,
+  "activity_run_id" | "revision"
+>;
+
 export type ActivityResponseRow = {
   response_id: string;
   project_id: string;
@@ -45,7 +50,7 @@ export class ActivityResponseRepository {
     return this.dataSource.transaction(work);
   }
 
-  async lockTarget(
+  async findTarget(
     manager: EntityManager,
     projectId: string,
     sessionId: string,
@@ -63,9 +68,45 @@ export class ActivityResponseRepository {
           AND sessions.status = 'live'
           AND sessions.results_deleted_at IS NULL
           AND sessions.starts_at <= now() AND sessions.expires_at > now()
-        FOR UPDATE OF runs
       `,
       [projectId, sessionId, activityId]
+    );
+    return rows[0] ?? null;
+  }
+
+  async lockAudienceMutation(
+    manager: EntityManager,
+    runId: string,
+    audienceId: string
+  ): Promise<void> {
+    await manager.query(`SELECT pg_advisory_xact_lock(hashtextextended($1 || ':' || $2, 0))`, [
+      runId,
+      audienceId
+    ]);
+  }
+
+  async lockTargetForCommit(
+    manager: EntityManager,
+    projectId: string,
+    sessionId: string,
+    activityId: string,
+    runId: string
+  ): Promise<ActivityResponseCommitTargetRow | null> {
+    const rows = await manager.query<ActivityResponseCommitTargetRow[]>(
+      `
+        SELECT runs.activity_run_id, runs.revision
+        FROM activity_runs AS runs
+        INNER JOIN presentation_sessions AS sessions
+          ON sessions.project_id = runs.project_id AND sessions.session_id = runs.session_id
+        WHERE runs.project_id = $1 AND runs.session_id = $2 AND runs.activity_id = $3
+          AND runs.activity_run_id = $4
+          AND runs.is_current AND runs.status = 'open'
+          AND sessions.status = 'live'
+          AND sessions.results_deleted_at IS NULL
+          AND sessions.starts_at <= now() AND sessions.expires_at > now()
+        FOR UPDATE OF runs
+      `,
+      [projectId, sessionId, activityId, runId]
     );
     return rows[0] ?? null;
   }

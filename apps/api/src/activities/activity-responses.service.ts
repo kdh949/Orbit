@@ -41,12 +41,13 @@ export class ActivityResponsesService {
     input: UpsertActivityResponseRequest
   ) {
     const result = await this.repository.transaction(async (manager) => {
-      const target = await this.repository.lockTarget(manager, projectId, sessionId, activityId);
+      const target = await this.repository.findTarget(manager, projectId, sessionId, activityId);
       if (!target) throw new ConflictException("Activity is not open for responses");
       await this.audienceRateLimit?.consumeResponseMutation(
         audienceId,
         target.activity_run_id
       );
+      await this.repository.lockAudienceMutation(manager, target.activity_run_id, audienceId);
       const existing = await this.repository.findForAudience(
         manager,
         projectId,
@@ -54,7 +55,18 @@ export class ActivityResponsesService {
         audienceId
       );
       if (existing?.last_client_mutation_id === input.clientMutationId) {
-        return { changed: false, response: existing, runRevision: target.revision };
+        const commitTarget = await this.lockTargetForCommit(
+          manager,
+          projectId,
+          sessionId,
+          activityId,
+          target.activity_run_id
+        );
+        return {
+          changed: false,
+          response: existing,
+          runRevision: commitTarget.revision
+        };
       }
 
       const definition = activityDefinitionSchema.parse(target.definition_snapshot);
@@ -94,6 +106,13 @@ export class ActivityResponsesService {
         validated.answers,
         now
       );
+      await this.lockTargetForCommit(
+        manager,
+        projectId,
+        sessionId,
+        activityId,
+        target.activity_run_id
+      );
       const runRevision = await this.repository.bumpRunRevision(
         manager,
         target.activity_run_id,
@@ -125,6 +144,24 @@ export class ActivityResponsesService {
       response: this.toResponse(result.response),
       runRevision: result.runRevision
     });
+  }
+
+  private async lockTargetForCommit(
+    manager: Parameters<ActivityResponseRepository["findForAudience"]>[0],
+    projectId: string,
+    sessionId: string,
+    activityId: string,
+    runId: string
+  ) {
+    const target = await this.repository.lockTargetForCommit(
+      manager,
+      projectId,
+      sessionId,
+      activityId,
+      runId
+    );
+    if (!target) throw new ConflictException("Activity is not open for responses");
+    return target;
   }
 
   private async syncTextEntries(

@@ -52,13 +52,15 @@ const response = {
 };
 
 function createService(
-  overrides: Partial<ActivityResponseRepository> = {},
+  overrides: Partial<Record<keyof ActivityResponseRepository, ReturnType<typeof vi.fn>>> = {},
   audienceRateLimit?: { consumeResponseMutation: ReturnType<typeof vi.fn> }
 ) {
   const manager = {} as never;
   const repository = {
     transaction: vi.fn(async (work) => work(manager)),
-    lockTarget: vi.fn().mockResolvedValue(target),
+    findTarget: vi.fn().mockResolvedValue(target),
+    lockAudienceMutation: vi.fn().mockResolvedValue(undefined),
+    lockTargetForCommit: vi.fn().mockResolvedValue(target),
     findForAudience: vi.fn().mockResolvedValue(null),
     insert: vi.fn().mockResolvedValue(response),
     update: vi.fn().mockResolvedValue({ ...response, revision: 2 }),
@@ -67,12 +69,12 @@ function createService(
     deleteTextEntries: vi.fn().mockResolvedValue(undefined),
     bumpRunRevision: vi.fn().mockResolvedValue(4),
     ...overrides
-  } as unknown as ActivityResponseRepository;
+  };
   const logger = { info: vi.fn() } as never;
   return {
     repository,
     service: new ActivityResponsesService(
-      repository,
+      repository as unknown as ActivityResponseRepository,
       logger,
       undefined,
       audienceRateLimit as never
@@ -121,11 +123,26 @@ describe("ActivityResponsesService", () => {
       true,
       expect.any(Date)
     );
+    expect(repository.lockAudienceMutation).toHaveBeenCalledWith(
+      expect.anything(),
+      "activity_run_1",
+      "audience_1"
+    );
+    expect(repository.lockAudienceMutation.mock.invocationCallOrder[0]).toBeLessThan(
+      repository.findForAudience.mock.invocationCallOrder[0]
+    );
+    expect(repository.insert.mock.invocationCallOrder[0]).toBeLessThan(
+      repository.lockTargetForCommit.mock.invocationCallOrder[0]
+    );
+    expect(repository.lockTargetForCommit.mock.invocationCallOrder[0]).toBeLessThan(
+      repository.bumpRunRevision.mock.invocationCallOrder[0]
+    );
   });
 
   it("returns the existing result for an idempotent mutation retry", async () => {
     const { repository, service } = createService({
-      findForAudience: vi.fn().mockResolvedValue(response)
+      findForAudience: vi.fn().mockResolvedValue(response),
+      lockTargetForCommit: vi.fn().mockResolvedValue({ ...target, revision: 9 })
     });
 
     await expect(
@@ -133,8 +150,23 @@ describe("ActivityResponsesService", () => {
         clientMutationId: "mutation_1",
         answers: [{ questionId: "question_rating", type: "rating", value: 5 }]
       })
-    ).resolves.toMatchObject({ runRevision: 3 });
+    ).resolves.toMatchObject({ runRevision: 9 });
     expect(repository.update).not.toHaveBeenCalled();
+    expect(repository.bumpRunRevision).not.toHaveBeenCalled();
+  });
+
+  it("rejects and leaves the run revision unchanged when the run closes before commit", async () => {
+    const { repository, service } = createService({
+      lockTargetForCommit: vi.fn().mockResolvedValue(null)
+    });
+
+    await expect(
+      service.upsert("project_1", "session_1", "activity_1", "audience_1", {
+        clientMutationId: "mutation_1",
+        answers: [{ questionId: "question_rating", type: "rating", value: 5 }]
+      })
+    ).rejects.toMatchObject({ message: "Activity is not open for responses" });
+    expect(repository.insert).toHaveBeenCalledOnce();
     expect(repository.bumpRunRevision).not.toHaveBeenCalled();
   });
 
