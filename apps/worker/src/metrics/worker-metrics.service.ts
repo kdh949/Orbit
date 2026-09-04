@@ -17,6 +17,7 @@ import { createServer, type Server } from "node:http";
 const durationBuckets = [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 15, 30, 60, 300];
 const bullMqCounterMetadataPattern =
   /^(# (?:HELP|TYPE) bullmq_job_(?:completed|failed))_total(?= )/;
+const metricFamilyMetadataPattern = /^# (?:HELP|TYPE|UNIT) ([^ ]+)(?: |$)/;
 
 @Injectable()
 export class WorkerMetricsService {
@@ -139,21 +140,33 @@ export class WorkerMetricsService {
 
 export function mergePrometheusText(documents: string[]): string {
   const metadata = new Set<string>();
-  const lines: string[] = [];
+  const metricFamilies = new Map<string, string[]>();
+  const unscopedLines: string[] = [];
   for (const document of documents) {
+    let currentFamily: string | null = null;
     for (const rawLine of document.trim().split("\n")) {
       const line = rawLine.replace(bullMqCounterMetadataPattern, "$1");
-      if (
-        (line.startsWith("# HELP ") || line.startsWith("# TYPE ")) &&
-        metadata.has(line)
-      ) {
+      if (line.length === 0 || line === "# EOF") continue;
+
+      const metadataMatch = line.match(metricFamilyMetadataPattern);
+      if (metadataMatch) {
+        currentFamily = metadataMatch[1];
+        const familyLines = metricFamilies.get(currentFamily) ?? [];
+        metricFamilies.set(currentFamily, familyLines);
+        if (!metadata.has(line)) {
+          metadata.add(line);
+          familyLines.push(line);
+        }
         continue;
       }
-      if (line.startsWith("# HELP ") || line.startsWith("# TYPE ")) {
-        metadata.add(line);
-      }
-      if (line.length > 0 && line !== "# EOF") lines.push(line);
+
+      if (currentFamily) metricFamilies.get(currentFamily)?.push(line);
+      else unscopedLines.push(line);
     }
   }
+  const lines = [
+    ...unscopedLines,
+    ...Array.from(metricFamilies.values()).flat(),
+  ];
   return `${lines.join("\n")}\n# EOF\n`;
 }

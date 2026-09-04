@@ -62,6 +62,45 @@ describe("WorkerMetricsService", () => {
     expect(output.endsWith("# EOF\n")).toBe(true);
   });
 
+  it("keeps BullMQ metric families contiguous across queues", () => {
+    const queueMetrics = (queue: string, completed: number, failed: number) =>
+      [
+        "# HELP bullmq_job_count Number of jobs in the queue by state",
+        "# TYPE bullmq_job_count gauge",
+        `bullmq_job_count{queue="${queue}", state="waiting"} 1`,
+        "# HELP bullmq_job_completed_total Total number of completed jobs",
+        "# TYPE bullmq_job_completed_total counter",
+        `bullmq_job_completed_total{queue="${queue}"} ${completed}`,
+        "# HELP bullmq_job_failed_total Total number of failed jobs",
+        "# TYPE bullmq_job_failed_total counter",
+        `bullmq_job_failed_total{queue="${queue}"} ${failed}`,
+      ].join("\n");
+
+    const output = mergePrometheusText([
+      queueMetrics("a", 3, 1),
+      queueMetrics("b", 5, 2),
+    ]);
+
+    expect(output).toBe(
+      [
+        "# HELP bullmq_job_count Number of jobs in the queue by state",
+        "# TYPE bullmq_job_count gauge",
+        'bullmq_job_count{queue="a", state="waiting"} 1',
+        'bullmq_job_count{queue="b", state="waiting"} 1',
+        "# HELP bullmq_job_completed Total number of completed jobs",
+        "# TYPE bullmq_job_completed counter",
+        'bullmq_job_completed_total{queue="a"} 3',
+        'bullmq_job_completed_total{queue="b"} 5',
+        "# HELP bullmq_job_failed Total number of failed jobs",
+        "# TYPE bullmq_job_failed counter",
+        'bullmq_job_failed_total{queue="a"} 1',
+        'bullmq_job_failed_total{queue="b"} 2',
+        "# EOF",
+        "",
+      ].join("\n"),
+    );
+  });
+
   it("normalizes BullMQ counter metadata for OpenMetrics", () => {
     const output = mergePrometheusText([
       [
