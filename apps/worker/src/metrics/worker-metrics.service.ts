@@ -17,6 +17,7 @@ import { createServer, type Server } from "node:http";
 const durationBuckets = [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 15, 30, 60, 300];
 const bullMqCounterMetadataPattern =
   /^(# (?:HELP|TYPE) bullmq_job_(?:completed|failed))_total(?= )/;
+const bullMqMetricLabelSetPattern = /^(bullmq_[^{]+\{)([^}]*)\}/;
 const metricFamilyMetadataPattern = /^# (?:HELP|TYPE|UNIT) ([^ ]+)(?: |$)/;
 
 @Injectable()
@@ -145,7 +146,13 @@ export function mergePrometheusText(documents: string[]): string {
   for (const document of documents) {
     let currentFamily: string | null = null;
     for (const rawLine of document.trim().split("\n")) {
-      const line = rawLine.replace(bullMqCounterMetadataPattern, "$1");
+      const line = rawLine
+        .replace(bullMqCounterMetadataPattern, "$1")
+        .replace(
+          bullMqMetricLabelSetPattern,
+          (_match, prefix: string, labels: string) =>
+            `${prefix}${labels.replace(/,\s+/g, ",")}}`,
+        );
       if (line.length === 0 || line === "# EOF") continue;
 
       const metadataMatch = line.match(metricFamilyMetadataPattern);

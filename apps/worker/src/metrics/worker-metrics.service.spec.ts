@@ -85,8 +85,8 @@ describe("WorkerMetricsService", () => {
       [
         "# HELP bullmq_job_count Number of jobs in the queue by state",
         "# TYPE bullmq_job_count gauge",
-        'bullmq_job_count{queue="a", state="waiting"} 1',
-        'bullmq_job_count{queue="b", state="waiting"} 1',
+        'bullmq_job_count{queue="a",state="waiting"} 1',
+        'bullmq_job_count{queue="b",state="waiting"} 1',
         "# HELP bullmq_job_completed Total number of completed jobs",
         "# TYPE bullmq_job_completed counter",
         'bullmq_job_completed_total{queue="a"} 3',
