@@ -9,6 +9,7 @@ import { targetRpsAtProgress } from "./lib/target-rps.js";
 const require = createRequire(import.meta.url);
 const {
   assertSafety,
+  findRevisionAtOrAbove,
   getRealtimeProfile,
   runRealtimeScenario,
 } = require("./artillery/processor.cjs");
@@ -253,6 +254,12 @@ test("Artillery processor uses the callback contract only for synchronous hooks"
   assert.equal(assertSafety.length, 3);
   assert.equal(runRealtimeScenario.constructor.name, "AsyncFunction");
   assert.equal(runRealtimeScenario.length, 2);
+});
+
+test("Artillery processor accepts an exact or newer coalesced revision", () => {
+  assert.equal(findRevisionAtOrAbove(new Map([[7, 100]]), 7), 100);
+  assert.equal(findRevisionAtOrAbove(new Map([[9, 120]]), 7), 120);
+  assert.equal(findRevisionAtOrAbove(new Map([[6, 80]]), 7), undefined);
 });
 
 test("Artillery staged profiles require load and Pushgateway confirmations", () => {

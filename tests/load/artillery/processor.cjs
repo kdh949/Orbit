@@ -10,7 +10,12 @@ const REALTIME_PROFILES = {
   acceptance: { rampDurationMs: 300_000, submissionWindowMs: 60_000 },
 };
 
-module.exports = { assertSafety, getRealtimeProfile, runRealtimeScenario };
+module.exports = {
+  assertSafety,
+  findRevisionAtOrAbove,
+  getRealtimeProfile,
+  runRealtimeScenario,
+};
 
 function assertSafety(_context, _events, done) {
   try {
@@ -80,7 +85,7 @@ async function runRealtimeScenario(context, events) {
       if (typeof revision !== "number") return;
       const receivedAt = performance.now();
       revisions.set(revision, receivedAt);
-      if (revision === revisionWaiter?.revision) {
+      if (revisionWaiter && revision >= revisionWaiter.revision) {
         clearTimeout(revisionWaiter.timeout);
         revisionWaiter.resolve(receivedAt);
         revisionWaiter = null;
@@ -112,7 +117,7 @@ async function runRealtimeScenario(context, events) {
     const expectedRevision = payload.runRevision;
     if (typeof expectedRevision !== "number")
       throw new Error("submit response omitted runRevision");
-    let receivedAt = revisions.get(expectedRevision);
+    let receivedAt = findRevisionAtOrAbove(revisions, expectedRevision);
     if (receivedAt === undefined) {
       receivedAt = await waitForRevision(
         expectedRevision,
@@ -210,6 +215,13 @@ function stableHash(value) {
   return hash >>> 0;
 }
 
+function findRevisionAtOrAbove(revisions, expectedRevision) {
+  for (const [revision, receivedAt] of revisions) {
+    if (revision >= expectedRevision) return receivedAt;
+  }
+  return undefined;
+}
+
 function waitForRevision(revision, revisions, setWaiter, timeoutMs) {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(
@@ -217,7 +229,7 @@ function waitForRevision(revision, revisions, setWaiter, timeoutMs) {
       timeoutMs,
     );
     setWaiter({ revision, resolve, timeout });
-    const receivedAt = revisions.get(revision);
+    const receivedAt = findRevisionAtOrAbove(revisions, revision);
     if (receivedAt !== undefined) {
       clearTimeout(timeout);
       resolve(receivedAt);
