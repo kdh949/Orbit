@@ -13,6 +13,7 @@
     <a href="#제품-둘러보기">제품 둘러보기</a> ·
     <a href="#빠른-시작">빠른 시작</a> ·
     <a href="#아키텍처">아키텍처</a> ·
+    <a href="#개인-구현">개인 구현</a> ·
     <a href="#개발-가이드">개발 가이드</a>
   </p>
   <p>
@@ -143,15 +144,40 @@ docker compose up --build
 
 ```mermaid
 flowchart LR
-    Web["React + Vite Web"] <--> API["NestJS API\nREST + Socket.IO"]
-    API <--> DB[("PostgreSQL + pgvector")]
-    API <--> Redis[("Redis")]
-    API <--> Storage[("MinIO")]
-    Redis --> Worker["NestJS Worker"]
-    Worker <--> DB
-    Worker <--> Storage
-    Worker --> Python["FastAPI Python worker\nDocument · STT · AI"]
+    n_web["React Web<br/>발표자 · 청중"]:::client
+    n_cdn["CloudFront<br/>HTTPS 진입<br/>API 프록시"]:::edge
+    n_api["NestJS API<br/>프로젝트 · 리허설<br/>활동 관리"]:::app
+    n_db[("PostgreSQL · pgvector<br/>도메인 데이터<br/>작업 상태")]:::data
+    n_queue[("Redis · BullMQ<br/>작업 큐 · room 이벤트")]:::data
+    n_worker["NestJS Worker<br/>작업 실행<br/>진행 상태 관리"]:::app
+    n_python["FastAPI Worker<br/>문서 변환 · AI 처리"]:::app
+    n_s3[("S3<br/>원본 · 변환 파일")]:::data
+    n_nginx["Nginx"]:::edge
+    n_static[("S3 Static Web<br/>Web 정적 파일")]:::data
+
+    n_web -->|"HTTPS"| n_cdn
+    n_api -->|"조회 · 저장"| n_db
+    n_api -->|"작업 등록"| n_queue
+    n_queue -->|"작업 소비"| n_worker
+    n_worker -->|"상태 갱신"| n_db
+    n_worker -->|"HTTP"| n_python
+    n_api -->|"파일 접근 관리"| n_s3
+    n_python -->|"산출물 업로드"| n_s3
+    n_cdn --> n_nginx
+    n_nginx --> n_api
+    n_cdn -->|"정적 파일"| n_static
+
+    classDef client fill:#eff6ff,stroke:#60a5fa,color:#17233b
+    classDef edge fill:#f8fafc,stroke:#94a3b8,color:#17233b
+    classDef app fill:#f0fdfa,stroke:#2bbbad,color:#17233b
+    classDef data fill:#fff7ed,stroke:#fdba74,color:#17233b
+    classDef external fill:#f5f3ff,stroke:#bda4ee,color:#17233b
+    classDef decision fill:#f0fdfa,stroke:#2bbbad,color:#17233b
 ```
+
+발표자·청중 요청은 API와 Socket.IO에서 처리하고, 문서 변환·음성 분석은 BullMQ와 Worker로 넘깁니다. 작업 상태는 PostgreSQL에, 발표자료와 음성 파일은 S3에 저장합니다.
+
+[전체 구조](docs/architecture/overview.md) · [실시간 청중 참여와 재접속](docs/architecture/realtime.md) · [리허설 음성 업로드와 리포트 생성](docs/architecture/speech-report.md) · [변환 파일 업로드와 메타데이터 전달](docs/architecture/artifact.md)
 
 | 영역                 | 주요 기술                                        |
 | -------------------- | ------------------------------------------------ |
@@ -191,6 +217,18 @@ docs/               Architecture, conventions, runbooks, and research
 
 </details>
 
+## 개인 구현
+
+리허설 녹음 업로드와 STT 처리, E5 발화·대본 매칭, 문서 변환 파일 전달 경로를 구현했습니다. 이후 개인 저장소에서 전역 소켓 목록 전송과 청중 응답의 잠금 범위를 개선했습니다.
+
+| 구분           | 주요 구현                                                    | 상세                                                            |
+| -------------- | ------------------------------------------------------------ | --------------------------------------------------------------- |
+| 팀 프로젝트    | 녹음 업로드 API·STT Worker·분석 결과 저장                    | [리허설 STT](docs/contributions/kdh949.md#rehearsal-stt)        |
+| 팀 프로젝트    | E5 의미 매칭·모호한 발화 제외·대본 임베딩 재사용             | [발화·대본 매칭](docs/contributions/kdh949.md#script-alignment) |
+| 팀 프로젝트    | Python 직접 업로드·저장 메타데이터 전달·Node 파일 복사 제거  | [문서 변환](docs/contributions/kdh949.md#artifact-storage)      |
+| 개인 후속 개선 | 전역 소켓 목록 제거, 200 VU 결과 이벤트 p95 8.19초 → 301.9ms | [실시간 전송](docs/contributions/kdh949.md#socket-broadcast)    |
+| 개인 후속 개선 | 청중별 요청 직렬화·부모 행 우선 잠금                         | [동시성 개선](docs/contributions/kdh949.md#response-locking)    |
+
 ## 개발 가이드
 
 변경 범위에 맞는 검증을 실행합니다.
@@ -228,6 +266,11 @@ GitHub Flow를 사용하며 `main`에 직접 커밋하지 않습니다. 목적�
 
 | 문서                                                    | 내용                              |
 | ------------------------------------------------------- | --------------------------------- |
+| [시스템 아키텍처](docs/architecture/overview.md)        | 서비스 구성과 기능별 흐름         |
+| [실시간 청중 참여](docs/architecture/realtime.md)       | 응답 저장, 결과 갱신과 재접속     |
+| [리허설 음성 처리](docs/architecture/speech-report.md)  | 음성 업로드부터 리포트까지        |
+| [문서 변환](docs/architecture/artifact.md)              | 파일 업로드와 메타데이터 전달     |
+| [개인 구현 상세](docs/contributions/kdh949.md)          | 담당 기능, 코드와 검증 결과       |
 | [AGENTS.md](AGENTS.md)                                  | 저장소 최상위 작업 규칙           |
 | [ORBIT Design System](docs/orbit-design-system.md)      | 제품의 시각·상호작용 기준         |
 | [공통 계약](docs/contracts.md)                          | Deck, File, Job, WebSocket schema |
