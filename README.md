@@ -10,16 +10,32 @@
     하나의 로컬 우선 워크스페이스에서 연결합니다.
   </p>
   <p>
-    <a href="#제품-둘러보기">제품 둘러보기</a> ·
-    <a href="#빠른-시작">빠른 시작</a> ·
-    <a href="#아키텍처">아키텍처</a> ·
     <a href="#개인-구현">개인 구현</a> ·
+    <a href="#제품-둘러보기">제품 둘러보기</a> ·
+    <a href="#아키텍처">아키텍처</a> ·
+    <a href="#빠른-시작">빠른 시작</a> ·
     <a href="#개발-가이드">개발 가이드</a>
   </p>
   <p>
     <img src="https://img.shields.io/badge/pnpm-10.12.4-F69220?logo=pnpm&logoColor=white" alt="pnpm 10.12.4" />
   </p>
 </div>
+
+ORBIT는 발표자료 제작과 발표 연습을 서로 분리하지 않습니다. 주제와 참고자료를 바탕으로 덱을 만들고, Canvas에서 편집하고, AI 코칭과 함께 리허설한 뒤, 발표자·청중 화면과 리포트까지 하나의 제품 흐름으로 이어갑니다.
+
+## 개인 구현
+
+팀 프로젝트에서 리허설 녹음 업로드와 STT 처리, E5 발화·대본 매칭, 문서 변환 파일 전달 경로를 구현했습니다. 개인 저장소에서는 전역 소켓 목록 전송과 청중 응답의 잠금 범위를 개선했습니다.
+
+| 구분           | 주요 구현                                                         | 반영 위치                                                                                   | 상세                                                            |
+| -------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| 팀 프로젝트    | 녹음 업로드·STT 분석·결과 저장                                    | `develop`                                                                                   | [리허설 STT](docs/contributions/kdh949.md#rehearsal-stt)        |
+| 팀 프로젝트    | E5 발화·대본 매칭·임베딩 재사용                                   | `develop`                                                                                   | [발화·대본 매칭](docs/contributions/kdh949.md#script-alignment) |
+| 팀 프로젝트    | 변환 파일 직접 업로드·저장 메타데이터 전달                        | `develop`                                                                                   | [문서 변환](docs/contributions/kdh949.md#artifact-storage)      |
+| 개인 후속 개선 | 전역 소켓 목록 제거 · 200 VU 결과 이벤트 p95 **8.19초 → 301.9ms** | `develop`                                                                                   | [실시간 전송](docs/contributions/kdh949.md#socket-broadcast)    |
+| 개인 후속 개선 | 청중별 직렬화·부모 행 우선 잠금                                   | [기능 브랜치 구현](https://github.com/kdh949/Orbit/tree/feature/load-testing-observability) | [동시성 개선](docs/contributions/kdh949.md#response-locking)    |
+
+[개인 구현 상세: 문제·변경 전후 흐름·코드·검증 결과](docs/contributions/kdh949.md)
 
 <p align="center">
   <img
@@ -28,10 +44,6 @@
     width="100%"
   />
 </p>
-
-ORBIT는 발표자료 제작과 발표 연습을 서로 분리하지 않습니다. 주제와 참고자료를 바탕으로 덱을 만들고, Canvas에서 편집하고, AI 코칭과 함께 리허설한 뒤, 발표자·청중 화면과 리포트까지 하나의 제품 흐름으로 이어갑니다.
-
-이 저장소는 `pnpm` workspace와 Turborepo 기반 모노레포이며 Web, API, Worker, Python worker와 공통 계약 패키지를 함께 관리합니다.
 
 ## 제품 둘러보기
 
@@ -104,43 +116,9 @@ flowchart LR
 - Storage, Job Queue, AI/STT/OCR은 port와 provider interface 뒤에 두어 로컬 환경과 운영 환경을 교체할 수 있습니다.
 - 발표자 script, raw audio와 transcript 원문은 청중 API에 노출하지 않습니다.
 
-## 빠른 시작
-
-### 요구 사항
-
-- Node.js `>=22.12`
-- pnpm `10.12.4`
-- Docker와 Docker Compose
-
-### 전체 서비스 실행
-
-```bash
-corepack enable
-corepack prepare pnpm@10.12.4 --activate
-pnpm install
-cp .env.example .env.local
-node infra/scripts/check-env.mjs
-docker compose up --build
-```
-
-브라우저에서 <http://localhost:5173>을 열면 ORBIT Web을 확인할 수 있습니다.
-
-<details>
-<summary><strong>로컬 서비스 주소 보기</strong></summary>
-
-| 서비스               | 주소                           |
-| -------------------- | ------------------------------ |
-| Web                  | <http://localhost:5173>        |
-| API health           | <http://localhost:3000/health> |
-| API Swagger          | <http://localhost:3000/docs>   |
-| Python worker health | <http://localhost:8000/health> |
-| MinIO console        | <http://localhost:9001>        |
-
-</details>
-
-인프라와 migration을 포함한 개발 환경은 `pnpm dev:local`로도 시작할 수 있습니다. 자세한 내용은 [로컬 개발 Runbook](docs/runbooks/local-development.md)을 확인하세요.
-
 ## 아키텍처
+
+이 저장소는 `pnpm` workspace와 Turborepo 기반 모노레포이며 Web, API, Worker, Python worker와 공통 계약 패키지를 함께 관리합니다.
 
 ```mermaid
 flowchart LR
@@ -217,17 +195,41 @@ docs/               Architecture, conventions, runbooks, and research
 
 </details>
 
-## 개인 구현
+## 빠른 시작
 
-리허설 녹음 업로드와 STT 처리, E5 발화·대본 매칭, 문서 변환 파일 전달 경로를 구현했습니다. 이후 개인 저장소에서 전역 소켓 목록 전송과 청중 응답의 잠금 범위를 개선했습니다.
+### 요구 사항
 
-| 구분           | 주요 구현                                                    | 상세                                                            |
-| -------------- | ------------------------------------------------------------ | --------------------------------------------------------------- |
-| 팀 프로젝트    | 녹음 업로드 API·STT Worker·분석 결과 저장                    | [리허설 STT](docs/contributions/kdh949.md#rehearsal-stt)        |
-| 팀 프로젝트    | E5 의미 매칭·모호한 발화 제외·대본 임베딩 재사용             | [발화·대본 매칭](docs/contributions/kdh949.md#script-alignment) |
-| 팀 프로젝트    | Python 직접 업로드·저장 메타데이터 전달·Node 파일 복사 제거  | [문서 변환](docs/contributions/kdh949.md#artifact-storage)      |
-| 개인 후속 개선 | 전역 소켓 목록 제거, 200 VU 결과 이벤트 p95 8.19초 → 301.9ms | [실시간 전송](docs/contributions/kdh949.md#socket-broadcast)    |
-| 개인 후속 개선 | 청중별 요청 직렬화·부모 행 우선 잠금                         | [동시성 개선](docs/contributions/kdh949.md#response-locking)    |
+- Node.js `>=22.12`
+- pnpm `10.12.4`
+- Docker와 Docker Compose
+
+### 전체 서비스 실행
+
+```bash
+corepack enable
+corepack prepare pnpm@10.12.4 --activate
+pnpm install
+cp .env.example .env.local
+node infra/scripts/check-env.mjs
+docker compose up --build
+```
+
+브라우저에서 <http://localhost:5173>을 열면 ORBIT Web을 확인할 수 있습니다.
+
+<details>
+<summary><strong>로컬 서비스 주소 보기</strong></summary>
+
+| 서비스               | 주소                           |
+| -------------------- | ------------------------------ |
+| Web                  | <http://localhost:5173>        |
+| API health           | <http://localhost:3000/health> |
+| API Swagger          | <http://localhost:3000/docs>   |
+| Python worker health | <http://localhost:8000/health> |
+| MinIO console        | <http://localhost:9001>        |
+
+</details>
+
+인프라와 migration을 포함한 개발 환경은 `pnpm dev:local`로도 시작할 수 있습니다. 자세한 내용은 [로컬 개발 Runbook](docs/runbooks/local-development.md)을 확인하세요.
 
 ## 개발 가이드
 
