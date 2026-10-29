@@ -32,4 +32,9 @@ flowchart LR
 
 [참여 장표 실행·검증 문서](../runbooks/activity-slides.md)
 
+## 개인 후속 개선
+
+- [전역 소켓 목록 전송 제거 · `develop` 반영](../contributions/kdh949.md#socket-broadcast)
+- [청중 응답 잠금 개선 · 기능 브랜치 구현](../contributions/kdh949.md#response-locking)
+
 [시스템 구조](overview.md) · [README](../../README.md#아키텍처)
