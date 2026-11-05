@@ -1,6 +1,6 @@
 # Rehearsal Report 파이프라인 전체 가이드
 
-리허설을 실행하고 녹음 파일을 업로드한 뒤 서버가 리포트를 생성해서 화면에 보여주는 흐름을 처음부터 끝까지 설명한다.
+리허설 녹음을 업로드하면 서버가 STT 전사·분석을 실행하고 리포트를 저장한다. 화면은 저장된 결과를 조회해 보여준다.
 
 ---
 
@@ -21,7 +21,9 @@
 
 ## 1. 핵심 개념 빠르게 잡기
 
-### Live STT vs Rehearsal Report STT — 완전히 다른 흐름이다
+<a id="live-stt-vs-rehearsal-report-stt--완전히-다른-흐름이다"></a>
+
+### Live STT와 Rehearsal Report STT의 역할
 
 | | Live STT | Rehearsal Report STT |
 |---|---|---|
@@ -39,7 +41,7 @@ RehearsalRun          ← 리허설 한 번 실행의 단위 (canonical row)
   └─ RehearsalReport  ← 서버 분석 확정 결과 (report_json) ← 공식 SSoT
 ```
 
-**중요**: 공식 리포트 SSoT는 `jobs.result`가 아니라 `rehearsal_runs.report_json`이다.
+리포트 조회 기준은 `rehearsal_runs.report_json`이다. 성공 Job의 `jobs.result`에도 처리 정보와 리포트 사본을 저장한다.
 
 ---
 
@@ -181,7 +183,7 @@ flowchart TD
 
 ### deck 재구성 로직이 중요한 이유
 
-Worker는 단순히 `decks.deck_json`만 읽지 않는다. checkpoint deck를 읽고 그 이후의 `deck_patches`를 버전 순서대로 모두 적용해서 분석 시점의 최신 deck를 만든다.
+Worker는 `decks.deck_json`의 checkpoint Deck에 이후 `deck_patches`를 버전순으로 모두 적용해 분석 시점의 최신 Deck을 만든다.
 
 ```
 decks.deck_json (v5)
@@ -190,7 +192,7 @@ decks.deck_json (v5)
   = 최신 deck (v7)
 ```
 
-리포트에서 `slideTimings`, `missedKeywords`, `keywordCoverage`는 이 최신 deck 기준으로 계산되기 때문에, 중간에 patch chain이 끊기면 Worker가 에러를 던지고 리포트 생성이 막힌다.
+리포트의 `slideTimings`, `missedKeywords`, `keywordCoverage`는 최신 Deck을 기준으로 계산한다. 중간 patch가 빠져 있으면 Worker에서 오류가 발생해 리포트 생성을 중단한다.
 
 ---
 

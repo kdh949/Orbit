@@ -2,7 +2,7 @@
 
 > 인덱스: [ORBIT 공통 계약](../contracts.md)
 >
-> 런타임 source of truth는 `packages/shared` schema와 서비스 validation이다.
+> 데이터 구조와 검증 규칙은 `packages/shared` schema와 서비스의 런타임 검증 코드를 기준으로 한다.
 
 ## PPTX import legacy, Template Blueprint, Quality Report 계약
 
@@ -10,7 +10,7 @@ PPTX import는 최종 편집/렌더링용 `Deck`과 템플릿 의미 sidecar인 
 
 `/pptx-imports`는 에디터의 활성 import 경로가 아니다. #339 PR 3부터 신규 요청과 Job 생성을 중단했고, PR 4에서 남은 API tombstone, queue/job constant, consumer, processor를 제거한다. `historicalJobTypeSchema`, `jobTypeSchema`, `jobSchema`는 과거 row 조회 호환을 유지하며 `pptxImportJobResultSchema`는 historical result parser로만 남긴다. `activeJobTypeSchema`와 `publicCreatableJobTypeSchema`는 `pptx-import`를 거부한다.
 
-PR 4의 런타임 제거와 personal staging 자동 배포는 완료됐다. #339 종료 전 배포 환경의 `pptx-import` queue에서 queued/active 및 예약·repeat 잔여 Job과 관련 DB queued/running Job이 0인지 읽기 전용으로 확인한다. 사전 drain을 수행했다고 소급 주장하지 않으며 로컬 결과는 이 종료 증거를 대신하지 않는다.
+PR 4의 런타임 제거와 personal staging 자동 배포는 완료됐다. #339 종료 전 배포 환경의 `pptx-import` queue에서 queued/active 및 예약·repeat 잔여 Job과 관련 DB queued/running Job이 0인지 읽기 전용으로 확인한다. 이 종료 확인은 배포 환경에서 수행하고 로컬 결과와 구분해 기록한다. 사전 drain 수행 여부는 당시 실행 기록을 기준으로 판단한다.
 
 제거된 Legacy API 계약:
 
@@ -334,7 +334,7 @@ speaker notes, keywords, semantic cues, slide action처럼 package visual tree�
 
 동시성·최신성 규칙:
 
-- sync Worker는 `deckId` 기반 PostgreSQL advisory lock으로 같은 Deck의 package 쓰기를 직렬화한다.
+- sync Worker는 `deckId` 기준 PostgreSQL advisory lock을 사용한다. 같은 Deck의 package는 한 번에 하나의 Worker만 수정한다.
 - lock을 획득한 뒤 저장된 최신 Deck version을 다시 읽고, pending Job의 낮은 target을 최신 version으로 coalesce한다.
 - `ooxmlSyncedDeckVersion >= deck.version`이면 provider와 asset 저장을 반복하지 않는 idempotent success로 종료한다.
 - TemplateBlueprint update는 현재 저장된 `ooxmlSyncedDeckVersion`보다 높은 결과만 반영한다. 낮은 version의 완료가 최신 `currentPackageFileId`를 덮어쓰지 않는다.

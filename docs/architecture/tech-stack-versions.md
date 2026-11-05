@@ -2,13 +2,9 @@
 
 ## 기준
 
-이 문서는 ORBIT 로컬 개발 환경에서 사용하는 주요 기술스택의 버전 기준을 한눈에 보기 위해 정리한다.
-
-주의할 점:
-
-- `docker-compose.yml`과 Dockerfile은 컨테이너 이미지와 런타임 기준을 가진다.
-- `package.json`과 `pyproject.toml`은 의존성 버전 범위를 가진다.
-- 실제 설치된 정확한 패키지 버전은 `pnpm-lock.yaml`과 `services/python-worker/uv.lock`을 기준으로 한다.
+- 컨테이너 이미지와 런타임 버전은 `docker-compose.yml`과 Dockerfile을 기준으로 한다.
+- 의존성 버전 범위는 `package.json`과 `pyproject.toml`에 정의한다.
+- 실제 설치된 패키지 버전은 `pnpm-lock.yaml`과 `services/python-worker/uv.lock`에서 확인한다.
 
 ## 런타임과 모노레포
 
@@ -90,7 +86,7 @@
 
 ## 운영 확장 기준
 
-운영 환경은 현재 로컬 이미지 버전을 그대로 배포한다는 뜻이 아니라, 아래 managed service로 옮길 수 있게 adapter 구조를 유지한다.
+운영 전환에 대비해, 로컬 서비스와 아래 관리형 서비스를 교체할 수 있는 adapter 구조를 유지한다.
 
 | 로컬 | 운영 기준 |
 | --- | --- |

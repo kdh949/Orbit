@@ -4,7 +4,7 @@
 **Date:** 2026-07-09
 **Related specs/plans:**
 
-- [semantic-utterance-recognition.md](../specs/semantic-utterance-recognition.md)
+- Original spec: `docs/specs/semantic-utterance-recognition.md` (no longer present in this checkout). See the [Deck·Editor contract](../contracts/deck-editor.md) for current behavior.
 - [semantic-sentence-presenter-matching.md](./semantic-sentence-presenter-matching.md)
 - [e5-prefix-mode-calibration.md](../spikes/e5-prefix-mode-calibration.md)
 

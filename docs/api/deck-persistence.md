@@ -1,12 +1,12 @@
 # 덱 저장/복원 API 명세
 
-ORBIT-15의 덱 저장/복원 API는 `DeckSchema` 자체를 다시 정의하지 않고, API가 주고받는 request/response envelope과 저장 경계를 고정한다. 실제 덱 구조 검증은 `packages/shared/src/deck/deck.schema.ts`, patch 검증은 `packages/shared/src/deck/patch.schema.ts`, API envelope 검증은 `packages/shared/src/deck/deck-api.schema.ts`를 기준으로 한다.
+ORBIT-15의 덱 저장/복원 API는 요청·응답 구조와 저장 규칙을 정의한다. 덱 데이터는 기존 `DeckSchema`를 사용한다. 덱 구조는 `packages/shared/src/deck/deck.schema.ts`, patch는 `packages/shared/src/deck/patch.schema.ts`, API 요청·응답은 `packages/shared/src/deck/deck-api.schema.ts`로 검증한다.
 
 ## 범위
 
-MVP에서 NestJS API는 덱 저장의 authoritative boundary다. web/editor, AI 생성 결과 적용 흐름, worker는 같은 shared schema를 사용해서 payload를 만든다.
+MVP에서는 NestJS API가 덱 저장을 담당한다. web/editor, AI 생성 결과 적용 흐름, worker는 같은 shared schema로 payload를 만든다.
 
-ORBIT-10의 project DB 모델과 권한 모델이 확정되기 전까지 `projectId`는 FK가 아닌 문자열 boundary로 저장한다. API 계층은 URL의 `projectId`와 deck/snapshot의 project boundary를 검증한다.
+ORBIT-10의 project DB 모델과 권한 모델이 확정되기 전까지 `projectId`는 FK 없이 문자열로 저장한다. API는 URL의 `projectId`와 deck/snapshot이 속한 project가 일치하는지 검사한다.
 
 ## Base Path
 

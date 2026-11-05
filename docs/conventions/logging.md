@@ -98,15 +98,15 @@ AI PPT stage는 transport와 관계없이 `ai-ppt.stage.started`, `ai-ppt.stage.
 각 이벤트는 `pipelineJobId`, `projectId`, `stage`, `shardKey`, `workerId`,
 `attempt`, `maxAttempts`, `durationMs`를 공통으로 사용한다. 실패 진단의 `error`에는
 allowlist `code`, `reasonCode`, `name`, HTTP status, provider, provider request ID,
-retry-after, 저장소 내부 첫 stack frame, message fingerprint와 안전한 issue code만 허용한다.
+retry-after, 저장소 내부 첫 stack frame, message fingerprint와 민감한 값이 없는 issue code만 기록한다.
 prompt, 사용자 입력, provider response body, 전체 message/stack, Deck JSON, 이미지
 base64, signed URL은 AI PPT stage 로그에도 남기지 않는다.
 
-PostgreSQL transport의 bootstrap·runner 경계는 `ai_deck.postgres_initialized`,
+PostgreSQL transport의 초기화·실행 과정은 `ai_deck.postgres_initialized`,
 `ai_deck.postgres_initialization_failed`, `ai-ppt.stage.retry-scheduled`,
-`ai-ppt.stage.runner-failed`를 사용한다. 로그에는 checkpoint identity와 안전하게
-직렬화한 오류만 기록하고 부모 Job payload, source, OCR, content, provider 응답은 기록하지 않는다.
+`ai-ppt.stage.runner-failed`를 사용한다. 로그에는 checkpoint 식별 정보와 허용된 필드만 추려
+직렬화한 오류를 기록한다. 부모 Job payload, source, OCR, content, provider 응답은 기록하지 않는다.
 
-Design Selection 확정 경계는 `ai_ppt.design_selection.selected`를 `info`로 기록한다.
+Design Selection을 확정하면 `ai_ppt.design_selection.selected`를 `info`로 기록한다.
 공통 필드는 `jobId`와 `projectId`만 사용하고 자연어 디자인 요청, palette, font,
 outline, slide content, source metadata, OCR와 provider 응답은 기록하지 않는다.

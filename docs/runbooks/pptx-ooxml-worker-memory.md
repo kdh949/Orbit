@@ -2,7 +2,7 @@
 
 ## 장애 판정
 
-`PPTX OOXML generation job timed out.`는 원인 오류가 아니라 Web polling의 최종 증상일 수 있다. 아래 조건이 함께 확인되면 Node Worker OOM을 원인으로 판정한다.
+Worker가 종료된 뒤 Web polling이 timeout에 도달하면 `PPTX OOXML generation job timed out.`가 표시될 수 있다. 다음 네 조건이 모두 맞으면 Node Worker OOM으로 판단한다.
 
 1. Python Worker가 `/ai/pptx-ooxml-generation` 또는 `/ai/pptx-ooxml-sync` 요청에 `200`을 반환했다.
 2. 직후 `orbit-worker` 프로세스가 `SIGKILL`로 종료됐다.
@@ -21,9 +21,9 @@ docker top orbit-worker-1 -eo pid,ppid,rss,vsz,comm,args
 
 기존 경로는 Python이 package, slide render, embedded image를 하나의 JSON 응답에 `contentBase64`로 모아 반환했다. Node는 `response.json()`으로 모든 base64 문자열을 보유한 상태에서 각 asset을 `Buffer.from(..., "base64")`로 다시 복사했다.
 
-raw asset 합계가 `N`일 때 base64 자체가 약 `1.33N`이다. JSON 응답 buffer, 파싱된 V8 문자열, decoded `Buffer`가 겹치면 asset 데이터만으로 대략 `2.3N` 이상이 동시에 존재할 수 있다. source PPTX `arrayBuffer`, Deck/blueprint JSON, Nest watch compiler와 다른 queue의 메모리가 여기에 추가됐다. Docker VM 3.8 GiB 환경에서는 기본 서비스와 Python Worker 사용량을 제외한 headroom이 이 peak보다 작았다.
+원본 asset의 합계 크기가 `N`이면 base64 문자열은 약 `1.33N`이다. JSON 응답 버퍼, 파싱한 V8 문자열, 디코딩한 `Buffer`가 겹치면 파일 데이터만으로 대략 `2.3N` 이상을 동시에 점유할 수 있다. 여기에 원본 PPTX의 `arrayBuffer`, Deck/blueprint JSON, Nest watch compiler와 다른 큐의 메모리 사용량이 더해졌다. Docker VM 3.8 GiB 환경에서는 기본 서비스와 Python Worker가 사용하고 남은 메모리보다 이 최대 사용량이 컸다.
 
-Web의 120초 timeout은 Worker가 terminal DB 상태를 기록하지 못한 결과였다. 따라서 timeout 연장만으로는 해결되지 않는다.
+Worker가 DB에 완료·실패 상태를 기록하기 전에 종료되어 Web의 120초 timeout에 도달했다. 파일 전달 과정의 메모리 사용량을 줄이고, Worker 종료 후에도 Job 상태를 복구해야 한다.
 
 ## 적용된 데이터 경로
 
@@ -58,8 +58,8 @@ flowchart LR
 
 ## 프로세스와 Job 복구
 
-- Worker image는 `nest start --watch`가 아니라 compiled `apps/worker/dist/main.js`를 실행한다.
-- Compose는 Worker `768m`, Python Worker `1024m`를 기본 ceiling으로 사용하며 두 service를 `unless-stopped`로 재시작한다.
+- Worker 이미지는 컴파일한 `apps/worker/dist/main.js`를 실행하며 `nest start --watch`를 사용하지 않는다.
+- Compose의 기본 메모리 상한은 Worker `768m`, Python Worker `1024m`이며 두 서비스를 `unless-stopped`로 재시작한다.
 - OOXML BullMQ Job은 최대 5회 exponential backoff를 사용하고 failed entry를 보존한다.
 - OOXML Worker는 최대 4회의 stalled 복구를 허용한다.
 - 최종 attempt 또는 stalled 한도 초과 시 DB의 `queued`/`running` Job을 `*_WORKER_TERMINATED` 오류로 `failed` 전환한다.
@@ -73,7 +73,7 @@ Worker Job 로그에는 다음 memory field가 포함된다.
 - `memoryArrayBuffersBytes`
 - `memoryMaxRssBytes`
 
-`memoryExternalBytes`와 `memoryArrayBuffersBytes`가 asset 크기에 비례해 계속 증가하면 Node 경계에서 bytes가 다시 materialize되는 회귀를 의심한다.
+`memoryExternalBytes`와 `memoryArrayBuffersBytes`가 asset 크기에 비례해 계속 증가하면 Node에서 파일 데이터를 다시 읽거나 Buffer로 복사하는 경로가 생겼는지 확인한다.
 
 ## 검증 절차
 
@@ -109,4 +109,4 @@ uv run pytest
 5. production에서 RSS 70% 경고, 85% critical, `OOMKilled`, stalled count, `*_WORKER_TERMINATED` alert 구성
 6. 최대 허용 PPTX와 render 조합을 사용한 반복 부하 테스트 및 peak RSS budget gate 추가
 
-memory limit 증설은 rollout 안전망일 뿐 데이터 경로 개선을 대체하지 않는다.
+배포 중 메모리 부족에 대비해 memory limit을 늘릴 수 있다. 파일 전달 과정의 메모리 중복 점유는 별도로 줄여야 한다.

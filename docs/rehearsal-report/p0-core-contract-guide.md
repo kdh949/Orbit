@@ -1,15 +1,12 @@
 # P0 리허설 코칭 공통 계약 가이드
 
-## 1. 이 문서는 왜 필요한가
+<a id="1-이-문서는-왜-필요한가"></a>
 
-이 문서는 P0 리허설 코칭 계약을 사람과 AI가 같은 의미로 이해하도록 돕는 해설서다.
+## 1. 공통 데이터 구조와 적용 범위
 
-- 사람은 새로운 기능과 데이터 구조를 빠르게 파악할 수 있다.
-- AI는 필드와 정책의 의도를 이해하고 임의로 규칙을 바꾸는 실수를 줄일 수 있다.
-- 여러 담당자가 API, Worker, Python, Web을 병렬로 개발해도 같은 데이터 구조를 사용할 수 있다.
-- 보안, 권한, 데이터 보존 정책이 구현마다 달라지는 것을 방지한다.
+P0 리허설 코칭은 API·Worker·Python·Web에서 같은 데이터 구조와 검증 규칙을 사용한다. 보안, 접근 권한, 데이터 보존 기간도 공통 계약을 따른다.
 
-이 문서는 이해를 돕는 자료다. 실제 구현 기준이 충돌하면 다음 순서를 따른다.
+구현 기준이나 설명이 서로 다르면 다음 순서로 확인한다.
 
 1. [`docs/contracts.md`](../contracts.md)
 2. `packages/shared`의 Zod schema
@@ -41,7 +38,7 @@
 | `*.schema.test.ts` | 잘못된 값이 제대로 거부되는지 검사한다. |
 | DB migration | 잘못된 값이 데이터베이스에 저장되는 것을 막는다. |
 
-`p0-core-contract.fixtures.json`은 실제 사용자 데이터가 아니다. 여러 프로그램이 같은 계약을 이해하는지 확인하기 위한 공용 모범 답안이다.
+`p0-core-contract.fixtures.json`에는 테스트용 예시 데이터가 들어 있다. TypeScript와 Python이 같은 입력을 같은 규칙으로 처리하는지 검사할 때 사용하며, 실제 사용자 데이터는 포함하지 않는다.
 
 ---
 
@@ -71,7 +68,7 @@ Web
 | --- | --- | --- |
 | `RehearsalFocusProfile` | 이번 연습에서 고칠 목표 | 최대 3개, 우선순위는 1부터 연속 |
 | `revision` | 다른 수정 내용을 덮어쓰지 않는 번호 | 오래된 revision으로 저장하면 충돌 반환 |
-| `focusProfileSnapshot` | 발표 시작 시 목표의 사진 | 과거 run은 시작 당시 목표로 평가 |
+| `focusProfileSnapshot` | 발표 시작 시점에 복사한 연습 목표 | 과거 run은 시작 당시 목표로 평가 |
 | 문장 target | 특정 문장만 반복 연습 | 문장 위치와 SHA-256 hash 저장 |
 | `speechRate` | 한국어 발표 속도 | CPM을 기준으로 사용하고 WPM은 호환값으로 유지 |
 | `STTQualityGate` | STT 결과를 믿을 수 있는지 판단 | provider가 주지 않은 confidence는 추측 금지 |
@@ -137,7 +134,7 @@ CPM = 1분 동안 말한 공백 제외 글자 수
 
 기존 report와의 호환을 위해 WPM도 유지하지만 CPM과 WPM을 임의로 환산하지 않는다.
 
-측정에 사용할 수 있는 시간 정보가 없으면 숫자를 추측하지 않는다.
+측정에 필요한 시간 정보가 없으면 `unmeasured` 상태와 이유를 저장하고, 발표 속도는 `null`로 둔다.
 
 ```text
 measurementState: unmeasured
@@ -159,7 +156,7 @@ threshold: 0.70
 state: accepted
 ```
 
-provider가 confidence를 제공하지 않았다면 ORBIT이 임의의 점수를 만들지 않는다.
+provider가 confidence를 제공하지 않으면 confidence와 threshold를 `null`로 두고 `CONFIDENCE_NOT_PROVIDED`를 기록한다.
 
 ```text
 confidenceCapability: not-provided
@@ -168,9 +165,7 @@ threshold: null
 reasonCode: CONFIDENCE_NOT_PROVIDED
 ```
 
-핵심 원칙은 다음과 같다.
-
-> 측정하거나 제공받지 못한 값은 추측하지 않는다.
+측정하거나 제공받은 값만 평가에 사용한다. 값이 없는 이유는 각 계약의 상태와 reason code로 표시한다.
 
 ---
 
@@ -184,7 +179,7 @@ pause v2는 발표자가 멈춘 위치와 분류 결과를 저장한다.
 - `hesitation`: 말이 막힘
 - `unknown`: 판단할 근거가 없음
 
-provider가 분류 근거를 제공하지 않았다면 반드시 `unknown`을 사용한다. pause v2는 기존 pause v1을 제거하지 않고 별도 버전으로 추가한다.
+provider가 분류 근거를 제공하지 않으면 `unknown`을 사용한다. pause v1은 유지하고 pause v2를 별도 버전으로 추가한다.
 
 ---
 
@@ -261,7 +256,7 @@ Presenter Aid는 발표자에게 다음 정보만 보여준다.
 scriptVisible: false
 ```
 
-Presenter Aid는 대본을 읽는 기능이 아니라 최소한의 단서만 보고 발표를 이어가도록 돕는 기능이다.
+Presenter Aid는 발표자가 짧은 단서를 보고 발표를 이어가도록 돕는다. 전체 대본은 표시하지 않는다.
 
 ---
 
