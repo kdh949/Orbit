@@ -2,9 +2,9 @@
 
 ## 방향
 
-ORBIT은 MVP 기능 범위를 `docker compose up --build` 한 번으로 Web, API, Worker, Python worker, PostgreSQL, Redis, MinIO까지 실행할 수 있게 구성한다.
+ORBIT는 `docker compose up --build` 한 번으로 MVP에 필요한 Web, API, Worker, Python worker, PostgreSQL, Redis, MinIO를 함께 실행한다.
 
-운영 기준은 Kubernetes가 아니라 AWS ECS Fargate와 managed service다.
+운영 전환 목표는 AWS ECS Fargate와 관리형 서비스다.
 
 ## 로컬 서비스
 
@@ -49,7 +49,7 @@ API task에 연결된 client 사이에서도 room broadcast가 전달된다.
 ## 확장 원칙
 
 - API request/response, Job, WebSocket payload는 `packages/shared`의 Zod schema를 우선한다.
-- 저장소는 `StoragePort`, 큐는 `JobQueuePort`, AI/STT/OCR은 provider interface 뒤에 둔다.
+- 저장소는 `StoragePort`, 큐는 `JobQueuePort`, AI/STT/OCR은 provider interface로 연결한다.
 - DB 변경은 TypeORM migration으로만 반영한다.
 - STT/OCR/LLM 결과는 shared schema 검증 후 저장한다.
 - 발표자 script와 raw audio는 청중 API로 노출하지 않는다.

@@ -2,9 +2,9 @@
 
 ## 목적
 
-ORBIT의 런타임 계약 원본은 `packages/shared`의 Zod schema와 각 서비스의
-runtime validation이다. 이 문서들은 사람이 계약을 찾고 변경 영향을 판단하기 위한
-설명이며, 코드와 문서가 다르면 schema를 우선하고 같은 PR에서 문서를 정합화한다.
+ORBIT의 데이터 구조와 검증 규칙은 `packages/shared`의 Zod schema와 각 서비스의
+런타임 검증 코드에 정의한다. 아래 문서에서 기능별 계약과 관련 코드를 찾을 수 있다.
+코드와 문서가 다르면 schema를 기준으로 삼고, 같은 PR에서 문서도 함께 수정한다.
 
 ## Domain 계약
 

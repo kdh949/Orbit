@@ -25,7 +25,7 @@ flowchart LR
     classDef decision fill:#f0fdfa,stroke:#2bbbad,color:#17233b
 ```
 
-Python Worker가 변환 파일을 객체 저장소에 업로드하고 객체 키·크기·해시를 반환합니다. Node Worker는 메타데이터를 확인한 뒤 결과 파일을 등록합니다.
+Python Worker가 변환 파일을 스토리지에 업로드하고 객체 키·크기·해시를 반환합니다. Node Worker는 이 메타데이터를 확인한 뒤 결과 파일을 등록합니다.
 
 ## 상세 문서
 

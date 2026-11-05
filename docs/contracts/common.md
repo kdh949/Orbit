@@ -2,7 +2,7 @@
 
 > 인덱스: [ORBIT 공통 계약](../contracts.md)
 >
-> 런타임 source of truth는 `packages/shared` schema와 서비스 validation이다.
+> 데이터 구조와 검증 규칙은 `packages/shared` schema와 서비스의 런타임 검증 코드를 기준으로 한다.
 
 ## 인증과 세션 구조
 

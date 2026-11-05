@@ -39,7 +39,7 @@ docker compose exec postgres psql -U orbit -d orbit -c "select to_regclass('publ
 
 ### AI Deck 338-1 migration 왕복
 
-기존 개발 DB가 아니라 별도의 disposable local DB에서 `run → 검증 → revert → run`을 수행한다. 아래 `DATABASE_URL`에는 `orbit_3381_it` 전용 URL을 주입하되 credential을 shell history나 검증 로그에 남기지 않는다.
+검증용으로 따로 만든 로컬 DB에서 `run → 검증 → revert → run`을 수행한다. 기존 개발 DB는 사용하지 않는다. 아래 `DATABASE_URL`에는 `orbit_3381_it` 전용 접속 URL을 설정하고 credential은 shell history나 검증 로그에 남기지 않는다.
 
 ```bash
 docker compose exec postgres createdb -U orbit orbit_3381_it

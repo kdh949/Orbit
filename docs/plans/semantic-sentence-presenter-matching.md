@@ -2,7 +2,7 @@
 
 **Status:** Ready for implementation review
 **Date:** 2026-07-09
-**Source spec:** [semantic-utterance-recognition.md](../specs/semantic-utterance-recognition.md)
+**Source spec at planning time:** `docs/specs/semantic-utterance-recognition.md` (no longer present in this checkout). Current behavior is documented in the [Deck·Editor contract](../contracts/deck-editor.md).
 
 ## Objective
 

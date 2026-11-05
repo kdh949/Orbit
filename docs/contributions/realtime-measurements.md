@@ -15,7 +15,7 @@
 | 변경 전 | 2026-09-03 05:41:25–05:45:15 |  193 |    7 |                8,186.6ms |
 | 변경 후 | 2026-09-04 01:59:10–02:02:40 |  200 |    0 |                  301.9ms |
 
-revision 이벤트 시간은 응답 제출부터 `activity-results-updated`에서 기대 revision 이상을 수신할 때까지 계산합니다.
+결과 revision 이벤트 수신 시간은 응답 제출부터 `activity-results-updated`에서 기대 revision 이상을 받을 때까지입니다.
 
 성공·실패와 p95는 Artillery 종료 결과, 서버 지연·DB·프로파일은 같은 실행 구간의 Grafana·Prometheus·Pyroscope 기록을 사용했습니다.
 

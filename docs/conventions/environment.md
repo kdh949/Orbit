@@ -72,7 +72,10 @@ LLM_PROVIDER=openai
 
 현재 `.env.example`, `.env.staging.example`, `.env.production.example` 템플릿은 다른 비동기 Job의 transport로 `JOB_QUEUE_DRIVER=bullmq`를 사용한다. AI Deck stage transport는 `AI_DECK_EXECUTION_MODE`가 별도로 결정한다. `JOB_QUEUE_DRIVER=sqs`는 지원하지 않으며 Worker startup이 실패한다.
 
-`AI_DECK_EXECUTION_MODE`의 코드 fallback은 `bullmq`지만 로컬 `.env.example`의 명시적 기본값은 `pg`, `AI_DECK_WORKER_QUEUE`의 기본값은 `all`이다. `AI_DECK_WORKER_CONCURRENCY`와 `AI_DECK_USER_CONCURRENCY`는 각각 5가 기본값이며 `pg`에서만 AI Deck 실행 상한으로 사용한다. 로컬 `docker-compose.yml`의 API와 Worker는 이 값을 별도 `environment` 항목으로 덮어쓰지 않고 `.env.local`에서 읽는다. `.env.staging.example`과 `.env.production.example`은 별도 cutover 전까지 명시적 `monolith`/`all`을 유지하므로 코드 배포가 staging·production을 `pg`로 자동 전환하지 않는다.
+- 코드 fallback: `AI_DECK_EXECUTION_MODE`가 없으면 `bullmq`를 사용한다.
+- 로컬 기본값: `.env.example`은 `AI_DECK_EXECUTION_MODE=pg`, `AI_DECK_WORKER_QUEUE=all`을 지정한다. 로컬 `docker-compose.yml`의 API와 Worker는 `.env.local`에서 이 값을 읽으며, 별도 `environment` 항목으로 덮어쓰지 않는다.
+- 실행 상한: `AI_DECK_WORKER_CONCURRENCY`와 `AI_DECK_USER_CONCURRENCY`의 기본값은 각각 5다. 두 값은 `pg` 모드의 AI Deck 실행 상한에만 적용한다.
+- staging·production: 별도 전환 전까지 `.env.staging.example`과 `.env.production.example`의 `monolith`/`all`을 유지한다. 코드 배포만으로 `pg`로 전환되지는 않는다.
 
 현재 지원하는 조합은 다음과 같다.
 
@@ -87,7 +90,7 @@ LLM_PROVIDER=openai
 | `bullmq`                 | `qa-finalize`          | `semantic-quality`, `rendered-visual-quality`, `publication` queue만 소비한다.                                                       |
 | `pg`                     | `all`                  | 로컬 기본값. `ai_deck_generation_stages`를 직접 claim한다. AI Deck BullMQ coordinator·stage queue는 enqueue/consume하지 않고 process 전체 5개, 사용자 전체 5개 기본 상한을 적용한다. |
 
-`AI_DECK_EXECUTION_MODE=sqs`는 도입 취소된 미지원 값이며 API와 Worker가 startup에서 거부한다. dedicated role은 `bullmq` 실행 모드에서만 허용되고 `pg`는 `all`만 허용된다. 지원되지 않는 값을 설정해 겉보기에는 정상인 비활성 Worker가 뜨는 동작은 허용하지 않는다.
+`AI_DECK_EXECUTION_MODE=sqs`는 도입이 취소된 값이며 API와 Worker가 시작 시 거부한다. 역할별 전용 Worker는 `bullmq` 모드에서만 허용하고, `pg`는 `all`만 허용한다. 지원하지 않는 모드·역할 조합이면 Worker 시작을 중단한다.
 
 ## 서버 로그
 
@@ -116,7 +119,7 @@ AUTH_COOKIE_SECURE=false
 
 ## OpenAI 기본 모델
 
-OpenAI 모델은 코드 상수가 아니라 env로 결정한다.
+OpenAI 모델은 환경변수로 설정한다.
 
 ```txt
 OPENAI_MODEL=gpt-4.1-mini
@@ -173,8 +176,8 @@ COACHING_IDEMPOTENCY_HMAC_PREVIOUS_SECRET=
 COACHING_IDEMPOTENCY_HMAC_PREVIOUS_KEY_VERSION=
 ```
 
-`packages/config`의 두 slide 기능 기본값은 안전하게 `false`를 유지한다. 다만
-AWS `main` production 계약은 모든 project에 기능을 공개하기 위해
+`packages/config`의 두 slide 기능 기본값은 `false`다.
+AWS `main` production에서는 모든 project에 기능을 공개하기 위해
 `SLIDE_PRACTICE_ENABLED=true`와 `SLIDE_QUESTION_GUIDES_ENABLED=true`를
 명시한다. 현재 두 flag에는 project allowlist가 없으므로 제한된 rollout이
 필요하면 flag를 켜기 전에 별도 계약을 추가해야 한다.

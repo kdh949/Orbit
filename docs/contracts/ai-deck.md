@@ -2,11 +2,11 @@
 
 > 인덱스: [ORBIT 공통 계약](../contracts.md)
 >
-> 런타임 source of truth는 `packages/shared` schema와 서비스 validation이다.
+> 데이터 구조와 검증 규칙은 `packages/shared` schema와 서비스의 런타임 검증 코드를 기준으로 한다.
 
 ## AI 덱 생성 계약
 
-AI 덱 생성은 사용자 입력과 참고자료 fileId를 받아 비동기 Job으로 실행한다. public 계약은 요청/응답과 최종 Deck JSON에 필요한 metadata/evidence만 포함하고, planner/layout 중간 모델은 Python worker 내부 구현으로 둔다.
+AI 덱 생성은 사용자 입력과 참고자료 fileId를 받아 비동기 Job으로 실행한다. 공개 계약은 요청·응답 구조와 최종 Deck JSON에 필요한 metadata/evidence를 정의한다. planner/layout의 중간 모델은 Python worker 내부에서 사용한다.
 
 요청:
 

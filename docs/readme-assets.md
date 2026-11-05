@@ -2,7 +2,7 @@
 
 ## 목적
 
-이 문서는 루트 `README.md`에 사용할 제품 이미지를 일관된 품질로 캡처하고 교체하기 위한 기준이다. README 이미지는 기능 증빙이 아니라 첫 방문자가 ORBIT의 제품 흐름을 빠르게 이해하도록 돕는 제품 소개 자산이다.
+루트 `README.md`의 제품 이미지는 처음 방문한 사람이 ORBIT의 화면과 제품 흐름을 이해하도록 구성한다. 아래 기준에 따라 같은 Demo 시나리오를 캡처하고 이미지를 교체한다. 소개 이미지는 기능 검증 결과와 구분한다.
 
 시각 기준은 [ORBIT Design System](orbit-design-system.md), Demo 데이터 기준은 [Demo ID 기준](demo-standards.md)을 따른다.
 
@@ -25,7 +25,7 @@
 | `orbit-rehearsal.jpg`    | 1440×900 viewport, 16:10    | 진행 중인 리허설과 발표 코칭 정보     | 제품 둘러보기   |
 | `orbit-report.jpg`       | 1440×900 viewport, 약 16:10 | 다음 연습 목표와 리허설 분석          | 제품 둘러보기   |
 
-모든 자산은 동일한 Demo 시나리오의 실제 production route에서 캡처한다. 화면 자체를 다시 그리거나 QA baseline을 재사용하지 않는다. Canvas 배경은 `Surface` 또는 `Canvas`, 강조 면은 `Lilac`, `Lime`, `Cream`만 사용하며 과한 그림자나 장식은 추가하지 않는다.
+모든 이미지는 동일한 Demo 시나리오를 현재 production route에서 직접 실행해 캡처한다. 화면을 다시 그리거나 QA baseline을 재사용하지 않는다. Canvas 배경은 `Surface` 또는 `Canvas`, 강조 면은 `Lilac`, `Lime`, `Cream`만 사용하며 과한 그림자나 장식은 추가하지 않는다.
 
 ## 공통 Demo 시나리오
 

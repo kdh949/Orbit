@@ -2,11 +2,11 @@
 
 > 인덱스: [ORBIT 공통 계약](../contracts.md)
 >
-> 런타임 source of truth는 `packages/shared` schema와 서비스 validation이다.
+> 데이터 구조와 검증 규칙은 `packages/shared` schema와 서비스의 런타임 검증 코드를 기준으로 한다.
 
 ## 리허설 STT/AI provider 구분
 
-리허설에는 서로 다른 두 종류의 음성/AI 처리가 있다. 두 흐름은 provider, latency 요구사항, 데이터 보존 정책이 다르므로 하나의 `STT_PROVIDER`로 표현하지 않는다.
+리허설은 발표 중 실시간 인식과 녹음 종료 후 리포트 분석으로 나뉜다. 두 흐름은 provider, 지연 시간 요구사항, 데이터 보존 정책이 달라 각각 별도 설정을 사용하며, 하나의 `STT_PROVIDER`로 합치지 않는다.
 
 ### Live STT
 
@@ -370,7 +370,7 @@ Report 응답 구조:
 - STT·지표·리포트 처리 실패와 Job enqueue 실패는 보관 기간을 적용하지 않고 즉시 raw audio 삭제를 요청한다.
 - raw audio 삭제 성공은 `rawAudioDeletedAt`과 `project_assets.status=deleted`, `deleted_at`으로 남긴다.
 - 삭제 실패는 `RAW_AUDIO_DELETE_FAILED` error로 run/job 양쪽에 남긴다.
-- 공식 보고서 원본은 `jobs.result`가 아니라 `rehearsal_runs.report_json`이다.
+- 리포트 조회 기준은 `rehearsal_runs.report_json`이다. 성공 Job의 `jobs.result`에도 처리 정보와 리포트 사본을 저장한다.
 - `full` run은 생성 시점의 materialized deck으로 owner-only `evaluationSnapshot`을 저장한다. snapshot에는 slide identity/order/title/estimatedSeconds, run-scoped `thumbnailUrl`, keyword 요약, `approved/excluded` Semantic Cue, 그리고 대본에서 추출한 `pronunciationLexicon`만 포함한다. `speakerNotes` 원문, elements, transcript, raw audio는 포함하지 않는다.
 - `pronunciationLexicon`은 `schemaVersion=1`, generator/source version, 전체 Deck source hash, canonical entry와 원본 `speakerNotes` UTF-16 occurrence를 가진 immutable run 계약이다. deterministic generator는 원문을 한국어 발음으로 치환하지 않으며 source/alias는 canonical term evidence를 만들기 위한 비교용 값이다.
 - live 처리는 전체 사전 중 현재·다음 장표의 active high-confidence entry만 사용한다. Report Worker는 같은 snapshot에서 최대 32개 source/대표 alias를 `pronunciationContext`로 만들며, 지원하는 STT provider에만 prompt 또는 phrase hint로 전달한다. 지원 여부가 확인되지 않은 provider에는 no-op으로 처리한다.
@@ -466,7 +466,7 @@ live `semanticCueDecisions`는 provisional/debug 호환 필드이며 canonical r
 - legacy report는 `semanticEvaluation=unavailable/none/evaluation_not_run`, `semanticCueOutcomes=[]`, `keywordCoverageMeasurement.state=measured`로 parse한다.
 - 새 report의 keyword 분모가 0이면 숫자 `keywordCoverage=0`은 계산 placeholder로만 두고 `keywordCoverageMeasurement={ state: "unmeasured", reason: "no-keywords" }`를 저장한다. UI는 숫자 대신 `N/A`를 표시한다.
 - timestamped transcript segment는 DB나 Job payload에 저장하지 않고 `rehearsal:semantic-evidence:<runId>` Redis key에 최대 30분만 보존한다. cache key와 server log에는 segment text를 넣지 않는다.
-- semantic retry worker는 cache와 run snapshot으로 Python semantic endpoint만 다시 호출하며 `report_json.semanticEvaluation`과 `report_json.semanticCueOutcomes`만 멱등 교체한다. 기존 metrics, coaching, delivery 분석, generatedAt은 변경하지 않는다.
+- semantic retry worker는 cache와 run snapshot으로 Python semantic endpoint만 다시 호출한다. `report_json.semanticEvaluation`과 `report_json.semanticCueOutcomes` 두 필드만 멱등하게 갱신한다. 재실행 시 기존 평가 결과를 교체해 중복 누적을 막고, 기존 metrics, coaching, delivery 분석, generatedAt은 유지한다.
 - retry가 다시 실패하거나 partial/unavailable이면 기존 report를 유지하고 Job을 실패 처리하며 `rehearsal.semantic_evaluation.retry_failed`에 ID와 reason만 기록한다.
 
 구현 위치:

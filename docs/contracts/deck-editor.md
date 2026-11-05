@@ -2,11 +2,11 @@
 
 > 인덱스: [ORBIT 공통 계약](../contracts.md)
 >
-> 런타임 source of truth는 `packages/shared` schema와 서비스 validation이다.
+> 데이터 구조와 검증 규칙은 `packages/shared` schema와 서비스의 런타임 검증 코드를 기준으로 한다.
 
 ## Deck JSON 구조
 
-덱의 원본 데이터는 Konva 상태가 아니라 deck JSON이다. 편집기, AI 생성, 협업, 발표, 리허설은 모두 이 deck JSON을 기준으로 연결한다.
+덱의 원본 데이터는 deck JSON이다. 편집기, AI 생성, 협업, 발표, 리허설은 모두 이 데이터를 기준으로 동작한다. Konva는 deck JSON을 화면에 표시하는 데 사용한다.
 
 ```json
 {
@@ -220,7 +220,7 @@
 - 각 animation은 `anim_` prefix를 따르는 `animationId`와 `el_` prefix를 따르는 `elementId`를 필수로 가지고 대상 객체를 참조한다. slide 단위 animation은 1차 스프린트 MVP에서 제외한다.
 - animation `order`는 `1`부터 시작하는 양의 정수로 관리한다.
 - animation `startMode`는 `on-slide-enter | on-click | with-previous | after-previous` 중 하나다. `order`는 stable logical sequence만 나타내며 같은 `order` 자체는 동시 실행 의미를 갖지 않는다. `on-slide-enter`와 `on-click`은 root를 만들고, `with-previous`는 직전 logical effect와 같은 base reference, `after-previous`는 직전 effect 종료를 base reference로 사용한다. root 앞의 첫 `with-previous`는 slide entry, 첫 `after-previous`는 destination slide transition end를 기준으로 한다.
-- 새 animation authoring의 기본 `startMode`는 `on-click`이다. 기존 raw Deck에서 `startMode`가 생략된 animation은 editor-core가 schema parse 전에 같은 legacy `order`별로 묶어 one-time 정규화한다. group 안에 `play-animation` action 참조가 하나라도 있으면 누락된 root는 `on-click`, 없으면 `on-slide-enter`, 나머지 누락 follower는 `with-previous`가 된다. 이미 명시된 `startMode`와 legacy `order` 값은 변경하지 않으며 다음 저장 시 정규화된 mode가 Deck JSON에 영속화된다.
+- 새 animation authoring의 기본 `startMode`는 `on-click`이다. 기존 raw Deck에서 `startMode`가 생략된 animation은 editor-core가 schema parse 전에 같은 legacy `order`별로 묶어 한 번 정규화한다. group 안에 `play-animation` action 참조가 하나라도 있으면 누락된 root는 `on-click`, 없으면 `on-slide-enter`, 나머지 누락 follower는 `with-previous`가 된다. 이미 명시된 `startMode`와 legacy `order` 값은 유지한다. 정규화한 mode는 다음 저장 때 Deck JSON에 반영한다.
 - `durationMs`, `delayMs`, `easing`은 입력에서 생략할 수 있지만, schema parse 후 normalized Deck JSON에는 각각 `400`, `0`, `"ease-out"` 기본값으로 포함한다.
 - `easing`은 `linear`, `ease-in`, `ease-out`, `ease-in-out`만 허용한다.
 - `slide.keywords[]`는 `required` boolean을 포함한다. 이 값은 발표 중 반드시 언급해야 하는 keyword 여부를 나타내며 기본값은 `true`다.
@@ -884,7 +884,7 @@ bounded 실패 code:
 - 지원 `layoutType`은 `list`, `process`, `card_grid`, `comparison`, `classification_grid`, `timeline`, `metric_cards`다. API는 생성한 프리셋 요소를 하나의 `group` 요소로 묶어 에디터에서 전체 SmartArt를 이동하거나 크기를 조절할 수 있게 한다.
 - API는 SmartArt 프리셋 배치 영역과 겹치는 기존 visible 요소를 `delete_element`로 먼저 제거한 뒤 새 프리셋 요소를 추가한다. 기존 group과 겹치면 hidden 또는 배경 요소를 제외한 group 구성 요소를 함께 제거하며, `role = "background"` 또는 canvas 전체를 덮는 배경 요소도 자동 제거 대상에서 제외한다.
 - `sourceElementIds`는 현재 선택된 visible 요소를 우선 사용한다. 선택이 없고 사용자가 현재 슬라이드의 보이는 목록·단계·비교 항목을 SmartArt 또는 다이어그램으로 바꾸도록 요청한 경우에는 visible 현재 슬라이드 요소를 원본으로 사용할 수 있으며, worker는 `interpretedIntent.target`을 `current-slide`로 정규화한다. 선택 대상을 명시한 요청은 선택된 visible 요소의 부분집합만 허용하고 unknown 또는 hidden 요소는 항상 거부한다. 지원 프리셋이 없는 layout type/항목 수 조합은 다른 크기의 프리셋으로 대체하거나 항목을 누락하지 않고 요청을 실패시킨다.
-- `affectedElementIds`는 미리보기 강조용 비권위 메타데이터다. worker는 현재 슬라이드의 기존 요소 또는 검증된 작업이 추가한 요소만 남기며, 실제 작업 대상과 `sourceElementIds`의 유효성은 별도로 엄격하게 검증한다.
+- `affectedElementIds`는 미리보기에서 강조할 요소를 표시하는 메타데이터다. worker는 현재 슬라이드의 기존 요소 또는 검증된 작업이 추가한 요소만 남긴다. 실제 수정 대상은 이 값으로 결정하지 않으며, 작업 대상과 `sourceElementIds`의 유효성을 별도로 검증한다.
 - 디자인 변경안 생성은 Deck을 변경하지 않는다. 실제 적용 단계에서만 공통 Deck patch 적용 경계를 사용하고 `deck_patches.source = "ai"`로 기록한다.
 - 사용자 질문 원문이나 현재 slide JSON은 서버 업무 로그에 남기지 않는다.
 

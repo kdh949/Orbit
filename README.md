@@ -10,22 +10,25 @@
     하나의 로컬 우선 워크스페이스에서 연결합니다.
   </p>
   <p>
-    <a href="#개인-구현">개인 구현</a> ·
-    <a href="#제품-둘러보기">제품 둘러보기</a> ·
+    <a href="#대표-구현과-문제-해결">대표 구현·문제 해결</a> ·
     <a href="#아키텍처">아키텍처</a> ·
+    <a href="#제품-둘러보기">제품 둘러보기</a> ·
     <a href="#빠른-시작">빠른 시작</a> ·
-    <a href="#개발-가이드">개발 가이드</a>
+    <a href="#개발-가이드">개발 가이드</a> ·
+    <a href="#문서">문서</a>
   </p>
   <p>
     <img src="https://img.shields.io/badge/pnpm-10.12.4-F69220?logo=pnpm&logoColor=white" alt="pnpm 10.12.4" />
   </p>
 </div>
 
-ORBIT는 발표자료 제작과 발표 연습을 서로 분리하지 않습니다. 주제와 참고자료를 바탕으로 덱을 만들고, Canvas에서 편집하고, AI 코칭과 함께 리허설한 뒤, 발표자·청중 화면과 리포트까지 하나의 제품 흐름으로 이어갑니다.
+ORBIT는 발표자료 생성부터 편집, 리허설, 실전 발표까지 하나의 작업 공간으로 연결합니다. 주제와 참고자료로 만든 덱을 Canvas에서 편집하고, AI 코칭과 함께 연습한 뒤 발표자·청중 화면으로 발표합니다. 리허설 결과는 회차별 리포트에서 확인합니다.
 
-## 개인 구현
+<a id="개인-구현"></a>
 
-팀 프로젝트에서 리허설 녹음 업로드와 STT 처리, E5 발화·대본 매칭, 문서 변환 파일 전달 경로를 구현했습니다. 개인 저장소에서는 전역 소켓 목록 전송과 청중 응답의 잠금 범위를 개선했습니다.
+## 대표 구현과 문제 해결
+
+팀 프로젝트에서 리허설 녹음 업로드와 STT 처리, E5 발화·대본 매칭, 문서 변환 파일 전달 경로를 구현했습니다. 개인 저장소에서는 전역 소켓 목록 전송을 제거하고, 청중 응답 처리의 락 유지 시간과 락을 잡는 순서를 개선했습니다.
 
 | 구분           | 주요 구현                                                         | 반영 위치                                                                                   | 상세                                                            |
 | -------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
@@ -33,7 +36,7 @@ ORBIT는 발표자료 제작과 발표 연습을 서로 분리하지 않습니�
 | 팀 프로젝트    | E5 발화·대본 매칭·임베딩 재사용                                   | `develop`                                                                                   | [발화·대본 매칭](docs/contributions/kdh949.md#script-alignment) |
 | 팀 프로젝트    | 변환 파일 직접 업로드·저장 메타데이터 전달                        | `develop`                                                                                   | [문서 변환](docs/contributions/kdh949.md#artifact-storage)      |
 | 개인 후속 개선 | 전역 소켓 목록 제거 · 200 VU 결과 이벤트 p95 **8.19초 → 301.9ms** | `develop`                                                                                   | [실시간 전송](docs/contributions/kdh949.md#socket-broadcast)    |
-| 개인 후속 개선 | 청중별 직렬화·부모 행 우선 잠금                                   | [기능 브랜치 구현](https://github.com/kdh949/Orbit/tree/feature/load-testing-observability) | [동시성 개선](docs/contributions/kdh949.md#response-locking)    |
+| 개인 후속 개선 | 청중별 요청을 하나씩 처리·부모 row 락을 먼저 잡아 데드락 방지     | [기능 브랜치 구현](https://github.com/kdh949/Orbit/tree/feature/load-testing-observability) | [동시성 개선](docs/contributions/kdh949.md#response-locking)    |
 
 [개인 구현 상세: 문제·변경 전후 흐름·코드·검증 결과](docs/contributions/kdh949.md)
 
@@ -44,6 +47,85 @@ ORBIT는 발표자료 제작과 발표 연습을 서로 분리하지 않습니�
     width="100%"
   />
 </p>
+
+## 아키텍처
+
+이 저장소는 `pnpm` workspace와 Turborepo 기반 모노레포이며 Web, API, Worker, Python worker와 공통 계약 패키지를 함께 관리합니다.
+
+```mermaid
+flowchart LR
+    n_web["React Web<br/>발표자 · 청중"]:::client
+    n_cdn["CloudFront<br/>HTTPS 진입<br/>API 프록시"]:::edge
+    n_api["NestJS API<br/>프로젝트 · 리허설<br/>활동 관리"]:::app
+    n_db[("PostgreSQL · pgvector<br/>도메인 데이터<br/>작업 상태")]:::data
+    n_queue[("Redis · BullMQ<br/>작업 큐 · room 이벤트")]:::data
+    n_worker["NestJS Worker<br/>작업 실행<br/>진행 상태 관리"]:::app
+    n_python["FastAPI Worker<br/>문서 변환 · AI 처리"]:::app
+    n_s3[("S3<br/>원본 · 변환 파일")]:::data
+    n_nginx["Nginx"]:::edge
+    n_static[("S3 Static Web<br/>Web 정적 파일")]:::data
+
+    n_web -->|"HTTPS"| n_cdn
+    n_api -->|"조회 · 저장"| n_db
+    n_api -->|"작업 등록"| n_queue
+    n_queue -->|"작업 소비"| n_worker
+    n_worker -->|"상태 갱신"| n_db
+    n_worker -->|"HTTP"| n_python
+    n_api -->|"파일 접근 관리"| n_s3
+    n_python -->|"변환 파일 업로드"| n_s3
+    n_cdn --> n_nginx
+    n_nginx --> n_api
+    n_cdn -->|"정적 파일"| n_static
+
+    classDef client fill:#eff6ff,stroke:#60a5fa,color:#17233b
+    classDef edge fill:#f8fafc,stroke:#94a3b8,color:#17233b
+    classDef app fill:#f0fdfa,stroke:#2bbbad,color:#17233b
+    classDef data fill:#fff7ed,stroke:#fdba74,color:#17233b
+    classDef external fill:#f5f3ff,stroke:#bda4ee,color:#17233b
+    classDef decision fill:#f0fdfa,stroke:#2bbbad,color:#17233b
+```
+
+발표자·청중 요청은 API와 Socket.IO에서 처리하고, 문서 변환·음성 분석은 BullMQ와 Worker로 넘깁니다. 작업 상태는 PostgreSQL에, 발표자료와 음성 파일은 S3에 저장합니다.
+
+[전체 구조](docs/architecture/overview.md) · [실시간 청중 참여와 재접속](docs/architecture/realtime.md) · [리허설 음성 업로드와 리포트 생성](docs/architecture/speech-report.md) · [변환 파일 업로드와 메타데이터 전달](docs/architecture/artifact.md)
+
+| 영역                 | 주요 기술                                        |
+| -------------------- | ------------------------------------------------ |
+| Web                  | React 19, Vite 7, TanStack Query, Zustand, Konva |
+| Realtime             | Socket.IO, Yjs                                   |
+| API                  | NestJS 11, TypeORM, Swagger, Zod                 |
+| Background jobs      | NestJS Worker, BullMQ, Redis                     |
+| Python worker        | FastAPI, Pydantic, OpenAI SDK                    |
+| Local infrastructure | PostgreSQL + pgvector, Redis, MinIO              |
+| Production target    | AWS ECS Fargate, RDS, ElastiCache, S3, SQS       |
+
+운영 매핑과 확장 원칙은 [로컬 우선 아키텍처](docs/architecture/local-first-stack.md), 정확한 버전은 [기술 스택 버전 기준](docs/architecture/tech-stack-versions.md)을 확인하세요.
+
+<details>
+<summary><strong>모노레포 구조 보기</strong></summary>
+
+```text
+apps/
+  web/              Vite React client
+  api/              NestJS REST API + Socket.IO gateway
+  worker/           NestJS background worker
+services/
+  python-worker/    FastAPI document, speech, and AI worker
+packages/
+  shared/           Zod schemas and shared contracts
+  config/           Environment validation and runtime config
+  editor-core/      Deck and editor domain helpers
+  realtime/         Realtime event helpers
+  job-queue/        Job queue ports and adapters
+  storage/          Storage ports and adapters
+  ai/               LLM, STT, and OCR provider interfaces
+infra/
+  docker/           Service Dockerfiles
+  scripts/          Environment and smoke-check scripts
+docs/               Architecture, conventions, runbooks, and research
+```
+
+</details>
 
 ## 제품 둘러보기
 
@@ -106,94 +188,15 @@ flowchart LR
   </tr>
 </table>
 
-준비가 끝난 Deck은 발표자 화면과 청중 화면에 동기화하고, QR로 입장한 청중과 실시간 투표·평점·자유 응답 같은 활동 슬라이드로 상호작용하며 실전 발표로 이어집니다. 만든 Deck은 커뮤니티 템플릿으로 공유하거나 갤러리에서 다른 사용자의 템플릿을 가져와 시작할 수 있습니다.
+준비한 Deck을 발표자·청중 화면에 동기화합니다. QR로 입장한 청중은 활동 슬라이드에서 실시간 투표·평점·자유 응답에 참여합니다. 만든 Deck은 커뮤니티 템플릿으로 공유하고, 새 발표자료는 갤러리의 템플릿을 가져와 시작할 수도 있습니다.
 
 ### 로컬 우선으로 설계했습니다
 
 > `docker compose up --build` 한 번으로 Web, API, Worker, Python worker, PostgreSQL, Redis, MinIO를 함께 실행합니다.
 
 - Deck, API, Job, WebSocket 데이터는 `packages/shared`의 Zod schema를 공통 계약으로 사용합니다.
-- Storage, Job Queue, AI/STT/OCR은 port와 provider interface 뒤에 두어 로컬 환경과 운영 환경을 교체할 수 있습니다.
-- 발표자 script, raw audio와 transcript 원문은 청중 API에 노출하지 않습니다.
-
-## 아키텍처
-
-이 저장소는 `pnpm` workspace와 Turborepo 기반 모노레포이며 Web, API, Worker, Python worker와 공통 계약 패키지를 함께 관리합니다.
-
-```mermaid
-flowchart LR
-    n_web["React Web<br/>발표자 · 청중"]:::client
-    n_cdn["CloudFront<br/>HTTPS 진입<br/>API 프록시"]:::edge
-    n_api["NestJS API<br/>프로젝트 · 리허설<br/>활동 관리"]:::app
-    n_db[("PostgreSQL · pgvector<br/>도메인 데이터<br/>작업 상태")]:::data
-    n_queue[("Redis · BullMQ<br/>작업 큐 · room 이벤트")]:::data
-    n_worker["NestJS Worker<br/>작업 실행<br/>진행 상태 관리"]:::app
-    n_python["FastAPI Worker<br/>문서 변환 · AI 처리"]:::app
-    n_s3[("S3<br/>원본 · 변환 파일")]:::data
-    n_nginx["Nginx"]:::edge
-    n_static[("S3 Static Web<br/>Web 정적 파일")]:::data
-
-    n_web -->|"HTTPS"| n_cdn
-    n_api -->|"조회 · 저장"| n_db
-    n_api -->|"작업 등록"| n_queue
-    n_queue -->|"작업 소비"| n_worker
-    n_worker -->|"상태 갱신"| n_db
-    n_worker -->|"HTTP"| n_python
-    n_api -->|"파일 접근 관리"| n_s3
-    n_python -->|"산출물 업로드"| n_s3
-    n_cdn --> n_nginx
-    n_nginx --> n_api
-    n_cdn -->|"정적 파일"| n_static
-
-    classDef client fill:#eff6ff,stroke:#60a5fa,color:#17233b
-    classDef edge fill:#f8fafc,stroke:#94a3b8,color:#17233b
-    classDef app fill:#f0fdfa,stroke:#2bbbad,color:#17233b
-    classDef data fill:#fff7ed,stroke:#fdba74,color:#17233b
-    classDef external fill:#f5f3ff,stroke:#bda4ee,color:#17233b
-    classDef decision fill:#f0fdfa,stroke:#2bbbad,color:#17233b
-```
-
-발표자·청중 요청은 API와 Socket.IO에서 처리하고, 문서 변환·음성 분석은 BullMQ와 Worker로 넘깁니다. 작업 상태는 PostgreSQL에, 발표자료와 음성 파일은 S3에 저장합니다.
-
-[전체 구조](docs/architecture/overview.md) · [실시간 청중 참여와 재접속](docs/architecture/realtime.md) · [리허설 음성 업로드와 리포트 생성](docs/architecture/speech-report.md) · [변환 파일 업로드와 메타데이터 전달](docs/architecture/artifact.md)
-
-| 영역                 | 주요 기술                                        |
-| -------------------- | ------------------------------------------------ |
-| Web                  | React 19, Vite 7, TanStack Query, Zustand, Konva |
-| Realtime             | Socket.IO, Yjs                                   |
-| API                  | NestJS 11, TypeORM, Swagger, Zod                 |
-| Background jobs      | NestJS Worker, BullMQ, Redis                     |
-| Python worker        | FastAPI, Pydantic, OpenAI SDK                    |
-| Local infrastructure | PostgreSQL + pgvector, Redis, MinIO              |
-| Production target    | AWS ECS Fargate, RDS, ElastiCache, S3, SQS       |
-
-운영 매핑과 확장 원칙은 [로컬 우선 아키텍처](docs/architecture/local-first-stack.md), 정확한 버전은 [기술 스택 버전 기준](docs/architecture/tech-stack-versions.md)을 확인하세요.
-
-<details>
-<summary><strong>모노레포 구조 보기</strong></summary>
-
-```text
-apps/
-  web/              Vite React client
-  api/              NestJS REST API + Socket.IO gateway
-  worker/           NestJS background worker
-services/
-  python-worker/    FastAPI document, speech, and AI worker
-packages/
-  shared/           Zod schemas and shared contracts
-  config/           Environment validation and runtime config
-  editor-core/      Deck and editor domain helpers
-  realtime/         Realtime event helpers
-  job-queue/        Job queue ports and adapters
-  storage/          Storage ports and adapters
-  ai/               LLM, STT, and OCR provider interfaces
-infra/
-  docker/           Service Dockerfiles
-  scripts/          Environment and smoke-check scripts
-docs/               Architecture, conventions, runbooks, and research
-```
-
-</details>
+- Storage, Job Queue, AI/STT/OCR은 port와 provider interface로 연결해 실행 환경에 맞는 구현을 사용합니다.
+- 발표자 대본, 녹음 파일, STT 텍스트 원문은 청중 API에 노출하지 않습니다.
 
 ## 빠른 시작
 

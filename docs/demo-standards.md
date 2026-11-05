@@ -41,7 +41,7 @@
 
 ## AI PPT 시연 캐시 운영
 
-캐시할 PPT는 별도 파일명이 아니라 `DEMO_AI_DECK_SOURCE_PROJECT_ID`가 가리키는 project의 현재 canonical Deck이다. 발표 전에 실제 AI 생성 흐름으로 한 번 만들고 내용, 표지, 폰트, 이미지 URL과 편집기 진입을 검수한 뒤 그 project를 source로 지정한다. source project는 삭제하지 않으며 `DEMO_USER_ID`가 읽을 수 있어야 한다.
+캐시할 PPT는 `DEMO_AI_DECK_SOURCE_PROJECT_ID`가 가리키는 프로젝트의 현재 Deck이다. 파일명으로 선택하지 않는다. 발표 전에 실제 AI 생성 흐름으로 덱을 만들고 내용, 표지, 폰트, 이미지 URL과 편집기 진입을 확인한 뒤 해당 프로젝트를 source로 지정한다. source project는 삭제하지 않으며 `DEMO_USER_ID`가 읽을 수 있어야 한다.
 
 1. 시연용 source project에서 최종 덱을 생성하고 편집기에서 검수한다.
 2. `DEMO_AI_DECK_SOURCE_PROJECT_ID`에 source project ID를 설정한다.
@@ -57,7 +57,7 @@
 초기 운영에서는 asset을 복사하지 않고 source 덱의 URL을 유지한다. 따라서 이 기능은 인증된 미리보기와 편집기 시연에만 사용하고 source project와 asset을 보존한다.
 
 production에서는 기본적으로 캐시를 거부한다. 예외적으로 운영 시연에 사용할 때는
-`DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION=true`를 두 번째 잠금으로 명시하고
+`DEMO_AI_DECK_CACHE_ALLOW_PRODUCTION=true`로 추가 승인을 설정하고
 `DEMO_FIXTURE_ENV_ALLOWLIST`에 `production`을 exact 값으로 포함한다. 이 승인은
 source project, 시연 사용자 멤버십과 asset 접근을 production에서 검증한 뒤에만
 적용하며, 시연 종료 또는 문제 발생 시 두 cache flag를 모두 `false`로 되돌린다.

@@ -47,7 +47,7 @@ docker compose -p orbit-activity-load down -v
 2. 모든 snapshot이 준비된 뒤 raw response와 주관식 원문을 삭제한다.
 3. `rawResponsesDeletedAt`을 기록한다.
 
-재실행은 동일 Job ID와 upsert/상태 조건으로 안전해야 한다. 운영 확인에서는 원문을 출력하지 않고 row 수와 timestamp 존재 여부만 조회한다.
+재실행에는 같은 Job ID를 사용하고, snapshot upsert와 삭제 상태 조건을 적용한다. 운영 확인에서는 row 수와 timestamp 존재 여부만 조회하고 원문은 출력하지 않는다.
 
 ## 장애 판별
 
@@ -55,4 +55,4 @@ docker compose -p orbit-activity-load down -v
 - audience 429: join은 session+IP 기준 분당 10회, 응답 mutation은 audience+run 기준 분당 30회 제한을 확인한다.
 - archive가 aggregate-only: `rawResponsesDeletedAt`이 있으면 정상 retention 완료 상태다.
 - export 실패: Job 상태와 오류 code를 확인하고 signed URL이나 query string은 로그에 남기지 않는다.
-- 실시간 갱신 지연: Socket.IO event revision 뒤 권위 HTTP snapshot을 다시 읽는지 확인한다. reconnect와 polling fallback도 같은 경로를 사용한다.
+- 실시간 갱신 지연: Socket.IO 이벤트의 revision을 확인한 뒤 HTTP로 서버의 현재 상태를 다시 조회하는지 확인한다. 재접속과 polling fallback도 같은 조회 경로를 사용한다.
